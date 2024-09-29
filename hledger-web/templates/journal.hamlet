@@ -6,6 +6,20 @@ $if elem AddPermission perms
      data-toggle="modal" data-target="#addmodal" title="Add a new transaction to the journal">
     Add a transaction
 
+<p>
+  Report:
+  <a href=@?{ballink} title="Show balance report">Balance
+  <a href=@?{multiballink "yearly"}
+      title="Show daily multi-period balance report">Yearly
+  <a href=@?{multiballink "quarterly"}
+      title="Show daily multi-period balance report">Quarterly
+  <a href=@?{multiballink "monthly"}
+      title="Show daily multi-period balance report">Monthly
+  <a href=@?{multiballink "weekly"}
+      title="Show daily multi-period balance report">Weekly
+  <a href=@?{multiballink "daily"}
+      title="Show daily multi-period balance report">Daily
+
 <div .table-responsive>
   <table .transactionsreport .table .table-condensed>
     <thead>

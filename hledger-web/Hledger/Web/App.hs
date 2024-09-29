@@ -147,6 +147,8 @@ instance Yesod App where
           }
         rspec' = rspec{_rsQuery=q,_rsReportOpts=ropts'}
 
+    maybePeriod <- lookupGetParam "period"
+
     hideEmptyAccts <- if empty_ ropts
                          then return True
                          else (== Just "1") . lookup "hideemptyaccts" . reqCookies <$> getRequest

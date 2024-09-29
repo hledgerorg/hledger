@@ -7,6 +7,7 @@
 /                RootR           GET
 /journal         JournalR        GET
 /register        RegisterR       GET
+/balance         BalanceR        GET
 /add             AddR            GET POST PUT
 
 /manage             ManageR         GET
