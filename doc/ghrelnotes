@@ -66,10 +66,7 @@ Otherwise:
 At the command line:
 
 ```
-cd /usr/local/bin
-curl -fLOC- https://github.com/simonmichael/hledger/releases/download/$REL/hledger-linux-x64.tar.gz
-tar xzf hledger-linux-x64.tar.gz
-cd
+curl -fLOC- https://github.com/simonmichael/hledger/releases/download/$REL/hledger-linux-x64.tar.gz | tar -xzv -f- -C/usr/local/bin hledger hledger-ui hledger-web
 hledger --version; hledger-ui --version; hledger-web --version    # should show $REL
 ```
 
@@ -90,19 +87,13 @@ and/or [Homebrew](https://brew.sh), and let me know.)
 
 On ARM macs:
 ```
-cd /usr/local/bin
-curl -fLOC- https://github.com/simonmichael/hledger/releases/download/$REL/hledger-mac-arm64.tar.gz
-tar xzf hledger-mac-arm64.tar.gz
-cd
+curl -fLOC- https://github.com/simonmichael/hledger/releases/download/$REL/hledger-mac-arm64.tar.gz | tar -xzv -f- -C/usr/local/bin hledger hledger-ui hledger-web
 hledger --version; hledger-ui --version; hledger-web --version    # should show $REL
 ```
 
 On Intel macs:
 ```
-cd /usr/local/bin
-curl -fLOC- https://github.com/simonmichael/hledger/releases/download/$REL/hledger-mac-x64.tar.gz
-tar xzf hledger-mac-x64.tar.gz
-cd
+curl -fLOC- https://github.com/simonmichael/hledger/releases/download/$REL/hledger-mac-x64.tar.gz | tar -xzv -f- -C/usr/local/bin hledger hledger-ui hledger-web
 hledger --version; hledger-ui --version; hledger-web --version    # should show $REL
 ```
 
@@ -116,27 +107,20 @@ hledger --version; hledger-ui --version; hledger-web --version    # should show 
 
 In a powershell window (press `WINDOWS-R`, `powershell`, `ENTER`):
 
-1. Make a place to keep installed binaries. You only need to do this once, not for every release:
-    ```
-    mkdir -force $HOME\bin >$null
-    $ENV:PATH += ";"+$HOME+"\bin"
-    [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User)+";"+$HOME+"\bin", [EnvironmentVariableTarget]::User)
-    ```
+```
+cd ~
+curl https://github.com/simonmichael/hledger/releases/download/1.43.2/hledger-windows-x64.zip -OutFile hledger-windows-x64.zip
+Expand-Archive hledger-windows-x64.zip -Force -DestinationPath AppData\Roaming\local\bin
+hledger --version; hledger-ui --version; hledger-web --version    # should show $REL
+```
 
-2. Download and install the release binaries:
-    ```
-    cd $HOME\bin
-    curl https://github.com/simonmichael/hledger/releases/download/$REL/hledger-windows-x64.zip -OutFile hledger-windows-x64.zip
-    Expand-Archive hledger-windows-x64.zip -DestinationPath . -Force
-    cd $HOME
-    hledger --version; hledger-ui --version; hledger-web --version    # should show $REL; if not, check why: where.exe hledger
-    ```
-
-3. Ensure a default journal file exists, and without a problematic encoding (I'm not sure if/why "ascii" was needed here).
+<!--
+And ensure a default journal file exists, and without a problematic encoding (I'm not sure if/why "ascii" was needed here).
 This will allow you to start hledger-web by double-clicking on its icon if you wish.
-    ```
-    out-file -append -encoding ascii $HOME/.hledger.journal
-    ```
+```
+out-file -append -encoding ascii $HOME/.hledger.journal
+```
+-->
 
 </xdetails>
 <xdetails>
