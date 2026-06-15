@@ -95,12 +95,12 @@ library:
   - transformers
   - vector
   - brick >=2.1.1 && <2.3.2 || >=2.4 && <3
-  - vty >=6.1 && <6.7
-  - vty-crossplatform >= 0.4.0.0 && < 0.6
+  - vty >=6.1
+  - vty-crossplatform >= 0.4.0.0
   when:
     - condition: os(windows)
       then:
-        dependencies: vty-windows >= 0.2.0.1 && < 0.3
+        dependencies: vty-windows >= 0.2.0.1
       else:
         dependencies: unix
 
