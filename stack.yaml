@@ -9,12 +9,7 @@ packages:
 
 resolver: nightly-2026-09-01
 
-extra-deps:
-# currently out of stackage:
-- yesod-static-1.6.1.0  # <1.6.1.1 for https://github.com/psibi/crypton-conduit/issues/3
-- yesod-test-1.6.19
-- cryptonite-0.30
-- cryptonite-conduit-0.2.2
+extra-deps: []
 
 nix:
   pure: false
