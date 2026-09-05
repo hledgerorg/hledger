@@ -28,6 +28,3 @@ write-ghc-environment-files: always
 -- package *
 --     -- Speeds up a bit
 --     library-vanilla: False
-
--- avoid https://github.com/yesodweb/yesod/issues/1917
-constraints: ram < 0

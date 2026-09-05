@@ -5,7 +5,6 @@ and then Application.hs completes the job.
 -}
 
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
-{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -37,14 +36,7 @@ import System.FilePath (takeFileName, (</>))
 import Text.Blaze (Markup)
 import Text.Hamlet (hamletFile)
 import Yesod
-import Yesod.Static
 import Yesod.Default.Config
-
-#ifndef DEVELOPMENT
-import Hledger.Web.Settings (staticDir)
-import Text.Jasmine (minifym)
-import Yesod.Default.Util (addStaticContentExternal)
-#endif
 
 import Hledger
 import Hledger.Cli (CliOpts(..), journalReloadIfChanged)
@@ -60,7 +52,7 @@ import Data.List (isPrefixOf)
 -- access to the data present here.
 data App = App
     { settings :: AppConfig DefaultEnv Extra
-    , getStatic :: Static -- ^ Settings for static file serving.
+    , getStatic :: WaiSubsite -- ^ The static file serving site (see StaticFiles.hs).
     , httpManager :: Manager
       --
     , appOpts    :: WebOpts
@@ -188,15 +180,6 @@ instance Yesod App where
       $(widgetFile "default-layout")
 
     withUrlRenderer $(hamletFile "templates/default-layout-wrapper.hamlet")
-
--- XXX why disabled during development ? Affects ghci, ghcid, tests, #2139 ?
-#ifndef DEVELOPMENT
-  -- This function creates static content files in the static folder
-  -- and names them based on a hash of their content. This allows
-  -- expiration dates to be set far in the future without worry of
-  -- users receiving stale content.
-  addStaticContent = addStaticContentExternal minifym base64md5 staticDir (StaticR . flip StaticRoute [])
-#endif
 
 -- This instance is required to use forms. You can modify renderMessage to
 -- achieve customized and internationalized form validation messages.
