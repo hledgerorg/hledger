@@ -23,6 +23,25 @@ User-visible changes in hledger-web.
 See also the hledger changelog.
 
 
+# 433d07ec
+
+Fixes
+
+- Raise aeson's lower bound to `>=2.2.5.1`, avoiding versions vulnerable to denial-of-service.
+  (<https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html>)
+
+Improvements
+
+- The yesod-static and hjsmin dependencies have been dropped;
+  hledger-web now serves its static files itself, using wai-app-static
+  and file-embed. (yesod-static doesn't currently build with crypton
+  1.1+, which has kept it, and hledger-web, out of stackage nightly.)
+  Static file urls no longer include an `?etag=...` cache buster;
+  instead the files are served with an ETag header, and conditional
+  requests are answered with 304 Not Modified.
+  (Cherry picked from an AI-assisted change in hledger 2.x.)
+
+
 # 1.52.3 2026-08-27
 
 Fixes
