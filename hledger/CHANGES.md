@@ -26,6 +26,16 @@ API
 User-visible changes in the hledger command line tool and library.
 
 
+# ad759ad1
+
+Docs
+
+- csv: the manual now correctly documents that most top-level rules are evaluated first-wins, not last-wins as previously stated. 
+  (Accepting the status quo, unlike hledger 2.x where they are changed to last-wins.) [#2539]
+
+[#2539]: https://github.com/simonmichael/hledger/issues/2539
+
+
 # 1.52.3 2026-08-27
 
 

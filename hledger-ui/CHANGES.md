@@ -23,6 +23,9 @@ User-visible changes in hledger-ui.
 See also the hledger changelog.
 
 
+# ad759ad1
+
+
 # 1.52.3 2026-08-27
 
 
