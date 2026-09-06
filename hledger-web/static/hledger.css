@@ -88,8 +88,25 @@ td.date {
 }
 
 /*------------------------------------------------------------------------------------------*/
-/* 4. the add form's date picker button */
+/* 4. the add form */
 
+/* Each posting row is indented a little under the date and description. */
+#addform .account-group {
+  padding-left: 1em;
+}
+
+/* When the journal has several files, a selector chooses which one to add to.
+   It sits inline after its "Add to:" label instead of filling the row. */
+#addform .file-select {
+  display: inline-block;
+  width: auto;
+}
+
+#addform button[type=submit] {
+  font-weight: bold;
+}
+
+/* The date picker button. */
 #datebutton {
   cursor: pointer;
 }
@@ -152,6 +169,40 @@ dialog::backdrop {
    something the user tabs to, so it does not need a focus ring. */
 dialog:focus {
   outline: none;
+}
+
+/* In the help dialog's lists, an item that starts a new group. */
+.modal-body li.gap-above {
+  margin-top: 1em;
+}
+
+/*------------------------------------------------------------------------------------------*/
+/* 7. the register chart */
+
+/* flot draws into this, and needs it to have a size first. */
+#register-chart {
+  height: 150px;
+  margin-bottom: 1em;
+}
+
+/*------------------------------------------------------------------------------------------*/
+/* 8. the manage, edit and upload pages */
+
+/* The list of journal files: each name is centered against its row of buttons. */
+.table.files td.filename {
+  vertical-align: middle;
+}
+
+/* The edit form is a table only for layout; no rules between its cells. */
+.table.edit-form td {
+  border: 0;
+}
+
+/* The upload form's file input is hidden; its label, styled as a button, is
+   the visible control and opens the file dialog. (Bootstrap makes file inputs
+   display:block, which outranks the hidden attribute, hence a rule here.) */
+label.btn > input[type=file] {
+  display: none;
 }
 
 ul {

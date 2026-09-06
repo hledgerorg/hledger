@@ -5,7 +5,7 @@
   Are you sure? This will overwrite your journal!
 <div.form-group>
   <label .btn.btn-primary for="file">
-    <input type=file id=file name=file style="display:none">
+    <input type=file id=file name=file>
     Select file
   <span .label.label-info id="file-info">
 <div.form-group>

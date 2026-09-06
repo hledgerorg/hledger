@@ -1,6 +1,6 @@
 $# If $ is the first character in a line, it must be \-escaped to hide it from hamlet.
-<label #register-chart-label style=""><br>
-<div #register-chart style="height:150px; margin-bottom:1em; display:block;">
+<label #register-chart-label><br>
+<div #register-chart>
 <script type=text/javascript>
   \$(document).ready(function() {
     var $chartdiv = $('#register-chart');

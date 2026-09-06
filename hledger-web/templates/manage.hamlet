@@ -3,7 +3,7 @@
 
 <div.row>
   <div .col-md-6.col-sm-8.col-xs-12>
-    <table .table.table-condensed>
+    <table .table.table-condensed.files>
       <thead>
         <th>
           File
@@ -11,9 +11,9 @@
       <tbody>
         $forall (path, _) <- jfiles j
           <tr>
-            <td style="vertical-align:middle">
+            <td .filename>
               #{path}
-            <td style="text-align:right">
+            <td .text-right>
               <a.btn.btn-default href=@{EditR path}>
                 Edit
               <a.btn.btn-default href=@{UploadR path}>

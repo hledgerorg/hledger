@@ -73,5 +73,6 @@ Deliberately not addressed yet, in rough order of appeal:
   row-border work and should be reworked rather than layered on.
 - **Charts.** flot is dated and needs jquery. Rethinking them is likely part of
   hledger 2.0, not a css change.
-- **A strict Content-Security-Policy**: #2703. It also decides whether
-  `style-src` can be strict, which depends on the remaining `style=` attributes.
+- **A strict Content-Security-Policy**: #2703. The templates no longer carry
+  `style=` attributes, so `style-src` can be strict too, once flot's legend,
+  which it builds from inline styles, is dealt with.

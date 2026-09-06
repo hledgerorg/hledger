@@ -109,5 +109,5 @@ $if elem ViewPermission perms
                 <li> <code>expr:'QEXPR'</code> - match with a boolean query (and, or, not, (..))
                 <li>  <code>any:'QEXPR'</code> - match transactions where any posting matches
                 <li>  <code>all:'QEXPR'</code> - match transactions where all postings match
-                <li style="margin-top:1em;"> <code>depth:N</code> - clip account names at this depth
+                <li .gap-above> <code>depth:N</code> - clip account names at this depth
                 $# <li> Description, account, status query terms are OR'ed, others are AND'ed.

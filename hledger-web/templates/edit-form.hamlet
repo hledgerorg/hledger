@@ -4,14 +4,14 @@
   <i>#{f}
 <div.alert.alert-danger>
   Are you sure? This will overwrite your journal!
-<table.table.table-condensed>
+<table.table.table-condensed.edit-form>
   <tr>
-    <td colspan=2 style="border:0">
+    <td colspan=2>
       ^{fvInput tView}
   <tr>
-    <td style="border:0">
+    <td>
       <span.help>
         ^{helplink "data-formats" "File format help"}
-    <td .text-right style="border:0">
+    <td .text-right>
       <a.btn.btn-default href="@{ManageR}">Go back
       <input.btn.btn-default type=submit value="Save">

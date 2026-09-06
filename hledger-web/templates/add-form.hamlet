@@ -20,7 +20,7 @@
 
 <div .account-postings>
   $forall (n, (acc, amt, accE, amtE)) <- displayRows
-    <div .form-group .row .account-group style="padding-left:1em;">
+    <div .form-group .row .account-group>
       <div .col-sm-9.col-xs-9 :isJust accE:.has-error>
         <input .account-input.form-control.input-lg type=text list=accountnames
           name=account placeholder="Account #{n}" value="#{acc}">
@@ -37,12 +37,12 @@
     $if length files > 1
       Add to:
       &nbsp;
-      <div style="display:inline-block; width:auto;" .form-group :isJust (fvErrors fileView):.has-error>
+      <div .form-group .file-select :isJust (fvErrors fileView):.has-error>
         ^{fvInput fileView}
         $maybe err <- fvErrors fileView
           <span .help-block .error-block>#{err}
-  <div .col-sm-3.col-xs-3 style="text-align:right;">
-    <button type=submit .btn .btn-default .btn-lg name=submit style="font-weight:bold;">Save
+  <div .col-sm-3.col-xs-3.text-right>
+    <button type=submit .btn .btn-default .btn-lg name=submit>Save
 
 $# Completion data for the account and description fields. The browser filters
 $# these itself, so there is no javascript and no library involved, and hamlet's
