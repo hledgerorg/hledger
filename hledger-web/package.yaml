@@ -146,7 +146,7 @@ library:
   - warp
   - yaml
   - yesod        >=1.4 && < 1.7
-  - yesod-core   >=1.4 && < 1.7
+  - yesod-core   >=1.4 && < 1.8
   - yesod-form   >=1.4 && < 1.8
   - hspec
   - yesod-test
