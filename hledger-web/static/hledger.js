@@ -93,6 +93,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (row) { row.classList.toggle('active'); }
     });
   });
+
+  registerChartInit();
 });
 
 // The entry targeted by the url hash is marked by a :target rule in
@@ -222,4 +224,158 @@ function getCookie(name) {
     var parts = c.split('=');
     return parts[0] === name ? parts.slice(1).join('=') : found;
   }, undefined);
+}
+
+//----------------------------------------------------------------------
+// REGISTER CHART
+//
+// The register page's balance chart, drawn with flot. chart.hamlet renders
+// only the markup, with the data as JSON on #register-chart, so that pages
+// carry no inline scripts beyond the nonced ones (#2703). flot needs jquery,
+// so this section uses it too.
+
+// Draw the register chart, if this page has one.
+function registerChartInit() {
+  var $chartdiv = $('#register-chart');
+  // flot needs a container with a size, so do nothing while it is hidden.
+  if (!$chartdiv.length || !$chartdiv.is(':visible')) { return; }
+  var $label = $('#register-chart-label');
+  $label.text($chartdiv.attr('data-title'));
+  var commodities = JSON.parse($chartdiv.attr('data-series'));
+  // Each commodity is drawn as two flot series over the same points: a
+  // stepped line for the running balance, and one clickable, hoverable point
+  // per transaction. A point is [timestamp, balance, amount text, balance
+  // text, transaction text, transaction index]: flot reads the first two,
+  // the tooltip and click handlers the rest.
+  var series = [];
+  commodities.forEach(function(c, i) {
+    series.push({
+      data: c.points, label: c.label, color: i,
+      lines: { show: true, steps: true }, points: { show: false },
+      clickable: false, hoverable: false,
+    });
+    series.push({
+      data: c.points, color: i,
+      lines: { show: false }, points: { show: true },
+    });
+  });
+  var plot = registerChart($chartdiv, series);
+  registerChartLegend($label, plot);
+  $chartdiv.bind('plotclick', registerChartClick);
+  $chartdiv.bind('plotselected', registerChartSelect);
+}
+
+function registerChart($container, series) {
+  // https://github.com/flot/flot/blob/master/API.md
+  return $container.plot(
+    series,
+    {
+      xaxis: {
+        mode: "time",
+        timeformat: "%Y/%m/%d",
+      },
+      selection: {
+        mode: "x"
+      },
+      // flot's legend is built from inline style attributes, which the
+      // Content-Security-Policy blocks; registerChartLegend draws ours.
+      legend: {
+        show: false
+      },
+      grid: {
+        markings: function () {
+          var now = Date.now();
+          return [
+            {
+              xaxis: { to: now }, // past
+              yaxis: { to: 0 },   // <0
+              color: '#ffdddd',
+            },
+            {
+              xaxis: { from: now }, // future
+              yaxis: { from: 0 },   // >0
+              color: '#e0e0e0',
+            },
+            {
+              xaxis: { from: now }, // future
+              yaxis: { to: 0 },     // <0
+              color: '#e8c8c8',
+            },
+            {
+              yaxis: { from: 0, to: 0 }, // =0
+              color: '#bb0000',
+              lineWidth:1
+            },
+          ];
+        },
+        hoverable: true,
+        autoHighlight: true,
+        clickable: true,
+      },
+      // https://github.com/krzysu/flot.tooltip
+      tooltip: true,
+      tooltipOpts: {
+        xDateFormat: "%Y/%m/%d",
+        content:
+          function(label, x, y, flotitem) {
+            var data = flotitem.series.data[flotitem.dataIndex];
+            // The plugin renders this as html. Build it from text nodes and
+            // let the browser serialize it, so the journal text cannot be
+            // parsed as markup.
+            return $('<div>')
+              .append(document.createTextNode(data[3] + " balance on %x after " + data[2] + " posted by transaction:"))
+              .append($('<pre>').text(data[4]))
+              .html();
+          },
+        onHover: function(flotitem, $tooltipel) {
+          $tooltipel.css('border-color', flotitem.series.color);
+        },
+      },
+    }
+  ).data("plot");
+}
+
+// Add the legend to the label line: a color swatch and the commodity for
+// each balance line.
+function registerChartLegend($label, plot) {
+  plot.getData().forEach(function(s) {
+    if (typeof s.label !== 'string') { return; }
+    var $swatch = $('<span class="legend-swatch">').css('background-color', s.color);
+    $('<span class="legend-item">').append($swatch, document.createTextNode(s.label)).appendTo($label);
+  });
+}
+
+// Handle a click on a chart point: scroll to that transaction's row.
+function registerChartClick(ev, pos, item) {
+  if (!item) { return; }
+  var id = String(item.series.data[item.dataIndex][5]);
+  var target = document.getElementById(id);
+  if (target) {
+    window.location.hash = '#' + id;
+    $('html, body').animate({ scrollTop: $(target).offset().top }, 1000);
+  }
+}
+
+// Handle a selection (zoom) on the chart: reload with a date: query for
+// the selected range.
+function registerChartSelect(ev, ranges) {
+  // Reconstruct from/to dates carefully based on the selected x-values.
+  // Those x values are unix timestamps (milliseconds since epoch) enclosing the data points' timestamps.
+  // Those are generated by dayToUtcNoonTimestamp, and are UTC times representing the transaction dates.
+  var from = new Date(ranges.xaxis.from);
+  var fromy = from.getUTCFullYear();
+  var fromm = from.getUTCMonth() + 1;
+  var fromd = from.getUTCDate();
+  var to = new Date(ranges.xaxis.to + 1 * 24 * 60 * 60 * 1000);
+  var toy = to.getUTCFullYear();
+  var tom = to.getUTCMonth() + 1;
+  var tod = to.getUTCDate();
+
+  var range = fromy + "/" + fromm + "/" + fromd + "-" + toy + "/" + tom + "/" + tod;
+  var baselink = $('#register-chart').attr('data-baselink');
+  if (baselink.endsWith("?q")) {
+    document.location = baselink + "=date:" + range;
+  } else {
+    document.location = baselink + "%20date:" + range;
+  }
 }

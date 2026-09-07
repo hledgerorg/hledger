@@ -185,6 +185,21 @@ dialog:focus {
   margin-bottom: 1em;
 }
 
+/* The legend, which hledger.js adds to the label line: a color swatch and
+   the commodity for each balance line. */
+#register-chart-label .legend-item {
+  margin-left: 1em;
+  font-weight: normal;
+}
+#register-chart-label .legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 0.3em;
+  border: 1px solid #ccc;
+  vertical-align: middle;
+}
+
 /*------------------------------------------------------------------------------------------*/
 /* 8. the manage, edit and upload pages */
 

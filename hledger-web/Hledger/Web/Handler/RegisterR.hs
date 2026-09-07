@@ -9,8 +9,10 @@
 
 module Hledger.Web.Handler.RegisterR where
 
-import Data.List (intersperse, nub, partition)
+import Data.Aeson.Text (encodeToLazyText)
+import Data.List (nub, partition)
 import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
 import Safe (tailSafe)
 import Text.Hamlet (hamletFile)
 
@@ -99,20 +101,33 @@ decorateLinks :: [(acct, ([char], [char]))] -> [(Maybe acct, char)]
 decorateLinks = concatMap $ \(acct, (name, comma)) ->
     map (Just acct,) name ++ map (Nothing,) comma
 
--- | Generate javascript/html for a register balance line chart based on
--- the provided "AccountTransactionsReportItem"s.
+-- | The register balance chart: its markup, carrying the per-commodity
+-- series as JSON in a data attribute. hledger.js draws it with flot on page
+-- load; see registerChartInit there.
 registerChartHtml :: Text -> String -> [(CommoditySymbol, [AccountTransactionsReportItem])] -> HtmlUrl AppRoute
 registerChartHtml q title percommoditytxnreports = $(hamletFile "templates/chart.hamlet")
- -- have to make sure plot is not called when our container (maincontent)
- -- is hidden, eg with add form toggled
  where
    charttitle = if null title then "" else title ++ ":"
-   colorForCommodity = fromMaybe 0 . flip lookup commoditiesIndex
-   commoditiesIndex = zip (map fst percommoditytxnreports) [0..] :: [(CommoditySymbol,Int)]
-   simpleMixedAmountQuantity = maybe 0 aquantity . listToMaybe . amounts . mixedAmountStripCosts
-   showZeroCommodity = wbUnpack . showMixedAmountB oneLineNoCostFmt{displayCost=False,displayZeroCommodity=True}
-   shownull c = if null c then " " else c
    nodatelink = (RegisterR, [("q", T.unwords $ removeDates q)])
+   -- One entry per commodity: its symbol, and per transaction the point flot
+   -- plots followed by the texts the tooltip and click handler show.
+   seriesjson = TL.toStrict . encodeToLazyText $ map commoditySeries percommoditytxnreports
+   commoditySeries (c, items) = object
+     [ "label"  .= c
+     , "points" .= [ [ toJSON . dayToUtcNoonTimestamp $ triDate i
+                     , toJSON . quantityAsDouble $ triCommodityBalance c i
+                     , toJSON . showZeroCommodity $ triCommodityAmount c i
+                     , toJSON . showZeroCommodity $ triCommodityBalance c i
+                     , toJSON . T.stripEnd . showTransaction $ triOrigTransaction i
+                     , toJSON . tindex $ triOrigTransaction i
+                     ]
+                   | i <- reverse items ]
+     ]
+   -- The first amount's quantity, or 0. (Decimal's own ToJSON instance is an
+   -- object; the chart wants a plain number.)
+   quantityAsDouble :: MixedAmount -> Double
+   quantityAsDouble = maybe 0 (realToFrac . aquantity) . listToMaybe . amounts . mixedAmountStripCosts
+   showZeroCommodity = wbUnpack . showMixedAmountB oneLineNoCostFmt{displayCost=False,displayZeroCommodity=True}
 
 -- | Makes a unix timestamp (milliseconds since epoch) corresponding to noon on the given date in UTC.
 dayToUtcNoonTimestamp :: Day -> Integer
