@@ -87,7 +87,9 @@ Improvements
 - hledger-web now sends the `X-Frame-Options: SAMEORIGIN` and
   `X-Content-Type-Options: nosniff` security headers on every
   response, so other sites can't frame its pages for clickjacking, and
-  browsers won't second-guess content types. (Arthur Cinader)
+  browsers won't second-guess content types. `X-Content-Type-Options`
+  is sent with the static files too, which are served by a subsite the
+  header-adding middleware never sees. (Arthur Cinader)
 
 - The yesod-static and hjsmin dependencies have been dropped;
   hledger-web now serves its static files itself, using wai-app-static
@@ -102,10 +104,27 @@ Improvements
   service, easing installation while the ecosystem catches up with
   newer aeson.
 
+- hledger-web now sends a Content-Security-Policy with every page
+  [#2703] (Arthur Cinader). The browser loads scripts, styles, images
+  and fonts only from hledger-web's own origin, and runs only the
+  inline scripts that carry the page's nonce. A script that reached a
+  page some other way, eg through journal data, is blocked and
+  reported in the browser's console. The policy also refuses framing
+  by another site, superseding the X-Frame-Options header.
+
+- The register chart is drawn from data carried on the page rather
+  than from a script generated into it. This fixes the chart silently
+  disappearing when a commodity symbol contained a backslash and a
+  double quote, and moves the legend from inside the chart, where it
+  covered the start of the balance line, to the title line above it.
+
+- The unused Google Analytics hook has been removed.
+
 [#2559]: https://github.com/plaintextaccounting/hledger/issues/2559
 [#2679]: https://github.com/plaintextaccounting/hledger/issues/2679
 [#2698]: https://github.com/plaintextaccounting/hledger/issues/2698
 [#2700]: https://github.com/plaintextaccounting/hledger/issues/2700
+[#2703]: https://github.com/plaintextaccounting/hledger/issues/2703
 [#2704]: https://github.com/plaintextaccounting/hledger/issues/2704
 
 

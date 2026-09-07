@@ -28,6 +28,26 @@ Discussion of the overall direction is in
   offcanvas sidebar. Our stylesheet loads after it, so plain overrides work; no
   `!important` needed, and it should be treated as a smell.
 
+## Javascript
+
+- **No inline scripts.** Every page sends a Content-Security-Policy ([#2703])
+  that allows scripts from hledger-web's own origin, plus the two small inline
+  scripts in the layout templates, which carry the response's nonce. A
+  `<script>` block added to a template without `nonce=#{nonce}` will not run,
+  and the browser will say so in its console. Better not to add one at all:
+  code goes in `static/hledger.js`, and whatever a page has to hand it goes in
+  `data-` attributes (`chart.hamlet` and `registerChartInit` show the pattern).
+- **No inline event handlers or `javascript:` urls**, for the same reason.
+  hledger.js binds its handlers to hooks in the markup such as `data-toggle`.
+- **Styles set from javascript are fine** as long as they go through the CSSOM
+  (`element.style`, jquery's `.css()`), which the policy does not govern. Markup
+  strings carrying `style=` attributes are not; flot's own legend was one, and
+  is turned off in favor of one drawn by hledger.js.
+- `test/browser/security.spec.js` fails on any policy violation, and
+  `Hledger/Web/Test.hs` checks the header itself.
+
+[#2703]: https://github.com/plaintextaccounting/hledger/issues/2703
+
 ## Tabular and monetary data
 
 The journal, register and sidebar are tables of figures, and read like a ledger.
@@ -73,6 +93,3 @@ Deliberately not addressed yet, in rough order of appeal:
   row-border work and should be reworked rather than layered on.
 - **Charts.** flot is dated and needs jquery. Rethinking them is likely part of
   hledger 2.0, not a css change.
-- **A strict Content-Security-Policy**: #2703. The templates no longer carry
-  `style=` attributes, so `style-src` can be strict too, once flot's legend,
-  which it builds from inline styles, is dealt with.
