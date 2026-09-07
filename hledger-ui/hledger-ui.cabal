@@ -74,7 +74,7 @@ library
       ansi-terminal >=0.9
     , async
     , base >=4.18 && <4.23
-    , brick >=2.1.1 && <2.3.2 || >2.3.2 && <3
+    , brick >=2.1.1 && <2.3.2 || >=2.4 && <3
     , cmdargs >=0.8
     , containers >=0.5.9
     , data-default
@@ -86,7 +86,7 @@ library
     , githash >=0.1.6.2
     , hledger >=1.52.3 && <1.53
     , hledger-lib >=1.52.3 && <1.53
-    , megaparsec >=7.0.0 && <9.8.0 || >9.8.0 && <9.9
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , microlens-platform >=0.2.3.1
     , mtl >=2.2.1
@@ -100,13 +100,13 @@ library
     , transformers
     , vector
     , vty >=6.1 && <6.7
-    , vty-crossplatform >=0.4.0.0 && <0.6.0.0
+    , vty-crossplatform >=0.4.0.0 && <0.6
   default-language: GHC2021
   if (flag(debug))
     cpp-options: -DDEBUG
   if os(windows)
     build-depends:
-        vty-windows >=0.2.0.1 && <0.3.0.0
+        vty-windows >=0.2.0.1 && <0.3
   else
     build-depends:
         unix
