@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>hledger</title>
+  <!-- Not currently used. The same coin struck with a lowercase h instead of an
+       equals sign, kept as an alternative: more mnemonic in a tab, less tied to
+       the idea of balance. Drawn as a single stroked path rather than a
+       letterform, so the counter stays open at 16px. To adopt it, run
+       tools/mkfavicon.py h -->
+  <circle cx="16" cy="16" r="15.5" fill="#D87E12"/>
+  <circle cx="16" cy="16" r="12.6" fill="#F4B519"/>
+  <path d="M11 7.5 V25 M11 17.8 A5.2 5.2 0 0 1 21.4 17.8 V25"
+        fill="none" stroke="#7A4406" stroke-width="4.1"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
