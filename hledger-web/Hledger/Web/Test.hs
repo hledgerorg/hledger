@@ -134,6 +134,14 @@ hledgerWebTest = do
       statusIs 200
       bodyContains "accounts"
 
+    yit "serves the favicon and robots.txt" $ do
+      get FaviconR
+      statusIs 200
+      assertHeader "Content-Type" "image/x-icon"
+      get RobotsR
+      statusIs 200
+      bodyContains "Disallow: /"
+
     yit "hyperlinks use a base url made from the default host and port" $ do
       get JournalR
       statusIs 200

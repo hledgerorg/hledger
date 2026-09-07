@@ -41,6 +41,11 @@ Fixes
   before, because of an escaping bug that disabled its handler.
   (Arthur Cinader)
 
+- /favicon.ico and /robots.txt no longer return 404 unless hledger-web
+  happens to be run from its source directory; they are now built into
+  the executable, like the other static files. robots.txt now also asks
+  crawlers not to index the site. (Arthur Cinader)
+
 Improvements
 
 - Keep the account sidebar's scroll position when switching accounts
