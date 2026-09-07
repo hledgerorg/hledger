@@ -27,7 +27,7 @@ These tests don't exactly match the production code path, eg these bits are miss
                            ,appHost = fromString h
                            ,appPort = p
                            ,appRoot = T.pack u
-                           ,appExtra = Extra "" Nothing staticRoot
+                           ,appExtra = Extra "" staticRoot
                            }
 
 The production code path, when called in this test context, which I guess is using
@@ -84,7 +84,6 @@ runTests testsdesc rawopts j tests = do
         ,appRoot = base_url_ wopts & T.pack  -- XXX not sure this or extraStaticRoot get used
         ,appExtra = Extra
                     { extraCopyright  = ""
-                    , extraAnalytics  = Nothing
                     , extraStaticRoot = T.pack <$> file_url_ wopts
                     }
         }

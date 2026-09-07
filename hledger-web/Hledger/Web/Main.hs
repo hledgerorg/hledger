@@ -133,7 +133,7 @@ web opts0 j = do
                            ,appHost = fromString h
                            ,appPort = p
                            ,appRoot = T.pack u
-                           ,appExtra = Extra "" Nothing staticRoot
+                           ,appExtra = Extra "" staticRoot
                            }
   app <- makeApplication opts j' appconfig
 
