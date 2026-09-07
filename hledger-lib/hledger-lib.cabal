@@ -152,7 +152,7 @@ library
     , filepath
     , hashtables >=1.2.3.1 && <1.3 || >=1.4.0
     , lucid
-    , megaparsec >=7.0.0 && <9.8
+    , megaparsec >=7.0.0 && <9.8.0 || >9.8.0 && <9.9
     , microlens >=0.4
     , microlens-th >=0.4
     , mtl >=2.2.1
@@ -213,7 +213,7 @@ test-suite doctest
     , filepath
     , hashtables >=1.2.3.1 && <1.3 || >=1.4.0
     , lucid
-    , megaparsec >=7.0.0 && <9.8
+    , megaparsec >=7.0.0 && <9.8.0 || >9.8.0 && <9.9
     , microlens >=0.4
     , microlens-th >=0.4
     , mtl >=2.2.1
@@ -274,7 +274,7 @@ test-suite unittest
     , hashtables >=1.2.3.1 && <1.3 || >=1.4.0
     , hledger-lib
     , lucid
-    , megaparsec >=7.0.0 && <9.8
+    , megaparsec >=7.0.0 && <9.8.0 || >9.8.0 && <9.9
     , microlens >=0.4
     , microlens-th >=0.4
     , mtl >=2.2.1
