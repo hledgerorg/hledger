@@ -46,6 +46,10 @@ Fixes
   the executable, like the other static files. robots.txt now also asks
   crawlers not to index the site. (Arthur Cinader)
 
+- hledger-web now has its own favicon: a gold coin struck with an equals
+  sign, in the palette of the hledger coin logo. It replaces the Yesod
+  scaffold's blue "y". (Arthur Cinader)
+
 Improvements
 
 - Keep the account sidebar's scroll position when switching accounts
