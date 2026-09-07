@@ -83,7 +83,7 @@ library:
   - githash >=0.1.6.2
   - microlens >=0.4
   - microlens-platform >=0.2.3.1
-  - megaparsec >=7.0.0 && <9.8
+  - megaparsec >=7.0.0 && <9.8.0 || >9.8.0 && <9.9   # avoid https://github.com/mrkkrp/megaparsec/issues/572
   - mtl >=2.2.1
   - process >=1.2
   - safe >=0.3.20
