@@ -83,7 +83,7 @@ library:
   - githash >=0.1.6.2
   - microlens >=0.4
   - microlens-platform >=0.2.3.1
-  - megaparsec >=7.0.0 && <9.8.0 || >9.8.0 && <9.9   # avoid https://github.com/mrkkrp/megaparsec/issues/572
+  - megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9   # avoid https://github.com/mrkkrp/megaparsec/issues/572
   - mtl >=2.2.1
   - process >=1.2
   - safe >=0.3.20
@@ -94,13 +94,13 @@ library:
   - time >=1.5
   - transformers
   - vector
-  - brick >=2.1.1 && <2.3.2 || >2.3.2 && <3
+  - brick >=2.1.1 && <2.3.2 || >=2.4 && <3
   - vty >=6.1 && <6.7
-  - vty-crossplatform >= 0.4.0.0 && < 0.6.0.0
+  - vty-crossplatform >= 0.4.0.0 && < 0.6
   when:
     - condition: os(windows)
       then:
-        dependencies: vty-windows >= 0.2.0.1 && < 0.3.0.0
+        dependencies: vty-windows >= 0.2.0.1 && < 0.3
       else:
         dependencies: unix
 
