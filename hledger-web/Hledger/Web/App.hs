@@ -119,7 +119,7 @@ instance Yesod App where
 
   -- X-Content-Type-Options stops the browser guessing a content type other
   -- than the one we send. (Static files are served by a subsite that this
-  -- middleware does not see; wai-app-static sets their types itself.)
+  -- middleware does not see; StaticFiles.hs adds the header there.)
   -- The Content-Security-Policy is added in defaultLayout, not here: yesod runs
   -- errorHandler outside this middleware with fresh handler state, so a header
   -- added here would never reach an error page; and the policy's nonce has to
