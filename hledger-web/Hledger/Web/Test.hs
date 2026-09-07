@@ -45,9 +45,11 @@ import Data.Aeson (encode)
 import Data.String (fromString)
 import Data.Function ((&))
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TLE
+import Network.Wai.Test (SResponse(..))
 import System.Directory (getTemporaryDirectory)
 import System.FilePath ((</>))
 import Test.Hspec (hspec)
@@ -115,6 +117,24 @@ editFieldName = do
         then error' "the edit form's textarea has no name"
         else return fieldname
 
+-- | The current response's Content-Security-Policy header, failing if there
+-- is none.
+cspHeaderValue :: YesodExample App T.Text
+cspHeaderValue = do
+  mres <- getResponse
+  case lookup "Content-Security-Policy" (maybe [] simpleHeaders mres) of
+    Nothing -> error' "the response has no Content-Security-Policy header"
+    Just h  -> return $ TE.decodeUtf8 h
+
+-- | The nonce in the current response's Content-Security-Policy, failing if
+-- the header or the nonce is missing.
+cspNonce :: YesodExample App T.Text
+cspNonce = do
+  csp <- cspHeaderValue
+  let (_, fromnonce) = T.breakOn "'nonce-" csp
+  when (T.null fromnonce) $ error' "the Content-Security-Policy has no nonce"
+  return $ T.takeWhile (/= '\'') $ T.drop (T.length "'nonce-") fromnonce
+
 -- | Run hledger-web's built-in tests using the hspec test runner.
 hledgerWebTest :: IO ()
 hledgerWebTest = do
@@ -147,6 +167,53 @@ hledgerWebTest = do
       let defaultbaseurl = defbaseurl defhost defport
       bodyContains ("href=\"" ++ defaultbaseurl)
       bodyContains ("src=\"" ++ defaultbaseurl)
+
+    -- The Content-Security-Policy (#2703). Every HTML page sends one, and the
+    -- page's own inline scripts carry its nonce, so they are the only inline
+    -- scripts a browser will run.
+    yit "sends a Content-Security-Policy whose nonce marks the page's inline scripts" $ do
+      get JournalR
+      statusIs 200
+      csp <- cspHeaderValue
+      assertEq "the policy should allow scripts from our origin only"
+        (T.isInfixOf "script-src 'self' 'nonce-" csp) True
+      nonce <- cspNonce
+      assertEq "the nonce should be 16 bytes, base64 encoded" (T.length nonce) 24
+      bodyContains ("<script nonce=\"" ++ T.unpack nonce ++ "\">")
+      bodyNotContains "<script>"
+
+    yit "uses a fresh nonce for each response" $ do
+      get JournalR
+      nonce1 <- cspNonce
+      get JournalR
+      nonce2 <- cspNonce
+      assertEq "two responses should not share a nonce" (nonce1 == nonce2) False
+
+    -- Error pages are rendered outside yesodMiddleware, so the header has to
+    -- come from defaultLayout; this is what pins it there.
+    yit "sends the Content-Security-Policy with error pages too" $ do
+      get ("/nosuchpage" :: T.Text)
+      statusIs 404
+      _ <- cspNonce
+      return ()
+
+    -- No --serve or --serve-api means the default --serve-browse mode, where
+    -- wai-handler-launch inserts its ping script into every page; the policy
+    -- allows that script by its hash. (The library is not in this test
+    -- harness, so only the header can be checked here; the browser suite's
+    -- browse-mode spec checks the script itself.)
+    yit "allows the browse-mode ping script by hash" $ do
+      get JournalR
+      csp <- cspHeaderValue
+      assertEq "the policy should carry a script hash" (T.isInfixOf "'sha256-" csp) True
+
+  runTests "hledger-web with --serve" [("serve","")] nulljournal $ do
+
+    yit "does not allow the browse-mode ping script, which is not inserted" $ do
+      get JournalR
+      statusIs 200
+      csp <- cspHeaderValue
+      assertEq "the policy should carry no script hash" (T.isInfixOf "'sha256-" csp) False
 
     -- WIP
     -- yit "shows the add form" $ do
