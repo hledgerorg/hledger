@@ -76,7 +76,7 @@ postAddR = do
     showForm view enctype =
       sendResponse =<< defaultLayout [whamlet|
         <h2>Add transaction
-        <div .row style="margin-top:1em">
+        <div .row.add-page>
           <form#addform.form.col-xs-12.col-sm-11 method=post enctype=#{enctype}>
             ^{view}
       |]

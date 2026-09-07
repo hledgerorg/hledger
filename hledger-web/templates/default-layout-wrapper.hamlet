@@ -12,7 +12,7 @@ $newline never
 
         ^{pageHead pc}
 
-        <script>
+        <script nonce=#{nonce}>
           document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/,'js');
           document.hledgerWebBaseurl = '#{base_url_ opts}'; // save for binding keys later
 

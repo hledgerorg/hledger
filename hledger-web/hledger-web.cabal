@@ -136,6 +136,7 @@ library
     , containers >=0.5.9
     , data-default
     , directory >=1.2.3.0
+    , entropy
     , extra >=1.7.11
     , file-embed >=0.0.16.0
     , filepath

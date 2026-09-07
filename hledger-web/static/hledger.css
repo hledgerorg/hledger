@@ -125,6 +125,11 @@ td.date {
   pointer-events: none;
 }
 
+/* The add form shown on a page of its own, after a submission was rejected. */
+.add-page {
+  margin-top: 1em;
+}
+
 /*------------------------------------------------------------------------------------------*/
 /* 5. the entry targeted by the url hash */
 

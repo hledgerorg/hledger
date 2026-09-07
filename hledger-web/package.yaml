@@ -119,6 +119,7 @@ library:
   - data-default
   - Decimal >=0.5.1
   - directory >=1.2.3.0
+  - entropy
   - extra >=1.7.11
   - file-embed >=0.0.16.0
   - filepath

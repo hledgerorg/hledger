@@ -19,7 +19,7 @@ $if elem ViewPermission perms
   $# visibly jump. sessionStorage can throw (not just be absent) when storage
   $# is blocked, eg in a sandboxed iframe, with cookies disabled, or in some
   $# private-browsing modes; the try makes this convenience a no-op there.
-  <script>
+  <script nonce=#{nonce}>
     (function () {
       var sidebar = document.getElementById('sidebar-menu');
       var key = 'hledgerSidebarScrollTop';
