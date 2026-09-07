@@ -1,3 +1,8 @@
+---
+name: changelogs
+description: Update hledger's changelogs (*/CHANGES.md, one per package plus the project one in doc/). Run `just changelogs` to draft entries from git log since the last recorded commit, then polish them in phases (cleanup, wording, finalise). Use when asked to draft, update, polish or finalise changelogs.
+---
+
 # Changelogs
 
 This skill describes how to update hledger changelogs, which are in */CHANGES.md.
