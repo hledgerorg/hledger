@@ -122,6 +122,7 @@ dependencies:
 - microlens >=0.4
 - megaparsec >=7.0.0 && <9.8 || >=9.8.0 && <9.9
 - mtl >=2.2.1
+- open-browser >=0.5
 - process
 - regex-tdfa
 - req

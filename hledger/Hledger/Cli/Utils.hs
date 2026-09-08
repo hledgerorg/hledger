@@ -31,6 +31,7 @@ module Hledger.Cli.Utils
     )
 where
 
+import Control.Exception (IOException, try)
 import Control.Monad.Except (ExceptT)
 import Control.Monad.IO.Class (liftIO)
 import Data.List
@@ -54,6 +55,7 @@ import System.Info (os)
 import System.Process (readProcessWithExitCode)
 import Text.Printf
 import Text.Regex.TDFA ((=~))
+import Web.Browser (openBrowser)
 
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Anon
@@ -280,26 +282,30 @@ maybeFileModificationTime f = do
     return Nothing
 
 -- | Attempt to open a web browser on the given url, all platforms.
+-- First through the open-browser package, which uses the Win32 API on
+-- Windows, `open` on mac and `xdg-open` on Linux and the BSDs; then, on
+-- Linux, through some other launchers that may be installed (one that is
+-- not counts as failing). If nothing starts, print the url instead.
 openBrowserOn :: String -> IO ExitCode
-openBrowserOn = trybrowsers browsers
+openBrowserOn u = do
+  ok <- openBrowser u
+  if ok then return ExitSuccess else trylaunchers launchers
     where
-      trybrowsers (b:bs) u1 = do
-        (e,_,_) <- readProcessWithExitCode b [u1] ""
-        case e of
-          ExitSuccess -> return ExitSuccess
-          ExitFailure _ -> trybrowsers bs u1
-      trybrowsers [] u1 = do
-        putStrLn $ printf "Could not start a web browser (tried: %s)" $ intercalate ", " browsers
-        putStrLn $ printf "Please open your browser and visit %s" u1
+      trylaunchers (cmd:rest) = do
+        r <- try $ readProcessWithExitCode cmd [u] ""
+        case r of
+          Right (ExitSuccess,_,_)    -> return ExitSuccess
+          Right (ExitFailure _,_,_)  -> trylaunchers rest
+          Left (_ :: IOException)    -> trylaunchers rest
+      trylaunchers [] = do
+        putStrLn $ printf "Could not start a web browser (tried: %s)" $ intercalate ", " $ launcher0 : launchers
+        putStrLn $ printf "Please open your browser and visit %s" u
         return $ ExitFailure 127
-      browsers | os=="darwin"  = ["open"]
-               | os=="mingw32" = ["c:/Program Files/Mozilla Firefox/firefox.exe"]
-               | otherwise     = ["sensible-browser","gnome-www-browser","firefox"]
-    -- jeffz: write a ffi binding for it using the Win32 package as a basis
-    -- start by adding System/Win32/Shell.hsc and follow the style of any
-    -- other module in that directory for types, headers, error handling and
-    -- what not.
-    -- ::ShellExecute(NULL, "open", "www.somepage.com", NULL, NULL, SW_SHOWNORMAL);
+      launcher0 | os == "darwin"  = "open"
+                | os == "mingw32" = "ShellExecute"
+                | otherwise       = "xdg-open"
+      launchers | os `elem` ["darwin", "mingw32"] = []
+                | otherwise = ["sensible-browser", "gnome-www-browser", "firefox"]
 
 -- | Back up this file with a (incrementing) numbered suffix then
 -- overwrite it with this new text, or give an error, but only if the text
