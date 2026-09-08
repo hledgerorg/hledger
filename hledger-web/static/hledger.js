@@ -372,10 +372,9 @@ function registerChartSelect(ev, ranges) {
   var tod = to.getUTCDate();
 
   var range = fromy + "/" + fromm + "/" + fromd + "-" + toy + "/" + tom + "/" + tod;
-  var baselink = $('#register-chart').attr('data-baselink');
-  if (baselink.endsWith("?q")) {
-    document.location = baselink + "=date:" + range;
-  } else {
-    document.location = baselink + "%20date:" + range;
-  }
+  // The base link is this register's url without its date terms; add ours.
+  var url = new URL($('#register-chart').attr('data-baselink'), document.baseURI);
+  var q = url.searchParams.get('q');
+  url.searchParams.set('q', (q ? q + ' ' : '') + 'date:' + range);
+  document.location = url.href;
 }

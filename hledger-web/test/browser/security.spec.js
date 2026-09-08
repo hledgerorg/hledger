@@ -171,7 +171,7 @@ test.describe('the content security policy', () => {
     await page.mouse.move(rect.left + rect.width * 0.4, y);
     await page.mouse.move(rect.left + rect.width * 0.7, y);
     await page.mouse.up();
-    await expect(page).toHaveURL(/date:/);
+    await expect(page).toHaveURL(/date(:|%3A)/);
     expect(await violations(page)).toEqual([]);
 
     for (const url of ['/manage', '/nosuchpage']) {

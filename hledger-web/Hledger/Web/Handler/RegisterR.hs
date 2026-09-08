@@ -12,7 +12,6 @@ module Hledger.Web.Handler.RegisterR where
 import Data.Aeson.Text (encodeToLazyText)
 import Data.List (nub, partition)
 import Data.Text qualified as T
-import Data.Text.Lazy qualified as TL
 import Safe (tailSafe)
 import Text.Hamlet (hamletFile)
 
@@ -111,7 +110,7 @@ registerChartHtml q title percommoditytxnreports = $(hamletFile "templates/chart
    nodatelink = (RegisterR, [("q", T.unwords $ removeDates q)])
    -- One entry per commodity: its symbol, and per transaction the point flot
    -- plots followed by the texts the tooltip and click handler show.
-   seriesjson = TL.toStrict . encodeToLazyText $ map commoditySeries percommoditytxnreports
+   seriesjson = encodeToLazyText $ map commoditySeries percommoditytxnreports
    commoditySeries (c, items) = object
      [ "label"  .= c
      , "points" .= [ [ toJSON . dayToUtcNoonTimestamp $ triDate i
