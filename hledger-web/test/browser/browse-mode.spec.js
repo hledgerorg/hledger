@@ -15,6 +15,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { startServer } = require('./server');
+const { watchViolations, watchPageErrors, expectNoViolations } = require('./helpers');
 
 const PORT = process.env.HLEDGER_WEB_BROWSE_PORT || '5089';
 const URL = `http://127.0.0.1:${PORT}`;
@@ -24,6 +25,8 @@ test.skip(process.platform === 'win32', 'the browser launch cannot be stubbed on
 let server, tmpdir;
 
 test.beforeAll(async () => {
+  // starting the server can take longer than the 30s hook timeout, eg on a cold stack
+  test.setTimeout(120000);
   tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'hledger-web-browse-'));
   for (const name of ['open', 'xdg-open']) {
     const stub = path.join(tmpdir, name);
@@ -42,14 +45,8 @@ test.afterAll(() => {
 });
 
 test('in browse mode, the launcher\'s ping script is allowed by the policy and runs', async ({ page }) => {
-  await page.addInitScript(() => {
-    window.__cspViolations = [];
-    document.addEventListener('securitypolicyviolation', e => {
-      window.__cspViolations.push(e.violatedDirective + ' ' + e.blockedURI);
-    });
-  });
-  const pageErrors = [];
-  page.on('pageerror', err => pageErrors.push(String(err)));
+  const violations = await watchViolations(page);
+  const pageErrors = watchPageErrors(page);
 
   const response = await page.goto(URL + '/journal');
   expect(response.headers()['content-security-policy'])
@@ -58,7 +55,7 @@ test('in browse mode, the launcher\'s ping script is allowed by the policy and r
   const pingScripts = await page.evaluate(() =>
     Array.from(document.scripts).filter(s => !s.src && s.textContent.includes('/_ping')).length);
   expect(pingScripts).toBe(1);
-  expect(await page.evaluate(() => window.__cspViolations)).toEqual([]);
+  await expectNoViolations(page, violations);
   expect(pageErrors).toEqual([]);
   // and the endpoint it pings is in place
   expect((await page.request.get(URL + '/_ping?' + Date.now())).status()).toBe(200);

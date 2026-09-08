@@ -52,7 +52,7 @@ import Data.Text.Lazy.Encoding qualified as TLE
 import Network.Wai.Test (SResponse(..))
 import System.Directory (getTemporaryDirectory)
 import System.FilePath ((</>))
-import Test.Hspec (hspec)
+import Test.Hspec (expectationFailure, hspec)
 import Yesod.Default.Config
 import Yesod.Test
 
@@ -117,23 +117,28 @@ editFieldName = do
         then error' "the edit form's textarea has no name"
         else return fieldname
 
--- | The current response's Content-Security-Policy header, failing if there
--- is none.
+-- | The current response's Content-Security-Policy header, failing the test
+-- if there is none.
 cspHeaderValue :: YesodExample App T.Text
-cspHeaderValue = do
-  mres <- getResponse
-  case lookup "Content-Security-Policy" (maybe [] simpleHeaders mres) of
-    Nothing -> error' "the response has no Content-Security-Policy header"
+cspHeaderValue = withResponse $ \res ->
+  case lookup "Content-Security-Policy" (simpleHeaders res) of
     Just h  -> return $ TE.decodeUtf8 h
+    Nothing -> failing "the response has no Content-Security-Policy header"
 
--- | The nonce in the current response's Content-Security-Policy, failing if
--- the header or the nonce is missing.
+-- | The nonce in the current response's Content-Security-Policy, failing the
+-- test if the header or the nonce is missing.
 cspNonce :: YesodExample App T.Text
 cspNonce = do
   csp <- cspHeaderValue
   let (_, fromnonce) = T.breakOn "'nonce-" csp
-  when (T.null fromnonce) $ error' "the Content-Security-Policy has no nonce"
-  return $ T.takeWhile (/= '\'') $ T.drop (T.length "'nonce-") fromnonce
+  if T.null fromnonce
+    then failing "the Content-Security-Policy has no nonce"
+    else return $ T.takeWhile (/= '\'') $ T.drop (T.length "'nonce-") fromnonce
+
+-- | Fail the current test with a message. (yesod-test's own version of this
+-- is not exported.)
+failing :: String -> YesodExample App a
+failing msg = liftIO (expectationFailure msg) >> error "unreachable: expectationFailure returned"
 
 -- | Run hledger-web's built-in tests using the hspec test runner.
 hledgerWebTest :: IO ()
@@ -189,8 +194,8 @@ hledgerWebTest = do
       nonce2 <- cspNonce
       assertEq "two responses should not share a nonce" (nonce1 == nonce2) False
 
-    -- Error pages are rendered outside yesodMiddleware, so the header has to
-    -- come from defaultLayout; this is what pins it there.
+    -- Error pages are rendered by yesod's errorHandler, in a handler state of
+    -- its own; they must carry the policy too, with their own nonce.
     yit "sends the Content-Security-Policy with error pages too" $ do
       get ("/nosuchpage" :: T.Text)
       statusIs 404

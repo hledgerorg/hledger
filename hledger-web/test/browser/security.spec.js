@@ -7,6 +7,7 @@
 //
 // Run with: npx playwright test security  (see README.md)
 const { test, expect } = require('@playwright/test');
+const { watchViolations, expectNoViolations } = require('./helpers');
 
 // A payload that executes if it is ever inserted as markup rather than text.
 // Tests assert window.__xss stays undefined and the text is shown literally.
@@ -99,20 +100,13 @@ test.describe('journal data is rendered as text, not markup', () => {
 
 // The Content-Security-Policy (#2703): scripts and styles from our origin
 // only, and no inline script without the response's nonce. A violation is
-// not a page error, so these tests listen for the browser's own report of
-// one, installed before any page script runs.
+// not a page error, so these tests collect the browser's own reports of one.
 test.describe('the content security policy', () => {
 
+  let violations;
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      window.__cspViolations = [];
-      document.addEventListener('securitypolicyviolation', e => {
-        window.__cspViolations.push(e.violatedDirective + ' ' + e.blockedURI);
-      });
-    });
+    violations = await watchViolations(page);
   });
-
-  const violations = page => page.evaluate(() => window.__cspViolations);
 
   // The pixel position of a point on the register chart, so the mouse can
   // reach what flot drew on its canvas.
@@ -148,6 +142,7 @@ test.describe('the content security policy', () => {
     await page.locator('body').press('Escape');
     await page.locator('body').press('a');
     await expect(page.locator('#addmodal')).toBeVisible();
+    await expectNoViolations(page, violations);
     // a rejected submission re-renders the form on a page of its own
     await page.locator('#addform input[name=description]').fill('CspUnbalanced');
     await page.locator('#addform input[name=account]').nth(0).fill('expenses:food:dining');
@@ -156,7 +151,7 @@ test.describe('the content security policy', () => {
     await page.locator('#addform input[name=amount]').nth(1).fill('99.00');
     await page.locator('#addform button[type=submit]').click();
     await expect(page.locator('#message')).toBeVisible();
-    expect(await violations(page)).toEqual([]);
+    await expectNoViolations(page, violations);
 
     // the register chart: flot draws with the CSSOM, which the policy allows
     await page.goto('/register?q=inacct:assets:bank:checking');
@@ -165,6 +160,7 @@ test.describe('the content security policy', () => {
     await page.mouse.move(point.x, point.y);
     await expect(page.locator('#flotTip')).toBeVisible();
     await page.mouse.click(point.x, point.y);
+    await expectNoViolations(page, violations);
     const { rect } = point, y = rect.top + rect.height / 2;
     await page.mouse.move(rect.left + rect.width * 0.3, y);
     await page.mouse.down();
@@ -172,25 +168,27 @@ test.describe('the content security policy', () => {
     await page.mouse.move(rect.left + rect.width * 0.7, y);
     await page.mouse.up();
     await expect(page).toHaveURL(/date(:|%3A)/);
-    expect(await violations(page)).toEqual([]);
+    await expectNoViolations(page, violations);
 
     for (const url of ['/manage', '/nosuchpage']) {
       await page.goto(url);
-      expect(await violations(page)).toEqual([]);
+      await expectNoViolations(page, violations);
     }
     await page.goto('/manage');
     await page.locator('a.btn', { hasText: 'Edit' }).first().click();
     await expect(page.locator('textarea')).toBeVisible();
-    expect(await violations(page)).toEqual([]);
+    await expectNoViolations(page, violations);
     await page.goto('/manage');
     await page.locator('a.btn', { hasText: 'Upload' }).first().click();
     await expect(page.locator('#file')).toBeAttached();
-    expect(await violations(page)).toEqual([]);
+    await expectNoViolations(page, violations);
     expect(pageErrors).toEqual([]);
   });
 
-  // The control: without this, the tests above could pass because the policy
-  // is absent or ignored, rather than because nothing violates it.
+  // The control: without this, the test above could pass because the policy
+  // is absent or ignored, rather than because nothing violates it. It also
+  // checks that a report survives the next navigation, which the test above
+  // relies on.
   test('blocks an inline script that lacks the nonce', async ({ page }) => {
     await page.goto('/journal');
     const ran = await page.evaluate(async () => {
@@ -202,7 +200,9 @@ test.describe('the content security policy', () => {
       return window.__canary;
     });
     expect(ran).toBe(false);
-    expect(await violations(page)).toEqual(['script-src-elem inline']);
+    await expect.poll(() => violations).toEqual(['script-src-elem inline']);
+    await page.goto('/register');
+    expect(violations).toEqual(['script-src-elem inline']);
   });
 
 });

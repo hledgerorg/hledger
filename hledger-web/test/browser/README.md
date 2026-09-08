@@ -11,6 +11,8 @@ highlighting.
   data handed to the autocomplete's javascript. `fixture.journal` deliberately
   contains html/javascript payloads for this. Also the Content-Security-Policy: it is
   sent, nothing on any page violates it, and a script without the nonce is blocked.
+- `helpers.js`, `server.js` — shared by the specs: collecting policy violations and page
+  errors, and starting hledger-web.
 - `browse-mode.spec.js` — the default mode (no `--serve`), where the browser launcher
   inserts a ping script into every page: the policy allows it. This spec starts a
   second hledger-web on port 5089 (`HLEDGER_WEB_BROWSE_PORT`) with the launcher

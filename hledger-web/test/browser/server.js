@@ -50,4 +50,4 @@ async function startServer(url, args, env) {
   return child;
 }
 
-module.exports = { serverCommand, waitForServer, startServer };
+module.exports = { startServer };
