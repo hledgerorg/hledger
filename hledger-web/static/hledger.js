@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  browsePingInit();
   registerChartInit();
 });
 
@@ -377,4 +378,23 @@ function registerChartSelect(ev, ranges) {
   var q = url.searchParams.get('q');
   url.searchParams.set('q', (q ? q + ' ' : '') + 'date:' + range);
   document.location = url.href;
+}
+
+//----------------------------------------------------------------------
+// BROWSE MODE
+
+// In the default --serve-browse mode the server exits once no browser
+// window has shown it for two minutes (serveAndBrowse in Main.hs). It
+// knows a window is open because the page pings it: on load, then every
+// 30 seconds. Pages are marked for this by defaultLayout in browse mode
+// only; the server answers /_ping in that mode only. The ping goes to the
+// page's own origin, whatever address the browser reached us at, not to
+// the base url: the policy allows requests to our origin only.
+function browsePingInit() {
+  if (!document.body.hasAttribute('data-browse-mode')) { return; }
+  var ping = function() {
+    fetch('/_ping', { cache: 'no-store' }).catch(function() {});
+  };
+  ping();
+  setInterval(ping, 30000);
 }

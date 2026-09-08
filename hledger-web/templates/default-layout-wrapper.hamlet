@@ -16,7 +16,7 @@ $newline never
           document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/,'js');
           document.hledgerWebBaseurl = '#{base_url_ opts}'; // save for binding keys later
 
-    <body>
+    <body :browsemode:data-browse-mode>
         <div .container-fluid>
             <div .row .row-offcanvas .row-offcanvas-left>
               ^{pageBody pc}

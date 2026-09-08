@@ -203,22 +203,21 @@ hledgerWebTest = do
       return ()
 
     -- No --serve or --serve-api means the default --serve-browse mode, where
-    -- wai-handler-launch inserts its ping script into every page; the policy
-    -- allows that script by its hash. (The library is not in this test
-    -- harness, so only the header can be checked here; the browser suite's
-    -- browse-mode spec checks the script itself.)
-    yit "allows the browse-mode ping script by hash" $ do
+    -- each page pings the server while it is open so that it does not exit.
+    -- The page is told to by a marker on the body. (The pinging and the
+    -- server's answer are outside this harness; the browser suite's
+    -- browse-mode spec checks those.)
+    yit "marks the page for the browse-mode ping" $ do
       get JournalR
-      csp <- cspHeaderValue
-      assertEq "the policy should carry a script hash" (T.isInfixOf "'sha256-" csp) True
+      statusIs 200
+      bodyContains "<body data-browse-mode"
 
   runTests "hledger-web with --serve" [("serve","")] nulljournal $ do
 
-    yit "does not allow the browse-mode ping script, which is not inserted" $ do
+    yit "does not mark the page for the browse-mode ping" $ do
       get JournalR
       statusIs 200
-      csp <- cspHeaderValue
-      assertEq "the policy should carry no script hash" (T.isInfixOf "'sha256-" csp) False
+      bodyNotContains "data-browse-mode"
 
     -- WIP
     -- yit "shows the add form" $ do

@@ -134,7 +134,10 @@ instance Yesod App where
     -- the header and the page's script tags always carry the same nonce;
     -- error pages come through here too, in a handler state of their own.
     nonce <- liftIO newCspNonce
-    addHeader "Content-Security-Policy" $ cspHeader opts nonce
+    addHeader "Content-Security-Policy" $ cspHeader nonce
+    -- In browse mode the page pings the server while it is open (hledger.js);
+    -- the body attribute this sets is how the page knows to.
+    let browsemode = server_mode_ opts == ServeBrowse
 
     let rspec = reportspec_ (cliopts_ opts)
         ropts = _rsReportOpts rspec
@@ -203,26 +206,15 @@ instance RenderMessage App FormMessage where
 -- 'self' assumes the static files come from our own origin. If --file-url
 -- (extraStaticRoot, #2139) is ever re-enabled, that origin has to be added
 -- to default-src as well, or every page will lose its styles and scripts.
---
--- In the default --serve-browse mode, wai-handler-launch's ping middleware
--- inserts its own inline script (its `toInsert`) into every HTML page, so
--- that exact text is also allowed, by hash. If a new wai-handler-launch
--- changes the text, the hash no longer matches, the browser blocks the
--- script, no pings arrive, and the server exits about two minutes after
--- start. The browse-mode browser test in test/browser guards against that.
-cspHeader :: WebOpts -> Text -> Text
-cspHeader opts nonce = T.intercalate "; "
+cspHeader :: Text -> Text
+cspHeader nonce = T.intercalate "; "
   [ "default-src 'self'"
-  , T.unwords $ ["script-src 'self'", "'nonce-" <> nonce <> "'"] ++ launchpinghash
+  , "script-src 'self' 'nonce-" <> nonce <> "'"
   , "object-src 'none'"
   , "base-uri 'self'"
   , "form-action 'self'"
   , "frame-ancestors 'self'"
   ]
-  where
-    launchpinghash
-      | server_mode_ opts == ServeBrowse = ["'sha256-bSudohpsHVaoe+8sUIQa4kptX96txYsZPmJzaESibwo='"]
-      | otherwise = []
 
 -- | A nonce for the policy above: 16 random bytes, base64 encoded.
 newCspNonce :: IO Text

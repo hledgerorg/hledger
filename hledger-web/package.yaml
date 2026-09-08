@@ -106,6 +106,7 @@ library:
   - hledger-lib >=1.99 && <1.100
   - hledger >=1.99 && <1.100
   - aeson >=2.2.5.1 && <2.4  # avoid https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html
+  - async
   - base64-bytestring
   - blaze-html
   - blaze-markup
@@ -143,7 +144,6 @@ library:
   - wai
   - wai-app-static >=3.1
   - wai-extra
-  - wai-handler-launch ==3.0.3.1  # cspHeader in App.hs hashes this version's injected ping script; re-verify before any bump
   - wai-cors
   - warp
   - yaml

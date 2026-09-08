@@ -111,6 +111,17 @@ Improvements
   reported in the browser's console. The policy also refuses framing
   by another site, as X-Frame-Options does for the other responses.
 
+- The default --serve-browse mode no longer uses the wai-handler-launch
+  library. That library worked by inserting a script into every page,
+  which the new Content-Security-Policy could only allow by hash.
+  hledger-web now does the job itself: it opens the browser, each page
+  pings the server while it is open, and the server exits two minutes
+  after the last ping, so a write-capable server does not linger once
+  its pages are closed. The browser is opened with the open-browser
+  library (the Win32 API on Windows, `open` on mac, `xdg-open`
+  elsewhere), which also fixes hledger's own browser-opening flags,
+  such as --webman, on Windows. (Arthur Cinader)
+
 - The register chart is drawn from data carried on the page rather
   than from a script generated into it. This fixes the chart silently
   disappearing when a commodity symbol contained a backslash and a

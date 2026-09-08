@@ -13,9 +13,9 @@ highlighting.
   sent, nothing on any page violates it, and a script without the nonce is blocked.
 - `helpers.js`, `server.js` — shared by the specs: collecting policy violations and page
   errors, and starting hledger-web.
-- `browse-mode.spec.js` — the default mode (no `--serve`), where the browser launcher
-  inserts a ping script into every page: the policy allows it. This spec starts a
-  second hledger-web on port 5089 (`HLEDGER_WEB_BROWSE_PORT`) with the launcher
+- `browse-mode.spec.js` — the default mode (no `--serve`), where each page pings
+  the server while it is open so that it keeps serving. This spec starts a second
+  hledger-web on port 5089 (`HLEDGER_WEB_BROWSE_PORT`) with the browser launcher
   stubbed; it is skipped on Windows, where the launch cannot be intercepted.
 
 Nothing here is part of `stack build` or `stack test`; the suite is opt-in and needs
