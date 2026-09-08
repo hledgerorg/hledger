@@ -87,9 +87,8 @@ Improvements
 - hledger-web now sends the `X-Frame-Options: SAMEORIGIN` and
   `X-Content-Type-Options: nosniff` security headers on every
   response, so other sites can't frame its pages for clickjacking, and
-  browsers won't second-guess content types. `X-Content-Type-Options`
-  is sent with the static files too, which are served by a subsite the
-  header-adding middleware never sees. (Arthur Cinader)
+  browsers won't second-guess content types. Static files and error
+  pages get them too. (Arthur Cinader)
 
 - The yesod-static and hjsmin dependencies have been dropped;
   hledger-web now serves its static files itself, using wai-app-static
@@ -110,7 +109,7 @@ Improvements
   inline scripts that carry the page's nonce. A script that reached a
   page some other way, eg through journal data, is blocked and
   reported in the browser's console. The policy also refuses framing
-  by another site, superseding the X-Frame-Options header.
+  by another site, as X-Frame-Options does for the other responses.
 
 - The register chart is drawn from data carried on the page rather
   than from a script generated into it. This fixes the chart silently

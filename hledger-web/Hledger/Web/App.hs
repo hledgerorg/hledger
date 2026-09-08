@@ -20,14 +20,14 @@ module Hledger.Web.App where
 import Control.Applicative ((<|>))
 import Control.Monad (join, when, unless)
 -- import Control.Monad.Except (runExceptT)  -- now re-exported by Hledger
-import Data.Base64.Types (extractBase64)
-import Data.ByteString.Base64 (encodeBase64)
+import Data.ByteString.Base64 qualified as B64
 import Data.ByteString.Char8 qualified as BC
 import Data.Traversable (for)
 import Data.IORef (IORef, readIORef, writeIORef)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import Data.Time.Calendar (Day)
 import Network.HTTP.Conduit (Manager)
 import Network.HTTP.Types (status403)
@@ -117,17 +117,6 @@ instance Yesod App where
     let sessionexpirysecs = 120
     Just <$> defaultClientSessionBackend sessionexpirysecs (hledgerdata </> "hledger-web_client_session_key.aes")
 
-  -- X-Content-Type-Options stops the browser guessing a content type other
-  -- than the one we send. (Static files are served by a subsite that this
-  -- middleware does not see; StaticFiles.hs adds the header there.)
-  -- The Content-Security-Policy is added in defaultLayout, not here: yesod runs
-  -- errorHandler outside this middleware with fresh handler state, so a header
-  -- added here would never reach an error page; and the policy's nonce has to
-  -- reach the templates, which defaultLayout renders.
-  yesodMiddleware handler = defaultYesodMiddleware $ do
-    addHeader "X-Content-Type-Options" "nosniff"
-    handler
-
   -- defaultLayout :: WidgetFor site () -> HandlerFor site Html
   defaultLayout widget = do
 
@@ -141,7 +130,10 @@ instance Yesod App where
     VD{opts, j, qparam, q, qopts, perms} <- getViewData
     msg <- getMessage
     showSidebar <- shouldShowSidebar
-    nonce <- getCspNonce
+    -- The policy is sent from here rather than from a middleware, so that
+    -- the header and the page's script tags always carry the same nonce;
+    -- error pages come through here too, in a handler state of their own.
+    nonce <- liftIO newCspNonce
     addHeader "Content-Security-Policy" $ cspHeader opts nonce
 
     let rspec = reportspec_ (cliopts_ opts)
@@ -205,7 +197,12 @@ instance RenderMessage App FormMessage where
 -- wrapper. The templates have no inline styles or event handlers, and flot
 -- sets its styles through the CSSOM, which the policy does not govern.
 -- frame-ancestors stops the pages being framed by another origin
--- (clickjacking of the add and edit forms).
+-- (clickjacking of the add and edit forms); the other responses get
+-- X-Frame-Options instead, see Application.hs.
+--
+-- 'self' assumes the static files come from our own origin. If --file-url
+-- (extraStaticRoot, #2139) is ever re-enabled, that origin has to be added
+-- to default-src as well, or every page will lose its styles and scripts.
 --
 -- In the default --serve-browse mode, wai-handler-launch's ping middleware
 -- inserts its own inline script (its `toInsert`) into every HTML page, so
@@ -227,15 +224,9 @@ cspHeader opts nonce = T.intercalate "; "
       | server_mode_ opts == ServeBrowse = ["'sha256-bSudohpsHVaoe+8sUIQa4kptX96txYsZPmJzaESibwo='"]
       | otherwise = []
 
--- | This response's nonce for the policy above: 16 random bytes, base64
--- encoded. Generated once per request, so the header and the templates
--- see the same value.
-getCspNonce :: Handler Text
-getCspNonce = do
-  CspNonce nonce <- cached $ CspNonce . extractBase64 . encodeBase64 <$> liftIO (getEntropy 16)
-  return nonce
-
-newtype CspNonce = CspNonce Text
+-- | A nonce for the policy above: 16 random bytes, base64 encoded.
+newCspNonce :: IO Text
+newCspNonce = TE.decodeUtf8 . B64.encode <$> getEntropy 16
 
 ----------------------------------------------------------------------
 -- template and handler utilities

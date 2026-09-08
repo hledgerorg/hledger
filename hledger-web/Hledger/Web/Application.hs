@@ -15,6 +15,7 @@ module Hledger.Web.Application
   ) where
 
 import Data.IORef (newIORef, writeIORef)
+import Network.Wai.Middleware.AddHeaders (addHeaders)
 import Network.Wai.Middleware.RequestLogger (logStdoutDev, logStdout)
 import Network.HTTP.Client (defaultManagerSettings)
 import Network.HTTP.Conduit (newManager)
@@ -44,11 +45,22 @@ makeApplication :: WebOpts -> Journal -> AppConfig DefaultEnv Extra -> IO Applic
 makeApplication opts' j' conf' = do
     app <- makeApp conf' opts'
     writeIORef (appJournal app) j'
-    (logWare . (corsPolicy opts')) <$> toWaiApp app
+    (logWare . corsPolicy opts' . securityHeaders) <$> toWaiApp app
   where
     logWare | development  = logStdoutDev
             | server_mode_ opts' `elem` [Serve, ServeJson] = logStdout
             | otherwise    = id
+    -- Headers for every response, at the WAI level so that error pages and
+    -- the static subsite get them too. X-Content-Type-Options stops the
+    -- browser guessing a content type other than the one we send;
+    -- X-Frame-Options stops any response being framed from another origin.
+    -- HTML pages also carry a Content-Security-Policy (cspHeader in App.hs),
+    -- whose frame-ancestors says the same thing and takes precedence in
+    -- browsers that understand it; this covers everything else.
+    securityHeaders = addHeaders
+      [ ("X-Content-Type-Options", "nosniff")
+      , ("X-Frame-Options", "SAMEORIGIN")
+      ]
 
 makeApp :: AppConfig DefaultEnv Extra -> WebOpts -> IO App
 makeApp = makeAppWith nulljournal

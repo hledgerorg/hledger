@@ -1,5 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-|
 Serving of the web app's static files, and type-safe routes for them.
 -}
@@ -7,7 +6,6 @@ module Hledger.Web.Settings.StaticFiles where
 
 import Data.FileEmbed (embedDir)
 import Network.Wai.Application.Static (defaultFileServerSettings, embeddedSettings, staticApp)
-import Network.Wai.Middleware.AddHeaders (addHeaders)
 import System.IO (stdout, hFlush)
 import WaiAppStatic.Types (StaticSettings(..))
 import Yesod.Core (WaiSubsite(..))
@@ -29,13 +27,8 @@ staticSite =
      -- putStrLn "Using built-in web files" >> hFlush stdout
      return $ serve $ embeddedSettings $(embedDir staticDir)
   where
-    -- Serve files with hash-based ETag headers, so browsers can cache them.
-    -- This subsite bypasses App's yesodMiddleware, so the X-Content-Type-Options
-    -- header is added here as well: with it, a browser refuses to run a script
-    -- or apply a stylesheet that was served with the wrong content type.
-    serve settings = WaiSubsite $
-      addHeaders [("X-Content-Type-Options", "nosniff")] $
-      staticApp settings{ssUseHash = True}
+    -- serve files with hash-based ETag headers, so browsers can cache them
+    serve settings = WaiSubsite $ staticApp settings{ssUseHash = True}
 
 -- Type-safe routes for the static files used by the app,
 -- verified to exist at compile time.
