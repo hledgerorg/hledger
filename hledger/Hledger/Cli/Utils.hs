@@ -282,14 +282,17 @@ maybeFileModificationTime f = do
     return Nothing
 
 -- | Attempt to open a web browser on the given url, all platforms.
--- First through the open-browser package, which uses the Win32 API on
--- Windows, `open` on mac and `xdg-open` on Linux and the BSDs; then, on
--- Linux, through some other launchers that may be installed (one that is
--- not counts as failing). If nothing starts, print the url instead.
+-- On Windows this goes through the open-browser package, which asks the
+-- Win32 API to open the url. Elsewhere it runs the platform's launchers in
+-- turn until one exits successfully (one that is not installed counts as
+-- failing): `open` on mac; `xdg-open` and then some older launchers that
+-- may be installed on Linux. If nothing starts, print the url instead.
 openBrowserOn :: String -> IO ExitCode
-openBrowserOn u = do
-  ok <- openBrowser u
-  if ok then return ExitSuccess else trylaunchers launchers
+openBrowserOn u
+  | os == "mingw32" = do
+      ok <- openBrowser u
+      if ok then return ExitSuccess else couldnotstart ["the Win32 API"]
+  | otherwise = trylaunchers launchers
     where
       trylaunchers (cmd:rest) = do
         r <- try $ readProcessWithExitCode cmd [u] ""
@@ -297,15 +300,13 @@ openBrowserOn u = do
           Right (ExitSuccess,_,_)    -> return ExitSuccess
           Right (ExitFailure _,_,_)  -> trylaunchers rest
           Left (_ :: IOException)    -> trylaunchers rest
-      trylaunchers [] = do
-        putStrLn $ printf "Could not start a web browser (tried: %s)" $ intercalate ", " $ launcher0 : launchers
+      trylaunchers [] = couldnotstart launchers
+      couldnotstart tried = do
+        putStrLn $ printf "Could not start a web browser (tried: %s)" $ intercalate ", " tried
         putStrLn $ printf "Please open your browser and visit %s" u
         return $ ExitFailure 127
-      launcher0 | os == "darwin"  = "open"
-                | os == "mingw32" = "ShellExecute"
-                | otherwise       = "xdg-open"
-      launchers | os `elem` ["darwin", "mingw32"] = []
-                | otherwise = ["sensible-browser", "gnome-www-browser", "firefox"]
+      launchers | os == "darwin" = ["open"]
+                | otherwise      = ["xdg-open", "sensible-browser", "gnome-www-browser", "firefox"]
 
 -- | Back up this file with a (incrementing) numbered suffix then
 -- overwrite it with this new text, or give an error, but only if the text

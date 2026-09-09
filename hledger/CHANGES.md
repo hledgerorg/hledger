@@ -105,10 +105,10 @@ User-visible changes in the hledger command line tool and library.
 - `help` now has `h` as its official alias.
 
 - Opening a web page in the browser (`help home`, `--webman` and friends)
-  now works on Windows, where it tried a fixed Firefox path. It now goes
-  through the open-browser library, which uses the Win32 API there,
-  `open` on mac and `xdg-open` on Linux and the BSDs; the older Linux
-  launchers remain as fallbacks. (Arthur Cinader)
+  now works on Windows, where it tried a fixed Firefox path; it now asks
+  the Win32 API, through the open-browser library. On Linux, `xdg-open`
+  is tried first, and a launcher that is not installed no longer stops
+  the others from being tried. (Arthur Cinader)
 
 - The commands list can now be limited to particular categories of
   command with `help commands --builtins`, `--addons` or `--aliases`;

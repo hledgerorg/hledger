@@ -5,6 +5,9 @@
 
 document.addEventListener('DOMContentLoaded', function() {
 
+  // First, so that nothing below can stop it.
+  browsePingInit();
+
   // Open and close the dialogs. The data-toggle/data-target/data-dismiss
   // attributes in the templates are the hooks.
   document.querySelectorAll('[data-toggle="modal"]').forEach(function(el) {
@@ -94,7 +97,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  browsePingInit();
   registerChartInit();
 });
 
@@ -388,12 +390,15 @@ function registerChartSelect(ev, ranges) {
 // knows a window is open because the page pings it: on load, then every
 // 30 seconds. Pages are marked for this by defaultLayout in browse mode
 // only; the server answers /_ping in that mode only. The ping goes to the
-// page's own origin, whatever address the browser reached us at, not to
-// the base url: the policy allows requests to our origin only.
+// page's own origin, whatever address the browser reached us at (the
+// policy allows requests to our origin only), under the base url's path,
+// in case a proxy in front of us expects one.
 function browsePingInit() {
   if (!document.body.hasAttribute('data-browse-mode')) { return; }
+  var base = new URL(document.hledgerWebBaseurl, document.baseURI);
+  var url = base.pathname.replace(/\/$/, '') + '/_ping';
   var ping = function() {
-    fetch('/_ping', { cache: 'no-store' }).catch(function() {});
+    fetch(url, { cache: 'no-store' }).catch(function() {});
   };
   ping();
   setInterval(ping, 30000);

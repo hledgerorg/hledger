@@ -18,6 +18,8 @@ extra-deps:
 # for hledger-web and https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html
 - aeson-2.2.5.1
 - text-iso8601-0.1.1.2
+# for hledger's openBrowserOn (Windows launch through the Win32 API)
+- open-browser-0.5.1.0
 
 nix:
   pure: false

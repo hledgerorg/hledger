@@ -117,10 +117,10 @@ Improvements
   hledger-web now does the job itself: it opens the browser, each page
   pings the server while it is open, and the server exits two minutes
   after the last ping, so a write-capable server does not linger once
-  its pages are closed. The browser is opened with the open-browser
-  library (the Win32 API on Windows, `open` on mac, `xdg-open`
-  elsewhere), which also fixes hledger's own browser-opening flags,
-  such as --webman, on Windows. (Arthur Cinader)
+  its pages are closed. The browser is opened by hledger's own launcher
+  (the Win32 API on Windows, `open` on mac, `xdg-open` elsewhere), which
+  now also works on Windows for hledger's other browser-opening flags,
+  such as --webman. (Arthur Cinader)
 
 - The register chart is drawn from data carried on the page rather
   than from a script generated into it. This fixes the chart silently

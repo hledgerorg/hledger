@@ -10,6 +10,10 @@ packages:
 - hledger-ui
 - hledger-web
 
+extra-deps:
+# for hledger's openBrowserOn (Windows launch through the Win32 API)
+- open-browser-0.5.1.0
+
 nix:
   pure: false
   packages: [perl gmp ncurses zlib]

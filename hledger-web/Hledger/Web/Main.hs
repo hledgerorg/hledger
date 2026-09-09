@@ -24,14 +24,14 @@ If not, see <https://www.gnu.org/licenses/>.
 
 module Hledger.Web.Main where
 
-import Control.Concurrent (forkIO, threadDelay, newEmptyMVar, putMVar, takeMVar)
+import Control.Concurrent (forkIO)
 import Control.Concurrent.Async (race)
 import Control.Exception (bracket)
 #if MIN_VERSION_base(4,20,0)
 import Control.Exception.Backtrace (setBacktraceMechanismState, BacktraceMechanism(..))
 #endif
 import Control.Monad (when, void)
-import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef, writeIORef)
 import Data.Streaming.Network (bindRandomPortTCP)
 import Data.String (fromString)
 import Data.Text qualified as T
@@ -39,11 +39,12 @@ import GHC.Clock (getMonotonicTime)
 import Network.HTTP.Types (status204)
 import Network.Socket
 import Network.Wai (Application, Middleware, pathInfo, responseLBS)
-import Network.Wai.Handler.Warp (runSettings, runSettingsSocket, defaultSettings, setBeforeMainLoop, setHost, setPort)
+import Network.Wai.Handler.Warp (Settings, runSettings, runSettingsSocket, defaultSettings, setBeforeMainLoop, setHost, setPort)
 import System.Directory (removeFile)
 import System.Environment ( getArgs, withArgs )
 import System.IO (hFlush, stdout)
 import System.PosixCompat.Files (getFileStatus, isSocket)
+import System.Time.Extra (sleep)
 import Text.Printf (printf)
 import Yesod.Default.Config
 import Yesod.Default.Main (defaultDevelApp)
@@ -160,19 +161,19 @@ web opts0 j = do
     Nothing -> pure ()
 
   -- start server and maybe browser
+  let warpsettings = setHost (fromString h) (setPort p defaultSettings)
   if server_mode_ opts == ServeBrowse
     then do
       putStrLn "This server will exit after 2m with no browser windows open (or press ctrl-c)"
       putStrLn "Opening web browser..."
       hFlush stdout
       -- returns normally only after the idle exit (ctrl-c or a server failure raises instead)
-      serveAndBrowse h p u app
+      serveAndBrowse warpsettings u app
       putStrLn "No browser windows were open for 2m, exiting. (Use --serve to serve without this timeout.)"
 
     else do
       putStrLn "Press ctrl-c to quit"
       hFlush stdout
-      let warpsettings = setHost (fromString h) (setPort p defaultSettings)
       case (socket_ opts, mtcpsock) of
         (Just s, _) -> do
           if isUnixDomainSocketAvailable then
@@ -203,20 +204,14 @@ web opts0 j = do
 -- minutes. A page says it is open by pinging /_ping while it is (see
 -- browsePingInit in static/hledger.js). The pings are answered here, before
 -- they reach the app, and the time of the latest one is kept.
-serveAndBrowse :: String -> Int -> String -> Application -> IO ()
-serveAndBrowse h p u app = do
-  listening <- newEmptyMVar
-  lastping  <- newIORef =<< getMonotonicTime
-  let warpsettings =
-        setBeforeMainLoop (putMVar listening ()) $
-        setHost (fromString h) $ setPort p defaultSettings
+serveAndBrowse :: Settings -> String -> Application -> IO ()
+serveAndBrowse warpsettings u app = do
+  lastping <- newIORef =<< getMonotonicTime
+  let settings = setBeforeMainLoop (void $ forkIO $ void $ openBrowserOn u) warpsettings
   -- Run these concurrently: when either one finishes or fails, so does the other.
   void $ race
-    (runSettings warpsettings $ answerPings lastping app)
-    (do
-      takeMVar listening
-      _ <- forkIO $ void $ openBrowserOn u
-      waitForIdle lastping)
+    (runSettings settings $ answerPings lastping app)
+    (waitForIdle lastping)
 
 -- | Answer /_ping with 204 No Content, noting the time; pass everything else to the app.
 answerPings :: IORef Double -> Middleware
@@ -233,11 +228,21 @@ waitForIdle lastping = do
   now <- getMonotonicTime
   let remaining = t + browseIdleSeconds - now
   when (remaining > 0) $ do
-    threadDelay $ ceiling $ remaining * 1000000
+    sleep remaining
+    woke <- getMonotonicTime
+    -- On some platforms the clock runs on while the system sleeps, and no
+    -- page could ping meanwhile. If the wait overran by more than a ping
+    -- interval, allow one more interval before deciding.
+    when (woke - now - remaining > browsePingSeconds) $
+      atomicModifyIORef' lastping $ \lp ->
+        (max lp (woke + browsePingSeconds + 5 - browseIdleSeconds), ())
     waitForIdle lastping
 
 -- | How long browse mode keeps serving after the last ping. The pages ping
--- every 30 seconds (hledger.js), so a few pings can go missing before this
--- runs out.
+-- every browsePingSeconds, so a few pings can go missing before this runs out.
 browseIdleSeconds :: Double
 browseIdleSeconds = 120
+
+-- | How often an open page pings, as set in hledger.js.
+browsePingSeconds :: Double
+browsePingSeconds = 30
