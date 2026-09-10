@@ -99,14 +99,14 @@ library
     , time >=1.5
     , transformers
     , vector
-    , vty >=6.1 && <6.7
-    , vty-crossplatform >=0.4.0.0 && <0.6
+    , vty >=6.1
+    , vty-crossplatform >=0.4.0.0
   default-language: GHC2021
   if (flag(debug))
     cpp-options: -DDEBUG
   if os(windows)
     build-depends:
-        vty-windows >=0.2.0.1 && <0.3
+        vty-windows >=0.2.0.1
   else
     build-depends:
         unix
