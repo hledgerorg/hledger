@@ -11,7 +11,7 @@ SYNOPSIS
      hledger ui [OPTS] [QUERYARGS]
 
 DESCRIPTION
-     This  manual is for hledger's terminal interface, version 1.52.3.  See also
+     This  manual is for hledger's terminal interface, version 1.52.4.  See also
      the hledger manual for common concepts and file formats.
 
      hledger is a robust, user-friendly,  cross-platform  set  of  programs  for
@@ -447,4 +447,4 @@ LICENSE
 SEE ALSO
      hledger(1), hledger-ui(1), hledger-web(1), ledger(1)
 
-hledger-ui-1.52.3                  August 2026                     HLEDGER-UI(1)
+hledger-ui-1.52.4                  August 2026                     HLEDGER-UI(1)

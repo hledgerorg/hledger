@@ -18,7 +18,7 @@ plain text accounting app.
 or
 'hledger ui [OPTS] [QUERYARGS]'
 
-   This manual is for hledger's terminal interface, version 1.52.3.  See
+   This manual is for hledger's terminal interface, version 1.52.4.  See
 also the hledger manual for common concepts and file formats.
 
    hledger is a robust, user-friendly, cross-platform set of programs

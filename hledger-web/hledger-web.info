@@ -18,7 +18,7 @@ plain text accounting app.
 or
 'hledger web [OPTS] [QUERY]'
 
-   This manual is for hledger's web interface, version 1.52.3.  See also
+   This manual is for hledger's web interface, version 1.52.4.  See also
 the hledger manual for common concepts and file formats.
 
    hledger is a robust, user-friendly, cross-platform set of programs

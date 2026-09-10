@@ -1,6 +1,6 @@
 .\"t
 
-.TH "HLEDGER" "1" "August 2026" "hledger-1.52.3 " "hledger User Manuals"
+.TH "HLEDGER" "1" "August 2026" "hledger-1.52.4 " "hledger User Manuals"
 
 
 
@@ -24,7 +24,7 @@ accounting and a simple, editable file format.
 hledger is inspired by and largely compatible with ledger(1), and
 largely interconvertible with beancount(1).
 .PP
-This manual is for hledger\(aqs command line interface, version 1.52.3.
+This manual is for hledger\(aqs command line interface, version 1.52.4.
 It also describes the common options, file formats and concepts used by
 all hledger programs.
 It might accidentally teach you some bookkeeping/accounting as well!
@@ -5860,8 +5860,9 @@ proceeding).
 Top level rules (\f[CR]date\-format\f[R], \f[CR]fields\f[R],
 \f[CR]newest\-first\f[R], \f[CR]skip\f[R] etc) are read, top to bottom.
 \(dqTop level rules\(dq means non\-conditional rules.
-If a rule occurs more than once, the last one wins; except for
-\f[CR]skip\f[R]/\f[CR]end\f[R] rules, where the first one wins.
+If a rule occurs more than once: for the \f[CR]fields\f[R] rule and
+field assignments, the last one wins; for other rules (directives, like
+\f[CR]date\-format\f[R] or \f[CR]skip\f[R]), the first one wins.
 .IP "3." 3
 The CSV file is read as text.
 Any non\-ascii characters will be decoded using the text encoding
