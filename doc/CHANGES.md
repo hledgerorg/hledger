@@ -241,6 +241,8 @@ Infrastructure/tools
 
 # 1.51.1 2025-12-08
 
+# 1.50.5 2025-12-08
+
 # 1.51 2025-12-05
 
 Docs updated
@@ -296,8 +298,6 @@ Infrastructure/Misc
 - workflows: use shelltestrunner 1.11
 - workflows:binaries-mac-x64: switch to macos-15-intel
 
-
-# 1.50.5 2025-12-08
 
 # 1.50.4 2025-12-04
 

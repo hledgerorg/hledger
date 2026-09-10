@@ -1223,6 +1223,16 @@ Fixes
 [#2497]: https://github.com/hledgerorg/hledger/issues/2497
 
 
+# 1.50.5 2025-12-08
+
+Fixes
+
+- Relative includes from a symlinked file work again, fixing some fallout from 1.50.4's fixes.
+  [#2503]
+
+[#2503]: https://github.com/hledgerorg/hledger/issues/2503
+
+
 # 1.51 2025-12-05
 
 Breaking changes
@@ -1286,16 +1296,6 @@ API
 -  Hledger.Cli.Utils:
    - stop exporting pivotByOpts, anonymiseByOpts
    - renamed withJournalDo -> withJournal. The old name is still available but deprecated.
-
-
-# 1.50.5 2025-12-08
-
-Fixes
-
-- Relative includes from a symlinked file work again, fixing some fallout from 1.50.4's fixes.
-  [#2503]
-
-[#2503]: https://github.com/hledgerorg/hledger/issues/2503
 
 
 # 1.50.4 2025-12-04

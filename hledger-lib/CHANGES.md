@@ -223,6 +223,8 @@ Fixes
 
 # 1.51.1 2025-12-08
 
+# 1.50.5 2025-12-08
+
 # 1.51 2025-12-05
 
 Breaking changes
@@ -238,8 +240,6 @@ Improvements
   quoteForCommandLine now quotes some additional problem characters, and no longer quotes "7".
   [#2468]
 
-
-# 1.50.5 2025-12-08
 
 # 1.50.4 2025-12-04
 
