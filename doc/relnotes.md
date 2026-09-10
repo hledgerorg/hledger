@@ -64,6 +64,74 @@ Major releases and user-visible changes.
 
 
 
+## 2026-09-10 hledger-1.52.4
+
+**hledger-web packaging fixes for stackage; misc dependency and doc updates**
+
+### hledger 1.52.4
+
+
+Improvements
+
+- Allow megaparsec 9.8.1+ (but not 9.8.0, because of [megaparsec#572](https://github.com/mrkkrp/megaparsec/issues/572)).
+
+Docs
+
+- csv: the manual now correctly documents that most top-level rules are evaluated first-wins, not last-wins as previously stated. 
+  (Accepting the status quo, unlike hledger 2.x where they are changed to last-wins.) [#2539]
+
+[#2539]: https://github.com/simonmichael/hledger/issues/2539
+
+
+### hledger-ui 1.52.4
+
+
+Improvements
+
+- Allow megaparsec 9.8.1+ (but not 9.8.0, because of [megaparsec#572](https://github.com/mrkkrp/megaparsec/issues/572)).
+
+
+### hledger-web 1.52.4
+
+
+Fixes
+
+- Raise aeson's lower bound to `>=2.2.5.1`, avoiding versions vulnerable to denial-of-service.
+  (<https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html>)
+
+Improvements
+
+- The yesod-static and hjsmin dependencies have been dropped;
+  hledger-web now serves its static files itself, using wai-app-static
+  and file-embed. (yesod-static doesn't currently build with crypton
+  1.1+, which has kept it, and hledger-web, out of stackage nightly.)
+  Static file urls no longer include an `?etag=...` cache buster;
+  instead the files are served with an ETag header, and conditional
+  requests are answered with 304 Not Modified.
+  (Cherry picked from an AI-assisted change in hledger 2.x.)
+
+- Allow megaparsec 9.8.1+ (but not 9.8.0, because of [megaparsec#572](https://github.com/mrkkrp/megaparsec/issues/572)).
+
+- Allow yesod-core 1.7.0.0.
+
+
+### project changes 1.52.4
+
+
+Doc updates
+
+- Github release install instructions have been fixed and simplified. [#2707]
+
+[#2707]: https://github.com/simonmichael/hledger/issues/2707
+
+
+### credits 1.52.4
+
+
+Simon Michael.
+
+
+
 ## 2026-08-27 hledger-1.52.3
 
 ### hledger 1.52.3

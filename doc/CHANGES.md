@@ -18,6 +18,15 @@ General changes in the hledger project.
 For package-specific changes, see the hledger package changelogs.
 
 
+# 1.52.4 2026-09-10
+
+Doc updates
+
+- Github release install instructions have been fixed and simplified. [#2707]
+
+[#2707]: https://github.com/simonmichael/hledger/issues/2707
+
+
 # 1.52.3 2026-08-27
 
 
