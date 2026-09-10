@@ -18,7 +18,7 @@ General changes in the hledger project.
 For package-specific changes, see the hledger package changelogs.
 
 
-# ad759ad1
+# 1.52.4 2026-09-10
 
 Doc updates
 

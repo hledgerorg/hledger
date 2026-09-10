@@ -26,7 +26,11 @@ API
 User-visible changes in the hledger command line tool and library.
 
 
-# ad759ad1
+# 1.52.4 2026-09-10
+
+Improvements
+
+- Allow megaparsec 9.8.1+ (but not 9.8.0, because of [megaparsec#572](https://github.com/mrkkrp/megaparsec/issues/572)).
 
 Docs
 

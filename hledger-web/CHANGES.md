@@ -23,7 +23,7 @@ User-visible changes in hledger-web.
 See also the hledger changelog.
 
 
-# ad759ad1
+# 1.52.4 2026-09-10
 
 Fixes
 
@@ -40,6 +40,10 @@ Improvements
   instead the files are served with an ETag header, and conditional
   requests are answered with 304 Not Modified.
   (Cherry picked from an AI-assisted change in hledger 2.x.)
+
+- Allow megaparsec 9.8.1+ (but not 9.8.0, because of [megaparsec#572](https://github.com/mrkkrp/megaparsec/issues/572)).
+
+- Allow yesod-core 1.7.0.0.
 
 
 # 1.52.3 2026-08-27
