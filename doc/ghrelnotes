@@ -35,7 +35,7 @@ Or, follow these instructions to install the specific release binaries below:
 
 
 Updates to binaries:
-- 2026-01-12: Fixed the hledger-linux-x64.tar.gz asset below, it previously contained a dev build. [#2526](https://github.com/plaintextaccounting/hledger/issues/2526)
+- 2026-01-12: Fixed the hledger-linux-x64.tar.gz asset below, it previously contained a dev build. [#2526](https://github.com/hledgerorg/hledger/issues/2526)
 <!--
 -->
 
@@ -45,7 +45,7 @@ If github releases are immutable, they can be verified as follows:
 ```
 gh --version  # ensure you have github CLI 2.81.0+
 gh release verify $REL  # check the $REL github release is immutable
-curl -fLO https://github.com/plaintextaccounting/hledger/releases/download/$REL/hledger-linux-x64.tar.gz  # eg
+curl -fLO https://github.com/hledgerorg/hledger/releases/download/$REL/hledger-linux-x64.tar.gz  # eg
 gh release verify-asset $REL ./hledger-linux-x64.tar.gz  # check the tarball is correct
 tar xzv -f hledger-linux-x64.tar.gz -C/usr/local/bin hledger hledger-ui hledger-web
 ```
@@ -56,7 +56,7 @@ tar xzv -f hledger-linux-x64.tar.gz -C/usr/local/bin hledger hledger-ui hledger-
 At the command line:
 
 ```
-curl -fL https://github.com/plaintextaccounting/hledger/releases/download/$REL/hledger-linux-x64.tar.gz | tar -xzv -f- -C/usr/local/bin hledger hledger-ui hledger-web
+curl -fL https://github.com/hledgerorg/hledger/releases/download/$REL/hledger-linux-x64.tar.gz | tar -xzv -f- -C/usr/local/bin hledger hledger-ui hledger-web
 hledger --version; hledger-ui --version; hledger-web --version    # should show $REL
 ```
 
@@ -70,14 +70,14 @@ Open a terminal window.
 On ARM macs:
 ```
 sudo mkdir -p /usr/local/bin
-curl -fL https://github.com/plaintextaccounting/hledger/releases/download/$REL/hledger-mac-arm64.tar.gz | sudo tar -xzv -f- -C/usr/local/bin hledger hledger-ui hledger-web
+curl -fL https://github.com/hledgerorg/hledger/releases/download/$REL/hledger-mac-arm64.tar.gz | sudo tar -xzv -f- -C/usr/local/bin hledger hledger-ui hledger-web
 hledger --version; hledger-ui --version; hledger-web --version    # should show $REL
 ```
 
 On Intel macs:
 ```
 sudo mkdir -p /usr/local/bin
-curl -fL https://github.com/plaintextaccounting/hledger/releases/download/$REL/hledger-mac-x64.tar.gz | sudo tar -xzv -f- -C/usr/local/bin hledger hledger-ui hledger-web
+curl -fL https://github.com/hledgerorg/hledger/releases/download/$REL/hledger-mac-x64.tar.gz | sudo tar -xzv -f- -C/usr/local/bin hledger hledger-ui hledger-web
 hledger --version; hledger-ui --version; hledger-web --version    # should show $REL
 ```
 
@@ -90,7 +90,7 @@ In a powershell window (press `WINDOWS-R`, `powershell`, `ENTER`).
 
 ```
 cd ~
-curl.exe -fLO https://github.com/plaintextaccounting/hledger/releases/download/$REL/hledger-windows-x64.zip
+curl.exe -fLO https://github.com/hledgerorg/hledger/releases/download/$REL/hledger-windows-x64.zip
 Expand-Archive hledger-windows-x64.zip -Force -DestinationPath "$env:LOCALAPPDATA\Programs\hledger"
 ```
 

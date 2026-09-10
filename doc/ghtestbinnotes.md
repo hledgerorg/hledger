@@ -1,6 +1,6 @@
 Here you can find unreleased test binaries, which are updated occasionally. By using these and providing [feedback](https://hledger.org/support.html), you can help to make the next release better.
 
-These binaries have the following changes since the 1.52.3 release: https://github.com/simonmichael/hledger/compare/1.52.3...testlatest
+These binaries have the following changes since the 1.52.4 release: https://github.com/hledgerorg/hledger/compare/1.52.4...testlatest
 
 <details>
 <summary>
@@ -34,7 +34,7 @@ At the command line:
 
 ```
 cd /usr/local/bin
-curl -fLOC- https://github.com/simonmichael/hledger/releases/download/testbin/hledger-linux-x64.tar.gz
+curl -fLOC- https://github.com/hledgerorg/hledger/releases/download/testbin/hledger-linux-x64.tar.gz
 tar xzf hledger-linux-x64.tar.gz
 cd
 hledger --version; hledger-ui --version; hledger-web --version    # should show a recent .99 version
@@ -58,7 +58,7 @@ and/or [Homebrew](https://brew.sh), and let me know.)
 For ARM macs:
   ```
   cd /usr/local/bin
-  curl -fLOC- https://github.com/simonmichael/hledger/releases/download/testbin/hledger-mac-arm64.tar.gz
+  curl -fLOC- https://github.com/hledgerorg/hledger/releases/download/testbin/hledger-mac-arm64.tar.gz
   tar xzf hledger-mac-arm64.tar.gz
   cd
   hledger --version; hledger-ui --version; hledger-web --version    # should show a .99 version with the testbin release's date
@@ -67,7 +67,7 @@ For ARM macs:
 For Intel macs:
   ```
   cd /usr/local/bin
-  curl -fLOC- https://github.com/simonmichael/hledger/releases/download/testbin/hledger-mac-x64.tar.gz
+  curl -fLOC- https://github.com/hledgerorg/hledger/releases/download/testbin/hledger-mac-x64.tar.gz
   tar xzf hledger-mac-x64.tar.gz
   cd
   hledger --version; hledger-ui --version; hledger-web --version    # should show a .99 version with the testbin release's date
@@ -93,7 +93,7 @@ In a powershell window (press `WINDOWS-R`, `powershell`, `ENTER`):
 2. Download and install the release binaries:
     ```
     cd $HOME\bin
-    curl https://github.com/simonmichael/hledger/releases/download/testbin/hledger-windows-x64.zip -OutFile hledger-windows-x64.zip
+    curl https://github.com/hledgerorg/hledger/releases/download/testbin/hledger-windows-x64.zip -OutFile hledger-windows-x64.zip
     Expand-Archive hledger-windows-x64.zip -DestinationPath . -Force
     cd $HOME
     hledger --version; hledger-ui --version; hledger-web --version    # should show a .99 version with the testbin release's date; if not: where.exe hledger
