@@ -5,7 +5,7 @@ cabal-version: 2.2
 -- see: https://github.com/sol/hpack
 
 name:           hledger-web
-version:        1.52.3
+version:        1.52.4
 synopsis:       Web user interface for the hledger accounting system
 description:    A simple web user interface for the hledger accounting system,
                 providing a more modern UI than the command-line or terminal interfaces.
@@ -154,7 +154,7 @@ library
   hs-source-dirs:
       ./
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -threaded
-  cpp-options: -DVERSION="1.52.3"
+  cpp-options: -DVERSION="1.52.4"
   build-depends:
       Decimal >=0.5.1
     , aeson >=2.2.5.1 && <2.4
@@ -175,8 +175,8 @@ library
     , file-embed >=0.0.16.0
     , filepath
     , githash >=0.1.6.2
-    , hledger >=1.52.3 && <1.53
-    , hledger-lib >=1.52.3 && <1.53
+    , hledger >=1.52.4 && <1.53
+    , hledger-lib >=1.52.4 && <1.53
     , hspec
     , http-client
     , http-conduit
@@ -221,7 +221,7 @@ executable hledger-web
   hs-source-dirs:
       app
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -threaded
-  cpp-options: -DVERSION="1.52.3"
+  cpp-options: -DVERSION="1.52.4"
   build-depends:
       base >=4.18 && <4.23
     , hledger-web
@@ -241,7 +241,7 @@ test-suite apptest
   hs-source-dirs:
       test
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -threaded
-  cpp-options: -DVERSION="1.52.3"
+  cpp-options: -DVERSION="1.52.4"
   build-depends:
       base >=4.18 && <4.23
     , hledger-web

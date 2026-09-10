@@ -5,7 +5,7 @@ cabal-version: 2.2
 -- see: https://github.com/sol/hpack
 
 name:           hledger-lib
-version:        1.52.3
+version:        1.52.4
 synopsis:       A library providing the core functionality of hledger
 description:    This library contains hledger's core functionality.
                 It is used by most hledger* packages so that they support the same
@@ -124,7 +124,7 @@ library
   hs-source-dirs:
       ./
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind
-  cpp-options: -DVERSION="1.52.3"
+  cpp-options: -DVERSION="1.52.4"
   build-depends:
       Decimal >=0.5.1
     , Glob >=0.9
@@ -184,7 +184,7 @@ test-suite doctest
   hs-source-dirs:
       test
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind
-  cpp-options: -DVERSION="1.52.3"
+  cpp-options: -DVERSION="1.52.4"
   build-depends:
       Decimal >=0.5.1
     , Glob >=0.7
@@ -245,7 +245,7 @@ test-suite unittest
   hs-source-dirs:
       test
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind
-  cpp-options: -DVERSION="1.52.3"
+  cpp-options: -DVERSION="1.52.4"
   build-depends:
       Decimal >=0.5.1
     , Glob >=0.9

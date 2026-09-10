@@ -5,7 +5,7 @@ cabal-version: 2.2
 -- see: https://github.com/sol/hpack
 
 name:           hledger-ui
-version:        1.52.3
+version:        1.52.4
 synopsis:       Terminal interface for the hledger accounting system
 description:    A simple terminal user interface for the hledger accounting system.
                 It can be a more convenient way to browse your accounts than the CLI.
@@ -69,7 +69,7 @@ library
   hs-source-dirs:
       ./
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind
-  cpp-options: -DVERSION="1.52.3"
+  cpp-options: -DVERSION="1.52.4"
   build-depends:
       ansi-terminal >=0.9
     , async
@@ -84,8 +84,8 @@ library
     , filepath
     , fsnotify >=0.4.2.0 && <0.5
     , githash >=0.1.6.2
-    , hledger >=1.52.3 && <1.53
-    , hledger-lib >=1.52.3 && <1.53
+    , hledger >=1.52.4 && <1.53
+    , hledger-lib >=1.52.4 && <1.53
     , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , microlens-platform >=0.2.3.1
@@ -120,7 +120,7 @@ executable hledger-ui
   hs-source-dirs:
       app
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -threaded
-  cpp-options: -DVERSION="1.52.3"
+  cpp-options: -DVERSION="1.52.4"
   build-depends:
       base >=4.18 && <4.23
     , hledger-ui

@@ -5,7 +5,7 @@ cabal-version: 2.2
 -- see: https://github.com/sol/hpack
 
 name:           hledger
-version:        1.52.3
+version:        1.52.4
 synopsis:       Command-line interface for the hledger accounting system
 description:    The command-line interface for the hledger accounting system.
                 Its basic function is to read a plain text file describing
@@ -151,7 +151,7 @@ library
   hs-source-dirs:
       ./
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -optP-Wno-nonportable-include-path
-  cpp-options: -DVERSION="1.52.3"
+  cpp-options: -DVERSION="1.52.4"
   build-depends:
       Decimal >=0.5.1
     , Diff >=0.2
@@ -168,7 +168,7 @@ library
     , githash >=0.1.6.2
     , hashable >=1.2.4
     , haskeline >=0.6
-    , hledger-lib >=1.52.3 && <1.53
+    , hledger-lib >=1.52.4 && <1.53
     , http-client
     , http-types
     , lucid
@@ -208,7 +208,7 @@ executable hledger
   hs-source-dirs:
       app
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -optP-Wno-nonportable-include-path -threaded -with-rtsopts=-T
-  cpp-options: -DVERSION="1.52.3"
+  cpp-options: -DVERSION="1.52.4"
   build-depends:
       Decimal >=0.5.1
     , aeson >=1 && <2.4
@@ -224,7 +224,7 @@ executable hledger
     , githash >=0.1.6.2
     , haskeline >=0.6
     , hledger
-    , hledger-lib >=1.52.3 && <1.53
+    , hledger-lib >=1.52.4 && <1.53
     , http-client
     , http-types
     , math-functions >=0.3.3.0
@@ -259,7 +259,7 @@ test-suite unittest
   hs-source-dirs:
       test
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -optP-Wno-nonportable-include-path
-  cpp-options: -DVERSION="1.52.3"
+  cpp-options: -DVERSION="1.52.4"
   build-depends:
       Decimal >=0.5.1
     , aeson >=1 && <2.4
@@ -275,7 +275,7 @@ test-suite unittest
     , githash >=0.1.6.2
     , haskeline >=0.6
     , hledger
-    , hledger-lib >=1.52.3 && <1.53
+    , hledger-lib >=1.52.4 && <1.53
     , http-client
     , http-types
     , math-functions >=0.3.3.0
@@ -310,7 +310,7 @@ benchmark bench
   hs-source-dirs:
       bench
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -optP-Wno-nonportable-include-path
-  cpp-options: -DVERSION="1.52.3"
+  cpp-options: -DVERSION="1.52.4"
   build-depends:
       Decimal >=0.5.1
     , aeson >=1 && <2.4
@@ -327,7 +327,7 @@ benchmark bench
     , githash >=0.1.6.2
     , haskeline >=0.6
     , hledger
-    , hledger-lib >=1.52.3 && <1.53
+    , hledger-lib >=1.52.4 && <1.53
     , html
     , http-client
     , http-types
