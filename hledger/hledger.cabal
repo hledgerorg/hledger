@@ -172,7 +172,7 @@ library
     , http-types
     , lucid
     , math-functions >=0.3.3.0
-    , megaparsec >=7.0.0 && <9.8 || >=9.8.0 && <9.9
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , modern-uri >=0.3
     , mtl >=2.2.1
@@ -229,7 +229,7 @@ executable hledger
     , http-client
     , http-types
     , math-functions >=0.3.3.0
-    , megaparsec >=7.0.0 && <9.8 || >=9.8.0 && <9.9
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , mtl >=2.2.1
     , open-browser >=0.5
@@ -281,7 +281,7 @@ test-suite unittest
     , http-client
     , http-types
     , math-functions >=0.3.3.0
-    , megaparsec >=7.0.0 && <9.8 || >=9.8.0 && <9.9
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , mtl >=2.2.1
     , open-browser >=0.5
@@ -335,7 +335,7 @@ benchmark bench
     , http-client
     , http-types
     , math-functions >=0.3.3.0
-    , megaparsec >=7.0.0 && <9.8 || >=9.8.0 && <9.9
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , mtl >=2.2.1
     , open-browser >=0.5

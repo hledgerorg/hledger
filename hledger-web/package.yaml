@@ -128,7 +128,7 @@ library:
   - http-conduit
   - http-client
   - http-types
-  - megaparsec >=7.0.0 && <9.8 || >=9.8.0 && <9.9
+  - megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9   # avoid https://github.com/mrkkrp/megaparsec/issues/572
   - mtl >=2.2.1
   - network
   - safe >=0.3.20

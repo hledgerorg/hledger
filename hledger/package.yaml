@@ -120,7 +120,7 @@ dependencies:
 - http-client
 - http-types
 - microlens >=0.4
-- megaparsec >=7.0.0 && <9.8 || >=9.8.0 && <9.9
+- megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9   # avoid https://github.com/mrkkrp/megaparsec/issues/572
 - mtl >=2.2.1
 - open-browser >=0.5
 - process
