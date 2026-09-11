@@ -233,10 +233,12 @@ showCommoditySymbol :: T.Text -> T.Text
 showCommoditySymbol = textQuoteIfNeeded
 
 -- characters that may not be used in a non-quoted commodity symbol
+-- (')' is excluded so parenthesised amount expressions like (1 + 0.05) * $47.97
+-- keep working; use a quoted symbol like ")" if you really need one)
 isNonsimpleCommodityChar :: Char -> Bool
 isNonsimpleCommodityChar = liftA2 (||) isDigit isOther
   where
-    otherChars = "-+.@*;\t\n \"{}=" :: T.Text
+    otherChars = "-+.@*;\t\n \"{}=)" :: T.Text
     isOther c = T.any (==c) otherChars
 
 quoteCommoditySymbolIfNeeded :: T.Text -> T.Text

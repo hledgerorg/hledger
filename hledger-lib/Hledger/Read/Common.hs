@@ -136,7 +136,7 @@ import Control.Monad.State.Strict (MonadState, evalStateT, modify', get, put)
 import Control.Monad.Trans.Class (lift)
 import Data.Bifunctor (bimap, first, second)
 import Data.Char (digitToInt, isDigit, isSpace)
-import Data.Decimal (DecimalRaw (Decimal), Decimal)
+import Data.Decimal (Decimal, DecimalRaw (Decimal), decimalPlaces, normalizeDecimal, realFracToDecimal, roundTo)
 import Data.Either (rights)
 import Data.Function ((&))
 import Data.Functor ((<&>), ($>), void)
@@ -915,14 +915,69 @@ amountnobasisp =
 -- An amount with no cost or cost basis.
 -- A flag indicates whether we are parsing a multiplier amount;
 -- if not, a commodity-less amount will have the default commodity applied to it.
+--
+-- This is also an arithmetic expression of amounts, like
+-- @$21.60 + $27.68@, @2 * $200@ or @(1 + 0.05) * $47.97@;
+-- see 'applyArithOp' for how such expressions are evaluated.
 simpleamountp :: Bool -> JournalParser m Amount
-simpleamountp mult = 
+simpleamountp mult =
   -- dbg "simpleamountp" $
-  do
-  sign <- lift signp
-  leftsymbolamountp sign <|> rightornosymbolamountp sign
-
+  additiveexprp
   where
+  -- An expression of amounts combined with + and -, with the usual precedence:
+  -- * and / bind tighter, and parentheses group (see 'primaryexprp').
+  additiveexprp :: JournalParser m Amount
+  additiveexprp = do
+    t <- multiplicativeexprp
+    more t
+    where
+      more acc = option acc $ try $ do
+        lift skipNonNewlineSpaces
+        offBefore <- getOffset
+        op <- char '+' <|> char '-'
+        lift skipNonNewlineSpaces
+        rhs <- multiplicativeexprp
+        offAfter <- getOffset
+        case applyArithOp op acc rhs of
+          Left err   -> customFailure $ uncurry parseErrorAtRegion (offBefore, offAfter) err
+          Right amt' -> more amt'
+
+  -- An expression of amounts combined with * and /.
+  multiplicativeexprp :: JournalParser m Amount
+  multiplicativeexprp = do
+    t <- primaryexprp
+    more t
+    where
+      more acc = option acc $ try $ do
+        lift skipNonNewlineSpaces
+        offBefore <- getOffset
+        op <- char '*' <|> char '/'
+        lift skipNonNewlineSpaces
+        rhs <- primaryexprp
+        offAfter <- getOffset
+        case applyArithOp op acc rhs of
+          Left err   -> customFailure $ uncurry parseErrorAtRegion (offBefore, offAfter) err
+          Right amt' -> more amt'
+
+  -- A parenthesised expression, or a single signed amount.
+  -- Note: a parenthesised expression is only recognised where an amount's first
+  -- term would appear; after an amount, ( still begins a ledger-style cost or
+  -- a lot note, as before.
+  primaryexprp :: JournalParser m Amount
+  primaryexprp = parenthesisedexprp <|> signedsingleamountp
+    where
+      parenthesisedexprp = do
+        char '('
+        lift skipNonNewlineSpaces
+        e <- additiveexprp
+        lift skipNonNewlineSpaces
+        char ')'
+        pure e
+
+      signedsingleamountp = do
+        sign <- lift signp
+        leftsymbolamountp sign <|> rightornosymbolamountp sign
+
   -- An amount with commodity symbol on the left.
   leftsymbolamountp :: (Decimal -> Decimal) -> JournalParser m Amount
   leftsymbolamountp sign = label "amount" $ do
@@ -995,6 +1050,78 @@ simpleamountp mult =
           Left errMsg -> customFailure $
                            uncurry parseErrorAtRegion posRegion errMsg
           Right (q,p,d,g) -> pure (q, Precision p, d, g)
+
+-- | Apply an arithmetic operator ('+', '-', '*' or '/') to two amounts parsed
+-- in an amount expression like @$21.60 + $27.68@. Rules:
+--
+--  * @+@ and @-@ require both operands to be in the same commodity;
+--    an operand written without a commodity symbol adopts the other operand's commodity.
+--    So @$5 + 3@ is $8, and @2 + €3@ is €5.
+--  * @*@ and @/@ require the right operand to be commodity-less,
+--    ie a plain number multiplier or divisor. So @$4.20 * 2@ is valid, @$4.20 * 2 AAPL@ is not.
+--    As an exception, @*@ also allows a commodity-less left operand, so @(1 + 0.05) * $47.97@ is valid.
+--
+-- The left operand's display style is kept, with the display precision widened as needed:
+-- addition, subtraction and multiplication are computed exactly; division is computed
+-- with six extra decimal places of precision (then trailing zeroes are trimmed).
+applyArithOp :: Char -> Amount -> Amount -> Either String Amount
+applyArithOp c x y = case c of
+  '+' -> combine (+)
+  '-' -> combine (-)
+  '*' -> scale (*)
+  '/' -> divide
+  _   -> Left ("unsupported arithmetic operator in amount expression: " ++ [c])
+  where
+    xq = aquantity x
+    yq = aquantity y
+    xc = acommodity x
+    yc = acommodity y
+    xdps = qtyDps xq
+    ydps = qtyDps yq
+
+    -- Update an operand's quantity, keeping its style but setting the display
+    -- precision to match the result's decimal places.
+    keepStyle a p q' = a{aquantity=q', astyle=(astyle a){asprecision=Precision p}}
+
+    qtyDps :: Quantity -> Word8
+    qtyDps = fromIntegral . min 255 . decimalPlaces . normalizeDecimal
+
+    -- Display precision follows the result's actual decimal places for + and -
+    -- (Data.Decimal preserves exponents there). For *, Data.Decimal strips
+    -- trailing zeroes (4.20*2 is 8.4), so precision is the sum of the
+    -- operands' own decimal places instead (giving the expected $8.40).
+    resultDps :: Quantity -> Word8
+    resultDps = fromIntegral . min 255 . decimalPlaces
+
+    rawDps :: Quantity -> Integer
+    rawDps = toInteger . decimalPlaces
+
+    combine op
+      | xc == yc              = Right (keepStyle x p q')
+      | yc == "" && xc /= ""  = Right (keepStyle x p q')
+      | xc == "" && yc /= ""  = Right (keepStyle y p q')
+      | otherwise =
+          Left (printf "arithmetic on amounts with different commodities (%s and %s) is not supported"
+                       (T.unpack xc) (T.unpack yc))
+      where
+        q' = xq `op` yq
+        p  = resultDps q'
+
+    scale op
+      | c == '*' && xc == ""  = Right (keepStyle y p q')
+      | yc /= ""              = Left ("the right operand of " ++ [c] ++ " in an amount expression must be a plain number")
+      | otherwise             = Right (keepStyle x p q')
+      where
+        q' = xq `op` yq
+        p  = fromIntegral (min 255 (rawDps xq + rawDps yq))
+
+    divide
+      | yc /= ""   = Left "the divisor in an amount expression must be a plain number"
+      | yq == 0    = Left "division by zero in amount expression"
+      | otherwise  =
+          let p   = fromInteger $ min 255 $ max (toInteger xdps) (toInteger ydps) + 6
+              q'  = normalizeDecimal (realFracToDecimal p (toRational xq / toRational yq))
+          in Right (keepStyle x (qtyDps q') q')
 
 -- | Try to parse a single-commodity amount from a string
 parseamount :: String -> Either HledgerParseErrors Amount
@@ -1833,7 +1960,26 @@ tests_Common = testGroup "Common" [
         }
    ,testCase "unit price, parenthesised" $ assertParse amountp "$10 (@) €0.5"
    ,testCase "total price, parenthesised" $ assertParse amountp "$10 (@@) €0.5"
-   ]
+   ,testCase "addition expression" $ assertParseEq amountp "$21.60 + $27.68 + $5.03 + $17.80"
+      (usd 72.11)
+    ,testCase "subtraction expression" $ assertParseEq amountp "$5 - $3.25"
+       -- keeps the left operand's style ($5 records no decimal mark)
+       nullamt{acommodity="$", aquantity=1.75, astyle=amountstyle{asprecision=Precision 2, asdecimalmark=Nothing}}
+    ,testCase "bare number adopts previous commodity" $
+       assertParseEq amountp "$5 + 3"
+       nullamt{acommodity="$", aquantity=8, astyle=amountstyle{asprecision=Precision 0, asdecimalmark=Nothing}}
+    ,testCase "multiplication by plain number keeps cent precision" $
+       assertParseEq amountp "$4.20 * 2" (usd 8.40)
+    ,testCase "division by plain number trims trailing zeroes" $
+       assertParseEq amountp "$10 / 4"
+       nullamt{acommodity="$", aquantity=2.5, astyle=amountstyle{asprecision=Precision 1, asdecimalmark=Nothing}}
+   ,testCase "parenthesised scalar multiplies amount, with precedence" $
+      assertParseEq amountp "(1 + 0.05) * $47.97"
+        (nullamt{acommodity="$", aquantity=roundTo 4 50.3685, astyle=amountstyle{asprecision=Precision 4}})
+   ,testCase "arithmetic on different commodities is rejected" $
+      assertParseError amountp "$5 + €3" ""
+    ,testCase "division by zero is rejected" $ assertParseError amountp "$10 / 0" ""
+    ]
 
   ,let p = lift (numberp Nothing) :: JournalParser IO (Quantity, Word8, Maybe Char, Maybe DigitGroupStyle) in
    testCase "numberp" $ do

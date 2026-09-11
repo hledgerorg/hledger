@@ -1630,6 +1630,32 @@ Scientific E notation is allowed:
     1E-6
     EUR 1E3
 
+### Amount arithmetic
+
+Amounts can also contain simple arithmetic expressions: `+`, `-`, `*` and `/`,
+with the usual precedence, and parentheses for grouping.
+The expression is evaluated and shown as a single amount.
+This is useful eg when a payment has several parts,
+or when you want to keep component amounts visible:
+
+    2026-10-14 some outing
+        expenses:meals         $21.60 + $27.68 + $5.03 + $17.80
+        assets:checking
+
+    2026-10-15 widgets
+        expenses:business      (1 + 0.05) * $47.97   ; price plus 5% tax
+        assets:checking
+
+Rules:
+
+- With `+` and `-`, all terms must be in the same commodity.
+  A term written without a commodity symbol adopts the previous one's commodity
+  (`$5 + 3` means `$8`).
+- With `*` and `/`, the right hand operand must be a plain number without a commodity symbol
+  (`$4.20 * 2`, `$10 / 4`). A plain number left operand is also allowed with `*`
+  (`(1 + 0.05) * $47.97`).
+- Arithmetic on different commodities, such as `$5 + €3`, and division by zero, are errors.
+
 <a name="decimal-marks-digit-group-marks"></a>
 
 ### Decimal marks
