@@ -1,5 +1,5 @@
 name:          hledger-web
-version: 1.99
+version: 1.99.4
 license:       GPL-3.0-or-later
 maintainer:    Simon Michael <simon@joyful.com>
 author:        Simon Michael <simon@joyful.com>
@@ -67,7 +67,7 @@ flags:
 dependencies:
 - base >=4.18 && <4.23
 
-cpp-options: -DVERSION="1.99"
+cpp-options: -DVERSION="1.99.4"
 
 language: GHC2021
 
@@ -103,8 +103,8 @@ library:
   # default: All modules in source-dirs less other-modules less modules mentioned in when
   # exposed-modules:
   dependencies:
-  - hledger-lib >=1.99 && <1.100
-  - hledger >=1.99 && <1.100
+  - hledger-lib >=1.99.4 && <1.100
+  - hledger >=1.99.4 && <1.100
   - aeson >=2.2.5.1 && <2.4  # avoid https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html
   - async
   - base64-bytestring

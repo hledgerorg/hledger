@@ -1,5 +1,5 @@
 name:          hledger-lib
-version: 1.99
+version: 1.99.4
 license:       GPL-3.0-or-later
 maintainer:    Simon Michael <simon@joyful.com>
 author:        Simon Michael <simon@joyful.com>
@@ -97,7 +97,7 @@ dependencies:
 - extra >=1.7.11
 - Glob >= 0.9
 
-cpp-options: -DVERSION="1.99"
+cpp-options: -DVERSION="1.99.4"
 
 language: GHC2021
 
