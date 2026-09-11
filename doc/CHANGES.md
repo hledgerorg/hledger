@@ -20,7 +20,7 @@ General changes in the hledger project.
 For package-specific changes, see the hledger package changelogs.
 
 
-# 009e3b5d
+# 1.99.4 2026-09-10
 
 - The hledger repo has moved to the hledgerorg github
   organisation: <https://github.com/hledgerorg/hledger>. Old
