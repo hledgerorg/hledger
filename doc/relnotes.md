@@ -60,7 +60,30 @@ h2, h2:last-child > h3 { margin-top:4em; }
 
 User-visible changes in the core hledger tools.
 
+**hledger 1 and 2:**
+Both hledger 1 and 2 (the 1.99.x preview releases) are suitable for daily use.
+hledger 1 is receiving only essential fixes;
+the hledger 2 preview releases are strictly better, highly compatible,
+and by using the latest you help make the final 2.0 release (coming later this year) better.
 
+**AI use:**
+Here is our current [AI](https://hledger.org/AI.html) policy
+(and [developer assistance levels](https://www.visidata.org/blog/2026/ai/#self-assessed-ai-level-for-contributions)).
+If you disagree with it, please be patient while we navigate this period..
+In summary:
+
+- The official hledger tools do not have any built in AI features or use any AI while running.
+  (Some third-party addons do.)
+
+- hledger 1.52.1 and below had no AI use during development. Level 0.
+
+- hledger 1.52.2+ have a few small uses of AI-generated code
+  (fully-understood security fixes copied from 2.x). Level 2-4.
+
+- hledger 2 (1.99.1+) uses careful AI-assisted development. Level 4.5
+  (AI-generated code with active human steering/testing/full understanding.
+  In 2026 we have been using a 6-month OSS credit, very successfully;
+  hledger is better tested, better documented, and more robust than ever.)
 
 ## 2026-09-10 hledger-1.99.4
 (2.0 preview 4)
