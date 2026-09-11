@@ -97,6 +97,12 @@ Doc updates
 
 [#2707]: https://github.com/hledgerorg/hledger/issues/2707
 
+Software
+
+- New layout type `barewide`. [#2691]
+
+[#2691]: https://github.com/hledgerorg/hledger/pull/2691
+
 
 # 1.52.3 2026-08-27
 
