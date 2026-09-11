@@ -33,11 +33,3 @@ o 2013/04/05 13:30:00
 $ hledger -f- check
 >2//
 >=1
-
-# ** 5. amount expressions
-<
-2022-01-01
-  (a)    (1 + 1)
-$ hledger -f- check
->2//
->=1

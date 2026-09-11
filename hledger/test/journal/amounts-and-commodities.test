@@ -346,3 +346,15 @@ $ hledger -f- print -x
 $ hledger -f- print
 >2 /can't be more than one real posting with no amount/
 >=1
+
+# ** 28. Posting amounts may be arithmetic expressions (#2648): + - * / with
+# precedence, and parentheses. (Moved here from
+# ledger-compat/hledger-unsupported.test, where these were expected to fail.)
+<
+2022-01-01
+  (a)    (1 + 1)
+$ hledger -f- print
+2022-01-01
+    (a)                                            2
+
+>=
