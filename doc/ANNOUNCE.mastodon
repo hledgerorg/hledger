@@ -1,0 +1,13 @@
+I'm pleased to announce two hledger releases!
+
+hledger 1.52.4: dependency updates, for packagers.
+
+hledger 1.99.4 (2.0 preview 4): new holdings report, better lot
+tracking, command aliases, reorganised help command, run/repl
+improvements, barewide balance layout, hledger-ui memory leak fix,
+hledger-web security fixes.
+
+https://hledger.org/relnotes.html
+https://hledger.org/install
+
+#hledger #PlainTextAccounting

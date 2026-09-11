@@ -1,7 +1,29 @@
-G'day all. I'm pleased to announce hledger 2.0 preview release 4.
-Highlights:
+I'm pleased to announce two hledger releases!
 
-- new holdings command
+hledger (https://hledger.org) is accounting software, for both
+beginners and experts, using human-readable, version-controllable,
+future-proof plain text files.  It's dependable, free, fast, friendly,
+cross-platform, double-entry, multi-currency, multi-interface,
+GPL-licensed, and fun to use.
+
+
+hledger 1.52.4 brings packaging updates for the current stable release:
+
+- hledger-web no longer requires yesod-static, and will soon return to stackage
+- relaxed aeson lower bound, making it easier to build successfully
+- other bounds updates (megaparsec, vty, yesod-core)
+- fixes in CSV rules docs and github release install docs
+
+Release contributors:
+Simon Michael.
+
+- https://hledger.org/relnotes.html#2026-09-10-hledger-1524
+- https://github.com/hledgerorg/hledger/releases/tag/1.52.4
+
+
+And hledger 1.99.4 (2.0 preview release 4) brings many improvements:
+
+- new holdings report
 - better lot tracking
 - command aliases
 - reorganised help command
@@ -10,14 +32,7 @@ Highlights:
 - hledger-ui --watch memory leak fixed
 - hledger-web security fixes.
 
-Release notes, install docs, user manual:
-
-- https://hledger.org/relnotes.html#2026-09-10-hledger-1994
-- https://hledger.org/install
-- https://hledger.org/dev/hledger.html
-
 Release contributors:
-
 Simon Michael,
 Arthur Cinader,
 Henning Thielemann,
@@ -30,20 +45,42 @@ Joshua Chapman,
 Juliano Solanho,
 Rostislav Raykov.
 
-
-hledger is accounting software, for both beginners and experts,
-that uses human-readable, version-controllable, future-proof plain text files.
-It's free, fast, friendly, dependable, GPL-licensed, cross-platform,
-double-entry, multi-currency, multi-interface, and fun to use.
-
-It can help you learn bookkeeping.. untangle accounting messes..
-track your financial status and history.. run forecasts..
-set budgets and saving goals.. produce detailed time reports..
-convert/transform financial data.. validate other systems..
-and create more balance and calm in your life.
-
-For more info, see https://hledger.org. (And if it's providing value to
-you, consider becoming a https://hledger.org/sponsor.html !)
+- https://hledger.org/relnotes.html#2026-09-10-hledger-1994
+- https://github.com/hledgerorg/hledger/releases/tag/1.99.4
+- https://hledger.org/install
 
 
-(Latest source text for announcements & blurbs, truncate as needed.)
+Status update - a reminder
+
+hledger 1 and 2: Both hledger 1 and 2 (the 1.99.x preview releases) are suitable for daily use.
+hledger 1 is receiving only essential fixes;
+the hledger 2 preview releases are strictly better, highly compatible,
+and by using the latest you help make the final 2.0 release (coming later this year) better.
+
+AI use: Here is our current https://hledger.org/AI.html policy (and developer
+assistance levels, https://www.visidata.org/blog/2026/ai/#self-assessed-ai-level-for-contributions).
+If you disagree with it, please be patient while we navigate this period..
+In summary:
+
+- The official hledger tools do not have any built in AI features or use any AI while running.
+  (Some third-party addons do.)
+
+- hledger 1.52.1 and below had no AI use during development. Level 0.
+
+- hledger 1.52.2+ have a few small uses of AI-generated code
+  (fully-understood security fixes copied from 2.x). Level 2-4.
+
+- hledger 2 (1.99.1+) uses careful AI-assisted development. Level 4.5
+  (AI-generated code with active human steering/testing/full understanding.
+  In 2026 we have been using a 6-month OSS credit, very successfully;
+  hledger is better tested, better documented, and more robust than ever.)
+
+
+Sponsorship
+
+If hledger is providing value to you or your organisation, and your
+finances allow it, you can help by becoming a https://hledger.org/sponsor.html.
+
+
+Thanks for using hledger!
+-Simon
