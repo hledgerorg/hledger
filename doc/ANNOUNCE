@@ -1,29 +1,33 @@
-G'day all. I'm pleased to announce hledger 2.0 preview release 3.
+G'day all. I'm pleased to announce hledger 2.0 preview release 4.
 Highlights:
 
-- conventional file layout for rules/data/prices
-- get command
-- commodity aliases
-- print aligns by decimal mark
-- more intuitive precision behaviour
-- more robust lot detection
-- average cost basis methods
-- customisable report titles
-- prices --summary report
-- a more robust roi report.
+- new holdings command
+- better lot tracking
+- command aliases
+- reorganised help command
+- run/repl improvements
+- barewide balance layout
+- hledger-ui --watch memory leak fixed
+- hledger-web security fixes.
 
 Release notes, install docs, user manual:
 
-- https://hledger.org/relnotes.html#2026-06-24-hledger-1993
+- https://hledger.org/relnotes.html#2026-09-10-hledger-1994
 - https://hledger.org/install
 - https://hledger.org/dev/hledger.html
 
 Release contributors:
 
 Simon Michael,
-Dmitry Astapov,
+Arthur Cinader,
 Henning Thielemann,
+Kevin F. Konrad,
+Dmitry Astapov,
+Juan Wajnerman,
 Adam Sardo,
+JoeJoeflyn,
+Joshua Chapman,
+Juliano Solanho,
 Rostislav Raykov.
 
 
