@@ -416,7 +416,9 @@ compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts cbr =
     subreportrows (subreporttitle, mbr, _increasestotal) =
       let
         (_, bodyrows, mtotalsrows) =
-          multiBalanceReportAsSpreadsheetParts fmt ropts allCommodities mbr
+          multiBalanceReportAsSpreadsheetParts
+            (setBareWideCommodityOrder (layout_ ropts) allCommodities fmt)
+            ropts mbr
         accountCell =
             (Spr.defaultCell subreporttitle) {
                 Spr.cellStyle = Spr.Body Spr.Total,
@@ -439,7 +441,9 @@ compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts cbr =
     totalrows =
       if no_total_ ropts || length subreports == 1 then []
       else
-        multiBalanceRowAsCellBuilders fmt ropts colspans allCommodities
+        multiBalanceRowAsCellBuilders
+            (setBareWideCommodityOrder (layout_ ropts) allCommodities fmt)
+            ropts colspans
             Total (simpleDateSpanCell $ period_titles_ ropts) totalrow
                              -- make a table of rendered lines of the report totals row
         & map (map (fmap wbToText))

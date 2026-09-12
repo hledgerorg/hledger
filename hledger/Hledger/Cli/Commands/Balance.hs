@@ -266,6 +266,7 @@ module Hledger.Cli.Commands.Balance (
  ,multiBalanceReportAsSpreadsheet
  ,multiBalanceReportAsSpreadsheetParts
  ,multiBalanceHasTotalsColumn
+ ,setBareWideCommodityOrder
  ,renderPeriodicAcct
  ,addTotalBorders
  ,simpleDateSpanCell
@@ -769,22 +770,26 @@ multiBalanceReportAsCsv opts@ReportOpts{..} report =
     (if transpose_ then transpose else id) $
     rawTableContent $ header ++ body ++ totals
   where
+    allCommodities = allCommoditiesFromPeriodicReport $ prRows report
     (header, body, totals) =
-        multiBalanceReportAsSpreadsheetParts machineFmt opts
-            (allCommoditiesFromPeriodicReport $ prRows report) report
+        multiBalanceReportAsSpreadsheetParts
+            (setBareWideCommodityOrder layout_ allCommodities machineFmt)
+            opts report
 
 -- | Render the Spreadsheet table rows (CSV, ODS, HTML) for a MultiBalanceReport.
 -- Returns the heading row, 0 or more body rows, and the totals row if enabled.
 multiBalanceReportAsSpreadsheetParts ::
-    AmountFormat -> ReportOpts ->
-    [CommoditySymbol] -> MultiBalanceReport ->
+    AmountFormat -> ReportOpts -> MultiBalanceReport ->
     ([[Ods.Cell Ods.NumLines Text]],
      [[Ods.Cell Ods.NumLines Text]],
      [[Ods.Cell Ods.NumLines Text]])
 multiBalanceReportAsSpreadsheetParts fmt opts@ReportOpts{..}
-  allCommodities (PeriodicReport colspans items tr) =
+  (PeriodicReport colspans items tr) =
     (allHeaders, concatMap fullRowAsTexts items, addTotalBorders totalrows)
   where
+    allCommodities =
+        fromMaybe (error "layout bare-wide must always be called with list of all commodities") $
+        displayCommodityOrder fmt
     accountCell label =
         (Ods.defaultCell label) {Ods.cellClass = Ods.Class "account"}
     hCell cls label = (headerCell label) {Ods.cellClass = Ods.Class cls}
@@ -822,7 +827,9 @@ multiBalanceReportAsSpreadsheetParts fmt opts@ReportOpts{..}
                 rowAsText Total (simpleDateSpanCell period_titles_) tr
     rowAsText rc dsCell =
         map (map (fmap wbToText)) .
-        multiBalanceRowAsCellBuilders fmt opts colspans allCommodities rc dsCell
+        multiBalanceRowAsCellBuilders
+            (setBareWideCommodityOrder layout_ allCommodities fmt)
+            opts colspans rc dsCell
 
 tidyColumnLabels :: [Text]
 tidyColumnLabels =
@@ -841,9 +848,11 @@ multiBalanceReportAsSpreadsheet ::
   ReportOpts -> MultiBalanceReport ->
   ((Int, Int), [[Ods.Cell Ods.NumLines Text]])
 multiBalanceReportAsSpreadsheet ropts mbr =
-  let (header,body,total) =
-            multiBalanceReportAsSpreadsheetParts oneLineNoCostFmt ropts
-                (allCommoditiesFromPeriodicReport $ prRows mbr) mbr
+  let allCommodities = allCommoditiesFromPeriodicReport $ prRows mbr
+      (header,body,total) =
+            multiBalanceReportAsSpreadsheetParts
+                (setBareWideCommodityOrder (layout_ ropts) allCommodities oneLineNoCostFmt)
+                ropts mbr
   in  (if transpose_ ropts then swap *** Ods.transpose else id) $
       ((case layout_ ropts of LayoutBareWide -> 2; _ -> 1,
         case layout_ ropts of LayoutWide _ -> 1; _ -> 0),
@@ -979,11 +988,11 @@ allCommoditiesFromPeriodicReport =
     S.toAscList . foldMap (foldMap maCommodities . prrAmounts)
 
 multiBalanceRowAsCellBuilders ::
-    AmountFormat -> ReportOpts -> [DateSpan] -> [CommoditySymbol] ->
+    AmountFormat -> ReportOpts -> [DateSpan] ->
     RowClass -> (DateSpan -> Ods.Cell Ods.NumLines Text) ->
     PeriodicReportRow a MixedAmount ->
     [[Ods.Cell Ods.NumLines WideBuilder]]
-multiBalanceRowAsCellBuilders bopts ropts@ReportOpts{..} colspans allCommodities
+multiBalanceRowAsCellBuilders bopts ropts@ReportOpts{..} colspans
       rc renderDateSpanCell (PeriodicReportRow _acct as rowtot rowavg) =
     case layout_ of
       LayoutWide width -> [fmap (cellFromMixedAmount bopts{displayMaxWidth=width}) clsamts]
@@ -992,14 +1001,14 @@ multiBalanceRowAsCellBuilders bopts ropts@ReportOpts{..} colspans allCommodities
                            $ clsamts
       LayoutBare       -> zipWith (:) (map wbCell cs)  -- add symbols
                            . transpose                         -- each row becomes a list of Text quantities
-                           . map (cellsFromMixedAmount (setDisplayCommodityBare bopts cs))
+                           . map (cellsFromMixedAmount (setDisplayCommodityBare cs bopts))
                            $ clsamts
-      LayoutBareWide   -> [concatMap (cellsFromMixedAmount (setDisplayCommodityBare bopts allCommodities))
+      LayoutBareWide   -> [concatMap (cellsFromMixedAmount bopts)
                             $ clsamts]
       LayoutTidy       -> concat
                            . zipWith (map . addDateColumns) colspans
                            . map ( zipWith (\c a -> [wbCell c, a]) cs
-                                  . cellsFromMixedAmount (setDisplayCommodityBare bopts cs))
+                                  . cellsFromMixedAmount (setDisplayCommodityBare cs bopts))
                            $ classified
                                  -- Do not include totals column or average for tidy output, as this
                                  -- complicates the data representation and can be easily calculated
@@ -1042,16 +1051,18 @@ multiBalanceRowAsText ::
     ReportOpts -> [CommoditySymbol] -> PeriodicReportRow a MixedAmount -> [[WideBuilder]]
 multiBalanceRowAsText opts allCommodities =
     rawTableContent .
-    multiBalanceRowAsCellBuilders oneLineNoCostFmt{displayColour=color_ opts}
-        opts [] allCommodities
+    multiBalanceRowAsCellBuilders
+        (setBareWideCommodityOrder (layout_ opts) allCommodities
+            oneLineNoCostFmt{displayColour=color_ opts})
+        opts []
         Value (simpleDateSpanCell $ period_titles_ opts)
 
 multiBalanceRowAsCsvText ::
-    ReportOpts -> [DateSpan] -> [CommoditySymbol] ->
+    ReportOpts -> [DateSpan] ->
     PeriodicReportRow a MixedAmount -> [[T.Text]]
-multiBalanceRowAsCsvText opts colspans allCommodities =
+multiBalanceRowAsCsvText opts colspans =
     map (map (wbToText . Ods.cellContent)) .
-    multiBalanceRowAsCellBuilders machineFmt opts colspans allCommodities
+    multiBalanceRowAsCellBuilders machineFmt opts colspans
         Value (simpleDateSpanCell $ period_titles_ opts)
 
 
@@ -1274,7 +1285,7 @@ budgetReportAsTable ropts@ReportOpts{..} (PeriodicReport spans items totrow) =
           LayoutWide width ->
                ( pure . showMixedAmountB oneLineNoCostFmt{displayMaxWidth=width, displayColour=color_}
                , \a -> pure . percentage a)
-          _ -> ( showMixedAmountLinesB (setDisplayCommodityBare noCostFmt cs){displayCommodity=layout_/=LayoutBare, displayColour=color_}
+          _ -> ( showMixedAmountLinesB (setDisplayCommodityBare cs noCostFmt){displayCommodity=layout_/=LayoutBare, displayColour=color_}
                , \a b -> map (percentage' a b) cs)
           where
             -- | Calculate the percentage of actual change to budget goal to show, if any.
@@ -1387,14 +1398,14 @@ budgetReportAsSpreadsheet
         LayoutBare ->
             zipWith (:) (map cell cs)   -- add symbols
           . transpose                   -- each row becomes a list of Text quantities
-          . bareCells cs
+          . bareCells (setDisplayCommodityBare cs fmt)
           $ vals
-        LayoutBareWide -> [concat . bareCells allCommodities $ vals]
+        LayoutBareWide -> [concat . bareCells fmt $ vals]
         _ -> [map showNorm vals]
       where
-        bareCells cs_ =
+        bareCells fmt_ =
           map (map (fmap wbToText) .
-          cellsFromMixedAmount (setDisplayCommodityBare fmt cs_) .
+          cellsFromMixedAmount fmt_ .
           second (fromMaybe nullmixedamt))
         cs = S.toList . mconcat . map maCommodities $ mapMaybe snd vals
         vals = flattentuples rc (if not summary_only_ then as else [])
@@ -1405,12 +1416,20 @@ budgetReportAsSpreadsheet
                         (budgetAverageClass rc, budgetavg)]
                             | average_]
 
-setDisplayCommodityBare :: AmountFormat -> [CommoditySymbol] -> AmountFormat
-setDisplayCommodityBare fmt cs =
+
+setBareWideCommodityOrder ::
+    Layout -> [CommoditySymbol] -> AmountFormat -> AmountFormat
+setBareWideCommodityOrder lay cs fmt =
+    case lay of
+      LayoutBareWide -> setDisplayCommodityBare cs fmt
+      _ -> fmt
+
+setDisplayCommodityBare :: [CommoditySymbol] -> AmountFormat -> AmountFormat
+setDisplayCommodityBare cs fmt =
     fmt{
-        displayCommodity=False,
-        displayCommodityOrder=Just cs,
-        displayMinWidth=Nothing
+        displayCommodity = False,
+        displayCommodityOrder = Just cs,
+        displayMinWidth = Nothing
     }
 
 
