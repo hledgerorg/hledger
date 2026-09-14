@@ -771,8 +771,9 @@ multiBalanceReportAsCsv opts@ReportOpts{..} report =
     rawTableContent $ header ++ body ++ totals
   where
     (header, body, totals) =
-        multiBalanceReportAsSpreadsheetParts machineFmt opts
-            (allCommoditiesFromPeriodicReport $ prRows report) report
+        multiBalanceReportAsSpreadsheetParts
+            (machineFmt, allCommoditiesFromPeriodicReport $ prRows report)
+            opts report
 
 
 multiBalanceReportNumHeaderColumns :: Layout -> Int
@@ -785,13 +786,13 @@ multiBalanceReportNumHeaderColumns lay =
 -- | Render the Spreadsheet table rows (CSV, ODS, HTML) for a MultiBalanceReport.
 -- Returns the heading rows, 0 or more body rows, and the totals row if enabled.
 multiBalanceReportAsSpreadsheetParts ::
-    AmountFormat -> ReportOpts ->
-    [CommoditySymbol] -> MultiBalanceReport ->
+    AmountFormatExt -> ReportOpts ->
+    MultiBalanceReport ->
     ([[Ods.Cell Ods.NumLines Text]],
      [[Ods.Cell Ods.NumLines Text]],
      [[Ods.Cell Ods.NumLines Text]])
-multiBalanceReportAsSpreadsheetParts fmt opts@ReportOpts{..}
-  allCommodities (PeriodicReport colspans items tr) =
+multiBalanceReportAsSpreadsheetParts fmtExt@(_fmt, allCommodities) opts@ReportOpts{..}
+  (PeriodicReport colspans items tr) =
     (allHeaders, concatMap fullRowAsTexts items, addTotalBorders totalrows)
   where
     accountCell label =
@@ -831,7 +832,7 @@ multiBalanceReportAsSpreadsheetParts fmt opts@ReportOpts{..}
                 rowAsText Total (simpleDateSpanCell period_titles_) tr
     rowAsText rc dsCell =
         map (map (fmap wbToText)) .
-        multiBalanceRowAsCellBuilders fmt opts colspans allCommodities rc dsCell
+        multiBalanceRowAsCellBuilders fmtExt opts colspans rc dsCell
 
 tidyColumnLabels :: [Text]
 tidyColumnLabels =
@@ -851,8 +852,10 @@ multiBalanceReportAsSpreadsheet ::
   ((Int, Int), [[Ods.Cell Ods.NumLines Text]])
 multiBalanceReportAsSpreadsheet ropts mbr =
   let (header,body,total) =
-            multiBalanceReportAsSpreadsheetParts oneLineNoCostFmt ropts
-                (allCommoditiesFromPeriodicReport $ prRows mbr) mbr
+            multiBalanceReportAsSpreadsheetParts
+                (oneLineNoCostFmt,
+                    allCommoditiesFromPeriodicReport $ prRows mbr)
+                ropts mbr
   in  (if transpose_ ropts then swap *** Ods.transpose else id) $
       ((length header, multiBalanceReportNumHeaderColumns (layout_ ropts)),
        header ++ body ++ total)
@@ -928,16 +931,16 @@ multiBalanceReportTableAsText ReportOpts{..} = renderTableByRowsB tableopts rend
 -- | Build a 'Table' from a multi-column balance report.
 multiBalanceReportAsTable :: ReportOpts -> MultiBalanceReport -> Table T.Text T.Text WideBuilder
 multiBalanceReportAsTable opts report@(PeriodicReport _spans items _tr) =
-    multiBalanceReportAsPartTable opts
+    multiBalanceReportAsPartTable
         (allCommoditiesFromPeriodicReport items)
-        report
+        opts report
 
 multiBalanceReportAsPartTable ::
-    ReportOpts -> [CommoditySymbol] -> MultiBalanceReport ->
+    [CommoditySymbol] -> ReportOpts -> MultiBalanceReport ->
     Table T.Text T.Text WideBuilder
 multiBalanceReportAsPartTable
-    opts@ReportOpts{summary_only_, average_, balanceaccum_}
     allCommodities
+    opts@ReportOpts{summary_only_, average_, balanceaccum_}
     (PeriodicReport spans items tr) =
    maybetranspose $
    addtotalrow $
@@ -967,12 +970,12 @@ multiBalanceReportAsPartTable
                  else items
         fullRowAsTexts row = (replicate (length rs) (renderacct row), rs)
           where
-            rs = multiBalanceRowAsText opts allCommodities row
+            rs = multiBalanceRowAsText allCommodities opts row
             renderacct row' = renderPeriodicAcct opts " " row'
     addtotalrow
       | no_total_ opts = id
       | otherwise =
-        let totalrows = multiBalanceRowAsText opts allCommodities tr
+        let totalrows = multiBalanceRowAsText allCommodities opts tr
             rowhdrs = Group NoLine $ map Header $ totalRowHeadingText : replicate (length totalrows - 1) ""
             colhdrs = Header [] -- unused, concatTables will discard
         in (flip (concatTables SingleLine) $ Table rowhdrs colhdrs totalrows)
@@ -987,11 +990,12 @@ allCommoditiesFromPeriodicReport =
     S.toAscList . foldMap (foldMap maCommodities . prrAmounts)
 
 multiBalanceRowAsCellBuilders ::
-    AmountFormat -> ReportOpts -> [DateSpan] -> [CommoditySymbol] ->
+    AmountFormatExt -> ReportOpts -> [DateSpan] ->
     RowClass -> (DateSpan -> Ods.Cell Ods.NumLines Text) ->
     PeriodicReportRow a MixedAmount ->
     [[Ods.Cell Ods.NumLines WideBuilder]]
-multiBalanceRowAsCellBuilders bopts ropts@ReportOpts{..} colspans allCommodities
+multiBalanceRowAsCellBuilders
+      (bopts, allCommodities) ropts@ReportOpts{..} colspans
       rc renderDateSpanCell (PeriodicReportRow _acct as rowtot rowavg) =
     case layout_ of
       LayoutWide width -> [fmap (cellFromMixedAmount bopts{displayMaxWidth=width}) clsamts]
@@ -1047,19 +1051,19 @@ multiBalanceHasTotalsColumn ropts =
     row_total_ ropts && balanceaccum_ ropts `notElem` [Cumulative, Historical]
 
 multiBalanceRowAsText ::
-    ReportOpts -> [CommoditySymbol] -> PeriodicReportRow a MixedAmount -> [[WideBuilder]]
-multiBalanceRowAsText opts allCommodities =
+    [CommoditySymbol] -> ReportOpts -> PeriodicReportRow a MixedAmount -> [[WideBuilder]]
+multiBalanceRowAsText allCommodities opts =
     rawTableContent .
-    multiBalanceRowAsCellBuilders oneLineNoCostFmt{displayColour=color_ opts}
-        opts [] allCommodities
-        Value (simpleDateSpanCell $ period_titles_ opts)
+    multiBalanceRowAsCellBuilders
+        (oneLineNoCostFmt{displayColour=color_ opts}, allCommodities)
+        opts [] Value (simpleDateSpanCell $ period_titles_ opts)
 
 multiBalanceRowAsCsvText ::
-    ReportOpts -> [DateSpan] -> [CommoditySymbol] ->
+    [CommoditySymbol] -> ReportOpts -> [DateSpan] ->
     PeriodicReportRow a MixedAmount -> [[T.Text]]
-multiBalanceRowAsCsvText opts colspans allCommodities =
+multiBalanceRowAsCsvText allCommodities opts colspans =
     map (map (wbToText . Ods.cellContent)) .
-    multiBalanceRowAsCellBuilders machineFmt opts colspans allCommodities
+    multiBalanceRowAsCellBuilders (machineFmt, allCommodities) opts colspans
         Value (simpleDateSpanCell $ period_titles_ opts)
 
 
@@ -1412,6 +1416,15 @@ budgetReportAsSpreadsheet
             ++ concat [[(rowAverageClass rc, rowavg),
                         (budgetAverageClass rc, budgetavg)]
                             | average_]
+
+{- |
+'AmountFormat' extended by a list of all commodity symbols
+that occur in a table.
+Those symbols are only used for LayoutBareWide
+and overwrite 'displayCommodityOrder'.
+We only need to expose this type to "Hledger.Cli.CompoundBalanceCommand".
+-}
+type AmountFormatExt = (AmountFormat, [CommoditySymbol])
 
 setDisplayCommodityBare :: [CommoditySymbol] -> AmountFormat -> AmountFormat
 setDisplayCommodityBare cs fmt =
