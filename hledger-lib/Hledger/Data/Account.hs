@@ -75,6 +75,8 @@ instance Show a => Show (Account a) where
       . showString (if aboring acct then "y" else "n")
       . showString ", adata:"
       . shows (adata acct)
+      . showString ", asubs:"
+      . shows (asubs acct)
       . showChar ')'
 
 instance Eq (Account a) where
