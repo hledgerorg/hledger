@@ -1104,6 +1104,11 @@ budgetReportTitle ropts@ReportOpts{..} budgetr = effectiveTitle ropts defaultTit
 -- | Build a 'Table' from a multi-column balance report.
 budgetReportAsTable :: ReportOpts -> BudgetReport -> Table Text Text WideBuilder
 budgetReportAsTable ropts@ReportOpts{..} (PeriodicReport spans items totrow) =
+  (case layout_ of
+      LayoutTall -> id
+      LayoutWide _ -> id
+      LayoutBare -> id
+      _ -> unsupportedLayout layout_) $
   maybetransposetable $
   addtotalrow $
     Table
@@ -1332,7 +1337,13 @@ budgetReportAsSpreadsheet
   fmt
   ropts@ReportOpts{..}
   (PeriodicReport colspans items totrow)
-  = (if transpose_ then swap *** Ods.transpose else id) $
+  =
+  (case layout_ of
+      LayoutWide _ -> id
+      LayoutBare -> id
+      LayoutBareWide -> id
+      _ -> unsupportedLayout layout_) $
+  (if transpose_ then swap *** Ods.transpose else id) $
   ((length allHeaders, length leadingHeaders)
    ,
     -- heading row
@@ -1412,6 +1423,10 @@ budgetReportAsSpreadsheet
             ++ concat [[(rowAverageClass rc, rowavg),
                         (budgetAverageClass rc, budgetavg)]
                             | average_]
+
+unsupportedLayout :: Layout -> a -> a
+unsupportedLayout lay =
+    error $ show lay ++ " not supported for the chosen output format."
 
 setDisplayCommodityBare :: [CommoditySymbol] -> AmountFormat -> AmountFormat
 setDisplayCommodityBare cs fmt =

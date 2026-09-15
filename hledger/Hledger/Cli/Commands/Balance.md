@@ -837,6 +837,16 @@ Only CSV output supports all of them:
 | barewide | Y   | Y   | Y    |      |     |
 | tidy     |     | Y   |      |      |     |
 
+Choice of layouts for budget reports is more restricted:
+
+| -        | txt | csv | html | json | sql |
+|----------|-----|-----|------|------|-----|
+| wide     | Y   | Y   | Y    |      |     |
+| tall     | Y   |     |      |      |     |
+| bare     | Y   | Y   | Y    |      |     |
+| barewide |     | Y   | Y    |      |     |
+| tidy     |     |     |      |      |     |
+
 Examples:
 
 #### Wide layout
