@@ -40,6 +40,7 @@ module Hledger.Utils.IO (
   rulesDirName,
   getHomeSafe,
   embedFileRelative,
+  embedFileRelativeBytes,
   expandHomePath,
   expandPath,
   expandGlob,
@@ -142,7 +143,7 @@ import           Data.Colour.RGBSpace (RGB(RGB))
 import           Data.Colour.RGBSpace.HSL (lightness)
 import           Data.Colour.SRGB (sRGB)
 import           Data.Encoding (DynEncoding)
-import           Data.FileEmbed (makeRelativeToProject, embedStringFile)
+import           Data.FileEmbed (makeRelativeToProject, embedFile, embedStringFile)
 import           Data.Functor ((<&>))
 import           Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import           Data.List hiding (uncons)
@@ -578,6 +579,11 @@ textToHandle t = do
 -- | Like embedFile, but takes a path relative to the package directory.
 embedFileRelative :: FilePath -> Q Exp
 embedFileRelative f = makeRelativeToProject f >>= embedStringFile
+
+-- | Like embedFileRelative, but embeds the file's raw bytes as a ByteString,
+-- so that its encoding does not depend on the build machine's locale.
+embedFileRelativeBytes :: FilePath -> Q Exp
+embedFileRelativeBytes f = makeRelativeToProject f >>= embedFile
 
 -- -- | Like hereFile, but takes a path relative to the package directory.
 -- -- Similar to embedFileRelative ?

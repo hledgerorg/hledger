@@ -91,6 +91,7 @@ import Data.Time.Calendar (Day, addDays)
 import Data.Default (Default(..))
 import Safe (lastDef, lastMay, maximumMay, readMay)
 
+import Hledger.Utils.I18n (Translations, noTranslations)
 import Hledger.Data
 import Hledger.Query
 import Hledger.Utils
@@ -206,6 +207,9 @@ data ReportOpts = ReportOpts {
     -- subreport titles to use in compound reports. An empty string
     -- means "suppress all default subreport titles".
     ,subreport_titles_ :: Maybe T.Text
+    -- | Translations for the report's structural text (titles, headings,
+    -- month names), selected by --lang. English by default.
+    ,translations_     :: Translations
  } deriving (Show)
 
 instance Default ReportOpts where def = defreportopts
@@ -252,6 +256,7 @@ defreportopts = ReportOpts
     , period_titles_  = PTCompact
     , title_   = Nothing
     , subreport_titles_ = Nothing
+    , translations_     = noTranslations
     }
 
 -- | Generate a ReportOpts from raw command-line input, given a day and whether to use ANSI colour/styles in standard output.

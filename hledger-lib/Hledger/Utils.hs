@@ -89,6 +89,7 @@ import Lens.Micro ((&), (.~))
 import Lens.Micro.TH (DefName(TopName), lensClass, lensField, makeLensesWith, classyRules)
 
 import Hledger.Utils.Debug
+import Hledger.Utils.I18n (tests_I18n)
 import Hledger.Utils.Parse
 import Hledger.Utils.IO
 import Hledger.Utils.Regex
@@ -329,5 +330,6 @@ makeHledgerClassyLenses x = flip makeLensesWith x $ classyRules
     queryFields = Set.fromList ["period", "statuses", "depth", "date2", "real", "querystring"]
 
 tests_Utils = testGroup "Utils" [
+  tests_I18n,
   tests_Text
   ]
