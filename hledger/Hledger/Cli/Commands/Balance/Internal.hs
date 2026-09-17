@@ -12,6 +12,7 @@ import Data.Text qualified as T
 import Data.Time (addDays)
 import Text.Tabular.AsciiWide (Header(..), Properties(..), Table(..), concatTables)
 
+import Hledger.Utils.I18n (trc)
 import Hledger
 import Hledger.Cli.Anchor (setAccountAnchor, dateSpanCell, headerDateSpanCell, renderPeriodHeading)
 import Hledger.Write.Spreadsheet (rawTableContent, headerCell,
@@ -106,7 +107,7 @@ multiBalanceReportAsPartTable ::
     ReportOpts -> [CommoditySymbol] -> MultiBalanceReport ->
     Table T.Text T.Text WideBuilder
 multiBalanceReportAsPartTable
-    opts@ReportOpts{summary_only_, average_, balanceaccum_}
+    opts@ReportOpts{summary_only_, average_}
     allCommodities
     (PeriodicReport spans items tr) =
    maybetranspose $
@@ -117,7 +118,7 @@ multiBalanceReportAsPartTable
      (concat rows)
   where
     colheadings =
-      ["Commodity" | layout_ opts == LayoutBare]
+      [trc (translations_ opts) "column heading" "Commodity" | layout_ opts == LayoutBare]
       ++
       case layout_ opts of
           LayoutBareWide ->
@@ -126,9 +127,9 @@ multiBalanceReportAsPartTable
           _ -> spanNames
     spanNames =
         (guard (not summary_only_) >>
-            map (reportPeriodName (period_titles_ opts) balanceaccum_ spans) spans)
-        ++ ["  Total" | multiBalanceHasTotalsColumn opts]
-        ++ ["Average" | average_]
+            map (reportPeriodName opts spans) spans)
+        ++ ["  " <> trc (translations_ opts) "column heading" "Total" | multiBalanceHasTotalsColumn opts]
+        ++ [trc (translations_ opts) "column heading" "Average" | average_]
     (accts, rows) = unzip $ fmap fullRowAsTexts items'
       where
         isLeaf rs row = not $ any (\r -> T.isPrefixOf (displayFull (prrName row) <> ":") (displayFull (prrName r))) rs

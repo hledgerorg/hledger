@@ -91,7 +91,7 @@ import Data.Time.Calendar (Day, addDays)
 import Data.Default (Default(..))
 import Safe (lastDef, lastMay, maximumMay, readMay)
 
-import Hledger.Utils.I18n (Translations, noTranslations)
+import Hledger.Utils.I18n (Translations, noTranslations, trTimeLocale)
 import Hledger.Data
 import Hledger.Query
 import Hledger.Utils
@@ -978,16 +978,16 @@ reportPeriodOrJournalLastDay rspec j = reportPeriodLastDay rspec <|> journalOrPr
 -- - ending-balance reports: the period's end date
 --
 -- - balance change reports where the periods are months and all in the same year:
---   the short month name in the current locale
+--   the short month name, translated according to --lang
 --
 -- - all other balance change reports: a description of the datespan,
 --   abbreviated to compact form if possible (see showDateSpan).
-reportPeriodName :: PeriodTitles -> BalanceAccumulation -> [DateSpan] -> DateSpan -> T.Text
-reportPeriodName ph balanceaccumulation spans =
-  case balanceaccumulation of
-    PerPeriod -> case ph of
+reportPeriodName :: ReportOpts -> [DateSpan] -> DateSpan -> T.Text
+reportPeriodName ReportOpts{period_titles_, balanceaccum_, translations_} spans =
+  case balanceaccum_ of
+    PerPeriod -> case period_titles_ of
       PTDates   -> showDateSpanFull
-      PTCompact -> if multiyear then showDateSpan else showDateSpanAbbrev
+      PTCompact -> if multiyear then showDateSpan else showDateSpanAbbrevWith (trTimeLocale translations_)
       where
         multiyear = (>1) $ length $ nubSort $ map spanStartYear spans
     _ -> maybe "" (showDate . prevday) . spanEnd

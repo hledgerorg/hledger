@@ -123,6 +123,7 @@ import System.Info (os)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
+import Hledger.Utils.I18n (translationsForLangOption)
 import Hledger
 import Hledger.Cli.DocFiles
 import Hledger.Cli.Version
@@ -301,6 +302,8 @@ terminalflags = [
   -- keep synced with hledger-lib:colorOption:
  ,flagReq  ["color","colour"] (\s opts -> Right $ setopt "color" s opts) "YNA"
    "use ANSI color ? y/yes, n/no, or auto (default)"
+ ,flagReq  ["lang"] (\s opts -> Right $ setopt "lang" s opts) "LANG"
+   "language for report titles and headings: a language tag like de, auto (from the environment), or en (default)"
  ]
 
 -- | Flags for selecting flat/tree mode, used for reports organised by account.
@@ -666,7 +669,9 @@ rawOptsToCliOpts rawopts = do
     command = stringopt "command" rawopts
   usecolor <- useColorOnStdout
   let iopts = rawOptsToInputOpts day usecolor rawopts
-  rspec <- either error' pure $ rawOptsToReportSpec day usecolor rawopts  -- PARTIAL:
+  rspec0 <- either error' pure $ rawOptsToReportSpec day usecolor rawopts  -- PARTIAL:
+  trs <- translationsForLangOption $ maybestringopt "lang" rawopts
+  let rspec = rspec0{_rsReportOpts = (_rsReportOpts rspec0){translations_ = trs}}
   mtermwidth <- getTerminalWidth
   let availablewidth = fromMaybe defaultWidth mtermwidth
   return defcliopts {
