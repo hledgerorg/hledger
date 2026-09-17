@@ -1,13 +1,13 @@
 <h2>
-  Upload to file #
+  _{HMsg "Upload to file"} #
   <i>#{f}
 <div.alert.alert-danger>
-  Are you sure? This will overwrite your journal!
+  _{HMsg "Are you sure? This will overwrite your journal!"}
 <div.form-group>
   <label .btn.btn-primary for="file">
     <input type=file id=file name=file>
-    Select file
+    _{HMsg "Select file"}
   <span .label.label-info id="file-info">
 <div.form-group>
-  <input .btn.btn-default type=submit value="Upload">
+  <input .btn.btn-default type=submit value=_{HMsg "Upload"}>
 #{extra}

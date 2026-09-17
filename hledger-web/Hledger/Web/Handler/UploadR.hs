@@ -15,6 +15,8 @@ import Data.Conduit (connect)
 import Data.Conduit.Binary (sinkLbs)
 import Data.Text.Encoding qualified as TE
 
+import Data.Text qualified as T
+import Hledger.Utils.I18n (trf)
 import Hledger.Web.Import
 import Hledger.Web.Widget.Common (fromFormSuccess, journalFile404, writeJournalTextIfValidAndChanged)
 
@@ -35,7 +37,7 @@ getUploadR f = do
 postUploadR :: FilePath -> Handler ()
 postUploadR f = do
   checkServerSideUiEnabled
-  VD {j} <- getViewData
+  VD {j, trs} <- getViewData
   require EditPermission
 
   (f', _) <- journalFile404 f j
@@ -47,21 +49,18 @@ postUploadR f = do
   -- XXX Unfortunate - how to parse as system locale?
   newtxt <- case TE.decodeUtf8' lbs of
     Left e -> do
-      setMessage $
-        "Encoding error: '" <> toHtml (show e) <> "'. " <>
-        "If your file is not UTF-8 encoded, try the 'edit form', " <>
-        "where the transcoding should be handled by the browser."
+      setMessage $ toHtml $ trf trs "Encoding error: '{error}'. If your file is not UTF-8 encoded, try the 'edit form', where the transcoding should be handled by the browser." [("error", T.pack (show e))]
       showForm view enctype
     Right newtxt -> return newtxt
   runExceptT (writeJournalTextIfValidAndChanged f newtxt) >>= \case
     Left e -> do
-      setMessage $ "Failed to load journal: " <> toHtml e
+      setMessage $ toHtml $ trf trs "Failed to load journal: {error}" [("error", T.pack e)]
       showForm view enctype
     Right () -> do
-      setMessage $ "File " <> toHtml f <> " uploaded successfully"
+      setMessage $ toHtml $ trf trs "File {file} uploaded successfully" [("file", T.pack f)]
       redirect JournalR
   where
     showForm view enctype =
       sendResponse <=< defaultLayout $ do
-        setTitle "Upload journal"
+        setTitleI (HMsg "Upload journal")
         [whamlet|<form method=post enctype=#{enctype}>^{view}|]

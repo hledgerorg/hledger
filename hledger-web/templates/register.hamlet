@@ -2,18 +2,18 @@
   #{header}
 
 <div>
-  ^{registerChartHtml qparam balancelabel $ accountTransactionsReportByCommodity items}
+  ^{registerChartHtml qparam (T.unpack balancelabel) $ accountTransactionsReportByCommodity items}
 
 <div.table-responsive>
   <table .table.table-condensed>
     <thead>
       <tr>
         <th>
-          Date
+          _{HMsgc "column heading" "Date"}
           <span .glyphicon.glyphicon-chevron-up>
-        <th>Description
-        <th>To/From Account(s)
-        <th .amount>Amount Out/In
+        <th>_{HMsgc "column heading" "Description"}
+        <th>_{HMsgc "column heading" "To/From Account(s)"}
+        <th .amount>_{HMsgc "column heading" "Amount Out/In"}
         <th .amount>
           #{balancelabel}
 

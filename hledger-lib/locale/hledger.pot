@@ -410,22 +410,22 @@ msgid "income statement changes"
 msgstr ""
 
 #. the menu screen's entries; translated when drawn.
-#: hledger-ui/Hledger/UI/UIScreens.hs:91
+#: hledger-ui/Hledger/UI/UIScreens.hs:93
 msgid "Cash accounts"
 msgstr ""
 
 #. the menu screen's entries; translated when drawn.
-#: hledger-ui/Hledger/UI/UIScreens.hs:92
+#: hledger-ui/Hledger/UI/UIScreens.hs:94
 msgid "Balance sheet accounts"
 msgstr ""
 
 #. the menu screen's entries; translated when drawn.
-#: hledger-ui/Hledger/UI/UIScreens.hs:93
+#: hledger-ui/Hledger/UI/UIScreens.hs:95
 msgid "Income statement accounts"
 msgstr ""
 
 #. the menu screen's entries; translated when drawn.
-#: hledger-ui/Hledger/UI/UIScreens.hs:94
+#: hledger-ui/Hledger/UI/UIScreens.hs:96
 msgid "All accounts"
 msgstr ""
 
@@ -699,50 +699,58 @@ msgid "match transaction codes"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet:102
-msgid "match transaction descriptions"
+msgid "or"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:102
+msgid "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet:103
-msgid "match payee part of descriptions"
+msgid "match transaction descriptions"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet:104
-msgid "match note part of descriptions"
+msgid "match payee part of descriptions"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet:105
-msgid "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."
+msgid "match note part of descriptions"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet:106
-msgid "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"
+msgid "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet:107
-msgid "match tags, or tag and value"
+msgid "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet:108
-msgid "match postings' realness/virtualness"
+msgid "match tags, or tag and value"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet:109
-msgid "prepend not: to negate a search term"
+msgid "match postings' realness/virtualness"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet:110
-msgid "match with a boolean query (and, or, not, (..))"
+msgid "prepend not: to negate a search term"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet:111
-msgid "match transactions where any posting matches"
+msgid "match with a boolean query (and, or, not, (..))"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet:112
-msgid "match transactions where all postings match"
+msgid "match transactions where any posting matches"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet:113
+msgid "match transactions where all postings match"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:114
 msgid "clip account names at this depth"
 msgstr ""
 

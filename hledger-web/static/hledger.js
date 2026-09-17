@@ -187,8 +187,10 @@ function addformAddPosting() {
   var amount = newrow.querySelector('input[name=amount]');
   account.value = '';
   amount.value = '';
-  account.placeholder = 'Account ' + num;
-  amount.placeholder = 'Amount ' + num;
+  // The placeholder templates come from the page, in its language.
+  var postings = addform.querySelector('.account-postings');
+  account.placeholder = (postings.dataset.accountPlaceholder || 'Account {n}').replace('{n}', num);
+  amount.placeholder = (postings.dataset.amountPlaceholder || 'Amount {n}').replace('{n}', num);
 
   addform.querySelector('.account-postings').appendChild(newrow);
 }

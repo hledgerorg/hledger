@@ -394,6 +394,12 @@ msgstr "Status finden"
 msgid "match transaction codes"
 msgstr "Buchungscodes finden"
 
+msgid "or"
+msgstr "oder"
+
+msgid "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"
+msgstr "ein beliebiges sichtbares Feld finden (Konto, Betrag, Kommentar, Beschreibung, Code), oder ein Datum, wenn REGEX auch ein Periodenausdruck ist"
+
 msgid "match transaction descriptions"
 msgstr "Buchungsbeschreibungen finden"
 

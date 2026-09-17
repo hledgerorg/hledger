@@ -443,6 +443,21 @@ Debug output goes to stderr, interleaved with the requests logged on stdout.
 To capture debug output in a log file instead, you can usually redirect stderr, eg:\
 `hledger-web --debug=3 2>hledger-web.log`.
 
+# LANGUAGE
+
+hledger-web's pages can be shown in another language when a translation catalog is available
+(see [Languages](hledger.md#languages) in the hledger manual).
+The language is chosen per request, and the first of these naming an available translation wins:
+
+1. a `_LANG` query parameter, eg `?_LANG=de`. This choice is remembered in a `_LANG` cookie.
+2. the `_LANG` cookie
+3. the browser's `Accept-Language` header, ie the browser's or system's language settings
+4. the `--lang` option hledger-web was started with
+
+So viewers usually get their browser's language automatically, if hledger-web has it;
+otherwise English, or the language given with `--lang`.
+Catalogs, including any in the config directory, are loaded when hledger-web starts.
+
 # ENVIRONMENT
 
 **LEDGER_FILE**

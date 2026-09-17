@@ -23,8 +23,9 @@ import Text.Blaze.Internal (Markup)
 import Text.Megaparsec (bundleErrors, eof, parseErrorTextPretty, runParser)
 import Yesod
 
+import Hledger.Utils.I18n (Translations, substitutePlaceholders, tr, trc, trf)
 import Hledger
-import Hledger.Web.App (App, Handler, Widget)
+import Hledger.Web.App (App, Handler, Widget, HMsg(..), requestTranslations)
 import Hledger.Web.Settings (widgetFile)
 import Data.Function ((&))
 import Control.Arrow (right)
@@ -35,8 +36,8 @@ addModal addR j today = do
   [whamlet|
 <dialog #addmodal aria-labelledby="addLabel">
   <div .modal-header>
-    <button type="button" .close data-dismiss="modal" aria-label="Close">&times;
-    <h3 .modal-title #addLabel>Add a transaction
+    <button type="button" .close data-dismiss="modal" aria-label=_{HMsg "Close"}>&times;
+    <h3 .modal-title #addLabel>_{HMsg "Add a transaction"}
   <div .modal-body>
     <form#addform.form action=@{addR} method=POST enctype=#{addEnctype}>
       ^{addView}
@@ -44,26 +45,32 @@ addModal addR j today = do
 
 addForm :: Journal -> Day -> Markup -> MForm Handler (FormResult (Transaction,FilePath), Widget)
 addForm j today = identifyForm "add" $ \extra -> do
+  trs <- lift requestTranslations
   let  -- bindings used in add-form.hamlet
     descriptions = foldMap S.fromList [journalPayeesDeclaredOrUsed j, journalDescriptions j]
     files = fst <$> jfiles j
     deffile = journalFilePath j
+    accountPlaceholder = tr trs "Account {n}"
+    amountPlaceholder = tr trs "Amount {n}"
+    numbered template n = substitutePlaceholders [("n", T.pack (show n))] template
+    -- custom fields
+    dateField = textField & checkMMap (pure . right fromEFDay . validateDate) (T.pack . show)
+      where
+        validateDate s =
+          first (const (tr trs "Invalid date format")) $
+          fixSmartDateStrEither' today (T.strip s)
+    dateSettings = FieldSettings "date" Nothing Nothing (Just "date") [("class", "form-control input-lg"), ("placeholder", trc trs "placeholder" "Date")]
+    descSettings = FieldSettings "desc" Nothing Nothing (Just "description") [("class", "form-control input-lg"), ("placeholder", trc trs "placeholder" "Description"), ("size", "40"), ("list", "descriptionnames")]
   (dateRes, dateView) <- mreq dateField dateSettings Nothing
   (descRes, descView) <- mopt textField descSettings Nothing
   (acctsRes, _)       <- mreq listField acctSettings Nothing
   (amtsRes, _)        <- mreq listField amtSettings  Nothing
   (fileRes, fileView) <- mopt fileField' fileSettings Nothing
   let
-    (postingsRes, displayRows) = validatePostings acctsRes amtsRes
+    (postingsRes, displayRows) = validatePostings trs acctsRes amtsRes
     formRes = validateTransaction deffile dateRes descRes postingsRes fileRes
   return (formRes, $(widgetFile "add-form"))
   where
-    -- custom fields
-    dateField = textField & checkMMap (pure . right fromEFDay . validateDate) (T.pack . show)
-      where
-        validateDate s =
-          first (const ("Invalid date format" :: Text)) $
-          fixSmartDateStrEither' today (T.strip s)
     listField = Field
       { fieldParse = const . pure . Right . Just . dropWhileEnd T.null
       , fieldView = error' "listField should not be used for rendering"  -- PARTIAL:
@@ -78,8 +85,6 @@ addForm j today = identifyForm "add" $ \extra -> do
           | f `elem` fs = Right f
           | otherwise = Left $ MsgInputNotFound $ T.pack f
     -- field settings
-    dateSettings = FieldSettings "date" Nothing Nothing (Just "date") [("class", "form-control input-lg"), ("placeholder", "Date")]
-    descSettings = FieldSettings "desc" Nothing Nothing (Just "description") [("class", "form-control input-lg"), ("placeholder", "Description"), ("size", "40"), ("list", "descriptionnames")]
     acctSettings = FieldSettings "account" Nothing Nothing (Just "account") []
     amtSettings  = FieldSettings "amount" Nothing Nothing (Just "amount") []
     fileSettings = FieldSettings "file" Nothing Nothing (Just "file") [("class", "form-control input-lg")]
@@ -106,9 +111,11 @@ validateTransaction deffile dateRes descRes postingsRes fileRes =
 -- | Parse a list of postings out of a list of accounts and a corresponding list
 -- of amounts
 validatePostings ::
-     FormResult [Text] -> FormResult [Text]
+     Translations -> FormResult [Text] -> FormResult [Text]
   -> (FormResult [Posting], [(Int, (Text, Text, Maybe Text, Maybe Text))])
-validatePostings acctsRes amtsRes = let
+validatePostings trs acctsRes amtsRes = let
+  missingamount = tr trs "Missing amount"
+  missingaccount = tr trs "Missing account"
 
   -- Zip accounts and amounts, fill in missing values and drop empty rows.
   rows :: [(Text, Text)]
@@ -120,10 +127,10 @@ validatePostings acctsRes amtsRes = let
   postings :: [(Text, Text, Either (Maybe Text, Maybe Text) Posting)]
   postings = unfoldr go (True, rows)
     where
-      go (True, (x, ""):y:xs) = Just ((x, "", zipRow (checkAccount x) (Left "Missing amount")), (True, y:xs))
+      go (True, (x, ""):y:xs) = Just ((x, "", zipRow (checkAccount x) (Left missingamount)), (True, y:xs))
       go (True, (x, ""):xs) = Just ((x, "", zipRow (checkAccount x) (Right missingamt)), (False, xs))
-      go (False, (x, ""):xs) = Just ((x, "", zipRow (checkAccount x) (Left "Missing amount")), (False, xs))
-      go (_, ("", y):xs) = Just (("", y, zipRow (Left "Missing account") (checkAmount y)), (False, xs))
+      go (False, (x, ""):xs) = Just ((x, "", zipRow (checkAccount x) (Left missingamount)), (False, xs))
+      go (_, ("", y):xs) = Just (("", y, zipRow (Left missingaccount) (checkAmount y)), (False, xs))
       go (_, (x, y):xs) = Just ((x, y, zipRow (checkAccount x) (checkAmount y)), (True, xs))
       go (_, []) = Nothing
 
@@ -135,7 +142,10 @@ validatePostings acctsRes amtsRes = let
       acct = accountNameWithoutPostingType acct'
       atype = accountNamePostingType acct'
 
-  errorToFormMsg = first (("Invalid value: " <>) . T.pack .
+  -- The parser's own message stays in English, inside a translated frame.
+  -- (The signature keeps this polymorphic under MonoLocalBinds, since it mentions trs.)
+  errorToFormMsg :: Either HledgerParseErrors a -> Either Text a
+  errorToFormMsg = first ((\e -> trf trs "Invalid value: {error}" [("error", e)]) . T.pack .
                           foldl (\s a -> s <> parseErrorTextPretty a) "" .
                           bundleErrors)
   checkAccount = errorToFormMsg . runParser (accountnamep <* eof) "" . T.strip
@@ -146,8 +156,8 @@ validatePostings acctsRes amtsRes = let
   result = case (acctsRes, amtsRes) of
     (FormMissing, FormMissing) -> postings
     _ -> case postings of
-      [] -> [ ("", "", Left (Just "Missing account", Just "Missing amount"))
-           , ("", "", Left (Just "Missing account", Nothing))
+      [] -> [ ("", "", Left (Just missingaccount, Just missingamount))
+           , ("", "", Left (Just missingaccount, Nothing))
            ]
       xs -> xs
 
@@ -160,7 +170,7 @@ validatePostings acctsRes amtsRes = let
 
   -- And finally prepare the final FormResult [Posting]
   formResult = case traverse (\(_, _, x) -> x) result of
-    Left _ -> FormFailure ["Postings validation failed"]
+    Left _ -> FormFailure [tr trs "Postings validation failed"]
     Right xs -> FormSuccess xs
 
   in (formResult, zip [(1 :: Int)..] display)

@@ -22,9 +22,11 @@ import Control.Monad (join, when, unless)
 -- import Control.Monad.Except (runExceptT)  -- now re-exported by Hledger
 import Data.ByteString.Base64 qualified as B64
 import Data.ByteString.Char8 qualified as BC
+import Data.Foldable (for_)
+import Data.Map qualified as M
 import Data.Traversable (for)
 import Data.IORef (IORef, readIORef, writeIORef)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -40,7 +42,9 @@ import Text.Blaze (Markup)
 import Text.Hamlet (hamletFile)
 import Yesod
 import Yesod.Default.Config
+import Yesod.Form.I18n.German (germanFormMessage)
 
+import Hledger.Utils.I18n (Translations(..), langTagCandidates, resolveLang, tr, trc)
 import Hledger
 import Hledger.Cli (CliOpts(..), journalReloadIfChanged)
 import Hledger.Web.Settings (Extra(..), widgetFile)
@@ -62,6 +66,9 @@ data App = App
     , appJournal :: IORef Journal
         -- ^ the current journal, filtered by the initial command line query
         --   but ignoring any depth limit.
+    , appTranslations :: M.Map Text Translations
+        -- ^ the translation catalogs available to viewers, by language tag
+        --   (built-in and from the user's config directory), loaded at startup.
     }
 
 
@@ -127,8 +134,17 @@ instance Yesod App where
 
     master <- getYesod
     here <- fromMaybe RootR <$> getCurrentRoute
-    VD{opts, j, qparam, q, qopts, perms} <- getViewData
+    VD{opts, j, qparam, q, qopts, perms, trs} <- getViewData
     msg <- getMessage
+    -- An explicit ?_LANG= choice is remembered in a cookie, which Yesod's
+    -- languages reads on later requests; only a tag naming an available
+    -- catalog is accepted. And since the page varies by language, say so
+    -- for any cache in front of a shared server.
+    mlangparam <- lookupGetParam "_LANG"
+    for_ (mlangparam >>= \l -> resolveLang (M.keys $ appTranslations master) [l]) $ \l ->
+      addHeader "Set-Cookie" $ "_LANG=" <> l <> "; Path=/; Max-Age=31536000; SameSite=Lax"
+    addHeader "Vary" "Cookie, Accept-Language"
+    let lang = trLang trs
     showSidebar <- shouldShowSidebar
     -- The policy is sent from here rather than from a middleware, so that
     -- the header and the page's script tags always carry the same nonce;
@@ -158,7 +174,7 @@ instance Yesod App where
                          else (== Just "1") . lookup "hideemptyaccts" . reqCookies <$> getRequest
 
     let accounts =
-          balanceReportAsHtml (JournalR, RegisterR) here hideEmptyAccts j qparam qopts $
+          balanceReportAsHtml (JournalR, RegisterR) here hideEmptyAccts trs j qparam qopts $
           styleAmounts (journalCommodityStylesWith HardRounding j) $
           balanceReport rspec' j
 
@@ -191,10 +207,42 @@ instance Yesod App where
 
     withUrlRenderer $(hamletFile "templates/default-layout-wrapper.hamlet")
 
--- This instance is required to use forms. You can modify renderMessage to
--- achieve customized and internationalized form validation messages.
+----------------------------------------------------------------------
+-- translations
+
+-- | The translations for a viewer (as listed
+-- by Yesod's 'languages': the _LANG query parameter, cookie and session
+-- variable, then the Accept-Language header): the first available one,
+-- trying each preference with its subtags dropped before moving on to the
+-- next. Falls back to the server's --lang.
+translationsFor :: App -> [Lang] -> Translations
+translationsFor App{appOpts, appTranslations} langs =
+  fromMaybe serverdefault $ (`M.lookup` appTranslations) =<< resolveLang (M.keys appTranslations) langs
+  where serverdefault = translations_ $ _rsReportOpts $ reportspec_ $ cliopts_ appOpts
+
+-- | The translations for the current request's language.
+requestTranslations :: Handler Translations
+requestTranslations = translationsFor <$> getYesod <*> languages
+
+-- | A translatable text, for @_{HMsg "..."}@ in templates and 'setMessageI'.
+newtype HMsg = HMsg Text
+
+instance RenderMessage App HMsg where
+  renderMessage app langs (HMsg s) = tr (translationsFor app langs) s
+
+-- | Like 'HMsg', with a context disambiguating a short text used in
+-- more than one sense, eg @_{HMsgc "column heading" "Total"}@.
+data HMsgc = HMsgc Text Text
+
+instance RenderMessage App HMsgc where
+  renderMessage app langs (HMsgc ctx s) = trc (translationsFor app langs) ctx s
+
+-- | yesod-form's validation messages, in the request's language when
+-- yesod-form ships that language.
 instance RenderMessage App FormMessage where
-    renderMessage _ _ = defaultFormMessage
+  renderMessage app langs = fromMaybe defaultFormMessage $ listToMaybe
+    [ m | c <- langTagCandidates (trLang $ translationsFor app langs), Just m <- [lookup c formMessages] ]
+    where formMessages = [("de", germanFormMessage)]
 
 
 ----------------------------------------------------------------------
@@ -241,6 +289,7 @@ data ViewData = VD
   , q     :: Query      -- ^ a query parsed from the q parameter
   , qopts :: [QueryOpt] -- ^ query options parsed from the q parameter
   , perms :: [Permission]  -- ^ permissions enabled for this request (by --allow and/or X-Sandstorm-Permissions)
+  , trs   :: Translations  -- ^ translations for this request's language
   } deriving (Show)
 
 instance Show Text.Blaze.Markup where show _ = "<blaze markup>"
@@ -249,10 +298,14 @@ instance Show Text.Blaze.Markup where show _ = "<blaze markup>"
 getViewData :: Handler ViewData
 getViewData = do
   App{
-    appOpts=opts@WebOpts{ cliopts_=copts@CliOpts{ reportspec_=rspec@ReportSpec{_rsReportOpts, _rsQuery} } },
+    appOpts=opts0@WebOpts{ cliopts_=copts@CliOpts{ reportspec_=rspec@ReportSpec{_rsReportOpts, _rsQuery} } },
     appJournal
   } <- getYesod
   let today = _rsDay rspec
+  -- the request's language, applied to the options too so that any
+  -- report text rendered by hledger-lib matches the page
+  trs <- requestTranslations
+  let opts = opts0{cliopts_ = copts{reportspec_ = rspec{_rsReportOpts = _rsReportOpts{translations_ = trs}}}}
 
   -- try to read the latest journal content, keeping the old content
   -- if there's an error
@@ -290,7 +343,7 @@ getViewData = do
     -- otherwise take them from the access level specified by --allow's access level
     cliaccess -> pure $ accessLevelToPermissions cliaccess
 
-  return VD{opts, today, j, qparam, q, qopts, perms}
+  return VD{opts, today, j, qparam, q, qopts, perms, trs}
 
 checkServerSideUiEnabled :: Handler ()
 checkServerSideUiEnabled = do
