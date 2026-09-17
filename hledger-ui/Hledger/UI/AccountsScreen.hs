@@ -40,6 +40,7 @@ import System.Console.ANSI
 import System.FilePath (takeFileName)
 import Text.DocLayout (realLength)
 
+import Hledger.Utils.I18n (tr)
 import Hledger
 import Hledger.Cli hiding (Mode, mode, progname, prognameandversion)
 import Hledger.UI.UIOptions
@@ -63,11 +64,13 @@ asDraw ass@ASS{_assKind=kind} ui = dbgui "asDraw" $ asDrawHelper ass ui ropts' s
 
 -- | The display name shown in an accounts-like screen's header, for the given kind.
 accountsScreenName :: AccountsScreenKind -> ReportOpts -> String
-accountsScreenName kind ropts = case kind of
-  AllAccounts             -> "account " ++ if balanceaccum_ ropts == Historical then "balances" else "changes"
-  CashAccounts            -> "cash balances"
-  BalancesheetAccounts    -> "balance sheet balances"
-  IncomestatementAccounts -> "income statement changes"
+accountsScreenName kind ropts = T.unpack $ case kind of
+  AllAccounts | balanceaccum_ ropts == Historical -> tr trs "account balances"
+              | otherwise                         -> tr trs "account changes"
+  CashAccounts            -> tr trs "cash balances"
+  BalancesheetAccounts    -> tr trs "balance sheet balances"
+  IncomestatementAccounts -> tr trs "income statement changes"
+  where trs = translations_ ropts
 
 -- | Help draw any accounts-like screen (all accounts, balance sheet, income statement..).
 -- The provided ReportOpts are used instead of the ones in the UIState.

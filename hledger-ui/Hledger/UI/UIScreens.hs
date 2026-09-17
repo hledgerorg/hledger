@@ -46,6 +46,7 @@ import Lens.Micro (over)
 import Safe
 import Data.Vector qualified as V
 
+import Hledger.Utils.I18n (i18n)
 import Hledger.Cli hiding (mode, progname,prognameandversion)
 import Hledger.UI.UIOptions
 import Hledger.UI.UITypes
@@ -87,11 +88,12 @@ msNew =
   MS MSS { _mssList = list MenuList (V.fromList items ) 1, _mssUnused = () }
   where
     -- keep synced with: indexes below, initial screen stack setup in UI.Main
+    -- TRANSLATORS: the menu screen's entries; translated when drawn.
     items = [
-       MenuScreenItem "Cash accounts" CashAccounts
-      ,MenuScreenItem "Balance sheet accounts" BalancesheetAccounts
-      ,MenuScreenItem "Income statement accounts" IncomestatementAccounts
-      ,MenuScreenItem "All accounts" AllAccounts
+       MenuScreenItem (i18n "Cash accounts") CashAccounts
+      ,MenuScreenItem (i18n "Balance sheet accounts") BalancesheetAccounts
+      ,MenuScreenItem (i18n "Income statement accounts") IncomestatementAccounts
+      ,MenuScreenItem (i18n "All accounts") AllAccounts
       ]
 
 -- keep synced with items above.
