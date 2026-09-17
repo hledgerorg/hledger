@@ -252,7 +252,7 @@ showInterval = \case
   Quarters 1 -> Just "Quarterly"
   Quarters 2 -> Just "Half-yearly"
   Years 1    -> Just "Yearly"
-  Years 2    -> Just "Biannual"
+  Years 2    -> Just "Biennial"
   _          -> Just "Periodic"
 
 -- | Summarise one or more (inclusive) end dates, in a way that's
