@@ -84,6 +84,7 @@ import Data.List (partition)
 import Data.List.Extra (find, isPrefixOf, nubSort, stripPrefix)
 import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
 import Data.Text qualified as T
+import Data.Gettext (Catalog)
 import Data.Time.Calendar (Day, addDays)
 import Data.Default (Default(..))
 import Safe (lastDef, lastMay, maximumMay, readMay)
@@ -194,6 +195,7 @@ data ReportOpts = ReportOpts {
       --   TERM and existence of NO_COLOR environment variables.
     ,transpose_        :: Bool
     ,layout_           :: Layout
+    ,catalog_          :: Maybe Catalog
     ,period_titles_  :: PeriodTitles
     -- | Explicit --title value if given (possibly empty to
     -- suppress); otherwise Nothing, in which case each report falls
@@ -246,6 +248,7 @@ defreportopts = ReportOpts
     , color_            = False
     , transpose_        = False
     , layout_           = LayoutWide Nothing
+    , catalog_          = Nothing
     , period_titles_  = PTCompact
     , title_   = Nothing
     , subreport_titles_ = Nothing

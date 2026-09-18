@@ -142,6 +142,7 @@ library
       Hledger.Cli.CompoundBalanceCommand
       Hledger.Cli.Conf
       Hledger.Cli.DocFiles
+      Hledger.Cli.Message
       Hledger.Cli.Script
       Hledger.Cli.Utils
       Hledger.Cli.Version
@@ -169,6 +170,7 @@ library
     , githash >=0.1.6.2
     , hashable >=1.2.4
     , haskeline >=0.6
+    , haskell-gettext
     , hledger-lib ==1.99.*
     , http-client
     , http-types
@@ -226,6 +228,7 @@ executable hledger
     , filepath
     , githash >=0.1.6.2
     , haskeline >=0.6
+    , haskell-gettext
     , hledger
     , hledger-lib ==1.99.*
     , http-client
@@ -278,6 +281,7 @@ test-suite unittest
     , filepath
     , githash >=0.1.6.2
     , haskeline >=0.6
+    , haskell-gettext
     , hledger
     , hledger-lib ==1.99.*
     , http-client
@@ -331,6 +335,7 @@ benchmark bench
     , filepath
     , githash >=0.1.6.2
     , haskeline >=0.6
+    , haskell-gettext
     , hledger
     , hledger-lib ==1.99.*
     , html

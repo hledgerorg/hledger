@@ -283,6 +283,7 @@ helpflags = [
  ,flagNone ["man"]      (setboolopt "man")     "show this command's manual with man"
  ,flagNone ["webman"]   (setboolopt "webman")  "show this command's manual on the web"
  ,flagNone ["examples"] (setboolopt "examples") "show examples for this command"
+ ,flagReq  ["catalog"]  (\s opts -> Right $ setopt "catalog" s opts) "CATALOGFILE" "File containing custom translations."
  ,flagNone ["version"]  (setboolopt "version") "show version information"
   -- flagOpt would be more correct for --debug, showing --debug[=LVL] rather than --debug=[LVL] in help.
   -- But flagReq plus special handling in Cli.hs makes the = optional, removing a source of confusion.
@@ -597,6 +598,7 @@ data CliOpts = CliOpts {
     ,reportspec_      :: ReportSpec
     ,output_file_     :: Maybe FilePath
     ,output_format_   :: Maybe String
+    ,catalog_file_    :: Maybe FilePath
     ,pageropt_        :: Maybe Bool     -- ^ --pager
     ,coloropt_        :: Maybe YNA      -- ^ --color. Controls use of ANSI color and ANSI styles.
     ,debug_           :: Int            -- ^ debug level, set by @--debug[=N]@. See also 'Hledger.Utils.debugLevel'.
@@ -619,6 +621,7 @@ defcliopts = CliOpts
     , reportspec_      = def
     , output_file_     = Nothing
     , output_format_   = Nothing
+    , catalog_file_    = Nothing
     , pageropt_        = Nothing
     , coloropt_        = Nothing
     , debug_           = 0
@@ -675,6 +678,7 @@ rawOptsToCliOpts rawopts = do
              ,reportspec_      = rspec
              ,output_file_     = maybestringopt "output-file" rawopts
              ,output_format_   = maybestringopt "output-format" rawopts
+             ,catalog_file_    = maybestringopt "catalog" rawopts
              ,pageropt_        = maybeynopt "pager" rawopts
              ,coloropt_        = maybeynaopt "color" rawopts
              ,debug_           = posintopt "debug" rawopts

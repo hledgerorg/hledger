@@ -20,14 +20,15 @@ import System.Console.CmdArgs.Explicit
 
 import Hledger
 import Hledger.Cli.CliOptions
+import Hledger.Cli.Message qualified as Msg
 import Hledger.Cli.CompoundBalanceCommand
 
 cashflowSpec = CompoundBalanceCommandSpec {
   cbcdoc      = $(embedFileRelative "Hledger/Cli/Commands/Cashflow.txt"),
-  cbctitle    = "Cashflow Statement",
+  cbctitle    = Msg.Noun Msg.CashflowStatement,
   cbcqueries  = [
      CBCSubreportSpec{
-      cbcsubreporttitle="Cash flows"
+      cbcsubreporttitle=Msg.CashFlows
      ,cbcsubreportquery=Type [Cash]
      ,cbcsubreportoptions=(\ropts -> ropts{normalbalance_= Just NormallyPositive})
      ,cbcsubreporttransform=id

@@ -273,6 +273,7 @@ module Hledger.Cli.Commands.Balance (
  ,tidyColumnLabels
  ,nbsp
  ,RowClass(..)
+ ,accountClass
   -- ** Tests
  ,tests_Balance
 ) where
@@ -297,6 +298,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Builder qualified as TB
+import Data.Gettext (loadCatalog)
 import Data.Time (addDays, fromGregorian)
 import System.Console.CmdArgs.Explicit as C (flagNone, flagReq, flagOpt)
 import Safe (headMay, maximumMay)
@@ -317,6 +319,7 @@ import Hledger.Write.Spreadsheet (rawTableContent, headerCell,
             addHeaderBorders, addRowSpanHeader, addRowSpanHeaderNE,
             cellFromMixedAmount, cellsFromMixedAmount, cellFromAmount)
 import Hledger.Write.Spreadsheet qualified as Ods
+import Hledger.Cli.Message qualified as Msg
 
 
 -- | Command line options for this command.
@@ -395,7 +398,18 @@ balancemode = hledgerCommandMode
 
 -- | The balance command, prints a balance report.
 balance :: CliOpts -> Journal -> IO ()
-balance opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
+balance opts@CliOpts{reportspec_=rspec} j = do
+  let ropts0 = _rsReportOpts rspec
+  maybeCat <- traverse loadCatalog $ catalog_file_ opts
+  let ropts =
+        ropts0 {
+            -- tidy csv is defined externally and must not include totals or averages
+            no_total_ = no_total_ ropts0 || layout_ ropts0 == LayoutTidy,
+            catalog_ = maybeCat
+        }
+  -- Tidy csv/tsv should be consistent between single period and multiperiod reports.
+  let multiperiod = interval_ ropts /= NoInterval || (layout_ ropts == LayoutTidy && delimited)
+  case balancecalc_ ropts of
     CalcBudget -> do  -- single or multi period budget report
       let rspan = fst $ reportSpan j rspec
           budgetreport = styleAmounts styles $ budgetReport rspec (balancingopts_ $ inputopts_ opts) rspan j
@@ -436,18 +450,13 @@ balance opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
         writeOutputLazyText opts $ render report
   where
     styles = journalCommodityStylesWith HardRounding j
-    ropts =
-        let ropts0 = _rsReportOpts rspec in
-        ropts0 {
-            -- tidy csv is defined externally and must not include totals or averages
-            no_total_ = no_total_ ropts0 || layout_ ropts0 == LayoutTidy
-        }
-    -- Tidy csv/tsv should be consistent between single period and multiperiod reports.
-    multiperiod = interval_ ropts /= NoInterval || (layout_ ropts == LayoutTidy && delimited)
     delimited   = fmt == "csv" || fmt == "tsv"
     fmt         = outputFormatFromOpts opts
 
 -- Rendering
+
+accountClass :: Ods.Class
+accountClass = Ods.Class "account"
 
 data RowClass = Value | Total
     deriving (Eq, Ord, Enum, Bounded, Show)
@@ -484,10 +493,10 @@ budgetAverageClass rc =
 
 -- What to show as heading for the totals row in balance reports ?
 -- Currently nothing in terminal, Total: in HTML, FODS and xSV output.
-totalRowHeadingText        = ""
-totalRowHeadingSpreadsheet = "Total:"
-totalRowHeadingBudgetText  = ""
-totalRowHeadingBudgetCsv   = "Total:"
+totalRowHeadingText        = Msg.None
+totalRowHeadingSpreadsheet = Msg.Total
+totalRowHeadingBudgetText  = Msg.None
+totalRowHeadingBudgetCsv   = Msg.Total
 
 -- Single-column balance reports
 
@@ -712,15 +721,16 @@ balanceReportAsSpreadsheetParts fmt opts (items, total) =
       if no_total_ opts
         then []
         else addTotalBorders $
-          rows Total (totalRowHeadingSpreadsheet, totalRowHeadingSpreadsheet, 0, total))
+          rows Total (msg totalRowHeadingSpreadsheet, msg totalRowHeadingSpreadsheet, 0, total))
   where
     cell = Ods.defaultCell
+    msg = Msg.getText (catalog_ opts)
     headers =
       addHeaderBorders $ fmap headerCell $
-      "account" :| case layout_ opts of
+      msg Msg.Account :| case layout_ opts of
         LayoutBareWide -> allCommodities
-        LayoutBare -> ["commodity", "balance"]
-        _          -> ["balance"]
+        LayoutBare -> [msg Msg.Commodity, msg Msg.Balance]
+        _          -> [msg Msg.Balance]
     allCommodities =
         S.toAscList $ foldMap (\(_,_,_,ma) -> maCommodities ma) items
     rows ::
@@ -794,9 +804,8 @@ multiBalanceReportAsSpreadsheetParts fmt opts@ReportOpts{..}
   allCommodities (PeriodicReport colspans items tr) =
     (allHeaders, concatMap fullRowAsTexts items, addTotalBorders totalrows)
   where
-    accountCell label =
-        (Ods.defaultCell label) {Ods.cellClass = Ods.Class "account"}
-    hCell cls label = (headerCell label) {Ods.cellClass = Ods.Class cls}
+    accountCell label = (Ods.defaultCell label) {Ods.cellClass = accountClass}
+    hCell cls label = (headerCell label) {Ods.cellClass = cls}
     allHeaders =
       case layout_ of
       LayoutBareWide ->
@@ -805,9 +814,10 @@ multiBalanceReportAsSpreadsheetParts fmt opts@ReportOpts{..}
               concatMap (Ods.horizontalSpan allCommodities) dateHeaders,
            headers]
       _ -> [headers]
+    msg = Msg.getText catalog_
     headers =
       addHeaderBorders $
-      hCell "account" "account" :
+      hCell accountClass (msg Msg.Account) :
       case layout_ of
       LayoutTidy -> map headerCell tidyColumnLabels
       LayoutBareWide -> dateHeaders >> map headerCell allCommodities
@@ -815,8 +825,8 @@ multiBalanceReportAsSpreadsheetParts fmt opts@ReportOpts{..}
       _          -> dateHeaders
     dateHeaders =
       (if not summary_only_ then map (headerDateSpanCell period_titles_ balance_base_url_ querystring_) colspans  else [] )++
-      [hCell "rowtotal" "total" | multiBalanceHasTotalsColumn opts] ++
-      [hCell "rowaverage" "average" | average_]
+      [hCell (Ods.Class "rowtotal") (msg Msg.Total) | multiBalanceHasTotalsColumn opts] ++
+      [hCell (Ods.Class "rowaverage") (msg Msg.Average) | average_]
     fullRowAsTexts row =
         addRowSpanHeader anchorCell $
         rowAsText Value (dateSpanCell period_titles_ balance_base_url_ querystring_ acctName) row
@@ -827,7 +837,7 @@ multiBalanceReportAsSpreadsheetParts fmt opts@ReportOpts{..}
     totalrows =
       if no_total_
         then []
-        else addRowSpanHeader (accountCell totalRowHeadingSpreadsheet) $
+        else addRowSpanHeader (accountCell $ msg totalRowHeadingSpreadsheet) $
                 rowAsText Total (simpleDateSpanCell period_titles_) tr
     rowAsText rc dsCell =
         map (map (fmap wbToText)) .
@@ -946,8 +956,9 @@ multiBalanceReportAsPartTable
      (Group multiColumnTableInterColumnBorder $ map Header colheadings)
      (concat rows)
   where
+    msg = Msg.getText (catalog_ opts)
     colheadings =
-      ["Commodity" | layout_ opts == LayoutBare]
+      [msg Msg.Commodity | layout_ opts == LayoutBare]
       ++
       case layout_ opts of
           LayoutBareWide ->
@@ -957,8 +968,8 @@ multiBalanceReportAsPartTable
     spanNames =
         (guard (not summary_only_) >>
             map (reportPeriodName (period_titles_ opts) balanceaccum_ spans) spans)
-        ++ ["  Total" | multiBalanceHasTotalsColumn opts]
-        ++ ["Average" | average_]
+        ++ [msg Msg.RightTotal | multiBalanceHasTotalsColumn opts]
+        ++ [msg Msg.RightAverage | average_]
     (accts, rows) = unzip $ fmap fullRowAsTexts items'
       where
         isLeaf rs row = not $ any (\r -> T.isPrefixOf (displayFull (prrName row) <> ":") (displayFull (prrName r))) rs
@@ -973,7 +984,7 @@ multiBalanceReportAsPartTable
       | no_total_ opts = id
       | otherwise =
         let totalrows = multiBalanceRowAsText opts allCommodities tr
-            rowhdrs = Group NoLine $ map Header $ totalRowHeadingText : replicate (length totalrows - 1) ""
+            rowhdrs = Group NoLine $ map Header $ msg totalRowHeadingText : replicate (length totalrows - 1) ""
             colhdrs = Header [] -- unused, concatTables will discard
         in (flip (concatTables SingleLine) $ Table rowhdrs colhdrs totalrows)
     maybetranspose | transpose_ opts = \(Table rh ch vals) -> Table ch rh (transpose vals)
@@ -1122,15 +1133,17 @@ budgetReportAsTable ropts@ReportOpts{..} (PeriodicReport spans items totrow) =
       | no_total_ = id
       | otherwise =
         let
-          rowhdrs = Group NoLine $ map Header $ totalRowHeadingBudgetText : replicate (length totalrows - 1) ""
+          rowhdrs = Group NoLine $ map Header $ msg totalRowHeadingBudgetText : replicate (length totalrows - 1) ""
           colhdrs = Header [] -- ignored by concatTables
         in
           (flip (concatTables SingleLine) $ Table rowhdrs colhdrs totalrows)  -- XXX ?
 
-    colheadings = ["Commodity" | layout_ == LayoutBare]
+    msg = Msg.getText catalog_
+
+    colheadings = [msg Msg.Commodity | layout_ == LayoutBare]
                   ++ (if not summary_only_ then map (reportPeriodName period_titles_ balanceaccum_ spans) spans else [])
-                  ++ ["  Total" | row_total_]
-                  ++ ["Average" | average_]
+                  ++ [msg Msg.RightTotal | row_total_]
+                  ++ [msg Msg.RightAverage | average_]
 
     (accts, rows, totalrows) =
       (accts'
@@ -1343,10 +1356,11 @@ budgetReportAsSpreadsheet
 
     -- totals row
     ++ addTotalBorders
-          (concat [ rowAsTexts Total (cell totalRowHeadingBudgetCsv) totrow | not no_total_ ])
+          (concat [ rowAsTexts Total (cell $ msg totalRowHeadingBudgetCsv) totrow | not no_total_ ])
     )
 
   where
+    msg = Msg.getText catalog_
     cell = Ods.defaultCell
     accountCell row =
         let name = prrFullName row in
@@ -1364,13 +1378,13 @@ budgetReportAsSpreadsheet
               leadingHeaders ++ (dateHeaders >> allCommodities)]
       _ -> [addHeaderBorders $ map headerCell $ leadingHeaders ++ dateHeaders]
     leadingHeaders =
-      "Account" : ["Commodity" | layout_ == LayoutBare ]
+      msg Msg.Account : [msg Msg.Commodity | layout_ == LayoutBare ]
     dateHeaders =
       (if not summary_only_
-            then concatMap (\spn -> [renderPeriodHeading period_titles_ spn, "budget"]) colspans
+            then concatMap (\spn -> [renderPeriodHeading period_titles_ spn, msg Msg.Budget]) colspans
             else [])
-       ++ concat [["Total"  ,"budget"] | row_total_]
-       ++ concat [["Average","budget"] | average_]
+       ++ concat [[msg Msg.Total  , msg Msg.Budget] | row_total_]
+       ++ concat [[msg Msg.Average, msg Msg.Budget] | average_]
     allCommodities =
        S.toAscList $
        foldMap (foldMap maCommodities . concatMap (\(change,goal) -> maybeToList change ++ maybeToList goal) . prrAmounts) items
