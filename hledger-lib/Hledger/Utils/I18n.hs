@@ -64,14 +64,14 @@ module Hledger.Utils.I18n (
   tests_I18n,
 ) where
 
-import Control.Monad (unless, void)
+import Control.Monad (unless, void, when)
 import Control.Monad.Combinators.Expr (Operator(..), makeExprParser)
 import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.Char (chr, isAlpha, isAlphaNum, isAscii, isHexDigit, toLower)
 import Data.Either (isLeft, rights)
-import Data.List (inits, partition, sort, sortOn)
+import Data.List (inits, intercalate, partition, sort, sortOn)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe, mapMaybe)
@@ -80,6 +80,7 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Data.Time.Clock (UTCTime, diffUTCTime, getCurrentTime)
 import Data.Time.Format (TimeLocale(..), defaultTimeLocale)
 import Data.Void (Void)
 import Numeric (readHex, readOct)
@@ -89,8 +90,10 @@ import System.FilePath ((</>), dropExtension, takeExtension)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
+import Text.Printf (printf)
 import Text.Read (readMaybe)
 
+import Hledger.Utils.Debug (debugLevel, dbg1MsgIO)
 import Hledger.Utils.IO (embedFileRelativeBytes, usageError, warnIO)
 import Hledger.Utils.Test
 
@@ -273,8 +276,9 @@ overrideCatalogFiles = do
          , Just tag <- [normalizeLangTag (T.pack (dropExtension f))] ]
 
 -- | Read the user's catalog for this language tag, if there is one and it
--- is usable. Problems are reported as warnings and the catalog ignored.
-readOverrideCatalog :: Text -> IO (Maybe Translations)
+-- is usable, returning it with its path. Problems are reported as
+-- warnings and the catalog ignored.
+readOverrideCatalog :: Text -> IO (Maybe (FilePath, Translations))
 readOverrideCatalog lang = do
   files <- overrideCatalogFiles
   case lookup lang files of
@@ -289,23 +293,49 @@ readOverrideCatalog lang = do
             Left _ -> Nothing <$ warnIO ("ignoring translation catalog " ++ f ++ ": it is not valid UTF-8")
             Right t -> case parsePo f lang t of
               Left err -> Nothing <$ warnIO ("ignoring translation catalog " ++ f ++ ":\n" ++ err)
-              Right c  -> return (Just c)
+              Right c  -> return (Just (f, c))
 
 -- | The language tags for which a catalog exists, built-in or in the
 -- user's override directory. Always includes "en".
+--
+-- Listing the built-in languages parses the built-in catalogs (whichever
+-- of them parse are the ones available), once per process. With --debug,
+-- reports how long that took.
 availableLanguages :: IO [Text]
 availableLanguages = do
+  t0 <- getCurrentTime
+  let nbuiltin = length builtinLanguages - 1
+  t1 <- nbuiltin `seq` getCurrentTime
+  when (debugLevel >= 1) $
+    dbg1MsgIO $ printf "translations: parsed %d built-in catalogs, %.1f ms" nbuiltin (msSince t0 t1)
   overrides <- map fst <$> overrideCatalogFiles
   return $ S.toList $ S.fromList $ builtinLanguages ++ overrides
 
 -- | Load the translations for this language tag (which should be one
 -- returned by 'availableLanguages'): the built-in catalog if any, with
--- the user's catalog merged over it if any.
+-- the user's catalog merged over it if any. With --debug, reports what
+-- was loaded, its size, and how long it took.
 loadTranslations :: Text -> IO Translations
 loadTranslations lang = do
-  let builtin = fromMaybe noTranslations{trLang = lang} $ M.lookup lang builtinTranslations
+  t0 <- getCurrentTime
+  let mbuiltin = M.lookup lang builtinTranslations
+      builtin = fromMaybe noTranslations{trLang = lang} mbuiltin
   moverride <- readOverrideCatalog lang
-  return $ maybe builtin (mergeTranslations builtin) moverride
+  let trs = maybe builtin (mergeTranslations builtin . snd) moverride
+  when (debugLevel >= 1) $ do
+    -- Force the merged catalog so that the time is real.
+    let entries = M.size (trMessages trs) + M.size (trPlurals trs)
+    t1 <- entries `seq` getCurrentTime
+    let chars = sum (map T.length (M.keys (trMessages trs) ++ M.elems (trMessages trs)))
+              + sum (map T.length (M.keys (trPlurals trs) ++ concat (M.elems (trPlurals trs))))
+    let sources = [ "built-in" | isJust mbuiltin ] ++ [ f | Just (f, _) <- [moverride] ]
+    dbg1MsgIO $ printf "translations: loaded %s (%s): %d entries, ~%d KB of text, %.1f ms"
+      (T.unpack lang) (if null sources then "no catalog" else intercalate ", " sources) entries (chars `div` 1024) (msSince t0 t1)
+  return trs
+
+-- | Milliseconds between two times, for debug output.
+msSince :: UTCTime -> UTCTime -> Double
+msSince t0 t1 = realToFrac (diffUTCTime t1 t0) * 1000
 
 -- | Load the translations for every available language.
 loadAllTranslations :: IO (Map Text Translations)
