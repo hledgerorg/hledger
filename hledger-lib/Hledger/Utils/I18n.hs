@@ -435,10 +435,13 @@ indexedMsgstr = do
 strings :: PoParser Text
 strings = T.concat <$> some (quotedString <* space)
 
+-- Runs of ordinary characters are taken as slices of the input; only
+-- escapes are handled a character at a time.
 quotedString :: PoParser Text
-quotedString = T.pack <$> (char '"' *> manyTill strChar (char '"'))
+quotedString = T.concat <$> (char '"' *> manyTill piece (char '"'))
   where
-    strChar = (char '\\' *> escape) <|> satisfy (\c -> c /= '"' && c /= '\n')
+    piece = takeWhile1P Nothing (\c -> c /= '"' && c /= '\\' && c /= '\n')
+        <|> (T.singleton <$> (char '\\' *> escape))
     escape = choice
       [ '\n' <$ char 'n'
       , '\t' <$ char 't'
