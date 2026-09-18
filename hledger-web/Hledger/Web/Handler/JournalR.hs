@@ -36,5 +36,6 @@ getJournalR = do
       transactionFrag = transactionFragment j
 
   defaultLayout $ do
-    setTitle "journal - hledger-web"
+    -- TRANSLATORS: the browser tab title of this page.
+    setTitleI (HMsg "journal - hledger-web")
     $(widgetFile "journal")

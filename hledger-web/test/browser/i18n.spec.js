@@ -14,9 +14,11 @@ test.describe('translations', () => {
     await page.goto('/journal');
     await expect(page.locator('html')).toHaveAttribute('lang', 'de');
     await expect(page.locator('#addformlink')).toHaveText(/Buchung hinzufügen/);
+    await expect(page).toHaveTitle('Journal - hledger-web');
     await expect(page.locator('#searchform input[name=q]')).toHaveAttribute('placeholder', 'Suchen');
     await page.goto('/register');
     await expect(page.locator('#main-content h2')).toHaveText(/alle Konten/);
+    await expect(page).toHaveTitle('Buchungen - hledger-web');
   });
 
   test('rows the add form adds itself get translated placeholders', async ({ page }) => {

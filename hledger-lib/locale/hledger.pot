@@ -466,6 +466,11 @@ msgstr ""
 msgid "{title}, filtered"
 msgstr ""
 
+#. the browser tab title of this page.
+#: hledger-web/Hledger/Web/Handler/JournalR.hs:40
+msgid "journal - hledger-web"
+msgstr ""
+
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs:36
 msgid "all accounts"
 msgstr ""
@@ -483,6 +488,11 @@ msgstr ""
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs:57
 msgctxt "column heading"
 msgid "Period Total"
+msgstr ""
+
+#. the browser tab title of this page.
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs:62
+msgid "register - hledger-web"
 msgstr ""
 
 #: hledger-web/Hledger/Web/Handler/UploadR.hs:52

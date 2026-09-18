@@ -491,6 +491,13 @@ msgstr "Prüfung der Buchungszeilen fehlgeschlagen"
 msgid "General Journal"
 msgstr "Hauptjournal"
 
+#. Browser tab titles.
+msgid "journal - hledger-web"
+msgstr "Journal - hledger-web"
+
+msgid "register - hledger-web"
+msgstr "Buchungen - hledger-web"
+
 #, python-brace-format
 msgid "Transactions in {account}"
 msgstr "Buchungen in {account}"

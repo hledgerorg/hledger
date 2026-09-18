@@ -58,7 +58,8 @@ getRegisterR = do
         | otherwise                = trc trs "column heading" "Total"
       transactionFrag = transactionFragment j
   defaultLayout $ do
-    setTitle "register - hledger-web"
+    -- TRANSLATORS: the browser tab title of this page.
+    setTitleI (HMsg "register - hledger-web")
     $(widgetFile "register")
 
 -- cf. Hledger.Reports.AccountTransactionsReport.accountTransactionsReportItems
