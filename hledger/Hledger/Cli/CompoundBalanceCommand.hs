@@ -311,7 +311,7 @@ compoundBalanceReportAsText ropts (CompoundPeriodicReport title _colspans subrep
           --   [COL1LINE1, COL2LINE1]
           --   [COL1LINE2, COL2LINE2]
           --  ]
-          coltotalslines = multiBalanceRowAsText ropts allCommodities totalsrow
+          coltotalslines = multiBalanceRowAsText allCommodities ropts totalsrow
           totalstable = Table
             (Group NoLine $ map Header $ "Net:" : replicate (length coltotalslines - 1) "")  -- row headers
             (Header [])     -- column headers, concatTables will discard these
@@ -325,7 +325,7 @@ compoundBalanceReportAsText ropts (CompoundPeriodicReport title _colspans subrep
     subreportAsTable ropts1 (title1, r, _) = tablewithtitle
       where
         Table lefthdrs tophdrs cells =
-            multiBalanceReportAsPartTable ropts1 allCommodities r
+            multiBalanceReportAsPartTable allCommodities ropts1 r
         tablewithtitle
           | T.null title1 = Table lefthdrs tophdrs cells
           | otherwise     = Table
@@ -416,7 +416,7 @@ compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts cbr =
     subreportrows (subreporttitle, mbr, _increasestotal) =
       let
         (_, bodyrows, mtotalsrows) =
-          multiBalanceReportAsSpreadsheetParts fmt ropts allCommodities mbr
+          multiBalanceReportAsSpreadsheetParts (fmt, allCommodities) ropts mbr
         accountCell =
             (Spr.defaultCell subreporttitle) {
                 Spr.cellStyle = Spr.Body Spr.Total,
@@ -439,7 +439,7 @@ compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts cbr =
     totalrows =
       if no_total_ ropts || length subreports == 1 then []
       else
-        multiBalanceRowAsCellBuilders fmt ropts colspans allCommodities
+        multiBalanceRowAsCellBuilders (fmt, allCommodities) ropts colspans
             Total (simpleDateSpanCell $ period_titles_ ropts) totalrow
                              -- make a table of rendered lines of the report totals row
         & map (map (fmap wbToText))
