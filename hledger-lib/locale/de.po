@@ -1,0 +1,631 @@
+# German translations for hledger.
+# This file is distributed under the same license as hledger.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: hledger\n"
+"Report-Msgid-Bugs-To: https://github.com/simonmichael/hledger/issues\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Report titles.
+msgid "Balance Sheet"
+msgstr "Bilanz"
+
+msgid "Balance Sheet With Equity"
+msgstr "Bilanz mit Eigenkapital"
+
+msgid "Income Statement"
+msgstr "Einnahmenüberschussrechnung"
+
+msgid "Cashflow Statement"
+msgstr "Kapitalflussrechnung"
+
+#. Subreport (section) titles.
+msgid "Assets"
+msgstr "Vermögen"
+
+msgid "Liabilities"
+msgstr "Verbindlichkeiten"
+
+msgid "Equity"
+msgstr "Eigenkapital"
+
+msgid "Revenues"
+msgstr "Einnahmen"
+
+msgid "Expenses"
+msgstr "Ausgaben"
+
+msgid "Cash flows"
+msgstr "Kapitalflüsse"
+
+#. Report title templates.
+#, python-brace-format
+msgid "{interval}{report} {dates}{clarification}{valuation}"
+msgstr "{interval}{report} {dates}{clarification}{valuation}"
+
+#, python-brace-format
+msgid "{report} in {dates}{valuation}:"
+msgstr "{report} in {dates}{valuation}:"
+
+#, python-brace-format
+msgid "Budget performance in {dates}{valuation}:"
+msgstr "Soll-Ist-Vergleich in {dates}{valuation}:"
+
+#. Interval words, preceding a report title: "Monatliche Bilanz".
+msgid "Daily"
+msgstr "Tägliche"
+
+msgid "Weekly"
+msgstr "Wöchentliche"
+
+msgid "Biweekly"
+msgstr "Zweiwöchentliche"
+
+msgid "Monthly"
+msgstr "Monatliche"
+
+msgid "Bimonthly"
+msgstr "Zweimonatliche"
+
+msgid "Quarterly"
+msgstr "Vierteljährliche"
+
+msgid "Half-yearly"
+msgstr "Halbjährliche"
+
+msgid "Yearly"
+msgstr "Jährliche"
+
+msgid "Biennial"
+msgstr "Zweijährliche"
+
+msgid "Periodic"
+msgstr "Periodische"
+
+#. Title clarifications.
+msgid "(Period-End Value Changes)"
+msgstr "(Wertänderungen zum Periodenende)"
+
+msgid "(Cumulative Period-End Value Changes)"
+msgstr "(Kumulierte Wertänderungen zum Periodenende)"
+
+msgid "(Incremental Gain)"
+msgstr "(Inkrementeller Gewinn)"
+
+msgid "(Cumulative Gain)"
+msgstr "(Kumulierter Gewinn)"
+
+msgid "(Historical Gain)"
+msgstr "(Historischer Gewinn)"
+
+msgid "(Balance Changes)"
+msgstr "(Saldoänderungen)"
+
+msgid "(Cumulative Ending Balances)"
+msgstr "(Kumulierte Endsalden)"
+
+msgid "(Historical Ending Balances)"
+msgstr "(Historische Endsalden)"
+
+#. Balance report kinds.
+msgid "Period-end value changes"
+msgstr "Wertänderungen zum Periodenende"
+
+msgid "Cumulative period-end value changes"
+msgstr "Kumulierte Wertänderungen zum Periodenende"
+
+msgid "Incremental gain"
+msgstr "Inkrementeller Gewinn"
+
+msgid "Cumulative gain"
+msgstr "Kumulierter Gewinn"
+
+msgid "Historical gain"
+msgstr "Historischer Gewinn"
+
+msgid "Balance changes"
+msgstr "Saldoänderungen"
+
+msgid "Ending balances (cumulative)"
+msgstr "Endsalden (kumuliert)"
+
+msgid "Ending balances (historical)"
+msgstr "Endsalden (historisch)"
+
+#. Valuation descriptions, appended to a title.
+msgid ", converted to cost"
+msgstr ", zu Anschaffungskosten"
+
+msgid ", valued at posting date"
+msgstr ", bewertet zum Buchungsdatum"
+
+msgid ", valued at period ends"
+msgstr ", bewertet zum Periodenende"
+
+msgid ", current value"
+msgstr ", aktueller Wert"
+
+#, python-brace-format
+msgid ", valued at {date}"
+msgstr ", bewertet zum {date}"
+
+#. Column headings and the totals row.
+msgctxt "column heading"
+msgid "Total"
+msgstr "Gesamt"
+
+msgctxt "column heading"
+msgid "Average"
+msgstr "Durchschnitt"
+
+msgid "Net:"
+msgstr "Überschuss:"
+
+#. Spreadsheet sheet names.
+msgid "Balance Report"
+msgstr "Saldenbericht"
+
+msgid "Multi-period Balance Report"
+msgstr "Saldenbericht nach Perioden"
+
+msgid "Budget Report"
+msgstr "Soll-Ist-Vergleich"
+
+#. Month names, stand-alone form.
+msgctxt "month"
+msgid "January"
+msgstr "Januar"
+
+msgctxt "month"
+msgid "February"
+msgstr "Februar"
+
+msgctxt "month"
+msgid "March"
+msgstr "März"
+
+msgctxt "month"
+msgid "April"
+msgstr "April"
+
+msgctxt "month"
+msgid "May"
+msgstr "Mai"
+
+msgctxt "month"
+msgid "June"
+msgstr "Juni"
+
+msgctxt "month"
+msgid "July"
+msgstr "Juli"
+
+msgctxt "month"
+msgid "August"
+msgstr "August"
+
+msgctxt "month"
+msgid "September"
+msgstr "September"
+
+msgctxt "month"
+msgid "October"
+msgstr "Oktober"
+
+msgctxt "month"
+msgid "November"
+msgstr "November"
+
+msgctxt "month"
+msgid "December"
+msgstr "Dezember"
+
+msgctxt "month abbrev"
+msgid "Jan"
+msgstr "Jan"
+
+msgctxt "month abbrev"
+msgid "Feb"
+msgstr "Feb"
+
+msgctxt "month abbrev"
+msgid "Mar"
+msgstr "Mär"
+
+msgctxt "month abbrev"
+msgid "Apr"
+msgstr "Apr"
+
+msgctxt "month abbrev"
+msgid "May"
+msgstr "Mai"
+
+msgctxt "month abbrev"
+msgid "Jun"
+msgstr "Jun"
+
+msgctxt "month abbrev"
+msgid "Jul"
+msgstr "Jul"
+
+msgctxt "month abbrev"
+msgid "Aug"
+msgstr "Aug"
+
+msgctxt "month abbrev"
+msgid "Sep"
+msgstr "Sep"
+
+msgctxt "month abbrev"
+msgid "Oct"
+msgstr "Okt"
+
+msgctxt "month abbrev"
+msgid "Nov"
+msgstr "Nov"
+
+msgctxt "month abbrev"
+msgid "Dec"
+msgstr "Dez"
+
+#. hledger-ui screens.
+msgid "Cash accounts"
+msgstr "Zahlungsmittelkonten"
+
+msgid "Balance sheet accounts"
+msgstr "Bilanzkonten"
+
+msgid "Income statement accounts"
+msgstr "GuV-Konten"
+
+msgid "All accounts"
+msgstr "Alle Konten"
+
+msgid "account balances"
+msgstr "Kontosalden"
+
+msgid "account changes"
+msgstr "Kontobewegungen"
+
+msgid "cash balances"
+msgstr "Zahlungsmittelsalden"
+
+msgid "balance sheet balances"
+msgstr "Bilanzsalden"
+
+msgid "income statement changes"
+msgstr "GuV-Bewegungen"
+
+#. hledger-web: search form and help.
+msgctxt "search box"
+msgid "Search"
+msgstr "Suchen"
+
+msgid "Enter hledger search patterns to filter the data below"
+msgstr "hledger-Suchmuster eingeben, um die Daten unten zu filtern"
+
+msgid "Clear search terms"
+msgstr "Suchbegriffe löschen"
+
+msgid "Apply search terms"
+msgstr "Suchbegriffe anwenden"
+
+msgid "Manage journal files"
+msgstr "Journaldateien verwalten"
+
+msgid "Show search and general help"
+msgstr "Such- und allgemeine Hilfe anzeigen"
+
+msgid "Close"
+msgstr "Schließen"
+
+msgid "Help"
+msgstr "Hilfe"
+
+msgid "Keyboard shortcuts"
+msgstr "Tastenkürzel"
+
+msgid "or maybe"
+msgstr "oder"
+
+msgid "view this help (escape or click to exit)"
+msgstr "diese Hilfe anzeigen (Escape oder Klick zum Schließen)"
+
+msgid "go to the Journal view (home)"
+msgstr "zur Journalansicht (Startseite)"
+
+msgid "add a transaction (escape to cancel)"
+msgstr "eine Buchung hinzufügen (Escape zum Abbrechen)"
+
+msgid "toggle sidebar"
+msgstr "Seitenleiste ein-/ausblenden"
+
+msgid "focus search form"
+msgstr "zum Suchfeld springen"
+
+msgid "hide empty accounts in sidebar"
+msgstr "leere Konten in der Seitenleiste ausblenden"
+
+msgid "General"
+msgstr "Allgemein"
+
+msgid "The Journal view shows general journal entries, representing zero-sum movements of money (or other commodity) between hierarchical accounts"
+msgstr "Die Journalansicht zeigt Journalbuchungen: ausgeglichene Bewegungen von Geld (oder anderen Werten) zwischen hierarchischen Konten"
+
+msgid "The sidebar shows the resulting accounts and their final balances"
+msgstr "Die Seitenleiste zeigt die Konten und ihre Endsalden"
+
+msgid "Parent account balances include subaccount balances"
+msgstr "Salden übergeordneter Konten schließen die Unterkonten ein"
+
+msgid "Multiple currencies in balances are displayed one above the other"
+msgstr "Mehrere Währungen in Salden werden untereinander angezeigt"
+
+msgid "Click account name links to see transactions affecting that account, with running balance"
+msgstr "Kontonamen anklicken, um die Buchungen dieses Kontos mit laufendem Saldo zu sehen"
+
+msgid "Click date links to see journal entries on that date"
+msgstr "Datumslinks anklicken, um die Journalbuchungen dieses Tages zu sehen"
+
+msgctxt "help heading"
+msgid "Search"
+msgstr "Suche"
+
+msgid "Search patterns with spaces should be enclosed in quotes."
+msgstr "Suchmuster mit Leerzeichen in Anführungszeichen setzen."
+
+msgid "match account names"
+msgstr "Kontonamen finden"
+
+msgid "match account types"
+msgstr "Kontotypen finden"
+
+msgid "match dates"
+msgstr "Daten finden"
+
+msgid "match status"
+msgstr "Status finden"
+
+msgid "match transaction codes"
+msgstr "Buchungscodes finden"
+
+msgid "or"
+msgstr "oder"
+
+msgid "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"
+msgstr "ein beliebiges sichtbares Feld finden (Konto, Betrag, Kommentar, Beschreibung, Code), oder ein Datum, wenn REGEX auch ein Periodenausdruck ist"
+
+msgid "match transaction descriptions"
+msgstr "Buchungsbeschreibungen finden"
+
+msgid "match payee part of descriptions"
+msgstr "den Empfängerteil der Beschreibung finden"
+
+msgid "match note part of descriptions"
+msgstr "den Notizteil der Beschreibung finden"
+
+msgid "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."
+msgstr "Beträge nach Größe finden, mit vorzeichenbehaftetem N nach Vorzeichen. Nur für Beträge mit einer Währung."
+
+msgid "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"
+msgstr "Währungen finden. Muss das ganze Symbol treffen. Für das Dollarzeichen schreibe"
+
+msgid "match tags, or tag and value"
+msgstr "Tags finden, oder Tag und Wert"
+
+msgid "match postings' realness/virtualness"
+msgstr "reale/virtuelle Buchungszeilen finden"
+
+msgid "prepend not: to negate a search term"
+msgstr "not: voranstellen, um einen Suchbegriff zu verneinen"
+
+msgid "match with a boolean query (and, or, not, (..))"
+msgstr "mit einem booleschen Ausdruck finden (and, or, not, (..))"
+
+msgid "match transactions where any posting matches"
+msgstr "Buchungen finden, bei denen eine Buchungszeile passt"
+
+msgid "match transactions where all postings match"
+msgstr "Buchungen finden, bei denen alle Buchungszeilen passen"
+
+msgid "clip account names at this depth"
+msgstr "Kontonamen auf diese Tiefe kürzen"
+
+#. hledger-web: add form.
+msgid "Add a transaction"
+msgstr "Buchung hinzufügen"
+
+msgid "Add a new transaction to the journal"
+msgstr "Eine neue Buchung zum Journal hinzufügen"
+
+msgid "Pick a date"
+msgstr "Datum wählen"
+
+#, python-brace-format
+msgid "Account {n}"
+msgstr "Konto {n}"
+
+#, python-brace-format
+msgid "Amount {n}"
+msgstr "Betrag {n}"
+
+msgctxt "placeholder"
+msgid "Date"
+msgstr "Datum"
+
+msgctxt "placeholder"
+msgid "Description"
+msgstr "Beschreibung"
+
+msgid "Add to:"
+msgstr "Hinzufügen zu:"
+
+msgid "Save"
+msgstr "Speichern"
+
+msgid "Transaction added."
+msgstr "Buchung hinzugefügt."
+
+msgid "Invalid date format"
+msgstr "Ungültiges Datumsformat"
+
+msgid "Missing amount"
+msgstr "Betrag fehlt"
+
+msgid "Missing account"
+msgstr "Konto fehlt"
+
+#, python-brace-format
+msgid "Invalid value: {error}"
+msgstr "Ungültiger Wert: {error}"
+
+msgid "Postings validation failed"
+msgstr "Prüfung der Buchungszeilen fehlgeschlagen"
+
+#. hledger-web: journal and register pages.
+msgid "General Journal"
+msgstr "Hauptjournal"
+
+#. Browser tab titles.
+msgid "journal - hledger-web"
+msgstr "Journal - hledger-web"
+
+msgid "register - hledger-web"
+msgstr "Buchungen - hledger-web"
+
+#, python-brace-format
+msgid "Transactions in {account}"
+msgstr "Buchungen in {account}"
+
+#, python-brace-format
+msgid "Transactions in {account} (excluding subaccounts)"
+msgstr "Buchungen in {account} (ohne Unterkonten)"
+
+#, python-brace-format
+msgid "{title}, filtered"
+msgstr "{title}, gefiltert"
+
+msgid "all accounts"
+msgstr "alle Konten"
+
+#, python-brace-format
+msgid "{account} (excluding subaccounts)"
+msgstr "{account} (ohne Unterkonten)"
+
+msgctxt "column heading"
+msgid "Date"
+msgstr "Datum"
+
+msgctxt "column heading"
+msgid "Description"
+msgstr "Beschreibung"
+
+msgctxt "column heading"
+msgid "Account"
+msgstr "Konto"
+
+msgctxt "column heading"
+msgid "Amount"
+msgstr "Betrag"
+
+msgctxt "column heading"
+msgid "To/From Account(s)"
+msgstr "Von/Nach Konto"
+
+msgctxt "column heading"
+msgid "Amount Out/In"
+msgstr "Betrag Aus/Ein"
+
+msgctxt "column heading"
+msgid "Historical Total"
+msgstr "Gesamt (historisch)"
+
+msgctxt "column heading"
+msgid "Period Total"
+msgstr "Gesamt (Periode)"
+
+#. hledger-web: sidebar.
+msgid "Journal"
+msgstr "Journal"
+
+msgid "Show general journal entries, most recent first"
+msgstr "Journalbuchungen anzeigen, neueste zuerst"
+
+msgid "Show transactions affecting this account and subaccounts"
+msgstr "Buchungen dieses Kontos und seiner Unterkonten anzeigen"
+
+msgid "Show transactions affecting this account but not subaccounts"
+msgstr "Buchungen dieses Kontos ohne Unterkonten anzeigen"
+
+msgid "only"
+msgstr "nur"
+
+#. hledger-web: file management.
+msgid "Edit journal"
+msgstr "Journal bearbeiten"
+
+msgid "Your journal's files"
+msgstr "Die Dateien Ihres Journals"
+
+msgctxt "column heading"
+msgid "File"
+msgstr "Datei"
+
+msgid "Edit"
+msgstr "Bearbeiten"
+
+msgid "Upload"
+msgstr "Hochladen"
+
+msgid "Download"
+msgstr "Herunterladen"
+
+msgid "Upload journal"
+msgstr "Journal hochladen"
+
+msgid "Upload to file"
+msgstr "Hochladen in Datei"
+
+msgid "Are you sure? This will overwrite your journal!"
+msgstr "Sind Sie sicher? Dies überschreibt Ihr Journal!"
+
+msgid "Select file"
+msgstr "Datei auswählen"
+
+#, python-brace-format
+msgid "Encoding error: '{error}'. If your file is not UTF-8 encoded, try the 'edit form', where the transcoding should be handled by the browser."
+msgstr "Kodierungsfehler: '{error}'. Wenn Ihre Datei nicht UTF-8-kodiert ist, versuchen Sie das Bearbeitungsformular, wo der Browser die Umkodierung übernimmt."
+
+#, python-brace-format
+msgid "Failed to load journal: {error}"
+msgstr "Journal konnte nicht geladen werden: {error}"
+
+#, python-brace-format
+msgid "File {file} uploaded successfully"
+msgstr "Datei {file} erfolgreich hochgeladen"
+
+msgid "Edit file"
+msgstr "Datei bearbeiten"
+
+msgid "File format help"
+msgstr "Hilfe zum Dateiformat"
+
+msgid "Go back"
+msgstr "Zurück"
+
+#, python-brace-format
+msgid "Saved journal {file}"
+msgstr "Journal {file} gespeichert"
+
+msgctxt "column heading"
+msgid "Commodity"
+msgstr "Einheit"
+
+#. The register command's spreadsheet sheet name.
+msgid "Register"
+msgstr "Register"

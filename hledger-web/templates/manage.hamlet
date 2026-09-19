@@ -1,12 +1,12 @@
 <h2>
-  Your journal's files
+  _{HMsg "Your journal's files"}
 
 <div.row>
   <div .col-md-6.col-sm-8.col-xs-12>
     <table .table.table-condensed.files>
       <thead>
         <th>
-          File
+          _{HMsgc "column heading" "File"}
         <th>
       <tbody>
         $forall (path, _) <- jfiles j
@@ -15,8 +15,8 @@
               #{path}
             <td .text-right>
               <a.btn.btn-default href=@{EditR path}>
-                Edit
+                _{HMsg "Edit"}
               <a.btn.btn-default href=@{UploadR path}>
-                Upload
+                _{HMsg "Upload"}
               <a.btn.btn-default href=@{DownloadR path}>
-                Download
+                _{HMsg "Download"}

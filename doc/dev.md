@@ -34,6 +34,7 @@ and then symlinked into the hledger_site repo for rendering on hledger.org.
 - [RELEASING](RELEASING.md)
 - [REPOS](REPOS.md)
 - [TESTS](TESTS.md)
+- [TRANSLATING](TRANSLATING.md)
 - [VERSIONNUMBERS](VERSIONNUMBERS.md)
 
 See also:

@@ -29,6 +29,7 @@ import Data.Text.Lazy.Builder qualified as TB
 import Safe (readMay)
 import System.Console.CmdArgs.Explicit (flagNone, flagReq)
 
+import Hledger.Utils.I18n (tr)
 import Hledger hiding (per)
 import Hledger.Write.Csv (CSV, printCSV, printTSV)
 import Hledger.Write.Ods (printFods)
@@ -111,7 +112,7 @@ register opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j
                 map (map (fmap Lucid.toHtml)) .
                 postingsReportAsSpreadsheet opts oneLineNoCostFmt baseUrl query
            | fmt=="fods" =
-                printFods IO.localeEncoding . Map.singleton "Register" .
+                printFods IO.localeEncoding . Map.singleton (tr (translations_ (_rsReportOpts rspec)) "Register") .
                 (,) (1,0) .
                 postingsReportAsSpreadsheet opts oneLineNoCostFmt baseUrl query
            | otherwise   = error' $ unsupportedOutputFormatError fmt  -- PARTIAL:

@@ -8,7 +8,7 @@
     <div #dateWrap .form-group.input-group.date>
       ^{fvInput dateView}
       <input #datepicked type=date tabindex=-1 aria-hidden=true>
-      <div #datebutton .input-group-addon title="Pick a date">
+      <div #datebutton .input-group-addon title=_{HMsg "Pick a date"}>
         <span .glyphicon .glyphicon-th>
     $maybe err <- fvErrors dateView
       <span .help-block .error-block>#{err}
@@ -18,31 +18,32 @@
     $maybe err <- fvErrors descView
       <span .help-block .error-block>#{err}
 
-<div .account-postings>
+$# The placeholder templates are also read by hledger.js when it adds rows.
+<div .account-postings data-account-placeholder=#{accountPlaceholder} data-amount-placeholder=#{amountPlaceholder}>
   $forall (n, (acc, amt, accE, amtE)) <- displayRows
     <div .form-group .row .account-group>
       <div .col-sm-9.col-xs-9 :isJust accE:.has-error>
         <input .account-input.form-control.input-lg type=text list=accountnames
-          name=account placeholder="Account #{n}" value="#{acc}">
+          name=account placeholder=#{numbered accountPlaceholder n} value="#{acc}">
         $maybe err <- accE
           <span .help-block .error-block>_{err}
       <div .col-sm-3.col-xs-3 :isJust amtE:.has-error>
         <input .amount-input.form-control.input-lg type=text
-          name=amount placeholder="Amount #{n}" value="#{amt}">
+          name=amount placeholder=#{numbered amountPlaceholder n} value="#{amt}">
         $maybe err <- amtE
           <span .help-block .error-block>_{err}
 
 <div .row>
   <div .col-sm-9.col-xs-9>
     $if length files > 1
-      Add to:
+      _{HMsg "Add to:"}
       &nbsp;
       <div .form-group .file-select :isJust (fvErrors fileView):.has-error>
         ^{fvInput fileView}
         $maybe err <- fvErrors fileView
           <span .help-block .error-block>#{err}
   <div .col-sm-3.col-xs-3.text-right>
-    <button type=submit .btn .btn-default .btn-lg name=submit>Save
+    <button type=submit .btn .btn-default .btn-lg name=submit>_{HMsg "Save"}
 
 $# Completion data for the account and description fields. The browser filters
 $# these itself, so there is no javascript and no library involved, and hamlet's

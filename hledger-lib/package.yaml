@@ -32,6 +32,7 @@ description: |
 extra-source-files:
 - CHANGES.md
 - README.md
+- locale/de.po
 - test/unittest.hs
 - test/doctests.hs
 

@@ -62,7 +62,7 @@ postAddR = do
       liftIO $ do
         ensureJournalFileExists f
         appendToJournalFileOrStdout f (showTransaction t')
-      setMessage "Transaction added."
+      setMessageI (HMsg "Transaction added.")
       redirect JournalR
     FormMissing -> showForm view enctype
     FormFailure errs -> do

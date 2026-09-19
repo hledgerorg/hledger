@@ -41,7 +41,9 @@ module Hledger.Web.Test (
   hledgerWebTest
 ) where
 
+import Control.Exception (bracket_)
 import Data.Aeson (encode)
+import Data.ByteString qualified as BS
 import Data.String (fromString)
 import Data.Function ((&))
 import Data.Text qualified as T
@@ -49,10 +51,14 @@ import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Encoding qualified as TLE
+import Network.HTTP.Types (HeaderName)
 import Network.Wai.Test (SResponse(..))
-import System.Directory (getTemporaryDirectory)
+import System.Directory (createDirectoryIfMissing, getTemporaryDirectory, removeDirectoryRecursive)
+import System.Entropy (getEntropy)
+import System.Environment (setEnv, unsetEnv)
 import System.FilePath ((</>))
 import Test.Hspec (expectationFailure, hspec)
+import Text.Printf (printf)
 import Yesod.Default.Config
 import Yesod.Test
 
@@ -120,10 +126,21 @@ editFieldName = do
 -- | The current response's Content-Security-Policy header, failing the test
 -- if there is none.
 cspHeaderValue :: YesodExample App T.Text
-cspHeaderValue = withResponse $ \res ->
-  case lookup "Content-Security-Policy" (simpleHeaders res) of
-    Just h  -> return $ TE.decodeUtf8 h
-    Nothing -> failing "the response has no Content-Security-Policy header"
+cspHeaderValue = headerValue "Content-Security-Policy"
+
+-- | The values of all of the current response's headers with this name.
+headerValues :: HeaderName -> YesodExample App [T.Text]
+headerValues name = withResponse $ \res ->
+  return [TE.decodeUtf8 v | (n, v) <- simpleHeaders res, n == name]
+
+-- | The current response's headers with this name, joined; failing the
+-- test if there are none.
+headerValue :: HeaderName -> YesodExample App T.Text
+headerValue name = do
+  vs <- headerValues name
+  if null vs
+    then failing ("the response has no " ++ show name ++ " header")
+    else return $ T.intercalate ", " vs
 
 -- | The nonce in the current response's Content-Security-Policy, failing the
 -- test if the header or the nonce is missing.
@@ -134,6 +151,18 @@ cspNonce = do
   if T.null fromnonce
     then failing "the Content-Security-Policy has no nonce"
     else return $ T.takeWhile (/= '\'') $ T.drop (T.length "'nonce-") fromnonce
+
+-- | Run an action with XDG_CONFIG_HOME pointing at a fresh directory, removed
+-- afterwards, so that catalogs written by a test never come from, or end up
+-- in, the developer's real config directory, and concurrent runs do not share one.
+withTempConfigDir :: (FilePath -> IO a) -> IO a
+withTempConfigDir act = do
+  tmp <- getTemporaryDirectory
+  bytes <- BS.unpack <$> getEntropy 6
+  let dir = tmp </> ("hledger-web-test-" ++ concatMap (printf "%02x") bytes)
+  bracket_ (createDirectoryIfMissing True dir >> setEnv "XDG_CONFIG_HOME" dir)
+           (unsetEnv "XDG_CONFIG_HOME" >> removeDirectoryRecursive dir)
+           (act dir)
 
 -- | Fail the current test with a message. (yesod-test's own version of this
 -- is not exported.)
@@ -287,6 +316,101 @@ hledgerWebTest = do
       bodyContains "d&lt;img src=x onerror=alert(1)&gt;"   -- description, escaped
       bodyContains "a&lt;img src=x onerror=alert(2)&gt;"   -- account, escaped
       bodyNotContains "<img src=x onerror"                 -- neither as raw html
+
+    yit "shows add-form validation messages in the viewer's language" $ do
+      request $ do
+        setMethod "POST"
+        setUrl AddR
+        addRequestHeader ("Accept-Language", "de")
+        addPostParam "_formid" "identify-add"
+        addPostParam "date" "not a date"
+        addPostParam "description" "d"
+        -- two accounts without amounts: only the last posting may omit its amount
+        addPostParam "account" "a"
+        addPostParam "amount" ""
+        addPostParam "account" "b"
+        addPostParam "amount" ""
+      bodyContains "Ungültiges Datumsformat"
+      bodyContains "Betrag fehlt"
+
+  runTests "hledger-web language selection" [] nulljournal $ do
+
+    yit "serves English by default" $ do
+      get JournalR
+      statusIs 200
+      bodyContains "lang=\"en\""
+      bodyContains "Add a transaction"
+
+    yit "follows Accept-Language, trying each preference with its subtags dropped" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addRequestHeader ("Accept-Language", "de-CH,en;q=0.9")
+      statusIs 200
+      bodyContains "lang=\"de\""
+      bodyContains "Buchung hinzufügen"
+      bodyNotContains "Add a transaction"
+      vary <- headerValue "Vary"
+      assertEq "the page says it varies by language" (T.isInfixOf "Accept-Language" vary) True
+
+    yit "remembers an explicit _LANG choice in a cookie, when it names an available catalog" $ do
+      request $ do
+        setMethod "GET"
+        setUrl (JournalR, [("_LANG", "de")])
+      statusIs 200
+      bodyContains "Buchung hinzufügen"
+      cookie <- headerValue "Set-Cookie"
+      assertEq "the language cookie is set" (T.isInfixOf "_LANG=de;" cookie) True
+      assertEq "the language cookie is SameSite" (T.isInfixOf "SameSite=Lax" cookie) True
+
+    yit "ignores a _LANG value that is not an available catalog, without setting a cookie" $ do
+      request $ do
+        setMethod "GET"
+        setUrl (JournalR, [("_LANG", "../../etc/passwd")])
+      statusIs 200
+      bodyContains "Add a transaction"
+      cookies <- headerValues "Set-Cookie"
+      assertEq "no language cookie" (any (T.isInfixOf "_LANG=") cookies) False
+
+    yit "reads the language from the _LANG cookie on later requests" $ do
+      -- yesod-test keeps the cookies a response sets and sends them back
+      request $ do
+        setMethod "GET"
+        setUrl (JournalR, [("_LANG", "de")])
+      statusIs 200
+      get RegisterR
+      statusIs 200
+      bodyContains "lang=\"de\""
+      bodyContains "alle Konten"
+      bodyContains "Von/Nach Konto"
+
+  -- A translation is viewer-controlled text: it must be rendered as text
+  -- wherever it lands, including inside attributes.
+  withTempConfigDir $ \xdg -> do
+    createDirectoryIfMissing True (xdg </> "hledger" </> "locale")
+    TIO.writeFile (xdg </> "hledger" </> "locale" </> "xx.po") $ T.unlines
+      [ "msgid \"\""
+      , "msgstr \"Content-Type: text/plain; charset=UTF-8\\n\""
+      , ""
+      , "msgid \"Add a transaction\""
+      , "msgstr \"<img src=x onerror=alert(1)>\""
+      , ""
+      , "msgid \"Show search and general help\""
+      , "msgstr \"x\\\" onmouseover=\\\"alert(2)\""
+      ]
+    runTests "hledger-web with a user translation catalog" [] nulljournal $ do
+
+      yit "renders translations as text, in content and in attributes" $ do
+        request $ do
+          setMethod "GET"
+          setUrl JournalR
+          addRequestHeader ("Accept-Language", "xx")
+        statusIs 200
+        bodyContains "lang=\"xx\""
+        bodyContains "&lt;img src=x onerror=alert(1)&gt;"
+        bodyNotContains "<img src=x onerror"
+        bodyContains "x&quot; onmouseover=&quot;alert(2)"
+        bodyNotContains "onmouseover=\"alert(2)"
 
   -- #2127
   -- XXX I'm pretty sure this test lies, ie does not match production behaviour.

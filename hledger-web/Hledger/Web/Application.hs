@@ -22,6 +22,7 @@ import Network.HTTP.Conduit (newManager)
 import Yesod.Default.Config
 
 import Hledger.Data (Journal, nulljournal)
+import Hledger.Utils.I18n (loadAllTranslations)
 
 import Hledger.Web.Handler.AddR
 import Hledger.Web.Handler.MiscR
@@ -73,10 +74,12 @@ makeAppWith j' aconf wopts = do
   s    <- staticSite
   m    <- newManager defaultManagerSettings
   jref <- newIORef j'
+  trs  <- loadAllTranslations
   return App{
       settings    = aconf
     , getStatic   = s
     , httpManager = m
     , appOpts     = wopts
     , appJournal  = jref
+    , appTranslations = trs
     }

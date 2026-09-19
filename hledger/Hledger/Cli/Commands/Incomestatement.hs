@@ -14,23 +14,24 @@ module Hledger.Cli.Commands.Incomestatement (
 
 import System.Console.CmdArgs.Explicit
 
+import Hledger.Utils.I18n (i18n)
 import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.CompoundBalanceCommand
 
 incomestatementSpec = CompoundBalanceCommandSpec {
   cbcdoc      = $(embedFileRelative "Hledger/Cli/Commands/Incomestatement.txt"),
-  cbctitle    = "Income Statement",
+  cbctitle    = i18n "Income Statement",
   cbcqueries  = [
      CBCSubreportSpec{
-      cbcsubreporttitle="Revenues"
+      cbcsubreporttitle=i18n "Revenues"
      ,cbcsubreportquery=Type [Revenue]
      ,cbcsubreportoptions=(\ropts -> ropts{normalbalance_=Just NormallyNegative})
      ,cbcsubreporttransform=fmap maNegate
      ,cbcsubreportincreasestotal=True
      }
     ,CBCSubreportSpec{
-      cbcsubreporttitle="Expenses"
+      cbcsubreporttitle=i18n "Expenses"
      ,cbcsubreportquery=Type [Expense]
      ,cbcsubreportoptions=(\ropts -> ropts{normalbalance_=Just NormallyPositive})
      ,cbcsubreporttransform=id

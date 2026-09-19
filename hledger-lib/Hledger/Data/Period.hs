@@ -16,6 +16,7 @@ module Hledger.Data.Period (
   ,periodTextWidth
   ,showPeriod
   ,showPeriodAbbrev
+  ,showPeriodAbbrevWith
   ,periodStart
   ,periodEnd
   ,periodNext
@@ -199,11 +200,15 @@ showPeriod PeriodAll           = ".."
 -- >>> showPeriodAbbrev (WeekPeriod (fromGregorian 2024 12 30))
 -- "W01"
 showPeriodAbbrev :: Period -> Text
-showPeriodAbbrev (MonthPeriod _ m)                                              -- Jan
+showPeriodAbbrev = showPeriodAbbrevWith defaultTimeLocale
+
+-- | Like showPeriodAbbrev, but take the month names from this time locale.
+showPeriodAbbrevWith :: TimeLocale -> Period -> Text
+showPeriodAbbrevWith loc (MonthPeriod _ m)                                          -- Jan
   | m > 0 && m <= length monthnames = T.pack . snd $ monthnames !! (m-1)
-  where monthnames = months defaultTimeLocale
-showPeriodAbbrev (WeekPeriod b) = T.pack $ formatTime defaultTimeLocale "W%V" b -- Www
-showPeriodAbbrev p = showPeriod p
+  where monthnames = months loc
+showPeriodAbbrevWith _ (WeekPeriod b) = T.pack $ formatTime defaultTimeLocale "W%V" b -- Www
+showPeriodAbbrevWith _ p = showPeriod p
 
 periodStart :: Period -> Maybe Day
 periodStart p = fromEFDay <$> mb

@@ -7,6 +7,7 @@
 
 module Hledger.Web.Handler.JournalR where
 
+import Hledger.Utils.I18n (tr, trf)
 import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Web.Import
@@ -20,12 +21,13 @@ import Hledger.Web.Widget.Common
 getJournalR :: Handler Html
 getJournalR = do
   checkServerSideUiEnabled
-  VD{perms, j, q, opts, qparam, qopts, today} <- getViewData
+  VD{perms, j, q, opts, qparam, qopts, today, trs} <- getViewData
   require ViewPermission
   let title = case inAccount qopts of
-        Nothing -> "General Journal"
-        Just (a, inclsubs) -> "Transactions in " <> a <> if inclsubs then "" else " (excluding subaccounts)"
-      title' = title <> if q /= Any then ", filtered" else ""
+        Nothing         -> tr trs "General Journal"
+        Just (a, True)  -> trf trs "Transactions in {account}" [("account", a)]
+        Just (a, False) -> trf trs "Transactions in {account} (excluding subaccounts)" [("account", a)]
+      title' = if q /= Any then trf trs "{title}, filtered" [("title", title)] else title
       acctlink a = (RegisterR, [("q", replaceInacct qparam $ accountQuery a)])
       rspec = (reportspec_ $ cliopts_ opts){_rsQuery = filterQuery (not . queryIsDepth) q}
       items = reverse $
@@ -34,5 +36,6 @@ getJournalR = do
       transactionFrag = transactionFragment j
 
   defaultLayout $ do
-    setTitle "journal - hledger-web"
+    -- TRANSLATORS: the browser tab title of this page.
+    setTitleI (HMsg "journal - hledger-web")
     $(widgetFile "journal")

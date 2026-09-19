@@ -53,7 +53,7 @@ getManageR = do
   VD{j} <- getViewData
   require EditPermission
   defaultLayout $ do
-    setTitle "Edit journal"
+    setTitleI (HMsg "Edit journal")
     $(widgetFile "manage")
 
 getDownloadR :: FilePath -> Handler TypedContent

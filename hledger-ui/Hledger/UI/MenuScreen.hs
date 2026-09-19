@@ -26,6 +26,7 @@ import Lens.Micro.Platform
 import System.Console.ANSI
 import System.FilePath (takeFileName)
 
+import Hledger.Utils.I18n (Translations, tr)
 import Hledger
 import Hledger.Cli hiding (mode, progname, prognameandversion)
 import Hledger.UI.UIOptions
@@ -49,7 +50,7 @@ msDraw sst UIState{aopts=_uopts@UIOpts{uoCliOpts=copts@CliOpts{reportspec_=_rspe
       _                 -> [maincontent]
   where
     maincontent = Widget Greedy Greedy $ do
-      render $ defaultLayout toplabel bottomlabel $ renderList msDrawItem True (sst ^. mssList)
+      render $ defaultLayout toplabel bottomlabel $ renderList (msDrawItem (translations_ ropts)) True (sst ^. mssList)
       where
         toplabel =
               withAttr (attrName "border" <> attrName "filename") fs
@@ -89,10 +90,10 @@ msDraw sst UIState{aopts=_uopts@UIOpts{uoCliOpts=copts@CliOpts{reportspec_=_rspe
 
 -- msDrawItem :: (Int,Int) -> Bool -> MenuScreenItem -> Widget Name
 -- msDrawItem (_acctwidth, _balwidth) _selected MenuScreenItem{..} =
-msDrawItem :: Bool -> MenuScreenItem -> Widget Name
-msDrawItem _selected MenuScreenItem{..} =
+msDrawItem :: Translations -> Bool -> MenuScreenItem -> Widget Name
+msDrawItem trs _selected MenuScreenItem{..} =
   Widget Greedy Fixed $ do
-    render $ txt msItemScreenName
+    render $ txt $ tr trs msItemScreenName
 
 -- XXX clean up like asHandle
 msHandle :: MenuScreenState -> BrickEvent Name AppEvent -> EventM Name UIState ()

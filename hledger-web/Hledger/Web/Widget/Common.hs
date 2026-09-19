@@ -33,6 +33,7 @@ import Text.Hamlet (hamletFile)
 import Text.Printf (printf)
 import Yesod
 
+import Hledger.Utils.I18n (Translations, tr)
 import Hledger
 import Hledger.Cli.Utils (writeFileWithBackupIfChanged)
 import Hledger.Web.Settings (manualurl)
@@ -77,8 +78,8 @@ helplink topic label _ = H.a ! A.href u ! A.target "hledgerhelp" $ toHtml label
   where u = textValue $ manualurl <> if T.null topic then "" else T.cons '#' topic
 
 -- | Render a "BalanceReport" as html.
-balanceReportAsHtml :: Eq r => (r, r) -> r -> Bool -> Journal -> Text -> [QueryOpt] -> BalanceReport -> HtmlUrl r
-balanceReportAsHtml (journalR, registerR) here hideEmpty j qparam qopts (items, total) =
+balanceReportAsHtml :: Eq r => (r, r) -> r -> Bool -> Translations -> Journal -> Text -> [QueryOpt] -> BalanceReport -> HtmlUrl r
+balanceReportAsHtml (journalR, registerR) here hideEmpty trs j qparam qopts (items, total) =
   $(hamletFile "templates/balance-report.hamlet")
   where
     l = ledgerFromJournal Any j
