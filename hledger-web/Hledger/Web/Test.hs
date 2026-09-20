@@ -357,6 +357,34 @@ hledgerWebTest = do
       bodyContains "Could not parse the period expression"
       bodyNotContains "<tfoot>"
 
+    yit "takes an interval from a date: search term, as the cli does" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "q" "date:monthly"
+      statusIs 200
+      bodyContains ">2025-01<"
+      bodyContains ">2025-02<"
+
+    yit "prefers a search term's interval to the period parameter" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "yearly"
+        addGetParam "q" "date:monthly"
+      statusIs 200
+      bodyContains ">2025-01<"
+      bodyNotContains ">2025<"
+    yit "marks the report being shown for the interval" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "monthly"
+        addGetParam "q" "date:yearly"
+      statusIs 200
+      -- the search term wins, so the yearly link is the current one
+      bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/balance?period=yearly")
+
     yit "keeps the period's date span in the report links" $ do
       request $ do
         setMethod "GET"

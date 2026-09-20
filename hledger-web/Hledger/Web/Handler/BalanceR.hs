@@ -28,7 +28,7 @@ import Hledger.Write.Spreadsheet (Cell, NumLines)
 getBalanceR :: Handler Html
 getBalanceR = do
   checkServerSideUiEnabled
-  VD{j, q, qparam, opts, today} <- getViewData
+  VD{j, q, qopts, qparam, opts, today} <- getViewData
   require ViewPermission
   -- The period parameter is a period expression as for -p: an interval
   -- ("monthly"), a date span ("2024"), or both ("monthly in 2024").
@@ -53,7 +53,11 @@ getBalanceR = do
           "Could not parse the period expression:"
           H.pre $ H.toHtml err
       Right (ivl, spn) -> do
-        let -- The links in the report carry the search, and the period's
+        let -- A date: search term can carry an interval too (eg
+            -- date:monthly), and as on the command line it wins over the
+            -- period; cf reportOptsToSpec.
+            reportinterval = fromMaybe ivl $ intervalFromQueryOpts qopts
+            -- The links in the report carry the search, and the period's
             -- date span as a date: term, so that a row's register link is
             -- restricted the same way the report is.
             spanterm = ["date:" <> showDateSpan spn | spn /= nulldatespan]
@@ -61,7 +65,7 @@ getBalanceR = do
               roptsOrig {
                 balance_base_url_ = Just "",
                 querystring_ = Query.words'' queryprefixes qparam ++ spanterm,
-                interval_ = ivl
+                interval_ = reportinterval
               }
             -- The period's date span restricts the report like a date:
             -- search term would; cf queryFromFlags.
@@ -79,7 +83,7 @@ getBalanceR = do
               }
             -- The heading, and the report's rows in three parts, for the
             -- table's thead, tbody, and tfoot.
-            (title, parts) = case ivl of
+            (title, parts) = case reportinterval of
               NoInterval ->
                 let (header, body, totals) =
                       Balance.balanceReportAsSpreadsheetParts oneLineNoCostFmt ropts $

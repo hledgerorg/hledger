@@ -58,6 +58,7 @@ module Hledger.Reports.ReportOptions (
   valuationAfterSum,
   requiresHistorical,
   intervalFromRawOpts,
+  intervalFromQueryOpts,
   queryFromFlags,
   transactionDateFn,
   postingDateFn,

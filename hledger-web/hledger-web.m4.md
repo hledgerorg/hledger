@@ -190,7 +190,9 @@ scheme to hold them. A `period` parameter, like the command line's
 column headings link to the register for that period.
 The search box filters the report like the other pages, including
 `depth:` terms, and the general report options given at startup, such
-as `--depth`, `-B`, or `-V`, apply.
+as `--depth`, `-B`, or `-V`, apply. A `date:` term can set the interval
+too, as on the command line (`date:monthly`, or
+`"date:quarterly in 2025"`), and wins over the `period` parameter.
 
 # RELOADING
 
