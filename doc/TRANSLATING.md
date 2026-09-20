@@ -97,10 +97,10 @@ marks the whole file as a draft.
 Each string is one entry. Here is one from the template:
 
 ```po
-#. the report title, eg "Monthly Balance Sheet 2024 (Historical Ending Balances), valued at period ends". {interval} and {clarification} bring their own surrounding space when present.
+#. the report title, eg "Monthly Balance Sheet 2024 (Historical Ending Balances), valued at period ends". {clarification} brings its own leading space when present.
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs:151
 #, python-brace-format
-msgid "{interval}{report} {dates}{clarification}{valuation}"
+msgid "{report} {dates}{clarification}{valuation}"
 msgstr ""
 ```
 
@@ -120,11 +120,11 @@ hand panel.
 
 ### Placeholders
 
-`{interval}`, `{dates}`, `{account}` and similar are placeholders that
+`{report}`, `{dates}`, `{account}` and similar are placeholders that
 hledger fills in when it runs. Keep each one exactly as it is, but put
 it where your language needs it. For example, "Transactions in
 {account}" becomes "Buchungen in {account}" in German, and a language
-that puts the date first can write "{dates} {interval}{report}" for the
+that puts the date first can write "{dates} {report}" for the
 title template. Do not translate the word inside the braces. Poedit
 warns you if a placeholder goes missing.
 
@@ -150,13 +150,13 @@ they are appended to other text. Keep that shape. Keep the capitalization
 style of the English too: headings are capitalized, hledger-ui screen
 names are not.
 
-### Words that combine with other words
+### Whole phrases
 
-The interval words ("Monthly", "Quarterly", ...) are put in front of a
-report title: "Monthly Balance Sheet". If your language inflects
-adjectives, choose a form that works for all four report titles, or a
-form that stands alone ("per month"). The `#.` note on those entries
-reminds you.
+A report title with a reporting interval, like "Monthly Balance Sheet",
+is one entry, not "Monthly" and "Balance Sheet" joined together. That
+makes for more entries (each report has one per interval), but each is
+a complete phrase, so you can inflect, reorder or join the words however
+your language needs: "Monatliche Bilanz", "Bilan mensuel", "月次貸借対照表".
 
 ### Month names
 

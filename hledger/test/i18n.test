@@ -100,3 +100,15 @@ Balance Sheet 2008-12-31
 $ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal is -M --lang de -O csv | head -2
 "Monatliche Einnahmenüberschussrechnung 2008","","","","","","","","","","","",""
 "Account","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"
+
+# ** 11. A report's title with a reporting interval is translated as one phrase,
+# so a translation can inflect, reorder or join the words. Equivalent intervals
+# share a title, and an unusual one is "Periodic".
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bse -Q --lang de | head -1
+Vierteljährliche Bilanz mit Eigenkapital 2008-03-31..2008-12-31
+
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal cf -p 'every 12 months' --lang de | head -1
+Jährliche Kapitalflussrechnung 2008
+
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal is -p 'every 3 days' --lang de | head -1
+Periodische Einnahmenüberschussrechnung 2008

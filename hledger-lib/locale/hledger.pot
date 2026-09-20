@@ -13,264 +13,214 @@ msgstr ""
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:171
+#: hledger-lib/Hledger/Utils/I18n.hs:174
 msgctxt "month"
 msgid "January"
 msgstr ""
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:171
+#: hledger-lib/Hledger/Utils/I18n.hs:174
 msgctxt "month"
 msgid "February"
 msgstr ""
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:171
+#: hledger-lib/Hledger/Utils/I18n.hs:174
 msgctxt "month"
 msgid "March"
 msgstr ""
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:172
+#: hledger-lib/Hledger/Utils/I18n.hs:175
 msgctxt "month"
 msgid "April"
 msgstr ""
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:172
+#: hledger-lib/Hledger/Utils/I18n.hs:175
 msgctxt "month"
 msgid "May"
 msgstr ""
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:172
+#: hledger-lib/Hledger/Utils/I18n.hs:175
 msgctxt "month"
 msgid "June"
 msgstr ""
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:173
+#: hledger-lib/Hledger/Utils/I18n.hs:176
 msgctxt "month"
 msgid "July"
 msgstr ""
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:173
+#: hledger-lib/Hledger/Utils/I18n.hs:176
 msgctxt "month"
 msgid "August"
 msgstr ""
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:173
+#: hledger-lib/Hledger/Utils/I18n.hs:176
 msgctxt "month"
 msgid "September"
 msgstr ""
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:174
+#: hledger-lib/Hledger/Utils/I18n.hs:177
 msgctxt "month"
 msgid "October"
 msgstr ""
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:174
+#: hledger-lib/Hledger/Utils/I18n.hs:177
 msgctxt "month"
 msgid "November"
 msgstr ""
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:174
+#: hledger-lib/Hledger/Utils/I18n.hs:177
 msgctxt "month"
 msgid "December"
 msgstr ""
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:178
+#: hledger-lib/Hledger/Utils/I18n.hs:181
 msgctxt "month abbrev"
 msgid "Jan"
 msgstr ""
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:178
+#: hledger-lib/Hledger/Utils/I18n.hs:181
 msgctxt "month abbrev"
 msgid "Feb"
 msgstr ""
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:178
+#: hledger-lib/Hledger/Utils/I18n.hs:181
 msgctxt "month abbrev"
 msgid "Mar"
 msgstr ""
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:179
+#: hledger-lib/Hledger/Utils/I18n.hs:182
 msgctxt "month abbrev"
 msgid "Apr"
 msgstr ""
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:179
+#: hledger-lib/Hledger/Utils/I18n.hs:182
 msgctxt "month abbrev"
 msgid "May"
 msgstr ""
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:179
+#: hledger-lib/Hledger/Utils/I18n.hs:182
 msgctxt "month abbrev"
 msgid "Jun"
 msgstr ""
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:180
+#: hledger-lib/Hledger/Utils/I18n.hs:183
 msgctxt "month abbrev"
 msgid "Jul"
 msgstr ""
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:180
+#: hledger-lib/Hledger/Utils/I18n.hs:183
 msgctxt "month abbrev"
 msgid "Aug"
 msgstr ""
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:180
+#: hledger-lib/Hledger/Utils/I18n.hs:183
 msgctxt "month abbrev"
 msgid "Sep"
 msgstr ""
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:181
+#: hledger-lib/Hledger/Utils/I18n.hs:184
 msgctxt "month abbrev"
 msgid "Oct"
 msgstr ""
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:181
+#: hledger-lib/Hledger/Utils/I18n.hs:184
 msgctxt "month abbrev"
 msgid "Nov"
 msgstr ""
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:181
+#: hledger-lib/Hledger/Utils/I18n.hs:184
 msgctxt "month abbrev"
 msgid "Dec"
 msgstr ""
 
-#. the report title, eg "Monthly Balance Sheet 2024 (Historical Ending Balances), valued at period ends". {interval} and {clarification} bring their own surrounding space when present.
+#. the report title, eg "Monthly Balance Sheet 2024 (Historical Ending Balances), valued at period ends". {clarification} brings its own leading space when present.
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs:151
 #, python-brace-format
-msgid "{interval}{report} {dates}{clarification}{valuation}"
+msgid "{report} {dates}{clarification}{valuation}"
 msgstr ""
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:177
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:174
 msgid "(Period-End Value Changes)"
 msgstr ""
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:178
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:175
 msgid "(Cumulative Period-End Value Changes)"
 msgstr ""
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:179
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:176
 msgid "(Incremental Gain)"
 msgstr ""
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:180
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:177
 msgid "(Cumulative Gain)"
 msgstr ""
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:181
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:178
 msgid "(Historical Gain)"
 msgstr ""
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:182
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:179
 msgid "(Balance Changes)"
 msgstr ""
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:183
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:180
 msgid "(Cumulative Ending Balances)"
 msgstr ""
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:184
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:181
 msgid "(Historical Ending Balances)"
 msgstr ""
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:189 hledger/Hledger/Cli/Commands/Balance.hs:895 hledger/Hledger/Cli/Commands/Balance.hs:1100
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:186 hledger/Hledger/Cli/Commands/Balance.hs:895 hledger/Hledger/Cli/Commands/Balance.hs:1100
 msgid ", converted to cost"
 msgstr ""
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:192 hledger/Hledger/Cli/Commands/Balance.hs:898 hledger/Hledger/Cli/Commands/Balance.hs:1103
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:189 hledger/Hledger/Cli/Commands/Balance.hs:898 hledger/Hledger/Cli/Commands/Balance.hs:1103
 msgid ", valued at posting date"
 msgstr ""
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:194 hledger/Hledger/Cli/Commands/Balance.hs:900 hledger/Hledger/Cli/Commands/Balance.hs:1104
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:191 hledger/Hledger/Cli/Commands/Balance.hs:900 hledger/Hledger/Cli/Commands/Balance.hs:1104
 msgid ", valued at period ends"
 msgstr ""
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:195 hledger/Hledger/Cli/Commands/Balance.hs:901 hledger/Hledger/Cli/Commands/Balance.hs:1105
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:192 hledger/Hledger/Cli/Commands/Balance.hs:901 hledger/Hledger/Cli/Commands/Balance.hs:1105
 msgid ", current value"
 msgstr ""
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:196 hledger/Hledger/Cli/Commands/Balance.hs:902 hledger/Hledger/Cli/Commands/Balance.hs:1106
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:193 hledger/Hledger/Cli/Commands/Balance.hs:902 hledger/Hledger/Cli/Commands/Balance.hs:1106
 #, python-brace-format
 msgid ", valued at {date}"
 msgstr ""
 
-#. these precede a report title, as in "Monthly Balance Sheet". If your language inflects adjectives, use a form that fits every report title, or a stand-alone form such as "per month".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:247
-msgid "Daily"
-msgstr ""
-
-#. these precede a report title, as in "Monthly Balance Sheet". If your language inflects adjectives, use a form that fits every report title, or a stand-alone form such as "per month".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:248
-msgid "Weekly"
-msgstr ""
-
-#. these precede a report title, as in "Monthly Balance Sheet". If your language inflects adjectives, use a form that fits every report title, or a stand-alone form such as "per month".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:249
-msgid "Biweekly"
-msgstr ""
-
-#. these precede a report title, as in "Monthly Balance Sheet". If your language inflects adjectives, use a form that fits every report title, or a stand-alone form such as "per month".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:250
-msgid "Monthly"
-msgstr ""
-
-#. these precede a report title, as in "Monthly Balance Sheet". If your language inflects adjectives, use a form that fits every report title, or a stand-alone form such as "per month".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:251
-msgid "Bimonthly"
-msgstr ""
-
-#. these precede a report title, as in "Monthly Balance Sheet". If your language inflects adjectives, use a form that fits every report title, or a stand-alone form such as "per month".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:252 hledger/Hledger/Cli/CompoundBalanceCommand.hs:255
-msgid "Quarterly"
-msgstr ""
-
-#. these precede a report title, as in "Monthly Balance Sheet". If your language inflects adjectives, use a form that fits every report title, or a stand-alone form such as "per month".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:253 hledger/Hledger/Cli/CompoundBalanceCommand.hs:256
-msgid "Half-yearly"
-msgstr ""
-
-#. these precede a report title, as in "Monthly Balance Sheet". If your language inflects adjectives, use a form that fits every report title, or a stand-alone form such as "per month".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:254 hledger/Hledger/Cli/CompoundBalanceCommand.hs:257
-msgid "Yearly"
-msgstr ""
-
-#. these precede a report title, as in "Monthly Balance Sheet". If your language inflects adjectives, use a form that fits every report title, or a stand-alone form such as "per month".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:258
-msgid "Biennial"
-msgstr ""
-
-#. these precede a report title, as in "Monthly Balance Sheet". If your language inflects adjectives, use a form that fits every report title, or a stand-alone form such as "per month".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:259
-msgid "Periodic"
-msgstr ""
-
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:323
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:308
 msgid "Net:"
 msgstr ""
 
@@ -345,43 +295,253 @@ msgstr ""
 msgid "Budget performance in {dates}{valuation}:"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:24
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:28
 msgid "Balance Sheet"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:27 hledger/Hledger/Cli/Commands/Balancesheetequity.hs:28
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:29
+msgid "Daily Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:30
+msgid "Weekly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:31
+msgid "Biweekly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:32
+msgid "Monthly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:33
+msgid "Bimonthly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:34
+msgid "Quarterly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:35
+msgid "Half-yearly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:36
+msgid "Yearly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:37
+msgid "Biennial Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:38
+msgid "Periodic Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:41 hledger/Hledger/Cli/Commands/Balancesheetequity.hs:42
 msgid "Assets"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:34 hledger/Hledger/Cli/Commands/Balancesheetequity.hs:35
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:48 hledger/Hledger/Cli/Commands/Balancesheetequity.hs:49
 msgid "Liabilities"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:25
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:29
 msgid "Balance Sheet With Equity"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:42
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:30
+msgid "Daily Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:31
+msgid "Weekly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:32
+msgid "Biweekly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:33
+msgid "Monthly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:34
+msgid "Bimonthly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:35
+msgid "Quarterly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:36
+msgid "Half-yearly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:37
+msgid "Yearly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:38
+msgid "Biennial Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:39
+msgid "Periodic Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:56
 msgid "Equity"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:28
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:32
 msgid "Cashflow Statement"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:31
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:33
+msgid "Daily Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:34
+msgid "Weekly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:35
+msgid "Biweekly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:36
+msgid "Monthly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:37
+msgid "Bimonthly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:38
+msgid "Quarterly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:39
+msgid "Half-yearly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:40
+msgid "Yearly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:41
+msgid "Biennial Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:42
+msgid "Periodic Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:45
 msgid "Cash flows"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:24
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:28
 msgid "Income Statement"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:27
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:29
+msgid "Daily Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:30
+msgid "Weekly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:31
+msgid "Biweekly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:32
+msgid "Monthly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:33
+msgid "Bimonthly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:34
+msgid "Quarterly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:35
+msgid "Half-yearly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:36
+msgid "Yearly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:37
+msgid "Biennial Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:38
+msgid "Periodic Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:41
 msgid "Revenues"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:34
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:48
 msgid "Expenses"
 msgstr ""
 

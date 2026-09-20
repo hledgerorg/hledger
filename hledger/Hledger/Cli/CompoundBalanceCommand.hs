@@ -36,7 +36,7 @@ import Text.Blaze.Html5 qualified as H
 import Text.Blaze.Html5.Attributes qualified as A
 import Text.Tabular.AsciiWide as Tabular hiding (render)
 
-import Hledger.Utils.I18n (Translations, noTranslations, tr, trf)
+import Hledger.Utils.I18n (noTranslations, tr, trf)
 import Hledger
 import Hledger.Cli.Commands.Balance
 import Hledger.Cli.CliOptions
@@ -63,7 +63,7 @@ import Hledger.Write.Spreadsheet qualified as Spr
 --
 data CompoundBalanceCommandSpec = CompoundBalanceCommandSpec {
   cbcdoc      :: CommandHelpStr,                  -- ^ the command's name(s) and documentation
-  cbctitle    :: T.Text,                          -- ^ overall report title
+  cbctitle    :: Interval -> T.Text,              -- ^ overall report title, by reporting interval
   cbcqueries  :: [CBCSubreportSpec DisplayName],  -- ^ subreport details
   cbcaccum    :: BalanceAccumulation              -- ^ how to accumulate balances (per-period, cumulative, historical)
                                                   --   (overrides command line flags)
@@ -151,10 +151,9 @@ compoundBalanceCommand CompoundBalanceCommandSpec{..} opts@CliOpts{reportspec_=r
     ropts' = ropts{balanceaccum_=balanceaccumulation}
 
     -- TRANSLATORS: the report title, eg "Monthly Balance Sheet 2024 (Historical Ending Balances), valued at period ends".
-    -- {interval} and {clarification} bring their own surrounding space when present.
-    title = trf translations_ "{interval}{report} {dates}{clarification}{valuation}"
-      [ ("interval",      maybe "" (<> " ") mintervalstr)
-      , ("report",        tr translations_ cbctitle)
+    -- {clarification} brings its own leading space when present.
+    title = trf translations_ "{report} {dates}{clarification}{valuation}"
+      [ ("report",        tr translations_ $ cbctitle $ titleInterval interval_)
       , ("dates",         titledatestr)
       , ("clarification", maybe "" (" " <>) mtitleclarification)
       , ("valuation",     valuationdesc)
@@ -172,8 +171,6 @@ compoundBalanceCommand CompoundBalanceCommandSpec{..} opts@CliOpts{reportspec_=r
           where
             enddates = map (addDays (-1)) . mapMaybe spanEnd $ cbrDates cbr  -- these spans will always have a definite end date
             requestedspan = fst $ reportSpan j rspec
-
-        mintervalstr = showInterval translations_ interval_
 
         -- when user overrides, add an indication to the report title
         -- Do we need to deal with overridden BalanceCalculation?
@@ -241,26 +238,14 @@ applySubreportTitles ropts cbr@CompoundPeriodicReport{cbrSubreports=subs} =
               replace i (old,r,b) = (fromMaybe old (atMay custom i), r, b)
           in  cbr{cbrSubreports = zipWith replace [0..] subs}
 
--- | Show a simplified description of an Interval, translated.
--- TRANSLATORS: these precede a report title, as in "Monthly Balance Sheet". If your
--- language inflects adjectives, use a form that fits every report title, or a
--- stand-alone form such as "per month".
-showInterval :: Translations -> Interval -> Maybe T.Text
-showInterval t = \case
-  NoInterval -> Nothing
-  Days 1     -> Just $ tr t "Daily"
-  Weeks 1    -> Just $ tr t "Weekly"
-  Weeks 2    -> Just $ tr t "Biweekly"
-  Months 1   -> Just $ tr t "Monthly"
-  Months 2   -> Just $ tr t "Bimonthly"
-  Months 3   -> Just $ tr t "Quarterly"
-  Months 6   -> Just $ tr t "Half-yearly"
-  Months 12  -> Just $ tr t "Yearly"
-  Quarters 1 -> Just $ tr t "Quarterly"
-  Quarters 2 -> Just $ tr t "Half-yearly"
-  Years 1    -> Just $ tr t "Yearly"
-  Years 2    -> Just $ tr t "Biennial"
-  _          -> Just $ tr t "Periodic"
+-- | Merge the intervals that a report title does not distinguish:
+-- twelve months is a year, and a quarter is three months.
+titleInterval :: Interval -> Interval
+titleInterval = \case
+  Months 12  -> Years 1
+  Quarters 1 -> Months 3
+  Quarters 2 -> Months 6
+  i          -> i
 
 -- | Summarise one or more (inclusive) end dates, in a way that's
 -- visually different from showDateSpan, suggesting discrete end dates

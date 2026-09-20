@@ -11,18 +11,141 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#. Report titles.
+#. Balance Sheet titles, one per reporting interval.
 msgid "Balance Sheet"
 msgstr "Bilanz"
 
+msgid "Daily Balance Sheet"
+msgstr "Tägliche Bilanz"
+
+msgid "Weekly Balance Sheet"
+msgstr "Wöchentliche Bilanz"
+
+msgid "Biweekly Balance Sheet"
+msgstr "Zweiwöchentliche Bilanz"
+
+msgid "Monthly Balance Sheet"
+msgstr "Monatliche Bilanz"
+
+msgid "Bimonthly Balance Sheet"
+msgstr "Zweimonatliche Bilanz"
+
+msgid "Quarterly Balance Sheet"
+msgstr "Vierteljährliche Bilanz"
+
+msgid "Half-yearly Balance Sheet"
+msgstr "Halbjährliche Bilanz"
+
+msgid "Yearly Balance Sheet"
+msgstr "Jährliche Bilanz"
+
+msgid "Biennial Balance Sheet"
+msgstr "Zweijährliche Bilanz"
+
+msgid "Periodic Balance Sheet"
+msgstr "Periodische Bilanz"
+
+#. Balance Sheet With Equity titles, one per reporting interval.
 msgid "Balance Sheet With Equity"
 msgstr "Bilanz mit Eigenkapital"
 
+msgid "Daily Balance Sheet With Equity"
+msgstr "Tägliche Bilanz mit Eigenkapital"
+
+msgid "Weekly Balance Sheet With Equity"
+msgstr "Wöchentliche Bilanz mit Eigenkapital"
+
+msgid "Biweekly Balance Sheet With Equity"
+msgstr "Zweiwöchentliche Bilanz mit Eigenkapital"
+
+msgid "Monthly Balance Sheet With Equity"
+msgstr "Monatliche Bilanz mit Eigenkapital"
+
+msgid "Bimonthly Balance Sheet With Equity"
+msgstr "Zweimonatliche Bilanz mit Eigenkapital"
+
+msgid "Quarterly Balance Sheet With Equity"
+msgstr "Vierteljährliche Bilanz mit Eigenkapital"
+
+msgid "Half-yearly Balance Sheet With Equity"
+msgstr "Halbjährliche Bilanz mit Eigenkapital"
+
+msgid "Yearly Balance Sheet With Equity"
+msgstr "Jährliche Bilanz mit Eigenkapital"
+
+msgid "Biennial Balance Sheet With Equity"
+msgstr "Zweijährliche Bilanz mit Eigenkapital"
+
+msgid "Periodic Balance Sheet With Equity"
+msgstr "Periodische Bilanz mit Eigenkapital"
+
+#. Income Statement titles, one per reporting interval.
 msgid "Income Statement"
 msgstr "Einnahmenüberschussrechnung"
 
+msgid "Daily Income Statement"
+msgstr "Tägliche Einnahmenüberschussrechnung"
+
+msgid "Weekly Income Statement"
+msgstr "Wöchentliche Einnahmenüberschussrechnung"
+
+msgid "Biweekly Income Statement"
+msgstr "Zweiwöchentliche Einnahmenüberschussrechnung"
+
+msgid "Monthly Income Statement"
+msgstr "Monatliche Einnahmenüberschussrechnung"
+
+msgid "Bimonthly Income Statement"
+msgstr "Zweimonatliche Einnahmenüberschussrechnung"
+
+msgid "Quarterly Income Statement"
+msgstr "Vierteljährliche Einnahmenüberschussrechnung"
+
+msgid "Half-yearly Income Statement"
+msgstr "Halbjährliche Einnahmenüberschussrechnung"
+
+msgid "Yearly Income Statement"
+msgstr "Jährliche Einnahmenüberschussrechnung"
+
+msgid "Biennial Income Statement"
+msgstr "Zweijährliche Einnahmenüberschussrechnung"
+
+msgid "Periodic Income Statement"
+msgstr "Periodische Einnahmenüberschussrechnung"
+
+#. Cashflow Statement titles, one per reporting interval.
 msgid "Cashflow Statement"
 msgstr "Kapitalflussrechnung"
+
+msgid "Daily Cashflow Statement"
+msgstr "Tägliche Kapitalflussrechnung"
+
+msgid "Weekly Cashflow Statement"
+msgstr "Wöchentliche Kapitalflussrechnung"
+
+msgid "Biweekly Cashflow Statement"
+msgstr "Zweiwöchentliche Kapitalflussrechnung"
+
+msgid "Monthly Cashflow Statement"
+msgstr "Monatliche Kapitalflussrechnung"
+
+msgid "Bimonthly Cashflow Statement"
+msgstr "Zweimonatliche Kapitalflussrechnung"
+
+msgid "Quarterly Cashflow Statement"
+msgstr "Vierteljährliche Kapitalflussrechnung"
+
+msgid "Half-yearly Cashflow Statement"
+msgstr "Halbjährliche Kapitalflussrechnung"
+
+msgid "Yearly Cashflow Statement"
+msgstr "Jährliche Kapitalflussrechnung"
+
+msgid "Biennial Cashflow Statement"
+msgstr "Zweijährliche Kapitalflussrechnung"
+
+msgid "Periodic Cashflow Statement"
+msgstr "Periodische Kapitalflussrechnung"
 
 #. Subreport (section) titles.
 msgid "Assets"
@@ -45,8 +168,8 @@ msgstr "Kapitalflüsse"
 
 #. Report title templates.
 #, python-brace-format
-msgid "{interval}{report} {dates}{clarification}{valuation}"
-msgstr "{interval}{report} {dates}{clarification}{valuation}"
+msgid "{report} {dates}{clarification}{valuation}"
+msgstr "{report} {dates}{clarification}{valuation}"
 
 #, python-brace-format
 msgid "{report} in {dates}{valuation}:"
@@ -55,37 +178,6 @@ msgstr "{report} in {dates}{valuation}:"
 #, python-brace-format
 msgid "Budget performance in {dates}{valuation}:"
 msgstr "Soll-Ist-Vergleich in {dates}{valuation}:"
-
-#. Interval words, preceding a report title: "Monatliche Bilanz".
-msgid "Daily"
-msgstr "Tägliche"
-
-msgid "Weekly"
-msgstr "Wöchentliche"
-
-msgid "Biweekly"
-msgstr "Zweiwöchentliche"
-
-msgid "Monthly"
-msgstr "Monatliche"
-
-msgid "Bimonthly"
-msgstr "Zweimonatliche"
-
-msgid "Quarterly"
-msgstr "Vierteljährliche"
-
-msgid "Half-yearly"
-msgstr "Halbjährliche"
-
-msgid "Yearly"
-msgstr "Jährliche"
-
-msgid "Biennial"
-msgstr "Zweijährliche"
-
-msgid "Periodic"
-msgstr "Periodische"
 
 #. Title clarifications.
 msgid "(Period-End Value Changes)"
