@@ -87,6 +87,24 @@ td.date {
   white-space: normal;
 }
 
+/* A balance report can be wider than the page at any window size, and
+   bootstrap's .table-responsive only scrolls below 768px. Without this the
+   whole main pane scrolls instead, dragging the account column, the heading
+   and the search box out of view. */
+.report-table {
+  overflow-x: auto;
+}
+
+/* The balance report's table comes from hledger-lib's HTML writer, which
+   marks heading and total cells with border classes (border-bottom-double,
+   border-top-double) for its standalone output. Here the rules above apply
+   instead: one hairline between rows, none vertical, no double lines. The
+   totals, in tfoot, are bold (the writer's <b>) under a hairline in the
+   header color, so the eye finds them without a heavier rule. */
+.table > tfoot > tr > td {
+  border-top: 1px solid #687385;
+}
+
 /*------------------------------------------------------------------------------------------*/
 /* 4. the add form */
 
