@@ -8,6 +8,7 @@ module Hledger.Web.Widget.Common
   ( accountQuery
   , accountOnlyQuery
   , balanceReportAsHtml
+  , balanceReportLinks
   , helplink
   , mixedAmountAsHtml
   , fromFormSuccess
@@ -87,6 +88,37 @@ balanceReportAsHtml (journalR, registerR) here hideEmpty j qparam qopts (items, 
     isInterestingAccount acct = maybe False isInteresting $ ledgerAccount l acct
       where isInteresting a = not (all (mixedAmountLooksZero . bdexcludingsubs) . pdperiods $ adata a) || any isInteresting (asubs a)
     matchesAcctSelector acct = Just True == ((`matchesAccount` acct) <$> inAccountQuery qopts)
+
+-- | Links to the balance report page, single-period and for each
+-- interval, carrying the current search and date span; the report being
+-- shown, identified by the interval it was built with, is marked.
+balanceReportLinks :: r -> Text -> DateSpan -> Interval -> HtmlUrl r
+balanceReportLinks balanceR qparam spn current =
+  $(hamletFile "templates/balance-links.hamlet")
+  where
+    -- Each link's label and title is a whole phrase, not a word slotted
+    -- into a sentence: an adjective that fits one language's sentence does
+    -- not fit another's, so a translation cannot be assembled from parts.
+    reports :: [(Text, Text, Maybe Text, Interval)]
+    reports =
+      [ ("Balance",   "Show the balance report",           Nothing,          NoInterval)
+      , ("Yearly",    "Show the yearly balance report",    Just "yearly",    Years 1)
+      , ("Quarterly", "Show the quarterly balance report", Just "quarterly", Quarters 1)
+      , ("Monthly",   "Show the monthly balance report",   Just "monthly",   Months 1)
+      , ("Weekly",    "Show the weekly balance report",    Just "weekly",    Weeks 1)
+      , ("Daily",     "Show the daily balance report",     Just "daily",     Days 1)
+      ]
+    -- Each link keeps the period's date span, so that changing the
+    -- interval does not silently widen the report to the whole journal.
+    -- "monthly 2025-01-01..2025-12-31" is a period expression like any other.
+    spantext = if spn == nulldatespan then "" else showDateSpan spn
+    periodparam mword = case (mword, spantext) of
+      (Nothing,   "") -> []
+      (Nothing,   sp) -> [("period", sp)]
+      (Just w,    "") -> [("period", w)]
+      (Just w,    sp) -> [("period", w <> " " <> sp)]
+    link mword =
+      (balanceR, periodparam mword ++ [("q", qparam) | not (T.null qparam)])
 
 accountQuery :: AccountName -> Text
 accountQuery = ("inacct:" <>) .  quoteIfSpaced

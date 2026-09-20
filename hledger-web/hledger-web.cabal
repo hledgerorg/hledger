@@ -61,6 +61,7 @@ extra-source-files:
     static/js/jquery.js
     static/js/jquery.min.js
     templates/add-form.hamlet
+    templates/balance-links.hamlet
     templates/balance-report.hamlet
     templates/chart.hamlet
     templates/default-layout-wrapper.hamlet

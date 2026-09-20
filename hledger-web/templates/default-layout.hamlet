@@ -48,11 +48,11 @@ $if elem ViewPermission perms
     <form#searchform.input-group method=GET>
       <input .form-control name=q value=#{qparam} placeholder="Search"
         title="Enter hledger search patterns to filter the data below">
-      $maybe period <- maybePeriod
-        <input hidden name=period value=#{period}>
+      $forall (name, value) <- periodParams
+        <input type=hidden name=#{name} value=#{value}>
       <div .input-group-btn>
         $if not (T.null qparam)
-          <a href=@{here} .btn .btn-default title="Clear search terms">
+          <a href=@?{(here, periodParams)} .btn .btn-default title="Clear search terms">
             <span .glyphicon .glyphicon-remove-circle>
         <button .btn .btn-default type=submit title="Apply search terms">
           <span .glyphicon .glyphicon-search>

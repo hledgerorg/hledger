@@ -15,8 +15,11 @@ import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Commands.Balance qualified as Balance
 import Hledger.Query qualified as Query
+import Data.Text qualified as T
+
 import Hledger.Web.Import
 import Hledger.Web.WebOptions
+import Hledger.Web.Widget.Common (balanceReportLinks)
 import Hledger.Write.Html.Blaze (formatRow)
 import Hledger.Write.Spreadsheet (Cell, NumLines)
 
@@ -30,9 +33,8 @@ getBalanceR = do
   -- The period parameter is a period expression as for -p: an interval
   -- ("monthly"), a date span ("2024"), or both ("monthly in 2024").
   -- An empty one is no period at all, as from a search form with nothing in it.
-  mperiod <- (>>= \p -> if p == "" then Nothing else Just p) <$> lookupGetParam "period"
-  let title :: Text
-      title = "Balance Report" <> if q /= Any then ", filtered" else ""
+  mperiod <- (>>= \p -> if T.null p then Nothing else Just p) <$> lookupGetParam "period"
+  let filtered = if q /= Any then ", filtered" else "" :: Text
       rspecOrig = reportspec_ $ cliopts_ opts
       roptsOrig = _rsReportOpts rspecOrig
       eperiod = case mperiod of
@@ -43,11 +45,14 @@ getBalanceR = do
   defaultLayout $ do
     setTitle "balance - hledger-web"
     case eperiod of
-      Left err -> Yesod.toWidget $
+      -- No report links here: this page is a dead end until the navigation
+      -- question (#2242) is settled, see the pull request.
+      Left err -> Yesod.toWidget $ do
+        H.h2 $ H.toHtml $ reportTitle roptsOrig "Balance report" <> filtered
         H.div ! A.class_ "alert alert-danger" $ do
           "Could not parse the period expression:"
           H.pre $ H.toHtml err
-      Right (ivl, spn) -> Yesod.toWidget $ do
+      Right (ivl, spn) -> do
         let -- The links in the report carry the search, and the period's
             -- date span as a date: term, so that a row's register link is
             -- restricted the same way the report is.
@@ -72,17 +77,35 @@ getBalanceR = do
                 _rsQuery = simplifyQuery $ And [q, dateq],
                 _rsReportOpts = ropts
               }
-        H.h2 $ H.toHtml title
-        reportTable $ case ivl of
-          NoInterval ->
-            let (header, body, totals) =
-                  Balance.balanceReportAsSpreadsheetParts oneLineNoCostFmt ropts $
-                    balanceReport rspec j
-            in ([toList header], map toList body, map toList totals)
-          _ ->
-            let mbr = multiBalanceReport rspec j
-            in Balance.multiBalanceReportAsSpreadsheetParts oneLineNoCostFmt ropts
-                 (Balance.allCommoditiesFromPeriodicReport $ prRows mbr) mbr
+            -- The heading, and the report's rows in three parts, for the
+            -- table's thead, tbody, and tfoot.
+            (title, parts) = case ivl of
+              NoInterval ->
+                let (header, body, totals) =
+                      Balance.balanceReportAsSpreadsheetParts oneLineNoCostFmt ropts $
+                        balanceReport rspec j
+                in ( reportTitle ropts "Balance report"
+                   , ([toList header], map toList body, map toList totals))
+              _ ->
+                let mbr = multiBalanceReport rspec j
+                in ( maybe (trimColon $ Balance.multiBalanceReportTitle ropts mbr) id (title_ ropts)
+                   , Balance.multiBalanceReportAsSpreadsheetParts oneLineNoCostFmt ropts
+                       (Balance.allCommoditiesFromPeriodicReport $ prRows mbr) mbr
+                   )
+        Yesod.toWidget $ H.h2 $ H.toHtml $ title <> filtered
+        Yesod.toWidget $ balanceReportLinks BalanceR qparam spn reportinterval
+        Yesod.toWidget $ reportTable parts
+
+-- | The heading for a report: --title if one was given, otherwise the
+-- given default.
+reportTitle :: ReportOpts -> Text -> Text
+reportTitle ropts dflt = fromMaybe dflt $ title_ ropts
+
+-- | Drop the trailing colon of a command line report title, which a heading
+-- does not want. A translation of it may end in " :" or "\uff1a" instead,
+-- so drop whichever is there.
+trimColon :: Text -> Text
+trimColon = T.dropWhileEnd (`elem` (":\65306 " :: String))
 
 -- | A report's heading, body, and total rows as a table in the page's own
 -- style, scrolling sideways within the page when it is wider (see

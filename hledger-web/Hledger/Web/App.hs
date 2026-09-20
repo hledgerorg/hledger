@@ -147,7 +147,11 @@ instance Yesod App where
           }
         rspec' = rspec{_rsQuery=q,_rsReportOpts=ropts'}
 
-    maybePeriod <- lookupGetParam "period"
+    -- The balance page's period parameter, which its search form and the
+    -- form's clear button keep.
+    periodParams <- case here of
+      BalanceR -> maybe [] (\p -> [("period", p)]) <$> lookupGetParam "period"
+      _        -> pure []
 
     hideEmptyAccts <- if empty_ ropts
                          then return True

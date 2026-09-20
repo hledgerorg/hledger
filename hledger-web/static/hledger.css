@@ -105,6 +105,16 @@ td.date {
   border-top: 1px solid #687385;
 }
 
+/* The row of links to the balance reports, on the journal and balance
+   pages; the report being shown is set in bold, like the sidebar's
+   current account. */
+.report-links a {
+  margin-left: 0.5em;
+}
+.report-links .current {
+  font-weight: bold;
+}
+
 /*------------------------------------------------------------------------------------------*/
 /* 4. the add form */
 
