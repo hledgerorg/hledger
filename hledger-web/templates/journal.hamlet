@@ -6,8 +6,6 @@ $if elem AddPermission perms
      data-toggle="modal" data-target="#addmodal" title="Add a new transaction to the journal">
     Add a transaction
 
-^{balanceReportLinks BalanceR qparam (const False)}
-
 <div .table-responsive>
   <table .transactionsreport .table .table-condensed>
     <thead>

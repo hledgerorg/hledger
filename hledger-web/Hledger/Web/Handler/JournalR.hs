@@ -13,7 +13,7 @@ import Hledger.Web.Import
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Widget.Common
-            (accountQuery, balanceReportLinks, mixedAmountAsHtml,
+            (accountQuery, mixedAmountAsHtml,
              transactionFragment, replaceInacct)
 
 -- | The formatted journal view, with sidebar.

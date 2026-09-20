@@ -182,8 +182,9 @@ Changes which would leave the journal file(s) unparseable or invalid
 
 Besides the journal and account registers, hledger-web can show the
 [balance report](hledger.md#balance) at `/balance`, with each account
-linked to its register. The journal page links to it, and to its
-multi-period forms. A `period` parameter, like the command line's
+linked to its register. No page links to it yet: it is reachable by
+entering the url, until there are more such reports and a navigation
+scheme to hold them. A `period` parameter, like the command line's
 `-p/--period`, selects the interval and/or the period, eg
 `/balance?period=monthly` or `/balance?period=quarterly in 2025`;
 column headings link to the register for that period.
