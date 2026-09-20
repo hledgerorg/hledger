@@ -63,6 +63,10 @@ getBalanceR = do
             spanterm = ["date:" <> showDateSpan spn | spn /= nulldatespan]
             ropts =
               roptsOrig {
+                -- -E means the opposite in hledger-ui and hledger-web: hide
+                -- zero items, which are shown by default. The sidebar beside
+                -- this report already reads the flag that way (see App.hs).
+                empty_ = not $ empty_ roptsOrig,
                 balance_base_url_ = Just "",
                 querystring_ = Query.words'' queryprefixes qparam ++ spanterm,
                 interval_ = reportinterval

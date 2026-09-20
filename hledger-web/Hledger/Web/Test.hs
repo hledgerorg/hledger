@@ -429,6 +429,34 @@ hledgerWebTest = do
       bodyContains "$1.00"
       bodyNotContains "$1.005"
 
+  -- Two accounts that net to zero, two that do not. -E means the opposite
+  -- here than on the command line: hide the zero ones.
+  ej <- fmap (either error' id) . runExceptT . journalFinalise biopts "empty.journal" "" =<<
+          readJournal'' (T.pack $ unlines  -- PARTIAL: readJournal'' should not fail
+            ["2025-01-01 out"
+            ,"    assets:zeroed    100"
+            ,"    income:zeroed   -100"
+            ,"2025-01-02 back"
+            ,"    assets:zeroed   -100"
+            ,"    income:zeroed    100"
+            ,"2025-01-03 kept"
+            ,"    assets:kept       50"
+            ,"    income:kept      -50"])
+  runTests "hledger-web balance page zero items" [] ej $ do
+
+    yit "shows zero items by default, as the sidebar does" $ do
+      get BalanceR
+      statusIs 200
+      bodyContains "href=\"register?q=inacct:assets:zeroed\""
+
+  runTests "hledger-web with -E" [("empty","")] ej $ do
+
+    yit "hides zero items, the opposite of the command line" $ do
+      get BalanceR
+      statusIs 200
+      bodyContains "href=\"register?q=inacct:assets:kept\""
+      bodyNotContains "href=\"register?q=inacct:assets:zeroed\""
+
   runTests "hledger-web with --monthly" [("monthly","")] bj $ do
 
     yit "keeps the interval the server was started with" $ do
