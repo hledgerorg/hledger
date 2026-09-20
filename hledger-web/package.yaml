@@ -128,7 +128,6 @@ library:
   - http-conduit
   - http-client
   - http-types
-  - lucid
   - megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9   # avoid https://github.com/mrkkrp/megaparsec/issues/572
   - mtl >=2.2.1
   - network

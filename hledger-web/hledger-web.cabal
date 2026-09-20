@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.38.3.
+-- This file has been generated from package.yaml by hpack version 0.39.6.
 --
 -- see: https://github.com/sol/hpack
 
@@ -62,12 +62,10 @@ extra-source-files:
     static/js/jquery.min.js
     templates/add-form.hamlet
     templates/balance-report.hamlet
-    templates/balance.hamlet
     templates/chart.hamlet
     templates/default-layout-wrapper.hamlet
     templates/default-layout.hamlet
     templates/edit-form.hamlet
-    templates/journal-plain.hamlet
     templates/journal.hamlet
     templates/manage.hamlet
     templates/register.hamlet
@@ -151,7 +149,6 @@ library
     , http-client
     , http-conduit
     , http-types
-    , lucid
     , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , mtl >=2.2.1
     , network
