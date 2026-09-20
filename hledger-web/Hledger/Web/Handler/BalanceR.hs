@@ -36,9 +36,12 @@ getBalanceR = do
           balance_base_url_ = Just "",
           querystring_ = Query.words'' queryprefixes qparam
         }
+      -- Unlike the journal and register pages, keep any depth limit:
+      -- the report reads it from the query, and it is how a balance
+      -- report gets summarized (--depth at startup, or depth: in the search).
       rspec =
         rspecOrig {
-          _rsQuery = filterQuery (not . queryIsDepth) q,
+          _rsQuery = q,
           _rsReportOpts = ropts
         }
 
