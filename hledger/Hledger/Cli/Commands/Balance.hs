@@ -715,12 +715,13 @@ balanceReportAsSpreadsheetParts fmt opts (items, total) =
           rows Total (totalRowHeadingSpreadsheet, totalRowHeadingSpreadsheet, 0, total))
   where
     cell = Ods.defaultCell
+    hCell cls label = (headerCell label) {Ods.cellClass = Ods.Class cls}
     headers =
-      addHeaderBorders $ fmap headerCell $
-      "account" :| case layout_ opts of
-        LayoutBareWide -> allCommodities
-        LayoutBare -> ["commodity", "balance"]
-        _          -> ["balance"]
+      addHeaderBorders $
+      hCell "account" "account" :| case layout_ opts of
+        LayoutBareWide -> map (hCell "amount") allCommodities
+        LayoutBare -> [headerCell "commodity", hCell "amount" "balance"]
+        _          -> [hCell "amount" "balance"]
     allCommodities =
         S.toAscList $ foldMap (\(_,_,_,ma) -> maCommodities ma) items
     rows ::
@@ -731,6 +732,7 @@ balanceReportAsSpreadsheetParts fmt opts (items, total) =
               setAccountAnchor
                   (guard (rc==Value) >> balance_base_url_ opts)
                   (querystring_ opts) name $
+              (\c -> c{Ods.cellClass = Ods.Class "account"}) $
               cell $ case rc of
                 Total -> dispName  -- show the total row heading as is; --drop etc. don't apply (#2688)
                 Value -> renderBalanceAcct opts nbsp (name, dispName, dep) in
@@ -813,10 +815,13 @@ multiBalanceReportAsSpreadsheetParts fmt opts@ReportOpts{..}
       LayoutBareWide -> dateHeaders >> map headerCell allCommodities
       LayoutBare -> headerCell "commodity" : dateHeaders
       _          -> dateHeaders
+    -- The headings over columns of figures are marked as such, so that a
+    -- stylesheet can align them with the figures below (cf amountClass).
+    amountHeader c = c{Ods.cellClass = Ods.Class "amount"}
     dateHeaders =
-      (if not summary_only_ then map (headerDateSpanCell period_titles_ balance_base_url_ querystring_) colspans  else [] )++
-      [hCell "rowtotal" "total" | multiBalanceHasTotalsColumn opts] ++
-      [hCell "rowaverage" "average" | average_]
+      (if not summary_only_ then map (amountHeader . headerDateSpanCell period_titles_ balance_base_url_ querystring_) colspans  else [] )++
+      [hCell "amount rowtotal" "total" | multiBalanceHasTotalsColumn opts] ++
+      [hCell "amount rowaverage" "average" | average_]
     fullRowAsTexts row =
         addRowSpanHeader anchorCell $
         rowAsText Value (dateSpanCell period_titles_ balance_base_url_ querystring_ acctName) row

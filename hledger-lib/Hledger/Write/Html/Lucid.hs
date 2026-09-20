@@ -76,18 +76,15 @@ formatCell cell =
             if Text.null $ cellAnchor cell
                 then str
                 else L.a_ [L.href_ $ cellAnchor cell] str in
-    let style =
-            case borderStyles cell of
-                [] -> []
-                ss -> [L.style_ $ Attr.concatStyles ss] in
     -- Mark date cells with a "date" class, so eg wrapping within dates
-    -- can be prevented with css.
+    -- can be prevented with css; borders are classes too.
     let class_ =
             map (L.class_ . Text.unwords) $
             filter (not . null) $
             [filter (not . Text.null) $
              Spr.textFromClass (cellClass cell) :
-             ["date" | cellType cell == TypeDate]] in
+             ["date" | cellType cell == TypeDate] ++
+             borderClasses cell] in
     let addSpan spanAttr n attrs =
             if n==1
                 then attrs
@@ -102,7 +99,7 @@ formatCell cell =
                     makeCell (addSpan L.rowspan_ n attrs) cont
             in
     case cellStyle cell of
-        Head -> span_ L.th_ (style++class_) content
+        Head -> span_ L.th_ class_ content
         Body emph ->
             let align =
                     case cellType cell of
@@ -120,6 +117,6 @@ formatCell cell =
                     case emph of
                         Item -> id
                         Total -> L.b_
-            in  span_ L.td_ (style++align++valign++class_) $
+            in  span_ L.td_ (align++valign++class_) $
                 withEmph content
 

@@ -7,6 +7,11 @@
 /* Allow wrapping within amounts again. */
 /* span.amount { white-space: normal; } */
 
+/* Draw the rules above totals and below headings thinner. Borders are
+   classes: border-{top,bottom,left,right}-{single,double}. */
+/* .border-top-double    { border-top: 1px solid; } */
+/* .border-bottom-double { border-bottom: 1px solid; } */
+
 /* Stripe table rows. */
 /* tr:nth-child(even) td { background-color: #eee; } */
 

@@ -14,7 +14,7 @@ module Hledger.Write.Html.Blaze (
 
 import Hledger.Write.Html.Attribute qualified as Attr
 import Hledger.Write.Spreadsheet qualified as Spr
-import Hledger.Write.Html.HtmlCommon (Lines, borderStyles)
+import Hledger.Write.Html.HtmlCommon (Lines, borderClasses)
 import Hledger.Write.Spreadsheet (Type(..), Style(..), Emphasis(..), Cell(..))
 
 import Text.Blaze.Html4.Transitional.Attributes qualified as HtmlAttr
@@ -42,14 +42,15 @@ formatCell cell =
                 then str
                 else Html.a str !
                         HtmlAttr.href (Html.textValue (cellAnchor cell)) in
-    let style =
-            case borderStyles cell of
-                [] -> []
-                ss -> [HtmlAttr.style $ Html.textValue $
-                        Attr.concatStyles ss] in
+    -- Mark date cells with a "date" class, so eg wrapping within dates
+    -- can be prevented with css; borders are classes too.
     let class_ =
-            map (HtmlAttr.class_ . Html.textValue) $
-            filter (not . Text.null) [Spr.textFromClass $ cellClass cell] in
+            map (HtmlAttr.class_ . Html.textValue . Text.unwords) $
+            filter (not . null) $
+            [filter (not . Text.null) $
+             Spr.textFromClass (cellClass cell) :
+             ["date" | cellType cell == TypeDate] ++
+             borderClasses cell] in
     let addSpan spanAttr n attrs =
             if n==1
                 then attrs
@@ -64,7 +65,7 @@ formatCell cell =
                     foldl (!) makeCell (addSpan HtmlAttr.rowspan n attrs)
             in
     case cellStyle cell of
-        Head -> span_ (Html.th content) (style++class_)
+        Head -> span_ (Html.th content) class_
         Body emph ->
             let align =
                     case cellType cell of
@@ -81,4 +82,4 @@ formatCell cell =
                         Item -> id
                         Total -> Html.b
             in  span_ (Html.td $ withEmph content) $
-                style++align++valign++class_
+                align++valign++class_
