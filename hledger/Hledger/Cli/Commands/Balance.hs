@@ -249,6 +249,7 @@ module Hledger.Cli.Commands.Balance (
  ,balanceReportAsCsv
  ,balanceReportAsHtml
  ,balanceReportAsSpreadsheet
+ ,balanceReportAsSpreadsheetParts
  ,balanceReportItemAsText
  ,budgetReportAsText
  ,budgetReportAsCsv
@@ -265,6 +266,8 @@ module Hledger.Cli.Commands.Balance (
  ,multiBalanceReportTableAsText
  ,multiBalanceReportAsSpreadsheet
  ,multiBalanceReportAsSpreadsheetParts
+ ,allCommoditiesFromPeriodicReport
+ ,multiBalanceReportTitle
  ,multiBalanceReportNumHeaderColumns
  ,multiBalanceHasTotalsColumn
  ,renderPeriodicAcct
