@@ -288,6 +288,121 @@ hledgerWebTest = do
       bodyContains "a&lt;img src=x onerror=alert(2)&gt;"   -- account, escaped
       bodyNotContains "<img src=x onerror"                 -- neither as raw html
 
+  -- The balance page: the balance report, or with a period expression,
+  -- the multi-period one, rendered without inline styles (the CSP).
+  let biopts = rawOptsToInputOpts d usecolor $ mkRawOpts []
+  bj <- fmap (either error' id) . runExceptT . journalFinalise biopts "balance.journal" "" =<<
+          readJournal'' (T.pack $ unlines  -- PARTIAL: readJournal'' should not fail
+            ["2025-01-05 pay"
+            ,"    assets:bank:checking   100"
+            ,"    income:salary"
+            ,"2025-02-05 lunch"
+            ,"    expenses:food           10"
+            ,"    assets:bank:checking"])
+  runTests "hledger-web balance page" [] bj $ do
+
+    yit "serves the balance report, linking accounts to their register" $ do
+      get BalanceR
+      statusIs 200
+      bodyContains "<h2>Balance report</h2>"
+      bodyContains "href=\"register?q=inacct:assets:bank:checking\""
+      bodyContains "<tfoot>"
+      bodyContains "class=\"amount negative\""
+
+    yit "styles the report through the stylesheet, not inline styles" $ do
+      get BalanceR
+      statusIs 200
+      bodyNotContains "<style"
+      bodyNotContains "style=\""
+
+    yit "serves the multi-period report for a period expression" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "monthly"
+      statusIs 200
+      bodyContains "Balance changes in 2025-01-01..2025-02-28"
+      bodyContains ">2025-01<"
+      bodyContains ">2025-02<"
+      -- the search form keeps the period, and marks the current report
+      bodyContains "<input type=\"hidden\" name=\"period\" value=\"monthly\">"
+      bodyContains "class=\"current\""
+
+    yit "restricts the report to the period expression's date span" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "2025-01"
+      statusIs 200
+      -- the report's own account links are relative (the sidebar's are not),
+      -- and carry the period, so the register they open is restricted too
+      bodyContains "href=\"register?q=inacct:assets:bank:checking+date:2025-01\""
+      bodyNotContains "href=\"register?q=inacct:expenses:food"
+
+    yit "honors a depth limit in the search" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "q" "depth:1"
+      statusIs 200
+      bodyContains "href=\"register?q=inacct:assets+depth:1\""
+      bodyNotContains "href=\"register?q=inacct:assets:bank:checking"
+
+    yit "reports a period expression it cannot parse" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "bogus"
+      statusIs 200
+      bodyContains "Could not parse the period expression"
+      bodyNotContains "<tfoot>"
+
+    yit "keeps the period's date span in the report links" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "monthly in 2025"
+      statusIs 200
+      bodyContains "balance?period=yearly%202025"
+
+    yit "uses --title for the heading, unaltered" $ do
+      get BalanceR
+      statusIs 200
+      bodyContains "<h2>Balance report</h2>"
+
+    yit "escapes account names and search terms in the page" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "q" "<img src=x onerror=alert(1)>"
+      statusIs 200
+      bodyNotContains "<img src=x onerror"
+
+    yit "keeps the period parameter off the other pages' search forms" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "period" "monthly"
+      statusIs 200
+      bodyNotContains "name=\"period\""
+
+  runTests "hledger-web with --monthly" [("monthly","")] bj $ do
+
+    yit "keeps the interval the server was started with" $ do
+      get BalanceR
+      statusIs 200
+      bodyContains ">2025-01<"
+      bodyContains ">2025-02<"
+
+    yit "and still takes a period parameter over it" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "yearly"
+      statusIs 200
+      bodyContains ">2025<"
+      bodyNotContains ">2025-01<"
+
   -- #2127
   -- XXX I'm pretty sure this test lies, ie does not match production behaviour.
   -- (test with curl -s http://localhost:5000/journal | rg '(href)="[\w/].*?"' -o )
