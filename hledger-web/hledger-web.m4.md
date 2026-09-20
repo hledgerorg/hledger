@@ -178,6 +178,19 @@ you'll have to arrange to commit the changes yourself.
 Changes which would leave the journal file(s) unparseable or invalid
 (eg with failing balance assertions) are prevented.
 
+# BALANCE REPORTS
+
+Besides the journal and account registers, hledger-web can show the
+[balance report](hledger.md#balance) at `/balance`, with each account
+linked to its register. The journal page links to it, and to its
+multi-period forms. A `period` parameter, like the command line's
+`-p/--period`, selects the interval and/or the period, eg
+`/balance?period=monthly` or `/balance?period=quarterly in 2025`;
+column headings link to the register for that period.
+The search box filters the report like the other pages, including
+`depth:` terms, and the general report options given at startup, such
+as `--depth`, `-B`, or `-V`, apply.
+
 # RELOADING
 
 hledger-web detects changes made to the files by other means (eg if you edit
