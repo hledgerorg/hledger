@@ -228,12 +228,23 @@ rawTableContent = map (fmap cellContent)
 
 
 
+-- | Add the "negative" class to a negative amount's cell, so that writers
+-- with a stylesheet (HTML) can color it. A cell whose rendering rounds to
+-- zero is not marked
+markNegative :: Bool -> Class -> Class
+markNegative False cls = cls
+markNegative True (Class cls) =
+    Class $ Text.unwords $ filter (not . Text.null) [cls, Text.pack "negative"]
+
 cellFromMixedAmount ::
     (Lines border) =>
     AmountFormat -> (Class, MixedAmount) -> Cell border WideBuilder
 cellFromMixedAmount bopts (cls, mixedAmt) =
     (defaultCell $ Amt.showMixedAmountB bopts mixedAmt) {
-        cellClass = cls,
+        cellClass =
+          markNegative
+            (Amt.isNegativeMixedAmount mixedAmt == Just True
+             && not (Amt.mixedAmountLooksZero mixedAmt)) cls,
         cellType =
           case Amt.unifyMixedAmount mixedAmt of
             Just amt -> amountType bopts amt
@@ -254,7 +265,9 @@ cellsFromMixedAmount bopts (cls, mixedAmt) =
     map
         (\(str,amt) ->
             (defaultCell str) {
-                cellClass = cls,
+                cellClass =
+                  markNegative
+                    (Amt.isNegativeAmount amt && not (Amt.amountLooksZero amt)) cls,
                 cellType = amountType bopts amt
             })
         (Amt.showMixedAmountLinesPartsB bopts mixedAmt)
@@ -264,7 +277,9 @@ cellFromAmount ::
     AmountFormat -> (Class, (wb, Amount)) -> Cell border wb
 cellFromAmount bopts (cls, (str,amt)) =
     (defaultCell str) {
-        cellClass = cls,
+        cellClass =
+          markNegative
+            (Amt.isNegativeAmount amt && not (Amt.amountLooksZero amt)) cls,
         cellType = amountType bopts amt
     }
 
