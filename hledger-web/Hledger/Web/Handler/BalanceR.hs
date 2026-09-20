@@ -5,7 +5,6 @@
 
 module Hledger.Web.Handler.BalanceR where
 
-import Data.Text qualified as Text
 import Text.Blaze.Html5 ((!))
 import Text.Blaze.Html5 qualified as H
 import Text.Blaze.Html5.Attributes qualified as A
@@ -28,46 +27,62 @@ getBalanceR = do
   checkServerSideUiEnabled
   VD{j, q, qparam, opts, today} <- getViewData
   require ViewPermission
+  -- The period parameter is a period expression as for -p: an interval
+  -- ("monthly"), a date span ("2024"), or both ("monthly in 2024").
+  -- An empty one is no period at all, as from a search form with nothing in it.
+  mperiod <- (>>= \p -> if p == "" then Nothing else Just p) <$> lookupGetParam "period"
   let title :: Text
       title = "Balance Report" <> if q /= Any then ", filtered" else ""
       rspecOrig = reportspec_ $ cliopts_ opts
-      ropts =
-        (_rsReportOpts rspecOrig) {
-          balance_base_url_ = Just "",
-          querystring_ = Query.words'' queryprefixes qparam
-        }
-      -- Unlike the journal and register pages, keep any depth limit:
-      -- the report reads it from the query, and it is how a balance
-      -- report gets summarized (--depth at startup, or depth: in the search).
-      rspec =
-        rspecOrig {
-          _rsQuery = q,
-          _rsReportOpts = ropts
-        }
+      roptsOrig = _rsReportOpts rspecOrig
+      eperiod = case mperiod of
+        -- No period: keep the interval the server was started with (-M, -p ...).
+        Nothing -> Right (interval_ roptsOrig, nulldatespan)
+        Just p  -> either (Left . errorBundlePretty) Right $ parsePeriodExpr today p
 
   defaultLayout $ do
-    mperiod <- lookupGetParam "period"
-    case mperiod of
-      Nothing -> do
-        setTitle "balance - hledger-web"
-        Yesod.toWidget $ do
-          H.h2 $ H.toHtml title
-          let (header, body, totals) =
-                Balance.balanceReportAsSpreadsheetParts oneLineNoCostFmt ropts $
-                  balanceReport rspec j
-          reportTable ([toList header], map toList body, map toList totals)
-      Just perStr -> do
-        setTitle "multibalance - hledger-web"
-        case parsePeriodExpr today perStr of
-          Left msg -> Yesod.toWidget $ Text.pack $ errorBundlePretty msg
-          Right (per_,_) ->
-            Yesod.toWidget $ do
-              H.h2 $ H.toHtml title
-              let rspec' = rspec{_rsReportOpts = ropts{interval_ = per_}}
-                  mbr = multiBalanceReport rspec' j
-              reportTable $
-                Balance.multiBalanceReportAsSpreadsheetParts oneLineNoCostFmt ropts
-                  (Balance.allCommoditiesFromPeriodicReport $ prRows mbr) mbr
+    setTitle "balance - hledger-web"
+    case eperiod of
+      Left err -> Yesod.toWidget $
+        H.div ! A.class_ "alert alert-danger" $ do
+          "Could not parse the period expression:"
+          H.pre $ H.toHtml err
+      Right (ivl, spn) -> Yesod.toWidget $ do
+        let -- The links in the report carry the search, and the period's
+            -- date span as a date: term, so that a row's register link is
+            -- restricted the same way the report is.
+            spanterm = ["date:" <> showDateSpan spn | spn /= nulldatespan]
+            ropts =
+              roptsOrig {
+                balance_base_url_ = Just "",
+                querystring_ = Query.words'' queryprefixes qparam ++ spanterm,
+                interval_ = ivl
+              }
+            -- The period's date span restricts the report like a date:
+            -- search term would; cf queryFromFlags.
+            dateq
+              | spn == nulldatespan = Any
+              | date2_ ropts        = Date2 spn
+              | otherwise           = Date spn
+            -- Unlike the journal and register pages, keep any depth limit:
+            -- the report reads it from the query, and it is how a balance
+            -- report gets summarized (--depth at startup, or depth: in the search).
+            rspec =
+              rspecOrig {
+                _rsQuery = simplifyQuery $ And [q, dateq],
+                _rsReportOpts = ropts
+              }
+        H.h2 $ H.toHtml title
+        reportTable $ case ivl of
+          NoInterval ->
+            let (header, body, totals) =
+                  Balance.balanceReportAsSpreadsheetParts oneLineNoCostFmt ropts $
+                    balanceReport rspec j
+            in ([toList header], map toList body, map toList totals)
+          _ ->
+            let mbr = multiBalanceReport rspec j
+            in Balance.multiBalanceReportAsSpreadsheetParts oneLineNoCostFmt ropts
+                 (Balance.allCommoditiesFromPeriodicReport $ prRows mbr) mbr
 
 -- | A report's heading, body, and total rows as a table in the page's own
 -- style, scrolling sideways within the page when it is wider (see
