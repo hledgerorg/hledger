@@ -414,6 +414,21 @@ hledgerWebTest = do
       statusIs 200
       bodyNotContains "name=\"period\""
 
+  -- A commodity directive sets the display precision; the page must apply it,
+  -- as the sidebar beside it and the command line report do.
+  sj <- fmap (either error' id) . runExceptT . journalFinalise biopts "styled.journal" "" =<<
+          readJournal'' (T.pack $ unlines  -- PARTIAL: readJournal'' should not fail
+            ["commodity $1000.00"
+            ,"2025-01-05 rounding"
+            ,"    (assets:bank:checking)   $1.005"])
+  runTests "hledger-web balance page amount styles" [] sj $ do
+
+    yit "renders amounts in the journal's commodity style" $ do
+      get BalanceR
+      statusIs 200
+      bodyContains "$1.00"
+      bodyNotContains "$1.005"
+
   runTests "hledger-web with --monthly" [("monthly","")] bj $ do
 
     yit "keeps the interval the server was started with" $ do

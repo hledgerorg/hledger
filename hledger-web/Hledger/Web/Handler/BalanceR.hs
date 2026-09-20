@@ -87,11 +87,13 @@ getBalanceR = do
               NoInterval ->
                 let (header, body, totals) =
                       Balance.balanceReportAsSpreadsheetParts oneLineNoCostFmt ropts $
-                        balanceReport rspec j
+                        styleAmounts (journalCommodityStylesWith HardRounding j) $
+                          balanceReport rspec j
                 in ( reportTitle ropts "Balance report"
                    , ([toList header], map toList body, map toList totals))
               _ ->
-                let mbr = multiBalanceReport rspec j
+                let mbr = styleAmounts (journalCommodityStylesWith HardRounding j) $
+                            multiBalanceReport rspec j
                 in ( maybe (trimColon $ Balance.multiBalanceReportTitle ropts mbr) id (title_ ropts)
                    , Balance.multiBalanceReportAsSpreadsheetParts oneLineNoCostFmt ropts
                        (Balance.allCommoditiesFromPeriodicReport $ prRows mbr) mbr
