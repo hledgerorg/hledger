@@ -1,4 +1,4 @@
-# Account-specific depth limits apply before interval aggregation (#2423).
+# * register account-specific depth with report intervals (#2423)
 <
 2026-01-01 Rent
     expenses:rent           800.00 AUD
@@ -9,14 +9,14 @@
     expenses:household       50.00 AUD
     assets:bank            -250.00 AUD
 
-# A parent summary excludes amounts retained in a more specific child row.
+# ** 1. A parent summary excludes amounts retained in a more specific child row.
 $ hledger -f- register expenses -M --depth 1 --depth food=2 -O csv
 "txnidx","date","code","description","account","amount","total"
 "0","2026-01-01","","","expenses","850.00 AUD","850.00 AUD"
 "0","2026-01-01","","","expenses:food","200.00 AUD","1050.00 AUD"
 >=
 
-# Without a global limit, only matching accounts are clipped.
+# ** 2. Without a global limit, only matching accounts are clipped.
 $ hledger -f- register expenses -M --depth food=2 -O csv
 "txnidx","date","code","description","account","amount","total"
 "0","2026-01-01","","","expenses:food","200.00 AUD","200.00 AUD"
@@ -24,54 +24,54 @@ $ hledger -f- register expenses -M --depth food=2 -O csv
 "0","2026-01-01","","","expenses:rent","800.00 AUD","1050.00 AUD"
 >=
 
-# Match the original account name; do not apply the global limit again afterwards.
+# ** 3. Match the original account name; do not apply the global limit again afterwards.
 $ hledger -f- register expenses -M --depth 1 --depth groceries=2 -O csv
 "txnidx","date","code","description","account","amount","total"
 "0","2026-01-01","","","expenses","850.00 AUD","850.00 AUD"
 "0","2026-01-01","","","expenses:food","200.00 AUD","1050.00 AUD"
 >=
 
-# The existing most-specific rule wins when account patterns overlap.
+# ** 4. The existing most-specific rule wins when account patterns overlap.
 $ hledger -f- register expenses -M --depth expenses=1 --depth food=2 -O csv
 "txnidx","date","code","description","account","amount","total"
 "0","2026-01-01","","","expenses","850.00 AUD","850.00 AUD"
 "0","2026-01-01","","","expenses:food","200.00 AUD","1050.00 AUD"
 >=
 
-# A matching account rule can override a global depth of zero.
+# ** 5. A matching account rule can override a global depth of zero.
 $ hledger -f- register expenses -M --depth 0 --depth food=2 -O csv
 "txnidx","date","code","description","account","amount","total"
 "0","2026-01-01","","","...","850.00 AUD","850.00 AUD"
 "0","2026-01-01","","","expenses:food","200.00 AUD","1050.00 AUD"
 >=
 
-# Account-specific depth zero uses the same ellipsis as global depth zero.
+# ** 6. Account-specific depth zero uses the same ellipsis as global depth zero.
 $ hledger -f- register expenses -M --depth 1 --depth food=0 -O csv
 "txnidx","date","code","description","account","amount","total"
 "0","2026-01-01","","","...","200.00 AUD","200.00 AUD"
 "0","2026-01-01","","","expenses","850.00 AUD","1050.00 AUD"
 >=
 
-# Global depth zero still aggregates the full interval.
+# ** 7. Global depth zero still aggregates the full interval.
 $ hledger -f- register expenses -M --depth 0 -O csv
 "txnidx","date","code","description","account","amount","total"
 "0","2026-01-01","","","...","1050.00 AUD","1050.00 AUD"
 >=
 
-# A flat limit still aggregates all matching accounts without double counting.
+# ** 8. A flat limit still aggregates all matching accounts without double counting.
 $ hledger -f- register expenses -M --depth 1 -O csv
 "txnidx","date","code","description","account","amount","total"
 "0","2026-01-01","","","expenses","1050.00 AUD","1050.00 AUD"
 >=
 
-# The same depth rules apply to other report intervals.
+# ** 9. The same depth rules apply to other report intervals.
 $ hledger -f- register expenses -Q --depth 1 --depth food=2 -O csv
 "txnidx","date","code","description","account","amount","total"
 "0","2026-01-01","","","expenses","850.00 AUD","850.00 AUD"
 "0","2026-01-01","","","expenses:food","200.00 AUD","1050.00 AUD"
 >=
 
-# Empty intervals retain the existing depth-zero display and running total.
+# ** 10. Empty intervals retain the existing depth-zero display and running total.
 $ hledger -f- register expenses -M --depth 0 -E -p '2026-01..2026-04' -O csv
 "txnidx","date","code","description","account","amount","total"
 "0","2026-01-01","","","...","1050.00 AUD","1050.00 AUD"
@@ -79,13 +79,13 @@ $ hledger -f- register expenses -M --depth 0 -E -p '2026-01..2026-04' -O csv
 "0","2026-03-01","","","...","0","1050.00 AUD"
 >=
 
-# Text output also preserves a rule that matched a removed suffix.
+# ** 11. Text output also preserves a rule that matched a removed suffix.
 $ hledger -f- register expenses -M --depth 1 --depth groceries=2 -w80
 2026-01   expenses                                      850.00 AUD    850.00 AUD
           expenses:food                                 200.00 AUD   1050.00 AUD
 >=
 
-# Matching parent and child postings produce one row with their combined amount.
+# ** 12. Matching parent and child postings produce one row with their combined amount.
 <
 2026-01-01 Food
     expenses:food:groceries 200.00 AUD
@@ -96,4 +96,82 @@ $ hledger -f- register expenses -M --depth 1 --depth groceries=2 -w80
 $ hledger -f- register expenses -M --depth food=2 -O csv
 "txnidx","date","code","description","account","amount","total"
 "0","2026-01-01","","","expenses:food","275.00 AUD","275.00 AUD"
+>=
+
+# ** 13. Sort summary rows by clipped name, including the running total.
+<
+2026-01-01
+    expenses1:aa  10 AUD
+    expenses:bb   20 AUD
+    assets:bank
+
+$ hledger -f- register expenses -M --depth 1 -O csv
+"txnidx","date","code","description","account","amount","total"
+"0","2026-01-01","","","expenses","20 AUD","20 AUD"
+"0","2026-01-01","","","expenses1","10 AUD","30 AUD"
+>=
+
+# ** 14. A flat depth limit still omits a zero-net summary by default.
+<
+2026-01-01
+    expenses:food:a   100 AUD
+    expenses:food:b  -100 AUD
+
+$ hledger -f- register expenses -M --depth 2 -O csv
+"txnidx","date","code","description","account","amount","total"
+>=
+
+# ** 15. An account-specific limit also omits a zero-net summary by default.
+$ hledger -f- register expenses -M --depth food=2 -O csv
+"txnidx","date","code","description","account","amount","total"
+>=
+
+# ** 16. --empty retains one combined zero-net summary.
+$ hledger -f- register expenses -M --depth food=2 -E -O csv
+"txnidx","date","code","description","account","amount","total"
+"0","2026-01-01","","","expenses:food","0","0"
+>=
+
+# ** 17. A flat depth limit still combines commodities in one summary row.
+<
+2026-01-01
+    expenses:food:a  100 AUD
+    assets:bank     -100 AUD
+
+2026-01-02
+    expenses:food:b   50 USD
+    assets:bank      -50 USD
+
+$ hledger -f- register expenses -M --depth 2 -O csv
+"txnidx","date","code","description","account","amount","total"
+"0","2026-01-01","","","expenses:food","100 AUD, 50 USD","100 AUD, 50 USD"
+>=
+
+# ** 18. An account-specific limit combines commodities in the same way.
+$ hledger -f- register expenses -M --depth food=2 -O csv
+"txnidx","date","code","description","account","amount","total"
+"0","2026-01-01","","","expenses:food","100 AUD, 50 USD","100 AUD, 50 USD"
+>=
+
+# ** 19. The depth: query form also aggregates account-specific summaries.
+<
+2026-01-01 Rent
+    expenses:rent           800.00 AUD
+    assets:bank            -800.00 AUD
+
+2026-01-04 Shopping
+    expenses:food:groceries 200.00 AUD
+    expenses:household       50.00 AUD
+    assets:bank            -250.00 AUD
+
+$ hledger -f- register expenses -M --depth 1 depth:food=2 -O csv
+"txnidx","date","code","description","account","amount","total"
+"0","2026-01-01","","","expenses","850.00 AUD","850.00 AUD"
+"0","2026-01-01","","","expenses:food","200.00 AUD","1050.00 AUD"
+>=
+
+# ** 20. Text output preserves a depth: rule matching a removed suffix.
+$ hledger -f- register expenses -M --depth 1 depth:groceries=2 -w80
+2026-01   expenses                                      850.00 AUD    850.00 AUD
+          expenses:food                                 200.00 AUD   1050.00 AUD
 >=

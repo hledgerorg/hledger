@@ -10,6 +10,22 @@
 User-visible changes in the hledger command line tool and library.
 
 
+# Unreleased
+
+## register
+
+- With a report interval, account-specific `--depth REGEXP=N` options and
+  `depth:REGEXP=N` queries now aggregate postings under their clipped account
+  names. Previously the summaries ignored these rules. This combines
+  commodities into one summary row per clipped account and omits zero-net
+  summaries unless `--empty` is used, as with a flat depth limit. (#2423)
+
+- Interval summaries now sort by clipped account name. For example, with
+  `--depth 1`, `expenses:bb` sorts before `expenses1:aa`; previously the full
+  names put `expenses1:aa` first. Intermediate running totals follow the new
+  row order; the final total is unchanged.
+
+
 # 1.99.4 2026-09-10
 
 ## Breaking changes

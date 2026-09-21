@@ -233,12 +233,12 @@ summarisePostingsByInterval wd depthSpec showempty colspans =
 summarisePostingsInDateSpan :: DateSpan -> WhichDate -> DepthSpec -> Bool -> [Posting] -> [SummaryPosting]
 summarisePostingsInDateSpan spn@(DateSpan b e) wd depthSpec showempty ps
   | null ps && (isNothing b || isNothing e) = []
-  | null ps && showempty = [(summaryp, dateSpanAsPeriod spn)]
+  | null ps && showempty = [(summaryp{paccount=clipOrEllipsifyAccountName depthSpec ""}, dateSpanAsPeriod spn)]
   | otherwise = summarypes
   where
     postingdate = if wd == PrimaryDate then postingDate else postingDate2
     b' = maybe (maybe nulldate postingdate $ headMay ps) fromEFDay b
-    summaryp = nullposting{pdate=Just b',paccount=clipOrEllipsifyAccountName depthSpec ""}
+    summaryp = nullposting{pdate=Just b'}
     summaryps = [summaryp{paccount=a,pamount=amount} | (a,amount) <- M.toAscList balances]
     summarypes = map (, dateSpanAsPeriod spn) $ (if showempty then id else filter (not . mixedAmountLooksZero . pamount)) summaryps
     -- Clip each posting before summing, so parent and child rows stay disjoint.
