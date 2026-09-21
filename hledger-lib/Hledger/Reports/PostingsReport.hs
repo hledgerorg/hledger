@@ -23,8 +23,8 @@ module Hledger.Reports.PostingsReport (
 )
 where
 
-import Data.List (nub, sortBy, sortOn)
-import Data.List.Extra (nubSort)
+import Data.List (sortBy, sortOn)
+import qualified Data.Map.Strict as M
 import Data.Maybe (isJust, isNothing, fromMaybe)
 import Data.Ord
 import Data.Text (Text)
@@ -82,7 +82,7 @@ postingsReport rspec@ReportSpec{_rsReportOpts=ropts@ReportOpts{..}} j = items
         | multiperiod = [(p', Just period') | (p', period') <- summariseps reportps]
         | otherwise   = [(p', Nothing) | p' <- reportps]
         where
-          summariseps = summarisePostingsByInterval whichdate (dsFlatDepth depthSpec) showempty colspans
+          summariseps = summarisePostingsByInterval whichdate depthSpec showempty colspans
           showempty = empty_ || average_
 
       sortedps = if sortspec_ /= defsortspec then sortPostings ropts sortspec_ displayps else displayps
@@ -192,7 +192,9 @@ postingsReportItems ((p,mperiod):ps) (pprev,mperiodprev) wd d b runningcalcfn it
     isfirstintxn = ptransaction p /= ptransaction pprev
     isdifferentdate = case wd of PrimaryDate   -> postingDate p  /= postingDate pprev
                                  SecondaryDate -> postingDate2 p /= postingDate2 pprev
-    p' = p{paccount= clipOrEllipsifyAccountName d $ paccount p}
+    -- Summary postings have already been clipped using their original account names.
+    p' | isJust mperiod = p
+       | otherwise = p{paccount= clipOrEllipsifyAccountName d $ paccount p}
     b' = runningcalcfn itemnum b $ pamount p
 
 -- | Generate one postings report line item, containing the posting,
@@ -210,9 +212,9 @@ mkpostingsReportItem showdate showdesc wd mperiod p b =
 -- | Convert a list of postings into summary postings, one per interval,
 -- aggregated to the specified depth if any.
 -- Each summary posting will have a non-Nothing interval end date.
-summarisePostingsByInterval :: WhichDate -> Maybe Int -> Bool -> Maybe DayPartition -> [Posting] -> [SummaryPosting]
-summarisePostingsByInterval wd mdepth showempty colspans =
-    concatMap (\(s,ps) -> summarisePostingsInDateSpan s wd mdepth showempty ps)
+summarisePostingsByInterval :: WhichDate -> DepthSpec -> Bool -> Maybe DayPartition -> [Posting] -> [SummaryPosting]
+summarisePostingsByInterval wd depthSpec showempty colspans =
+    concatMap (\(s,ps) -> summarisePostingsInDateSpan s wd depthSpec showempty ps)
     -- Group postings into their columns. We try to be efficient, since
     -- there can possibly be a very large number of intervals (cf #1683)
     . groupByDateSpan showempty (postingDateOrDate2 wd) (maybeDayPartitionToDateSpans colspans)
@@ -222,33 +224,26 @@ summarisePostingsByInterval wd mdepth showempty colspans =
 -- account. Each summary posting will have a non-Nothing interval end date.
 --
 -- When a depth argument is present, postings to accounts of greater
--- depth are also aggregated where possible. If the depth is 0, all
--- postings in the span are aggregated into a single posting with
--- account name "...".
+-- depth are also aggregated where possible. Postings clipped to depth 0
+-- are aggregated into a posting with account name "...".
 --
 -- The showempty flag includes spans with no postings and also postings
 -- with 0 amount.
 --
-summarisePostingsInDateSpan :: DateSpan -> WhichDate -> Maybe Int -> Bool -> [Posting] -> [SummaryPosting]
-summarisePostingsInDateSpan spn@(DateSpan b e) wd mdepth showempty ps
+summarisePostingsInDateSpan :: DateSpan -> WhichDate -> DepthSpec -> Bool -> [Posting] -> [SummaryPosting]
+summarisePostingsInDateSpan spn@(DateSpan b e) wd depthSpec showempty ps
   | null ps && (isNothing b || isNothing e) = []
   | null ps && showempty = [(summaryp, dateSpanAsPeriod spn)]
   | otherwise = summarypes
   where
     postingdate = if wd == PrimaryDate then postingDate else postingDate2
     b' = maybe (maybe nulldate postingdate $ headMay ps) fromEFDay b
-    summaryp = nullposting{pdate=Just b'}
-    clippedanames = nub $ map (clipAccountName (DepthSpec mdepth [])) anames
-    summaryps | mdepth == Just 0 = [summaryp{paccount="...",pamount=sumPostings ps}]
-              | otherwise        = [summaryp{paccount=a,pamount=balance a} | a <- clippedanames]
+    summaryp = nullposting{pdate=Just b',paccount=clipOrEllipsifyAccountName depthSpec ""}
+    summaryps = [summaryp{paccount=a,pamount=amount} | (a,amount) <- M.toAscList balances]
     summarypes = map (, dateSpanAsPeriod spn) $ (if showempty then id else filter (not . mixedAmountLooksZero . pamount)) summaryps
-    anames = nubSort $ map paccount ps
-    -- aggregate balances by account, like ledgerFromJournal, then do depth-clipping
-    accts = accountsFromPostings (const Nothing) ps
-    balance a = maybe nullmixedamt bal $ lookupAccount a accts
-      where
-        bal = (if isclipped a then bdincludingsubs else bdexcludingsubs) . pdpre . adata
-        isclipped a' = maybe False (accountNameLevel a' >=) mdepth
+    -- Clip each posting before summing, so parent and child rows stay disjoint.
+    balances = M.fromListWith (flip maPlus)
+      [(clipOrEllipsifyAccountName depthSpec $ paccount p, pamount p) | p <- ps]
 
 
 -- tests
@@ -417,7 +412,7 @@ tests_PostingsReport = testGroup "PostingsReport" [
     -}
 
   ,testCase "summarisePostingsByInterval" $
-    summarisePostingsByInterval PrimaryDate Nothing False Nothing [] @?= []
+    summarisePostingsByInterval PrimaryDate (DepthSpec Nothing []) False Nothing [] @?= []
 
   -- ,tests_summarisePostingsInDateSpan = [
     --  "summarisePostingsInDateSpan" ~: do
