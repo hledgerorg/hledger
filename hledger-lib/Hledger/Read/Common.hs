@@ -1043,7 +1043,7 @@ simpleamountp mult =
     -> TextParser m (Quantity, AmountPrecision, Maybe Char, Maybe DigitGroupStyle)
   interpretNumber posRegion msuggestedStyle ambiguousNum mExp =
     let rawNum = either (disambiguateNumber msuggestedStyle) id ambiguousNum
-    in  case fromRawNumber rawNum mExp of
+    in  case fromRawNumber msuggestedStyle rawNum mExp of
           Left errMsg -> customFailure $
                            uncurry parseErrorAtRegion posRegion errMsg
           Right (q,p,d,g) -> pure (q, Precision p, d, g)
@@ -1259,7 +1259,7 @@ numberp suggestedStyle = label "number" $ do
     mExp <- optional $ try $ exponentp
     dbg7 "numberp suggestedStyle" suggestedStyle `seq` return ()
     case dbg7 "numberp quantity,precision,mdecimalpoint,mgrps"
-           $ fromRawNumber rawNum mExp of
+           $ fromRawNumber suggestedStyle rawNum mExp of
       Left errMsg -> Fail.fail errMsg
       Right (q, p, d, g) -> pure (sign q, p, d, g)
 
@@ -1274,13 +1274,18 @@ exponentp = char' 'e' *> signp <*> decimal <?> "exponent"
 -- - the decimal point character, if any
 -- - the digit group style, if any (digit group character and sizes of digit groups)
 fromRawNumber
-  :: RawNumber
+  :: Maybe AmountStyle
+  -> RawNumber
   -> Maybe Integer
   -> Either String
             (Quantity, Word8, Maybe Char, Maybe DigitGroupStyle)
-fromRawNumber (WithSeparators{}) (Just _) =
+-- An explicit decimal part already makes the number format unambiguous.
+fromRawNumber mstyle (WithSeparators sep _ Nothing) _
+  | Just sep == (mstyle >>= asdecimalmark) =
+    Left $ "invalid number: decimal mark " ++ show sep ++ " used as a digit group separator"
+fromRawNumber _ (WithSeparators{}) (Just _) =
     Left "invalid number: digit separators and exponents may not be used together"
-fromRawNumber raw mExp = do
+fromRawNumber _ raw mExp = do
     (quantity, precision) <- toQuantity (fromMaybe 0 mExp) (digitGroup raw) (decimalGroup raw)
     return (quantity, precision, mDecPt raw, digitGroupStyle raw)
   where
@@ -1916,6 +1921,27 @@ tests_Common = testGroup "Common" [
      assertParseError p ",1." ""
      assertParseEq    p "1.555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555" (1.555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555, 255, Just '.', Nothing)
      assertParseError p "1.5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555" ""
+
+  ,testCase "numberp with a declared period decimal mark" $ do
+     let p = lift (numberp (Just amountstyle{asdecimalmark=Just '.'})) :: JournalParser IO (Quantity, Word8, Maybe Char, Maybe DigitGroupStyle)
+     assertParseEq p "1.23" (1.23, 2, Just '.', Nothing)
+     assertParseEq p "1,234,567.89" (1234567.89, 2, Just '.', Just $ DigitGroups ',' [3,3])
+     assertParseEq p "1,234,567" (1234567, 0, Nothing, Just $ DigitGroups ',' [3,3])
+     assertParseEq p "1 234.56" (1234.56, 2, Just '.', Just $ DigitGroups ' ' [3])
+     assertParseEq p "1'234.56" (1234.56, 2, Just '.', Just $ DigitGroups '\'' [3])
+     assertParseEq p "1_234.56" (1234.56, 2, Just '.', Just $ DigitGroups '_' [3])
+     assertParseEq p "1.23e2" (123, 0, Just '.', Nothing)
+     assertParseError p "1.2.34" "decimal mark"
+     assertParseError p "-0.0.66962" "decimal mark"
+     assertParseEq p "1.234,56" (1234.56, 2, Just ',', Just $ DigitGroups '.' [3])
+
+  ,testCase "numberp with a declared comma decimal mark" $ do
+     let p = lift (numberp (Just amountstyle{asdecimalmark=Just ','})) :: JournalParser IO (Quantity, Word8, Maybe Char, Maybe DigitGroupStyle)
+     assertParseEq p "1,23" (1.23, 2, Just ',', Nothing)
+     assertParseEq p "1.234.567,89" (1234567.89, 2, Just ',', Just $ DigitGroups '.' [3,3])
+     assertParseEq p "1.234.567" (1234567, 0, Nothing, Just $ DigitGroups '.' [3,3])
+     assertParseError p "1,2,34" "decimal mark"
+     assertParseEq p "1,234.56" (1234.56, 2, Just '.', Just $ DigitGroups ',' [3])
 
   ,testGroup "spaceandamountormissingp" [
      testCase "space and amount" $ assertParseEq spaceandamountormissingp " $47.18" (mixedAmount $ usd 47.18)

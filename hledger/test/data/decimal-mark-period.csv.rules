@@ -1,0 +1,8 @@
+fields date, amount1
+account1 assets:bank
+account2 equity:opening
+currency AUD
+decimal-mark .
+
+if %amount1 ^override$
+    amount1 -0.0.66962

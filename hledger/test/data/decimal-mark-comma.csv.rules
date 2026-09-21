@@ -1,0 +1,5 @@
+fields date, amount1
+account1 assets:bank
+account2 equity:opening
+currency AUD
+decimal-mark ,

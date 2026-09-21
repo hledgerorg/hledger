@@ -1,0 +1,154 @@
+# Declared decimal marks must not be reinterpreted as digit group separators.
+# Regression coverage for #1985 and #1904.
+
+# Balance assignments with a right-hand commodity symbol.
+<
+decimal-mark .
+2026-09-21 Bank balance
+    assets:bank       = 10.999.99 AUD
+    equity:opening
+$ hledger -f- check
+>2 /invalid number: decimal mark/
+>=1
+
+# Comma decimal marks, negative amounts and left-hand commodity symbols.
+<
+decimal-mark ,
+2026-09-21
+    (assets:bank)     AUD -0,0,66962
+$ hledger -f- check
+>2 /invalid number: decimal mark/
+>=1
+
+# A default commodity also supplies the declared decimal mark.
+<
+D 1,000.00 AUD
+2026-09-21
+    (assets:bank)     10.999.99
+$ hledger -f- check
+>2 /invalid number: decimal mark/
+>=1
+
+# A commodity format supplies the decimal mark for balance assignments.
+<
+commodity 1 000.00 AUD
+2026-09-21
+    assets:bank       = 10.999.99 AUD
+    equity:opening
+$ hledger -f- check
+>2 /invalid number: decimal mark/
+>=1
+
+# Commodity-less amounts use the explicit decimal mark.
+<
+decimal-mark .
+2026-09-21
+    (assets:bank)     1.2.34
+$ hledger -f- check
+>2 /invalid number: decimal mark/
+>=1
+
+# An explicit decimal mark takes precedence over the commodity format.
+<
+commodity 1,000.00 AUD
+decimal-mark ,
+2026-09-21
+    (assets:bank)     10,999,99 AUD
+$ hledger -f- check
+>2 /invalid number: decimal mark/
+>=1
+
+# Transaction prices use the same validation.
+<
+decimal-mark .
+2026-09-21
+    (assets:shares)   2 XYZ @ 1.2.34 AUD
+$ hledger -f- check
+>2 //
+>=1
+
+# Balance assertions must reject malformed amounts too.
+<
+decimal-mark .
+2026-09-21
+    (assets:bank)     1 AUD = 1.2.34 AUD
+$ hledger -f- check
+>2 /invalid number: decimal mark/
+>=1
+
+# Valid grouping retains the correct amount.
+<
+decimal-mark .
+2026-09-21
+    assets:bank      10,999.99 AUD = 10999.99 AUD
+    equity:opening  -10999.99 AUD
+$ hledger -f- check
+>=0
+
+# A comma decimal mark overrides the commodity format, allowing period grouping.
+<
+commodity 1,000.00 AUD
+decimal-mark ,
+2026-09-21
+    assets:bank      10.999,99 AUD = 10999,99 AUD
+    equity:opening  -10999,99 AUD
+$ hledger -f- check
+>=0
+
+# Without a declaration, repeated periods can still be inferred as group marks.
+<
+2026-09-21
+    (assets:bank)    1.234.567 AUD = 1234567 AUD
+$ hledger -f- check
+>=0
+
+# CSV fields and rule-generated amounts both respect the decimal-mark rule.
+<
+2026-09-21,10.999.99
+$ hledger -f csv:- --rules-file data/decimal-mark-period.csv.rules check
+>2 /invalid number: decimal mark/
+>=1
+
+<
+2026-09-21,override
+$ hledger -f csv:- --rules-file data/decimal-mark-period.csv.rules check
+>2 /invalid number: decimal mark/
+>=1
+
+<
+2026-09-21,"10,999,99"
+$ hledger -f csv:- --rules-file data/decimal-mark-comma.csv.rules check
+>2 /invalid number: decimal mark/
+>=1
+
+# Valid CSV grouping remains accepted for both decimal marks.
+<
+2026-09-21,"10,999.99"
+$ hledger -f csv:- --rules-file data/decimal-mark-period.csv.rules check
+>=0
+
+<
+2026-09-21,"10.999,99"
+$ hledger -f csv:- --rules-file data/decimal-mark-comma.csv.rules check
+>=0
+
+# A one-line commodity directive can use a different, unambiguous display format.
+<
+decimal-mark .
+commodity 1.000,00 AUD
+2026-09-21
+    assets:bank      1,234.56 AUD = 1234.56 AUD
+    equity:opening  -1234.56 AUD
+$ hledger -f- check
+>=0
+
+# The same applies to a format subdirective and unambiguous posting amounts.
+<
+decimal-mark ,
+commodity AUD
+    format 1,000.00 AUD
+2026-09-21
+    assets:bank      1,234.56 AUD = 1234,56 AUD
+    equity:opening  -1234,56 AUD
+$ hledger -f- check
+>=0
