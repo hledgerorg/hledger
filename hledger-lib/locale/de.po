@@ -609,6 +609,55 @@ msgstr "alle Konten"
 msgid "{account} (excluding subaccounts)"
 msgstr "{account} (ohne Unterkonten)"
 
+#. hledger-web: balance page.
+msgid "balance - hledger-web"
+msgstr "Salden - hledger-web"
+
+msgid "Balance report"
+msgstr "Saldenbericht"
+
+msgid "Could not parse the period expression:"
+msgstr "Der Periodenausdruck konnte nicht gelesen werden:"
+
+msgid "Report:"
+msgstr "Bericht:"
+
+msgid "Balance"
+msgstr "Salden"
+
+msgid "Yearly"
+msgstr "Jährlich"
+
+msgid "Quarterly"
+msgstr "Vierteljährlich"
+
+msgid "Monthly"
+msgstr "Monatlich"
+
+msgid "Weekly"
+msgstr "Wöchentlich"
+
+msgid "Daily"
+msgstr "Täglich"
+
+msgid "Show the balance report"
+msgstr "Saldenbericht anzeigen"
+
+msgid "Show the yearly balance report"
+msgstr "Jährlichen Saldenbericht anzeigen"
+
+msgid "Show the quarterly balance report"
+msgstr "Vierteljährlichen Saldenbericht anzeigen"
+
+msgid "Show the monthly balance report"
+msgstr "Monatlichen Saldenbericht anzeigen"
+
+msgid "Show the weekly balance report"
+msgstr "Wöchentlichen Saldenbericht anzeigen"
+
+msgid "Show the daily balance report"
+msgstr "Täglichen Saldenbericht anzeigen"
+
 msgctxt "column heading"
 msgid "Date"
 msgstr "Datum"

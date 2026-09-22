@@ -195,27 +195,27 @@ msgid "(Historical Ending Balances)"
 msgstr ""
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:186 hledger/Hledger/Cli/Commands/Balance.hs:895 hledger/Hledger/Cli/Commands/Balance.hs:1100
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:186 hledger/Hledger/Cli/Commands/Balance.hs:903 hledger/Hledger/Cli/Commands/Balance.hs:1111
 msgid ", converted to cost"
 msgstr ""
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:189 hledger/Hledger/Cli/Commands/Balance.hs:898 hledger/Hledger/Cli/Commands/Balance.hs:1103
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:189 hledger/Hledger/Cli/Commands/Balance.hs:906 hledger/Hledger/Cli/Commands/Balance.hs:1114
 msgid ", valued at posting date"
 msgstr ""
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:191 hledger/Hledger/Cli/Commands/Balance.hs:900 hledger/Hledger/Cli/Commands/Balance.hs:1104
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:191 hledger/Hledger/Cli/Commands/Balance.hs:908 hledger/Hledger/Cli/Commands/Balance.hs:1115
 msgid ", valued at period ends"
 msgstr ""
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:192 hledger/Hledger/Cli/Commands/Balance.hs:901 hledger/Hledger/Cli/Commands/Balance.hs:1105
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:192 hledger/Hledger/Cli/Commands/Balance.hs:909 hledger/Hledger/Cli/Commands/Balance.hs:1116
 msgid ", current value"
 msgstr ""
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:193 hledger/Hledger/Cli/Commands/Balance.hs:902 hledger/Hledger/Cli/Commands/Balance.hs:1106
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:193 hledger/Hledger/Cli/Commands/Balance.hs:910 hledger/Hledger/Cli/Commands/Balance.hs:1117
 #, python-brace-format
 msgid ", valued at {date}"
 msgstr ""
@@ -224,73 +224,73 @@ msgstr ""
 msgid "Net:"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:410
+#: hledger/Hledger/Cli/Commands/Balance.hs:413
 msgid "Budget Report"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:423
+#: hledger/Hledger/Cli/Commands/Balance.hs:426
 msgid "Multi-period Balance Report"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:435
+#: hledger/Hledger/Cli/Commands/Balance.hs:438
 msgid "Balance Report"
 msgstr ""
 
 #. the multi-period balance report title, eg "Balance changes in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/Commands/Balance.hs:881
+#: hledger/Hledger/Cli/Commands/Balance.hs:889
 #, python-brace-format
 msgid "{report} in {dates}{valuation}:"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:885
+#: hledger/Hledger/Cli/Commands/Balance.hs:893
 msgid "Period-end value changes"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:886
+#: hledger/Hledger/Cli/Commands/Balance.hs:894
 msgid "Cumulative period-end value changes"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:887
+#: hledger/Hledger/Cli/Commands/Balance.hs:895
 msgid "Incremental gain"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:888
+#: hledger/Hledger/Cli/Commands/Balance.hs:896
 msgid "Cumulative gain"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:889
+#: hledger/Hledger/Cli/Commands/Balance.hs:897
 msgid "Historical gain"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:890
+#: hledger/Hledger/Cli/Commands/Balance.hs:898
 msgid "Balance changes"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:891
+#: hledger/Hledger/Cli/Commands/Balance.hs:899
 msgid "Ending balances (cumulative)"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:892
+#: hledger/Hledger/Cli/Commands/Balance.hs:900
 msgid "Ending balances (historical)"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:953 hledger/Hledger/Cli/Commands/Balance.hs:1135
+#: hledger/Hledger/Cli/Commands/Balance.hs:961 hledger/Hledger/Cli/Commands/Balance.hs:1151
 msgctxt "column heading"
 msgid "Commodity"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:963 hledger/Hledger/Cli/Commands/Balance.hs:1137 hledger-web/Hledger/Web/Handler/RegisterR.hs:58
+#: hledger/Hledger/Cli/Commands/Balance.hs:971 hledger/Hledger/Cli/Commands/Balance.hs:1153 hledger-web/Hledger/Web/Handler/RegisterR.hs:58
 msgctxt "column heading"
 msgid "Total"
 msgstr ""
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:964 hledger/Hledger/Cli/Commands/Balance.hs:1138
+#: hledger/Hledger/Cli/Commands/Balance.hs:972 hledger/Hledger/Cli/Commands/Balance.hs:1154
 msgctxt "column heading"
 msgid "Average"
 msgstr ""
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/Commands/Balance.hs:1096
+#: hledger/Hledger/Cli/Commands/Balance.hs:1107
 #, python-brace-format
 msgid "Budget performance in {dates}{valuation}:"
 msgstr ""
@@ -593,6 +593,24 @@ msgstr ""
 msgid "Transaction added."
 msgstr ""
 
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs:38 hledger-web/Hledger/Web/Handler/JournalR.hs:30 hledger-web/Hledger/Web/Handler/RegisterR.hs:39
+#, python-brace-format
+msgid "{title}, filtered"
+msgstr ""
+
+#. the browser tab title of this page.
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs:48
+msgid "balance - hledger-web"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs:54 hledger-web/Hledger/Web/Handler/BalanceR.hs:99
+msgid "Balance report"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs:56
+msgid "Could not parse the period expression:"
+msgstr ""
+
 #: hledger-web/Hledger/Web/Handler/EditR.hs:44 hledger-web/Hledger/Web/Handler/UploadR.hs:57
 #, python-brace-format
 msgid "Failed to load journal: {error}"
@@ -619,11 +637,6 @@ msgstr ""
 #: hledger-web/Hledger/Web/Handler/JournalR.hs:29
 #, python-brace-format
 msgid "Transactions in {account} (excluding subaccounts)"
-msgstr ""
-
-#: hledger-web/Hledger/Web/Handler/JournalR.hs:30 hledger-web/Hledger/Web/Handler/RegisterR.hs:39
-#, python-brace-format
-msgid "{title}, filtered"
 msgstr ""
 
 #. the browser tab title of this page.
@@ -669,7 +682,7 @@ msgstr ""
 msgid "Upload journal"
 msgstr ""
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs:39 hledger-web/templates/default-layout.hamlet:67
+#: hledger-web/Hledger/Web/Widget/AddForm.hs:39 hledger-web/templates/default-layout.hamlet:69
 msgid "Close"
 msgstr ""
 
@@ -718,6 +731,71 @@ msgstr ""
 msgid "Postings validation failed"
 msgstr ""
 
+#. the label before the balance page's report links.
+#: hledger-web/Hledger/Web/Widget/Common.hs:101
+msgid "Report:"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:108
+msgid "Balance"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:108
+msgid "Show the balance report"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:109
+msgid "Yearly"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:109
+msgid "Show the yearly balance report"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:110
+msgid "Quarterly"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:110
+msgid "Show the quarterly balance report"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:111
+msgid "Monthly"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:111
+msgid "Show the monthly balance report"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:112
+msgid "Weekly"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:112
+msgid "Show the weekly balance report"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:113
+msgid "Daily"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:113
+msgid "Show the daily balance report"
+msgstr ""
+
 #: hledger-web/templates/add-form.hamlet:11
 msgid "Pick a date"
 msgstr ""
@@ -759,168 +837,168 @@ msgstr ""
 msgid "Enter hledger search patterns to filter the data below"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:53
+#: hledger-web/templates/default-layout.hamlet:55
 msgid "Clear search terms"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:55
+#: hledger-web/templates/default-layout.hamlet:57
 msgid "Apply search terms"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:58
+#: hledger-web/templates/default-layout.hamlet:60
 msgid "Manage journal files"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:61
+#: hledger-web/templates/default-layout.hamlet:63
 msgid "Show search and general help"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:69
+#: hledger-web/templates/default-layout.hamlet:71
 msgid "Help"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:75
+#: hledger-web/templates/default-layout.hamlet:77
 msgid "Keyboard shortcuts"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:77
+#: hledger-web/templates/default-layout.hamlet:79
 msgid "or maybe"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:77
+#: hledger-web/templates/default-layout.hamlet:79
 msgid "view this help (escape or click to exit)"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:78
+#: hledger-web/templates/default-layout.hamlet:80
 msgid "go to the Journal view (home)"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:79
+#: hledger-web/templates/default-layout.hamlet:81
 msgid "add a transaction (escape to cancel)"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:80
+#: hledger-web/templates/default-layout.hamlet:82
 msgid "toggle sidebar"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:81
+#: hledger-web/templates/default-layout.hamlet:83
 msgid "focus search form"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:82
+#: hledger-web/templates/default-layout.hamlet:84
 msgid "hide empty accounts in sidebar"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:84
+#: hledger-web/templates/default-layout.hamlet:86
 msgid "General"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:86
+#: hledger-web/templates/default-layout.hamlet:88
 msgid "The Journal view shows general journal entries, representing zero-sum movements of money (or other commodity) between hierarchical accounts"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:87
+#: hledger-web/templates/default-layout.hamlet:89
 msgid "The sidebar shows the resulting accounts and their final balances"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:88
+#: hledger-web/templates/default-layout.hamlet:90
 msgid "Parent account balances include subaccount balances"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:89
+#: hledger-web/templates/default-layout.hamlet:91
 msgid "Multiple currencies in balances are displayed one above the other"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:90
+#: hledger-web/templates/default-layout.hamlet:92
 msgid "Click account name links to see transactions affecting that account, with running balance"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:91
+#: hledger-web/templates/default-layout.hamlet:93
 msgid "Click date links to see journal entries on that date"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:94
+#: hledger-web/templates/default-layout.hamlet:96
 msgctxt "help heading"
 msgid "Search"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:96
+#: hledger-web/templates/default-layout.hamlet:98
 msgid "Search patterns with spaces should be enclosed in quotes."
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:97
+#: hledger-web/templates/default-layout.hamlet:99
 msgid "match account names"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:98
+#: hledger-web/templates/default-layout.hamlet:100
 msgid "match account types"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:99
+#: hledger-web/templates/default-layout.hamlet:101
 msgid "match dates"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:100
+#: hledger-web/templates/default-layout.hamlet:102
 msgid "match status"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:101
+#: hledger-web/templates/default-layout.hamlet:103
 msgid "match transaction codes"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:102
+#: hledger-web/templates/default-layout.hamlet:104
 msgid "or"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:102
+#: hledger-web/templates/default-layout.hamlet:104
 msgid "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:103
+#: hledger-web/templates/default-layout.hamlet:105
 msgid "match transaction descriptions"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:104
+#: hledger-web/templates/default-layout.hamlet:106
 msgid "match payee part of descriptions"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:105
+#: hledger-web/templates/default-layout.hamlet:107
 msgid "match note part of descriptions"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:106
+#: hledger-web/templates/default-layout.hamlet:108
 msgid "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:107
+#: hledger-web/templates/default-layout.hamlet:109
 msgid "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:108
+#: hledger-web/templates/default-layout.hamlet:110
 msgid "match tags, or tag and value"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:109
+#: hledger-web/templates/default-layout.hamlet:111
 msgid "match postings' realness/virtualness"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:110
+#: hledger-web/templates/default-layout.hamlet:112
 msgid "prepend not: to negate a search term"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:111
+#: hledger-web/templates/default-layout.hamlet:113
 msgid "match with a boolean query (and, or, not, (..))"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:112
+#: hledger-web/templates/default-layout.hamlet:114
 msgid "match transactions where any posting matches"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:113
+#: hledger-web/templates/default-layout.hamlet:115
 msgid "match transactions where all postings match"
 msgstr ""
 
-#: hledger-web/templates/default-layout.hamlet:114
+#: hledger-web/templates/default-layout.hamlet:116
 msgid "clip account names at this depth"
 msgstr ""
 

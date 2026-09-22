@@ -384,6 +384,17 @@ hledgerWebTest = do
       bodyContains "alle Konten"
       bodyContains "Von/Nach Konto"
 
+    yit "shows the balance page in the viewer's language" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addRequestHeader ("Accept-Language", "de")
+      statusIs 200
+      bodyContains "<title>Salden - hledger-web</title>"
+      bodyContains "<h2>Saldenbericht</h2>"
+      bodyContains "Bericht:"
+      bodyContains "title=\"Monatlichen Saldenbericht anzeigen\">Monatlich</a>"
+
   -- A translation is viewer-controlled text: it must be rendered as text
   -- wherever it lands, including inside attributes.
   withTempConfigDir $ \xdg -> do
@@ -529,6 +540,15 @@ hledgerWebTest = do
         addGetParam "q" "<img src=x onerror=alert(1)>"
       statusIs 200
       bodyNotContains "<img src=x onerror"
+
+    yit "titles the multi-period report in the viewer's language too" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "monthly"
+        addRequestHeader ("Accept-Language", "de")
+      statusIs 200
+      bodyContains "<h2>Saldoänderungen in 2025-01-01..2025-02-28</h2>"
 
     yit "keeps the period parameter off the other pages' search forms" $ do
       request $ do
