@@ -161,7 +161,7 @@ commodity AAPL  ; lots:
 
 $ hledger -f- print --verbose-tags
 2026-01-15 buy
-    assets:stocks                                 10 AAPL @ $50  ; ptype: acquire
+    assets:stocks                                 10 AAPL {$50} @ $50  ; ptype: acquire
     assets:cash                                $-500
 
 >=
@@ -187,7 +187,7 @@ commodity AAPL  ; lots:
 
 $ hledger -f- print --verbose-tags
 2026-01-15 buy
-    assets:stocks                                 10 AAPL  ; ptype: acquire
+    assets:stocks                                 10 AAPL {$50}  ; ptype: acquire
     assets:cash                                $-500
 
 >=
@@ -231,7 +231,7 @@ commodity AAPL  ; lots:
 $ hledger -f- print --verbose-tags date:2026-02-01
 2026-02-01 transfer
     assets:old                                   -10 AAPL {$50}  ; ptype: transfer-from
-    assets:new                                    10 AAPL  ; ptype: transfer-to
+    assets:new                                    10 AAPL {2026-01-15, $50}  ; ptype: transfer-to
 
 >=
 
@@ -249,8 +249,8 @@ commodity AAPL  ; lots:
 
 $ hledger -f- print --verbose-tags date:2026-02-01
 2026-02-01 transfer
-    assets:old                                   -10 AAPL  ; ptype: transfer-from
-    assets:new                                    10 AAPL  ; ptype: transfer-to
+    assets:old                                   -10 AAPL {2026-01-15, $50}  ; ptype: transfer-from
+    assets:new                                    10 AAPL {2026-01-15, $50}  ; ptype: transfer-to
 
 >=
 

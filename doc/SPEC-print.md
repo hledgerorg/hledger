@@ -8,6 +8,15 @@ Notes on some of print's behaviour.
 
 By default, print tries to show each entry as it is written in the journal file,
 except for alignment. And it shows entries in date-then-parse order.
+Two additions for lot entries: the gain posting inferred for a disposal is
+shown, and lot postings are shown with the cost basis annotation inferred by
+lot processing when the user wrote none (eg `10 AAPL {$50} @ $50`,
+`-5 AAPL {2026-01-15, $50} @ $70`, or `{}` for a disposal from several
+lots). So lot entries are self-describing: the output can be re-read without
+the commodity's `lots:` declaration, under the default cost basis method.
+(With `--lots`, the lot subaccount name carries the basis instead; and
+`--export` does not add them, since it reproduces the directives and aims
+to keep entries as written.)
 Comment lines immediately preceding an entry (with no blank line between) are part of it
 (`tprecedingcomment`) and are shown before it, verbatim.
 

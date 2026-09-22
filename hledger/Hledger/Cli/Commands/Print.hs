@@ -46,7 +46,7 @@ import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils
 import Hledger.Cli.Anchor (setAccountAnchor)
 import System.IO qualified as IO
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, isNothing)
 
 printmode = hledgerCommandMode
   $(embedFileRelative "Hledger/Cli/Commands/Print.txt")
@@ -192,7 +192,7 @@ printEntries opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j =
           in beancountDirectives j' ts' <> "\n" <> journalItemsAsText beancountItemRenderer (jitems j') ts'
       | otherwise     = error' "print --export supports only the txt, ledger and beancount output formats"  -- PARTIAL:
       where
-        exportWith renderer = journalItemsAsText (withoutAppliedRules renderer) (jitems j) . styleAmounts styles . map maybeoriginalamounts
+        exportWith renderer = journalItemsAsText (withoutAppliedRules renderer) (jitems j) . styleAmounts styles . map (maybeoriginalamountsWith False)
         withoutAppliedRules renderer = renderer{irDirective = \txt -> if isAppliedRule txt then Nothing else irDirective renderer txt}
         isAppliedRule txt = (forecasting && "~" `T.isPrefixOf` txt) || (autoposting && "=" `T.isPrefixOf` txt)
         forecasting = isJust $ forecast_ $ inputopts_ opts
@@ -217,7 +217,11 @@ printEntries opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j =
                 styleAmounts styles
            | otherwise = error' $ unsupportedOutputFormatError fmt  -- PARTIAL:
 
-    maybeoriginalamounts
+    -- For plain print, lot postings also get the cost basis annotation inferred
+    -- by lot processing, making the output self-describing; not for --export,
+    -- which reproduces the journal's directives instead and keeps entries as written.
+    maybeoriginalamounts = maybeoriginalamountsWith True
+    maybeoriginalamountsWith showinferredbasis
       -- Use the fully inferred and amount-styled/rounded transaction in the following situations:
       -- with -x/--explicit:
       | boolopt "explicit" (rawopts_ opts) = id
@@ -235,7 +239,7 @@ printEntries opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j =
       | otherwise = \t ->
           if any keptFeesplit (tpostings t)
           then t
-          else transactionWithMostlyOriginalPostings t
+          else transactionWithMostlyOriginalPostings showinferredbasis t
       where
         hasTag name p = name `elem` map fst (ptags p)
         keptFeesplit p = hasTag feesplitPostingTagName p
@@ -244,8 +248,8 @@ printEntries opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j =
     -- Like maybeoriginalamounts, but also keeps the inferred amount for
     -- balance assignment postings (which had no explicit amount).
     -- Beancount requires all amounts to be explicit.
-    fillBalanceAssignments t = (maybeoriginalamounts t)
-      { tpostings = zipWith fillIfBalAssign (tpostings t) (tpostings $ maybeoriginalamounts t) }
+    fillBalanceAssignments t = (maybeoriginalamountsWith False t)
+      { tpostings = zipWith fillIfBalAssign (tpostings t) (tpostings $ maybeoriginalamountsWith False t) }
       where
         fillIfBalAssign inferred reverted
           | isJust (pbalanceassertion orig) && isMissingMixedAmount (pamount orig) = reverted { pamount = pamount inferred }
@@ -260,9 +264,11 @@ printEntries opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j =
 -- are retained, keeping their fragment 'pamount' rather than reverting to 'poriginal' —
 -- so 'print --lots' shows the per-lot detail, while 'journalCollapseLotDetail' has
 -- already merged them down to one posting when --lots is off.
+-- With a true first argument, lot postings whose original amount had no cost basis
+-- annotation get the one inferred by lot processing (see withInferredBasis below).
 -- This is mainly for showing transactions with the amounts in their original journal format.
-transactionWithMostlyOriginalPostings :: Transaction -> Transaction
-transactionWithMostlyOriginalPostings t =
+transactionWithMostlyOriginalPostings :: Bool -> Transaction -> Transaction
+transactionWithMostlyOriginalPostings showinferredbasis t =
   transactionMapPostings postingMostlyOriginal
     t{tpostings = filter (not . hasTag feesplitPostingTagName) (tpostings t)}
   where
@@ -295,8 +301,19 @@ transactionWithMostlyOriginalPostings t =
           -- show the fragment's current amount: several sibling fragments
           -- can't re-infer their amounts on re-reading (#2692).
           | hasTag lotsplitPostingTagName p  =
-              if hasAmount orig then scaleToFragment (pamount orig) (pamount p) else pamount p
-          | otherwise                        = pamount orig
+              withInferredBasis $ if hasAmount orig then scaleToFragment (pamount orig) (pamount p) else pamount p
+          | otherwise                        = withInferredBasis (pamount orig)
+        -- Show the cost basis annotation inferred by lot processing, when the
+        -- user didn't write one, so lot entries are self-describing (they can
+        -- be re-read without the commodity's lots: declaration, under the
+        -- default method). Not needed with --lots, where the lot subaccount
+        -- name already carries it.
+        withInferredBasis ma
+          | not showinferredbasis = ma
+          | isJust (lotSubaccountName (paccount p)) = ma
+          | otherwise = case (amountsRaw ma, amountsRaw (pamount p)) of
+              ([oa], [ca]) | isNothing (acostbasis oa), Just cb <- acostbasis ca -> mixedAmount oa{acostbasis = Just cb}
+              _ -> ma
     scaleToFragment origAmt curAmt = case (amountsRaw origAmt, amountsRaw curAmt) of
       ([oa], [ca]) -> mixedAmount oa{aquantity = aquantity ca}
       _            -> curAmt

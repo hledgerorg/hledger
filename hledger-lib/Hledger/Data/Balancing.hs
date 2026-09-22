@@ -244,7 +244,7 @@ balanceTransactionHelperMaybeSplittingLotFees bopts t0
     -- Tag any user-written gain postings in a disposal first, so the balancer
     -- sets them aside. (journalFinalise does this too, but callers balancing a
     -- single entry, like hledger add, rely on it happening here.)
-    t = transactionTagGainPostings (verbose_balancing_tags_ bopts) (accountNameType (account_types_ bopts)) (`S.member` lotfulcomms)
+    t = transactionTagGainPostings (not $ lenient_lots_ bopts) (verbose_balancing_tags_ bopts) (accountNameType (account_types_ bopts)) (`S.member` lotfulcomms)
           (accountUsesNoLotsWith (account_lots_tags_ bopts)) t0
     t2 = transactionAutoSplitFeeOutflows (verbose_balancing_tags_ bopts) (accountNameType (account_types_ bopts)) (`S.member` lotfulcomms)
            (accountUsesNoLotsWith (account_lots_tags_ bopts)) t
@@ -331,14 +331,17 @@ transactionInferBalancingAmount styles _atypes t@Transaction{tpostings=ps}
           )
   where
     lbl = lbl_ "transactionInferBalancingAmount"
-    (amountfulrealps, amountlessrealps) = partition hasAmount (realPostings t)
-    -- Gain postings in a disposal are set aside (see transactionCheckBalanced).
-    realsum = maSum $ map (mixedAmountCost . pamount) $ filter (not . isGainPosting) amountfulrealps
+    -- Gain postings in a disposal are set aside (see transactionCheckBalanced):
+    -- they don't contribute to the sum, and an amountless one is not inferred
+    -- here (journalAddOrCheckGainPostings fills it in after lot matching).
+    (amountfulrealps, amountlessrealps) = partition hasAmount $ filter (not . isGainPosting) (realPostings t)
+    realsum = maSum $ map (mixedAmountCost . pamount) amountfulrealps
       -- & dbg9With (lbl "real balancing amount".showMixedAmountOneLine)
-    (amountfulbvps, amountlessbvps) = partition hasAmount (balancedVirtualPostings t)
-    bvsum = maSum $ map (mixedAmountCost . pamount) $ filter (not . isGainPosting) amountfulbvps
+    (amountfulbvps, amountlessbvps) = partition hasAmount $ filter (not . isGainPosting) (balancedVirtualPostings t)
+    bvsum = maSum $ map (mixedAmountCost . pamount) amountfulbvps
 
     inferamount :: Posting -> (Posting, Maybe MixedAmount)
+    inferamount p | isGainPosting p = (p, Nothing)
     inferamount p =
       let
         minferredamt = case preal p of

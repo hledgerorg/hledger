@@ -250,7 +250,7 @@ commodity AAPL  ; lots:
 
 $ hledger -f- print desc:sell
 2026-03-01 sell
-    assets:stocks                                -15 AAPL @ $60
+    assets:stocks                                -15 AAPL {} @ $60
     assets:cash
     revenues:gain                              $-125
 
@@ -260,7 +260,7 @@ $ hledger -f- print desc:sell
 # stripped because the user didn't write one), but fills in inferred amounts.
 $ hledger -f- print -x desc:sell
 2026-03-01 sell
-    assets:stocks                                -15 AAPL @ $60
+    assets:stocks                                -15 AAPL {} @ $60
     assets:cash                                 $900
     revenues:gain                              $-125
 
@@ -848,10 +848,10 @@ commodity AAPL  ; lots:
 $ hledger -f- print -x
 2026-02-01 buy
     assets:cash                                $-500
-    assets:stocks                                 10 AAPL @ $50
+    assets:stocks                                 10 AAPL {$50} @ $50
 
 2026-03-01 sell
-    assets:stocks                                 -5 AAPL @ $70
+    assets:stocks                                 -5 AAPL {2026-02-01, $50} @ $70
     assets:cash                                 $350
     revenues:gain                              $-100
 
@@ -872,10 +872,10 @@ commodity AAPL  ; lots:
 $ hledger -f- print -x
 2026-02-01 buy
     assets:cash                                $-500
-    assets:stocks                                 10 AAPL @ $50
+    assets:stocks                                 10 AAPL {$50} @ $50
 
 2026-03-01 sell
-    assets:stocks                                 -5 AAPL @@ $350
+    assets:stocks                                 -5 AAPL {2026-02-01, $50} @@ $350
     assets:cash                                 $350
     revenues:gain                              $-100
 
@@ -960,10 +960,10 @@ $ hledger -f- print --auto
 2026-02-01 buy
     assets:cash                                $-500
     (budget)                                    $-50
-    assets:stocks                                 10 AAPL @ $50
+    assets:stocks                                 10 AAPL {$50} @ $50
 
 2026-03-01 sell
-    assets:stocks                                 -5 AAPL @ $70
+    assets:stocks                                 -5 AAPL {2026-02-01, $50} @ $70
     assets:cash                                 $350
     (budget)                                     $35
     revenues:gain                              $-100
@@ -992,5 +992,162 @@ $ hledger -f- print --ignore-lots
     assets:stocks                                 -5 AAPL @ $70
     assets:cash                                 $350
     revenues:gain                               $-99
+
+>=
+
+# ** 50. print shows the cost basis annotations inferred by lot processing,
+# so its output is self-describing: the entries below (as printed from a
+# journal with a `commodity AAPL ; lots:` declaration) are read the same way
+# without that declaration. A disposal from several lots shows `{}`.
+<
+2026-01-01 buy
+    assets:cash                                $-500
+    assets:stocks                                 10 AAPL {$50} @ $50
+
+2026-01-02 buy
+    assets:cash                                $-600
+    assets:stocks                                 10 AAPL {$60} @ $60
+
+2026-02-01 sell
+    assets:stocks                                 -5 AAPL {2026-01-01, $50} @ $70
+    assets:cash                                 $350
+    revenues:gain                              $-100
+
+2026-03-01 sell more
+    assets:stocks                                -10 AAPL {} @ $70
+    assets:cash                                 $700
+    revenues:gain                              $-150
+$ hledger -f- bal --lots -N
+                $-50  assets:cash
+              5 AAPL  assets:stocks:{2026-01-02, $60}
+               $-250  revenues:gain
+
+# ** 51. And a multi-lot disposal is printed with the unspecified basis `{}`.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-01-02 buy
+    assets:cash     $-600
+    assets:stocks      10 AAPL @ $60
+
+2026-02-01 sell
+    assets:stocks     -15 AAPL @ $70
+    assets:cash
+$ hledger -f- print desc:sell
+2026-02-01 sell
+    assets:stocks                                -15 AAPL {} @ $70
+    assets:cash
+    revenues:gain                              $-250
+
+>=
+
+# ** 52. A gain posting written without an amount is filled in with the
+# calculated gain (and shown as written by plain print, explicitly by -x).
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain
+$ hledger -f- print -x desc:sell
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL {2026-02-01, $50} @ $70
+    assets:cash                                 $350
+    revenues:gain                              $-100
+
+>=
+
+# ** 53. Both an amountless gain posting and an elided amount are inferred.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash
+    revenues:gain
+$ hledger -f- print -x desc:sell
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL {2026-02-01, $50} @ $70
+    assets:cash                                 $350
+    revenues:gain                              $-100
+
+>=
+
+# ** 54. With several gain postings, one may be amountless; it receives the
+# remainder of the calculated gain.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain  $-60
+    revenues:gain:rest
+$ hledger -f- print -x desc:sell
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL {2026-02-01, $50} @ $70
+    assets:cash                                 $350
+    revenues:gain                               $-60
+    revenues:gain:rest                          $-40
+
+>=
+
+# ** 55. But more than one amountless gain posting is an error.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain
+    revenues:gain:other
+$ hledger -f- print
+>2 /more than one amountless gain posting/
+>=1
+
+# ** 56. print --export reproduces the declarations, so it keeps lot entries
+# as written, without the inferred annotations.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-02-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash
+$ hledger -f- print --export
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:cash                                $-500
+    assets:stocks                                 10 AAPL @ $50
+
+2026-02-01 sell
+    assets:stocks                                 -5 AAPL @ $70
+    assets:cash
+    revenues:gain                              $-100
 
 >=

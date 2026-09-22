@@ -743,14 +743,19 @@ Styles are listed in the same order as the manual, from implicit to explicit.
 
 3. **Only the gain posting written, using a type:G account.**
   hledger identifies the gain posting by the type:G account and tags it,
-  as above. The gain amount must be written explicitly, and is checked.
+  as above. The gain amount is checked; or it may be omitted (at most one
+  amountless gain posting per entry), in which case the balancer leaves the
+  posting alone and `journalAddOrCheckGainPostings` fills in the calculated
+  gain (less any other written gain amounts) after lot matching. In lenient
+  (--ignore-lots) mode there is no lot matching, so amountless Gain-typed
+  postings are not tagged and the balancer infers them as usual.
 
 (A fourth style, with an explicit `equity:unrealised-gain` counter posting,
 was supported until 2026-09; such entries now fail to balance.)
 
 ### Gain precision
 
-Inferred gain amounts (case 1) and the gain-validation
+Inferred gain amounts (case 1, and amountless gain postings in case 3) and the gain-validation
 comparison (cases 2-3) operate at the **entry's local precision** for
 the gain commodity (ie, the maximum precision seen among the
 posting amounts in that commodity).
@@ -940,7 +945,9 @@ The `--lots` flag is a display toggle consumed in the report-loading layer
 strips lot subaccount suffixes from account names, drops synthetic
 `_lot-parent-assertion` postings, and merges runs of `_lotsplit-posting` fragments
 (per-lot dispose/transfer splits sharing the same `poriginal`) back to a single
-posting carrying the user's original amount. Posting amounts on other postings
+posting (with an unspecified `{}` basis when several lots were involved).
+Lot-inferred cost basis annotations are kept on the amounts, so that `print`
+can show them (see below). Posting amounts on other postings
 are left alone; `print` relies on `transactionWithMostlyOriginalPostings` to revert
 to `poriginal` when displaying non-explicit output.
 
@@ -1005,10 +1012,10 @@ classify and balance as if the user had written:
     expenses:fees     0.000399 ETH @ $1,992.36
 ```
 
-(with the gain posting then generated as usual; note an
-elided gain posting must not be written - disposals reject amountless
-gain postings with an error, whether their amounts are explicit or
-inferred by balancing).
+(with the gain posting then generated as usual, or an amountless gain
+posting filled in - this works here too, although the disposal is only
+recognisable once the balance assignment has been resolved, because gain
+postings are also tagged inside the balancer, after that point).
 
 The original user posting is preserved via `poriginal` on the transfer portion
 (p1), and the dispose portion (p2) is tagged `_feesplit-posting`. As a result:
@@ -1045,7 +1052,13 @@ each fragment's `poriginal` points at the user's unmodified original posting.
 Display behaviour:
 
 - Plain `print` collapses the fragments via `journalCollapseLotDetail` and
-  reverts to `poriginal`, so the user sees their single original posting.
+  reverts to `poriginal`, so the user sees their single original posting - but
+  with the cost basis annotation inferred by lot processing added when they
+  wrote none (`{$50}` on an acquire, `{2026-01-15, $50}` on a single-lot
+  disposal or transfer, `{}` on a multi-lot disposal), so the printed entry
+  is self-describing and re-reads without the commodity's `lots:` declaration
+  under the default method. (With `--lots`, the subaccount name carries the
+  basis, so amounts are shown without it.)
 - `print --lots` keeps the fragments visible and renders each with its lot
   subaccount and per-lot quantity, but with the user's original cost basis
   annotations (achieved by `transactionWithMostlyOriginalPostings` scaling

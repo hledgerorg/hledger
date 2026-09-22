@@ -1071,7 +1071,11 @@ postingHasDisposeShape commodityIsLotful accountUsesNoLots p =
 -- gain posting is later rejected by journalAddOrCheckGainPostings, the
 -- gain being zero). Gain postings are recognised in one of two ways:
 --
--- 1. By account type: real, amountful postings on a Gain-typed account.
+-- 1. By account type: real postings on a Gain-typed account. These may be
+--    amountless (unless the first argument is false, in lenient --ignore-lots
+--    mode, where there'll be no lot matching to fill the amount in): the
+--    balancer leaves such a posting alone and 'journalAddOrCheckGainPostings'
+--    sets its amount to the calculated gain.
 --
 -- 2. Heuristically, when there is no Gain-typed posting: real, amountful
 --    postings whose account type is not Asset, Liability or Equity (or a
@@ -1088,12 +1092,13 @@ postingHasDisposeShape commodityIsLotful accountUsesNoLots p =
 -- repeatedly: it runs as a journalFinalise step, and again inside the
 -- balancer for callers which balance single entries (hledger add, hledger-web).
 transactionTagGainPostings
-  :: Bool                                -- ^ also add visible tags
+  :: Bool                                -- ^ also tag amountless Gain-typed postings (not in lenient mode)
+  -> Bool                                -- ^ also add visible tags
   -> (AccountName -> Maybe AccountType)  -- ^ account type lookup
   -> (CommoditySymbol -> Bool)           -- ^ is this a lotful commodity ?
   -> (AccountName -> Bool)               -- ^ does this account use lots: NONE ?
   -> Transaction -> Transaction
-transactionTagGainPostings verbosetags lookupAccountType commodityIsLotful accountUsesNoLots t
+transactionTagGainPostings tagamountless verbosetags lookupAccountType commodityIsLotful accountUsesNoLots t
   | any isGainPosting realps  = t
   | not (any hasDisposeShape realps) = t
   | any isGainTyped realps     = tagPostings isGainTyped
@@ -1102,7 +1107,7 @@ transactionTagGainPostings verbosetags lookupAccountType commodityIsLotful accou
   where
     realps = filter isReal (tpostings t)
     hasDisposeShape = postingHasDisposeShape commodityIsLotful accountUsesNoLots
-    isGainTyped p = hasAmount p && lookupAccountType (paccount p) == Just Gain
+    isGainTyped p = (tagamountless || hasAmount p) && lookupAccountType (paccount p) == Just Gain
     hasLotfulOrBasisAmount p =
       any (\a -> isJust (acostbasis a) || commodityIsLotful (acommodity a)) (amountsRaw (pamount p))
     tagPostings isgain = txnTieKnot t{tpostings = map tag (tpostings t)}
@@ -1124,36 +1129,31 @@ transactionTagGainPostings verbosetags lookupAccountType commodityIsLotful accou
         residual = foldMap (mixedAmountCost . pamount) noncandidates
         nonzeroresidual = filter ((/= 0) . aquantity) (amountsRaw residual)
 
--- | Apply 'transactionTagGainPostings' to each transaction. Also, unless
--- lenient (--ignore-lots), reject a disposal with an amountless Gain-typed
--- posting: gain amounts must be written, since the balancer sets gain
--- postings aside rather than inferring them.
+-- | Apply 'transactionTagGainPostings' to each transaction. In lenient
+-- (--ignore-lots) mode, amountless gain postings are left untagged, for the
+-- balancer to infer like any other posting.
 journalTagGainPostings :: Bool -> Bool -> Journal -> Either String Journal
-journalTagGainPostings lenient verbosetags j = do
-    txns' <- mapM tagAndCheck (jtxns j)
-    Right j{jtxns = txns'}
-  where
-    atypes = jaccounttypes j
-    commodityIsLotful = journalCommodityUsesLots j
-    accountUsesNoLots = journalAccountUsesNoLots j
-    isAmountlessGain p = isReal p && not (hasAmount p) && accountNameType atypes (paccount p) == Just Gain
-    tagAndCheck t
-      | not lenient
-      , any (postingHasDisposeShape commodityIsLotful accountUsesNoLots) realps
-      , any isAmountlessGain realps
-        = Left (amountlessErr t)
-      | otherwise
-        = Right $ transactionTagGainPostings verbosetags (accountNameType atypes) commodityIsLotful accountUsesNoLots t
-      where realps = filter isReal (tpostings t)
+journalTagGainPostings lenient verbosetags j =
+  Right $ journalMapTransactions
+    (transactionTagGainPostings (not lenient) verbosetags (journalAccountType j) (journalCommodityUsesLots j) (journalAccountUsesNoLots j))
+    j
 
--- | Error for a disposal transaction containing a gain posting with no
--- (or no longer any) amount.
+-- | Error for a disposal with a gain posting whose amount was inferred by
+-- the balancer because the disposal could only be recognised afterwards
+-- (eg its amounts came from a balance assignment).
 amountlessErr :: Transaction -> String
 amountlessErr t =
   txnErrPrefix t
-  ++ "This disposal has an amountless gain posting.\n"
+  ++ "This disposal has an amountless gain posting, which can't be inferred here.\n"
   ++ "Write the amount explicitly, or omit the posting entirely\n"
   ++ "(hledger will then infer the realised gain from the cost basis)."
+
+-- | Error for a disposal with more than one amountless gain posting.
+multipleAmountlessErr :: Transaction -> String
+multipleAmountlessErr t =
+  txnErrPrefix t
+  ++ "This disposal has more than one amountless gain posting.\n"
+  ++ "At most one gain posting can have its amount inferred."
 
 -- | Check that no acquire posting has a disagreement between its cost basis and transacted cost.
 --
@@ -1234,19 +1234,37 @@ journalAddOrCheckGainPostings verbosetags j = do
     disposeHasPrice p = isDisposePosting p && any (isJust . acost) (amountsRaw (pamount p))
 
     addOrCheck t
-      | any isGainPosting ps          = checkGain t  -- tagged gain posting(s), possibly in a non-disposal (then the gain is zero)
+      | any isGainPosting ps           = fillOrCheck t  -- tagged gain posting(s), possibly in a non-disposal (then the gain is zero)
       | not (any disposeHasPrice ps)   = Right t
       | any isAmountlessGain ps        = Left (amountlessErr t)
       | any isGainTyped ps             = checkGain t
       | otherwise                      = Right (addGain t)
       where
         ps = tpostings t
-        -- A gain posting the user left amountless. Usually rejected before
-        -- balancing (journalTagGainPostings), but when the disposal was
-        -- only detectable after balancing (eg its amounts came from a balance
-        -- assignment), the elided posting has an inferred amount by now, so
-        -- check the original posting (#2686).
+        -- An untagged gain posting the user left amountless: the disposal was
+        -- not recognisable when the balancer tagged gain postings, so it has
+        -- inferred an amount for it by now, which can't be corrected; check
+        -- the original posting. (Rare: balance assignments are resolved before
+        -- tagging, so the #2686 shape no longer gets here.)
         isAmountlessGain p = isGainTyped p && not (hasAmount (originalPosting p))
+
+    -- With tagged gain postings: if exactly one is amountless, set its amount
+    -- to the calculated gain (less any other written gain amounts); otherwise
+    -- check the written amount(s).
+    fillOrCheck t = case filter (\p -> isGain p && not (hasAmount p)) (tpostings t) of
+      []  -> checkGain t
+      [_] -> Right (fillGain t)
+      _   -> Left (multipleAmountlessErr t)
+
+    fillGain t = txnTieKnot t{tpostings = map fill (tpostings t)}
+      where
+        ps      = tpostings t
+        gain    = foldMap postingDisposalGain ps
+        written = foldMap pamount (filter (\p -> isGain p && hasAmount p) ps)
+        amt     = setLocalGainPrecision t (maNegate gain <> maNegate written)
+        fill p
+          | isGain p && not (hasAmount p) = p{pamount = amt, poriginal = Just (originalPosting p)}
+          | otherwise                      = p
 
     addGain t
       | mixedAmountIsZero gain = t
@@ -1347,16 +1365,20 @@ journalAddOrCheckGainPostings verbosetags j = do
 --   carriers added when splitting a posting into lot subaccounts);
 -- * strips any lot subaccount (the trailing @{...}@ component) from each remaining
 --   posting's account name;
--- * strips any lot-inferred cost basis (@acostbasis@) from each remaining posting's
---   @pamount@. Cost basis the user wrote explicitly is preserved — only acostbasis
---   that was absent on the posting's @poriginal@ (ie added by lot processing) is
---   stripped.
+-- * merges per-lot split fragments back into one posting (see mergeLotSplits).
+--
+-- Lot-inferred cost basis annotations (@acostbasis@) are kept on the amounts:
+-- 'print' shows them, so that lot entries are self-describing and can be
+-- re-read without the commodity's @lots:@ declaration (under the default
+-- method). A merged multi-lot posting gets an unspecified basis (@{}@),
+-- meaning "lots selected by the account's method".
 --
 -- Postings tagged @_feesplit-posting@ (synthetic fee fragments from auto-split) are
 -- retained so transactions stay balanced in reports like 'print'.
 --
 -- 'print' relies on its existing 'transactionWithMostlyOriginalPostings' logic to
--- revert pamount to 'poriginal' when displaying non-explicit output.
+-- revert pamount to 'poriginal' when displaying non-explicit output (carrying
+-- the inferred basis over).
 --
 -- Journals with no lot content are returned unchanged.
 journalCollapseLotDetail :: Journal -> Journal
@@ -1376,7 +1398,6 @@ journalCollapseLotDetail j
       | postingHasTag lotParentAssertionTagName p = Nothing
       | otherwise = Just p
           { paccount          = newAcct
-          , pamount           = mapMixedAmount stripInferredBasis (pamount p)
           -- An assertion originally written on the base account (eg by CSV
           -- balanceN rules) targets the parent, which is what this collapsed
           -- posting shows again; keep it, so writing out the collapsed view
@@ -1394,14 +1415,6 @@ journalCollapseLotDetail j
         newAcct = lotBaseAccount (paccount p)
         -- The account the user actually wrote (before lot processing).
         originalAcct = paccount (originalPosting p)
-        -- Preserve acostbasis the user wrote explicitly on poriginal; strip any
-        -- acostbasis added later by lot processing.
-        origHasBasis = case poriginal p of
-          Just op -> any (isJust . acostbasis) (amountsRaw (pamount op))
-          Nothing -> True
-        stripInferredBasis a
-          | origHasBasis = a
-          | otherwise    = a{acostbasis = Nothing}
 
     -- Merge consecutive lotsplit-tagged postings that share the same original
     -- (poriginal) into one. The survivor's pamount is taken from its
@@ -1424,7 +1437,13 @@ journalCollapseLotDetail j
                   -- lose the amount entirely) or when a fee portion was split
                   -- off (using the original would double-count the retained
                   -- feesplit posting's amount). (#2692)
-                  survivor = (untagLotsplit p){pamount = maSum (map pamount (p:run))}
+                  -- Summing several fragments drops their (differing) cost
+                  -- bases; show an unspecified basis instead, meaning lots
+                  -- selected by method, which re-reads equivalently under
+                  -- the default method.
+                  merged = maSum (map pamount (p:run))
+                  survivor = (untagLotsplit p){pamount = if null run then merged else mapMixedAmount unspecifiedBasis merged}
+                  unspecifiedBasis a = a{acostbasis = Just (CostBasis Nothing Nothing Nothing)}
               in survivor : go rest
           | otherwise = p : go ps
         untagLotsplit p = p{ptags = filter ((/= lotsplitPostingTagName) . fst) (ptags p)}

@@ -180,9 +180,10 @@ Possible fixes: add a cost basis ({$X}), a price (@ $X),
 or check the account type declaration.
 >=1
 
-# ** 13. An amountless gain posting in a disposal is rejected with the same
-# clear error when the disposal's amounts are inferred by balancing (eg from
-# a balance assignment) as when they are explicit (#2686).
+# ** 13. An amountless gain posting is filled in with the calculated gain,
+# also when the disposal is only recognisable after a balance assignment
+# has been resolved (#2686): gain postings are set aside inside the balancer,
+# once amounts are known.
 <
 commodity A  ; lots:
 2026-01-15 buy
@@ -195,19 +196,16 @@ commodity A  ; lots:
     expenses:fees  0.05 A @ $150
     income:gains
 
-$ hledger -f- bal assets --lots 2>&1
-hledger: Error: -:6:
-6 | 2026-02-17 transfer with priced fee
-  |     assets:x1                                                    = 0 A
-  |     assets:x2                                      0.95 A
-  |     expenses:fees                                  0.05 A @ $150
-  |     income:gains
+$ hledger -f- print -x --lots desc:transfer
+2026-02-17 transfer with priced fee
+    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
+    assets:x1:{2026-01-15, $100}                  -0.05 A {2026-01-15, $100} @ $150
+    assets:x1                                      0 A                              =* 0 A
+    assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
+    expenses:fees                                  0.05 A @ $150
+    income:gains                                 $-2.50
 
-Postings were read as: transfer-from, transfer-to, unclassified, unclassified; and generated: dispose, balance-assertion.
-This disposal has an amountless gain posting.
-Write the amount explicitly, or omit the posting entirely
-(hledger will then infer the realised gain from the cost basis).
->=1
+>=
 
 # ** 14. Referencing a lot that doesn't exist (here, a label the lot doesn't
 # have) reports the non-matching selector and lists the account's available

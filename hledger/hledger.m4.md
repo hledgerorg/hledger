@@ -6160,16 +6160,18 @@ Lot tracking is activated for AAPL by the `lots` tag, so hledger will
 - calculate the resulting capital gain, and add the gain posting if missing
 - check for many kinds of error (such as selling more than you have).
 
-`print` shows the inferred gain posting:
+`print` shows the inferred cost basis annotations and gain posting
+(so its output can be re-read even without the `commodity` directive,
+if the default cost basis method is used):
 
 ```cli
 $ hledger print
 2026-01-15 buy
     assets:cash                                $-500
-    assets:stocks                                 10 AAPL @ $50
+    assets:stocks                                 10 AAPL {$50} @ $50
 
 2026-02-01 sell some
-    assets:stocks                                 -5 AAPL @ $70
+    assets:stocks                                 -5 AAPL {2026-01-15, $50} @ $70
     assets:cash                                 $350
     revenues:gain                              $-100
 
@@ -6728,8 +6730,9 @@ In an inferred gain posting, the gain amount will be rounded to the entry's loca
 (or if the local precision is zero, two decimal digits will be shown - except when both of those digits are zero).
 More decimals can be seen by increasing the display precision (eg `hledger print --round=soft -c '$1.0000'`).
 
-In an explicit gain posting, the amount must also be written.
-(Usually hledger fills in missing amounts, but not in gain postings.)
+An explicit gain posting can also be written without an amount,
+in which case hledger fills in the calculated gain (like Style 1, but with your choice of account).
+At most one gain posting per entry can be left amountless.
 
 ### Gain accounts
 

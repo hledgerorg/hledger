@@ -92,7 +92,7 @@ diffOutput postinglayout j j' = do
     unless (null unpatchable) . hPutStr stderr $ unpatchableWarning unpatchable
     T.putStr . foldMap fileDiff $ M.toAscList editsbyfile
   where
-    changed = [(transactionWithMostlyOriginalPostings t, transactionWithMostlyOriginalPostings t')
+    changed = [(transactionWithMostlyOriginalPostings False t, transactionWithMostlyOriginalPostings False t')
               | (t, t') <- zip (jtxns j) (jtxns j'), t /= t']
     -- collected per file, in no particular order; fileDiff sorts them
     (edits, unpatchable) = partitionEithers $ map txnEdit changed

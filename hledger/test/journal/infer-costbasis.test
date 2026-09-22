@@ -54,7 +54,7 @@ commodity AAPL   ; lots:
 
 $ hledger -f - print --verbose-tags
 2024-01-01 buy stock
-    assets:brokerage                              10 AAPL @@ $1000  ; ptype: acquire
+    assets:brokerage                              10 AAPL {$100} @@ $1000  ; ptype: acquire
     assets:cash
 
 >=

@@ -65,6 +65,12 @@ already do. Implementation: the balancer sets aside postings tagged
 and checkable before lot matching); the gain amount is verified after lot
 matching. `-B`/`--value=cost` still converts at transacted cost (a possible
 follow-up). Revaluation postings could be added later as an optional layer.
+(This reinstates the approach of 76696caec/24412e6e9 (2026-02), which
+80b320acc (2026-04) had replaced with the counter posting to avoid a
+balancing exception; the exception is now explained as basis balancing,
+keyed on a tag set before balancing, and amountless gain postings are
+allowed again. Plain `print` shows lot postings with their inferred basis
+annotations so its output re-reads standalone under the default method.)
 
 ### Don't enforce basis = transacted cost in acquisitions by default
 
