@@ -29,9 +29,11 @@ import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Builder qualified as TB
 import Data.Time.Calendar (Day, addDays)
-import Lucid as L hiding (Html, value_, title_)
 import System.Console.CmdArgs.Explicit as C (Mode, flagNone, flagReq)
 import System.IO qualified as IO
+import Text.Blaze.Html5 ((!), preEscapedToHtml)
+import Text.Blaze.Html5 qualified as H
+import Text.Blaze.Html5.Attributes qualified as A
 import Text.Tabular.AsciiWide as Tabular hiding (render)
 
 import Hledger
@@ -39,7 +41,7 @@ import Hledger.Cli.Commands.Balance
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils (unsupportedOutputFormatError, writeOutputLazyText)
 import Hledger.Write.Csv (CSV, printCSV, printTSV)
-import Hledger.Write.Html (formatRow, formatTitle, htmlAsLazyText, nl, Html)
+import Hledger.Write.Html (formatRow, formatTitle, htmlAsLazyText, nl, Html, toHtml)
 import Hledger.Write.Html.Attribute (stylesheet, tableStyle)
 import Hledger.Write.Ods (printFods)
 import Hledger.Write.Spreadsheet qualified as Spr
@@ -363,17 +365,17 @@ compoundBalanceReportAsHtml ropts cbr =
               oneLineNoCostFmt "" (Just nbsp) ropts cbr
   in do
     -- the builtin styles, then the optional user stylesheet so it can override them
-    style_ $ stylesheet $
+    H.style $ preEscapedToHtml $ stylesheet $
       tableStyle ++ [
       ("td:nth-child(1)", "white-space:nowrap"),
       ("tr:nth-child(odd) td", "background-color:#eee")
       ]
     nl
-    link_ [rel_ "stylesheet", href_ "hledger.css"]
+    H.link ! A.rel "stylesheet" ! A.href "hledger.css"
     nl
     unless (T.null title) $ formatTitle title
     -- Do not use `styledTableHtml` here since that leads to nested `<table>`s.
-    table_ $ nl <> (traverse_ formatRow $ fmap (map (fmap L.toHtml)) cells)
+    H.table $ nl <> (traverse_ formatRow $ fmap (map (fmap toHtml)) cells)
 
 -- | Render a compound balance report as Spreadsheet.
 compoundBalanceReportAsSpreadsheet ::

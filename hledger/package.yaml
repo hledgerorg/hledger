@@ -218,7 +218,7 @@ library:
   - Diff >=1.0  # for Data.Algorithm.DiffContext's context-diff API
   - hashable >=1.2.4
   - pretty
-  - lucid
+  - blaze-html
   - modern-uri >=0.3
 
 executables:

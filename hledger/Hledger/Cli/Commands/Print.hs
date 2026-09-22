@@ -40,12 +40,11 @@ import Hledger.Write.Ledger (showTransactionLedger, ledgerItemRenderer)
 import Hledger.Write.Journal (ItemRenderer(..), journalItemRenderer, journalItemsAsText)
 import Hledger.Write.Csv (CSV, printCSV, printTSV)
 import Hledger.Write.Ods (printFods)
-import Hledger.Write.Html.Lucid (styledTableHtml)
+import Hledger.Write.Html (styledTableHtml, htmlAsLazyText, toHtml)
 import Hledger.Write.Spreadsheet qualified as Spr
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils
 import Hledger.Cli.Anchor (setAccountAnchor)
-import Lucid qualified
 import System.IO qualified as IO
 import Data.Maybe (isJust)
 
@@ -207,8 +206,8 @@ printEntries opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j =
            | fmt=="json"      = toJsonText                    . styleAmounts styles
            | fmt=="sql"       = entriesReportAsSql            . styleAmounts styles
            | fmt=="html" =
-                (<>"\n") . Lucid.renderText . styledTableHtml .
-                map (map (fmap Lucid.toHtml)) .
+                (<>"\n") . htmlAsLazyText . styledTableHtml .
+                map (map (fmap toHtml)) .
                 entriesReportAsSpreadsheet oneLineNoCostFmt baseUrl query .
                 styleAmounts styles
            | fmt=="fods" =

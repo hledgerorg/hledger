@@ -20,7 +20,7 @@ import Data.Text qualified as T
 import Hledger.Web.Import
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Common (balanceReportLinks)
-import Hledger.Write.Html.Blaze (formatRow)
+import Hledger.Write.Html (formatRow)
 import Hledger.Write.Spreadsheet (Cell, NumLines)
 
 

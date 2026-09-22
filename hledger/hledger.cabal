@@ -159,6 +159,7 @@ library
     , aeson >=2.2.5.1 && <2.4
     , ansi-terminal >=0.9
     , base >=4.18 && <4.23
+    , blaze-html
     , bytestring
     , cmdargs >=0.10
     , containers >=0.5.9
@@ -172,7 +173,6 @@ library
     , hledger-lib ==1.99.*
     , http-client
     , http-types
-    , lucid
     , math-functions >=0.3.3.0
     , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4

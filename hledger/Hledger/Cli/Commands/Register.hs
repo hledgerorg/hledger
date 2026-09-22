@@ -32,13 +32,12 @@ import System.Console.CmdArgs.Explicit (flagNone, flagReq)
 import Hledger hiding (per)
 import Hledger.Write.Csv (CSV, printCSV, printTSV)
 import Hledger.Write.Ods (printFods)
-import Hledger.Write.Html.Lucid (titledTableHtml)
+import Hledger.Write.Html (titledTableHtml, htmlAsLazyText, toHtml)
 import Hledger.Write.Spreadsheet qualified as Spr
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils
 import Hledger.Cli.Anchor (setAccountAnchor, dateCell)
 import Text.Tabular.AsciiWide (Cell(..), Align(..), Properties(..), Header(Header, Group), renderRowB, textCell, tableBorders, borderSpaces)
-import Lucid qualified
 import Data.List (sortBy)
 import Data.Char (toUpper)
 import Data.List.Extra (intersect)
@@ -106,9 +105,9 @@ register opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j
            | fmt=="csv"  = printCSV . postingsReportAsCsv opts
            | fmt=="tsv"  = printTSV . postingsReportAsCsv opts
            | fmt=="html" =
-                (<>"\n") . Lucid.renderText .
+                (<>"\n") . htmlAsLazyText .
                 titledTableHtml (effectiveTitle (_rsReportOpts rspec) "") .
-                map (map (fmap Lucid.toHtml)) .
+                map (map (fmap toHtml)) .
                 postingsReportAsSpreadsheet opts oneLineNoCostFmt baseUrl query
            | fmt=="fods" =
                 printFods IO.localeEncoding . Map.singleton "Register" .

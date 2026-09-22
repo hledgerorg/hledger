@@ -43,9 +43,11 @@ import Hledger.Write.Html (Html, htmlAsLazyText, titledTableHtml, toHtml)
 import Hledger.Write.Ods (printFods)
 import Hledger.Write.Spreadsheet (addHeaderBorders, headerCell)
 import Hledger.Write.Spreadsheet qualified as Ods
-import Lucid qualified as L
 import Numeric.RootFinding (RiddersParam(..), Root(..), Tolerance(..), ridders)
 import System.IO qualified as IO
+import Text.Blaze.Html5 ((!))
+import Text.Blaze.Html5 qualified as H
+import Text.Blaze.Html5.Attributes qualified as A
 import Text.Tabular.AsciiWide
 
 -- | Command line options for this command.
@@ -695,7 +697,7 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
       where
         partsHtml isamount parts =
           mconcat $ intersperse (toHtml (", "::T.Text)) $
-          map (\p -> if isamount then L.span_ [L.class_ "amount"] (toHtml p) else toHtml p) $
+          map (\p -> if isamount then (H.span ! A.class_ "amount") (toHtml p) else toHtml p) $
           filter (not . T.null) parts
 
     fodstable :: [[Ods.Cell Ods.NumLines T.Text]]

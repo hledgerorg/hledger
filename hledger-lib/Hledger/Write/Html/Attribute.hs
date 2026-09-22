@@ -39,7 +39,7 @@ tableStyle =
    ("td.date, span.amount", "white-space:nowrap")]
   ++ borderStyle
 
--- | Rules for the border classes emitted by "Hledger.Write.Html.HtmlCommon",
+-- | Rules for the border classes emitted by "Hledger.Write.Html",
 -- one per side and line kind, eg @.border-top-double@. No color is given,
 -- so the lines take the text color and stay visible on any background.
 borderStyle :: [(Text, Text)]

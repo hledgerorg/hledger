@@ -29,10 +29,12 @@ import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Builder qualified as TB
 import Control.Monad (unless, when)
-import Lucid qualified as L hiding (Html)
 import Safe (readMay)
 import System.Console.CmdArgs.Explicit (flagNone, flagReq)
 import System.IO qualified as IO
+import Text.Blaze.Html5 ((!), preEscapedToHtml)
+import Text.Blaze.Html5 qualified as H
+import Text.Blaze.Html5.Attributes qualified as A
 import Text.Tabular.AsciiWide hiding (render)
 
 import Hledger
@@ -190,23 +192,23 @@ accountTransactionsReportAsHTML :: CliOpts -> Query -> Query -> AccountTransacti
 accountTransactionsReportAsHTML copts reportq thisacctq items =
   (<>"\n") $ htmlAsLazyText $ do
     -- the builtin styles, then the optional user stylesheet so it can override them
-    L.style_ tableStylesheet
+    H.style $ preEscapedToHtml tableStylesheet
     nl
-    L.link_ [L.rel_ "stylesheet", L.href_ "hledger.css"]
+    H.link ! A.rel "stylesheet" ! A.href "hledger.css"
     nl
     let title = accountTransactionsReportTitle copts reportq thisacctq
     unless (T.null title) $ formatTitle title
-    L.table_ $ do
+    H.table $ do
       nl
       when (headingopt copts) $ do
-        L.thead_ $ L.tr_ $ do
-          L.th_ "date"
-          L.th_ "description"
-          L.th_ "otheraccounts"
-          L.th_ "amount"
-          L.th_ "balance"
+        H.thead $ H.tr $ do
+          H.th "date"
+          H.th "description"
+          H.th "otheraccounts"
+          H.th "amount"
+          H.th "balance"
         nl
-      L.tbody_ $ for_ items $
+      H.tbody $ for_ items $
         formatRow . map (fmap toHtml) .
         accountTransactionsReportItemAsRecord copts
           oneLineNoCostFmt False
