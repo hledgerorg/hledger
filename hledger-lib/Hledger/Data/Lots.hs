@@ -1081,8 +1081,10 @@ postingHasDisposeShape commodityIsLotful accountUsesNoLots p =
 --    postings whose account type is not Asset, Liability or Equity (or a
 --    subtype), and which don't carry a lotful or cost-basis amount; accepted
 --    only if all postings have amounts and the remaining postings sum to
---    zero at transacted cost (a well-formed disposal), or to a
---    multi-commodity amount (which balancing cost inference will resolve).
+--    zero at transacted cost (a well-formed disposal), or to an unpriced
+--    sale: a lot commodity net sold plus one other commodity net received
+--    (which balancing cost inference will resolve). A net purchase with a
+--    cash fee posting is not mistaken for a disposal with a gain.
 --    This lets a gain posting be written on any account without declaring
 --    it type:G, for simple entries.
 --
@@ -1123,11 +1125,20 @@ transactionTagGainPostings tagamountless verbosetags lookupAccountType commodity
          all hasAmount realps          -- with an elided amount, leave it to the balancer
       && not (null candidates)
       && (mixedAmountIsZero residual   -- well-formed disposal: net zero
-          || length nonzeroresidual >= 2)  -- multi-commodity: cost inference will resolve
+          || isPricelessSale nonzeroresidual)  -- unpriced sale: cost inference will resolve
       where
         (candidates, noncandidates) = partition isCandidate realps
         residual = foldMap (mixedAmountCost . pamount) noncandidates
         nonzeroresidual = filter ((/= 0) . aquantity) (amountsRaw residual)
+        -- The residual is a lot commodity net sold and one other commodity
+        -- net received. (A net purchase with a cash fee has the opposite
+        -- signs; there the fee is not a gain.)
+        isPricelessSale as = case partition (isLotCommodity . acommodity) as of
+          ([sold], [proceeds]) -> isNegativeAmount sold && not (isNegativeAmount proceeds)
+          _                    -> False
+        isLotCommodity c = commodityIsLotful c || c `elem` disposecommodities
+        disposecommodities =
+          [acommodity a | p <- realps, hasDisposeShape p, a <- amountsRaw (pamount p)]
 
 -- | Apply 'transactionTagGainPostings' to each transaction. In lenient
 -- (--ignore-lots) mode, amountless gain postings are left untagged, for the

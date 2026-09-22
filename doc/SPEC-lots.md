@@ -734,7 +734,9 @@ Styles are listed in the same order as the manual, from implicit to explicit.
   hledger identifies gain posting(s) heuristically: one or more postings 
   whose account type is not Asset, Liability, or Equity (or a subtype of these),
   which have not been classified as a lot movement by the lot classifier,
-  and whose non-gain siblings sum to zero (or have a multi-commodity imbalance).
+  and whose non-gain siblings sum to zero (or, in an unpriced sale, to a lot commodity
+  net sold plus one other commodity net received, which cost inference will resolve;
+  a net purchase with a cash fee is not treated as a disposal with a gain).
   When gain postings are detected, hledger tags them with `_ptype:gain`
   (`transactionTagGainPostings`, before balancing), and the balancer sets them aside.
   After lot matching, the transaction's gain amount is checked against

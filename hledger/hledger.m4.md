@@ -6827,7 +6827,9 @@ Another example, this time with multiple gain postings:
 hledger identifies these "undeclared" gain postings by their characteristics:
 postings whose account type is not Asset, Liability, or Equity (or a subtype);
 and which have not been classified as lot postings (acquire, transfer, dispose);
-and without which the remaining postings in the entry balance to zero.
+and without which the remaining postings in the entry balance to zero
+(or, when the sale has no price, form a plain sale: the lot commodity
+net sold, one other commodity net received).
 
 So above, the `gains` postings are detected, set aside when balancing the entry
 (which then balances at cost basis, as described above),

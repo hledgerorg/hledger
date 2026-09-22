@@ -1237,3 +1237,26 @@ $ hledger -f- print -B desc:sell
     revenues:gain                              $-100
 
 >=
+
+# ** 62. A purchase with a cash fee, and a fee paid in the lot commodity,
+# is not mistaken for a disposal with a gain posting: the entry's net
+# shape is a purchase (lot commodity received, cash paid), so the cash
+# fee posting is not tagged as a gain and the entry loads normally.
+<
+commodity A  ; lots:
+
+2026-01-01 buy A, paying fees in $ and A
+    assets:cc       10 A
+    assets:cc     -0.1 A
+    expenses:fees  0.1 A
+    expenses:fees   $2
+    assets:cash   $-102
+$ hledger -f- print -x --verbose-tags
+2026-01-01 buy A, paying fees in $ and A
+    assets:cc                                     10 A {$10} @@ $100  ; ptype: acquire
+    assets:cc                                     -0.1 A {2026-01-01, $10}  ; ptype: dispose
+    expenses:fees                                  0.1 A
+    expenses:fees                                 $2
+    assets:cash                                $-102
+
+>=
