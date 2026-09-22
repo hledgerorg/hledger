@@ -395,6 +395,16 @@ journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,i
       -- Pre-balancing cost/equity tagging
       >>= journalTagCostsAndEquityAndMaybeInferCosts verbose_tags_ False          -- tag equity conversion postings and redundant costs, to help the transaction balancer ignore them
 
+      -- Lot cost basis and transacted cost inference, and gain posting tagging
+      -- These enrichment stages always run, so lot entries balance the same
+      -- with or without --ignore-lots; with --ignore-lots (unless overridden
+      -- by --strict or `hledger check lots`) they are lenient, skipping their
+      -- errors and leaving the affected postings/transactions unchanged.
+      -- They run before auto postings, whose preliminary balancing needs them too.
+      >>= journalInferBasisFromAccountNames lenientlots                           -- infer cost basis from lot subaccount names (validating them, unless lenient)
+      <&> journalInferPostingsTransactedCost                                      -- in acquire-shaped postings, infer a transacted cost from cost basis
+      >>= journalTagGainPostings lenientlots verbose_tags_                        -- in disposals, tag user-written gain postings so the balancer sets them aside
+
       -- Auto postings
       >>= (if auto_ && not (null $ jtxnmodifiers pj)
             then journalAddAutoPostings verbose_tags_ _ioDay                      -- add auto postings if enabled; does preliminary transaction balancing
@@ -403,15 +413,6 @@ journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,i
                                 ,lenient_lots_ = lenientlots
                                 ,verbose_balancing_tags_ = verbose_tags_}
             else pure)
-
-      -- Lot cost basis and transacted cost inference
-      -- These enrichment stages always run, so lot entries balance the same
-      -- with or without --ignore-lots; with --ignore-lots (unless overridden
-      -- by --strict or `hledger check lots`) they are lenient, skipping their
-      -- errors and leaving the affected postings/transactions unchanged.
-      >>= journalInferBasisFromAccountNames lenientlots                           -- infer cost basis from lot subaccount names (validating them, unless lenient)
-      <&> journalInferPostingsTransactedCost                                      -- in acquire-shaped postings, infer a transacted cost from cost basis
-      >>= journalAddGainOrUGainPosting lenientlots verbose_tags_                  -- if user wrote an explicit rgain or ugain posting alone, add its counter
 
       -- Transaction balancing
       >>= (\j -> if checkordereddates then journalCheckOrdereddates j $> j else Right j)     -- maybe check that journal entries are in date order
@@ -453,7 +454,7 @@ journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,i
           >>= (if checklots then journalCheckLotsMethodCoherence             else pure)  -- reject a global (*ALL) method mixed with other methods for one commodity
           >>= (if checklots then journalCalculateLots verbose_tags_          else pure)  -- evaluate lot selectors, calculate lot balances, add lot subaccounts
           >>= (if checkbasis then journalCheckAcquireBasis                   else pure)  -- if `hledger check basis`, error on any acquire with cost basis ≠ transacted cost
-          >>= (if checklots then journalAddOrCheckGainPostings verbose_tags_ else pure)  -- in disposal transactions, add the realised-gain + unrealised-gain posting pair
+          >>= (if checklots then journalAddOrCheckGainPostings verbose_tags_ else pure)  -- in disposal transactions, add the realised-gain posting, or check a user-written one
           <&> journalStripBalancerCopiedBases                                            -- remove balancer-copied basis annotations, kept until now as classification evidence
 
         -- Now report any balance assertion failure detected above.

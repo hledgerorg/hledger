@@ -245,8 +245,8 @@ $ hledger -f- print --lots --verbose-tags
 >=
 
 # *** 18. An acquire entry with an unbalanced virtual posting in the lotful
-# commodity: virtual postings don't trigger gain inference (which would
-# add a spurious ugain posting, unbalancing the entry). The real posting
+# commodity: virtual postings don't trigger gain detection (which would
+# set a posting aside, unbalancing the entry). The real posting
 # is a normal acquire, and the entry balances within display precision.
 <
 commodity $0.00

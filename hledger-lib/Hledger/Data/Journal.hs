@@ -130,9 +130,6 @@ module Hledger.Data.Journal (
   defaultGainAccount,
   journalBaseGainAccount,
   journalGainAccounts,
-  defaultUnrealisedGainAccount,
-  journalBaseUnrealisedGainAccount,
-  journalUnrealisedGainAccounts,
   -- * Misc
   nulljournal,
   journalConcat,
@@ -984,7 +981,7 @@ journalBaseConversionAccount = headDef defaultBaseConversionAccount . journalCon
 journalConversionAccounts :: Journal -> [AccountName]
 journalConversionAccounts = M.keys . M.filter (==Conversion) . jaccounttypes
 
--- | The account name to use for inferred realised-gain (rgain) postings.
+-- | The account name to use for inferred gain postings.
 -- This is the alphabetically first account declared with type G/Gain,
 -- or otherwise the defaultGainAccount (revenues:gain).
 journalBaseGainAccount :: Journal -> AccountName
@@ -993,16 +990,6 @@ journalBaseGainAccount = headDef defaultGainAccount . journalGainAccounts
 -- | All the accounts in this journal which are declared as G/Gain type.
 journalGainAccounts :: Journal -> [AccountName]
 journalGainAccounts = sort . M.keys . M.filter (==Gain) . jaccounttypes
-
--- | The account name to use for inferred unrealised-gain (ugain) postings.
--- This is the alphabetically first account declared with type U/UnrealisedGain,
--- or otherwise the defaultUnrealisedGainAccount (equity:unrealised-gain).
-journalBaseUnrealisedGainAccount :: Journal -> AccountName
-journalBaseUnrealisedGainAccount = headDef defaultUnrealisedGainAccount . journalUnrealisedGainAccounts
-
--- | All the accounts in this journal which are declared as U/UnrealisedGain type.
-journalUnrealisedGainAccounts :: Journal -> [AccountName]
-journalUnrealisedGainAccounts = sort . M.keys . M.filter (==UnrealisedGain) . jaccounttypes
 
 
 -- Various kinds of filtering on journals. We do it differently depending

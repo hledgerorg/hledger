@@ -20,7 +20,6 @@ $ hledger -f- print desc:sell --lots --verbose-tags
     equity:opening:{2026-01-01, $50}              -5 AAPL {$50} @ $55  ; ptype: dispose
     assets:cash                                 $275
     revenue:gains                               $-25  ; ptype: gain
-    equity:unrealised-gain                       $25  ; ptype: ugain, generated-posting:
 
 >=
 
@@ -40,7 +39,6 @@ $ hledger -f- print desc:sell --lots --verbose-tags
     assets:broker:{2026-01-01, $50}               -5 AAPL {$50} @ $55  ; ptype: dispose
     assets:cash                                 $275
     revenue:gains                               $-25  ; ptype: gain
-    equity:unrealised-gain                       $25  ; ptype: ugain, generated-posting:
 
 >=
 
@@ -63,7 +61,6 @@ $ hledger -f- print desc:sell --lots --verbose-tags
     assets:broker:{2026-01-01, $50}               -5 AAPL  ; ptype: dispose
     assets:cash                                 $275
     revenue:gains                               $-25  ; ptype: gain
-    equity:unrealised-gain                       $25  ; ptype: ugain, generated-posting:
 
 >=
 
@@ -84,7 +81,6 @@ $ hledger -f- print desc:sell --lots --verbose-tags
     assets:broker:{2026-01-01, $50}               -5 AAPL @ $55  ; ptype: dispose
     assets:cash                                 $275
     revenue:gains                               $-25  ; ptype: gain
-    equity:unrealised-gain                       $25  ; ptype: ugain, generated-posting:
 
 >=
 
@@ -105,7 +101,6 @@ $ hledger -f- print desc:sell --lots --verbose-tags
     assets:broker:{2026-01-01, $50}               -5 AAPL {$50}  ; ptype: dispose
     assets:cash                                 $275
     revenue:gains                               $-25  ; ptype: gain
-    equity:unrealised-gain                       $25  ; ptype: ugain, generated-posting:
 
 >=
 
@@ -126,7 +121,6 @@ $ hledger -f- print desc:sell --lots --verbose-tags
     assets:broker:{2026-01-01, $50}               -5 AAPL {} @ $55  ; ptype: dispose
     assets:cash                                 $275
     revenue:gains                               $-25  ; ptype: gain
-    equity:unrealised-gain                       $25  ; ptype: ugain, generated-posting:
 
 >=
 
@@ -150,7 +144,6 @@ $ hledger -f- print desc:sell --lots --verbose-tags
     assets:broker:{2026-01-01, $50}               -5 AAPL {$50} @ $55  ; ptype: dispose
     assets:cash                                 $275
     capital gains                               $-25  ; ptype: gain
-    equity:unrealised-gain                       $25  ; ptype: ugain, generated-posting:
 
 >=
 
@@ -171,7 +164,6 @@ $ hledger -f- print desc:sell --lots --verbose-tags
     assets:broker:{2026-01-01, $50}               -5 AAPL {$50} @@ $275  ; ptype: dispose
     assets:cash                                 $275
     revenue:gains                               $-25  ; ptype: gain
-    equity:unrealised-gain                       $25  ; ptype: ugain, generated-posting:
 
 >=
 
@@ -227,8 +219,7 @@ $ hledger -f- print desc:sell --lots --verbose-tags
 2026-02-01 sell
     assets:broker:{2026-01-01, $50}               -5 AAPL {$50} @ $55  ; ptype: dispose
     assets:cash                                 $275
-    revenues:gain                               $-25  ; ptype: rgain, generated-posting:
-    equity:unrealised-gain                       $25  ; ptype: ugain, generated-posting:
+    revenues:gain                               $-25  ; ptype: gain, generated-posting:
 
 >=
 
@@ -250,7 +241,7 @@ $ hledger -f- print desc:sell --lots
 >=
 
 # *** 13. dispose with an explicit gain posting to an undeclared account.
-# The imbalance is assumed to be rgain; a corresponding ugain posting is inferred.
+# The imbalance is assumed to be the gain, and set aside by the balancer.
 <
 commodity AAPL  ; lots:
 
@@ -268,7 +259,6 @@ $ hledger -f- print desc:sell --lots --verbose-tags
     assets:broker:{2026-01-01, $50}               -5 AAPL {$50} @ $55  ; ptype: dispose
     assets:cash                                 $275
     revenues:gain                               $-25  ; ptype: gain
-    equity:unrealised-gain                       $25  ; ptype: ugain, generated-posting:
 
 >=
 
@@ -307,7 +297,7 @@ $ hledger -f- print desc:sell --lots
 >2 /unbalanced/
 >=1
 
-# *** 16. dispose with typo'd cash plus correct rgain on undeclared account → balance error.
+# *** 16. dispose with typo'd cash plus correct gain posting on undeclared account → balance error.
 # The non-candidate postings' sum is single-commodity non-zero, so no gain posting is detected,
 # and the balancer reports the imbalance.
 <
@@ -327,7 +317,7 @@ $ hledger -f- print desc:sell --lots
 >=1
 
 # *** 17. multi-lot dispose with per-lot gains postings.
-# All gain postings are detected and a single balancing ugain posting is inferred.
+# All gain postings are detected and set aside by the balancer.
 <
 commodity AAPL  ; lots:
 
@@ -353,7 +343,6 @@ $ hledger -f- print desc:sell --lots --verbose-tags
     assets:cash                                 $480
     revenues:gain                               $-50  ; ptype: gain, gain on lot1
     revenues:gain                               $-15  ; ptype: gain, gain on lot2
-    equity:unrealised-gain                       $65  ; ptype: ugain, generated-posting:
 
 >=
 
@@ -361,7 +350,7 @@ $ hledger -f- print desc:sell --lots --verbose-tags
 # hiding sub-cent noise from B-T arithmetic. Here 9.216 × 1801.215277778
 # = 16600.000000002, so the calculated gain is Rs2803.240000002... but the
 # entry's local Rs precision is 2 dp (from Rs19403.24), so the inferred
-# rgain/ugain are saved at 2 dp.
+# gain is saved at 2 dp.
 <
 2017-04-09 buy
     assets:fund    9.216 FUND {Rs1801.215277778}
@@ -376,11 +365,10 @@ $ hledger -f- print desc:sell --lots
     assets:savings                              Rs19403.24
     assets:fund:{2017-04-09, Rs1801.215277778}       -9.216 FUND {Rs1801.215277778} @@ Rs19403.24
     revenues:gain                               Rs-2803.24
-    equity:unrealised-gain                       Rs2803.24
 
 >=
 
-# *** 19. A user-written rgain that differs from the calculated gain by more
+# *** 19. A user-written gain that differs from the calculated gain by more
 # than half a ULP at the entry's local precision is rejected, and the error
 # message shows the actual amounts at full precision (so any real
 # discrepancy is visible).
@@ -404,7 +392,7 @@ hledger: Error: -:7:
   |     assets:fund                                   -9.216 FUND {Rs1801.215277778} @@ Rs19403.24
   |     income:capital                           Rs-2803.30
 
-Postings were read as: unclassified, dispose, gain; and generated: ugain.
+Postings were read as: unclassified, dispose, gain.
 This disposal's realised gain amount is wrong.
   written:    Rs-2803.30
   calculated: Rs-2803.239999997952

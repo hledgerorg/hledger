@@ -467,7 +467,6 @@ $ hledger -f- print --lots -x desc:transfer
     expenses:fees                                  0.05 A @ $150
     assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
     revenues:gain                                $-2.50
-    equity:unrealised-gain                        $2.50
 
 >=
 
@@ -494,7 +493,6 @@ $ hledger -f- print desc:transfer
     expenses:fees                                  0.05 A @ $150
     assets:x2                                      0.95 A
     revenues:gain                                $-2.50
-    equity:unrealised-gain                        $2.50
 
 >=
 
@@ -518,7 +516,6 @@ $ hledger -f- print --lots desc:transfer
     expenses:fees                                  0.05 A @ $150
     assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
     revenues:gain                                $-2.50
-    equity:unrealised-gain                        $2.50
 
 >=
 
@@ -545,7 +542,6 @@ $ hledger -f- print -x --lots desc:transfer
     expenses:fees                                  0.05 A @ $150
     assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
     revenues:gain                                $-2.50
-    equity:unrealised-gain                        $2.50
 
 >=
 
@@ -616,7 +612,6 @@ $ hledger -f- print --lots -x desc:transfer
     expenses:fees                                  0.05 A @ $150
     assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
     revenues:gain                                $-2.50
-    equity:unrealised-gain                        $2.50
 
 >=
 
@@ -668,7 +663,6 @@ $ hledger -f- print --lots -x desc:transfer
     assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
     expenses:fees                                  0.05 A @ $150
     revenues:gain                                $-2.50
-    equity:unrealised-gain                        $2.50
 
 >=
 
@@ -1038,8 +1032,7 @@ $ hledger -f- print -a date:2020-04
     assets:broker2:{2020-03-08, $2}                4.9 ABC {2020-03-08, $2}  ; ptype: transfer-to
     assets:broker1:{2020-03-08, $2}               -0.1 ABC {2020-03-08, $2} @@ $1  ; ptype: dispose
     expenses:fees                                 $1
-    revenues:gain                                $-0.80  ; ptype: rgain, generated-posting:
-    equity:unrealised-gain                        $0.80  ; ptype: ugain, generated-posting:
+    revenues:gain                                $-0.80  ; ptype: gain, generated-posting:
 
 >=
 
@@ -1065,8 +1058,7 @@ $ hledger -f- print -a date:2020-04
     assets:broker2:{2020-03-08, $2}                4.9 ABC {2020-03-08, $2}  ; ptype: transfer-to
     assets:broker1:{2020-03-08, $2}               -0.1 ABC {2020-03-08, $2} @@ $1  ; ptype: dispose
     expenses:fees                                 $1
-    revenues:gain                                $-0.80  ; ptype: rgain, generated-posting:
-    equity:unrealised-gain                        $0.80  ; ptype: ugain, generated-posting:
+    revenues:gain                                $-0.80  ; ptype: gain, generated-posting:
 
 >=
 

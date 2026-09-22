@@ -419,8 +419,7 @@ $ hledger -f- bal assets:broker --lots -N
 
 # ** 20. AVERAGE: two acquisitions form a $50 pool; two disposals consume it.
 # The {date, $50} cost annotation on each disposal posting, and the inferred
-# revenues:gain / equity:unrealised-gain postings, all reflect the shared
-# pool cost. Acquires keep the user's literal per-acquisition cost.
+# revenues:gain postings, all reflect the shared pool cost. Acquires keep the user's literal per-acquisition cost.
 <
 commodity AAPL  ; lots: AVERAGE
 2026-05-01 buy lot 1
@@ -452,13 +451,11 @@ $ hledger -f- print --lots -x
     assets:stocks:{2026-05-01}                   -10 AAPL {2026-05-01, $50} @ $100
     assets:cash                                $1000
     revenues:gain                              $-500
-    equity:unrealised-gain                      $500
 
 2026-05-04 second sale
     assets:stocks:{2026-05-02}                   -10 AAPL {2026-05-02, $50} @ $100
     assets:cash                                $1000
     revenues:gain                              $-500
-    equity:unrealised-gain                      $500
 
 >=
 
@@ -495,13 +492,11 @@ $ hledger -f- print --lots -x
     assets:broker1:{2026-01-15}                  -10 AAPL {2026-01-15, $60} @ $100
     assets:cash                                $1000
     revenues:gain                              $-400
-    equity:unrealised-gain                      $400
 
 2026-04-01 sell from broker2
     assets:broker2:{2026-02-01}                  -10 AAPL {2026-02-01, $60} @ $100
     assets:cash                                $1000
     revenues:gain                              $-400
-    equity:unrealised-gain                      $400
 
 >=
 
@@ -537,7 +532,6 @@ $ hledger -f- print --lots -x
     assets:stocks:{2026-01-15}                    -5 AAPL {2026-01-15, $40} @ $50
     assets:cash                                 $250
     revenues:gain                               $-50
-    equity:unrealised-gain                       $50
 
 2026-03-01 buy 2
     assets:stocks:{2026-03-01}                    10 AAPL {$70} @ $70
@@ -547,7 +541,6 @@ $ hledger -f- print --lots -x
     assets:stocks:{2026-01-15}                    -5 AAPL {2026-01-15, $60} @ $80
     assets:cash                                 $400
     revenues:gain                              $-100
-    equity:unrealised-gain                      $100
 
 >=
 
@@ -580,10 +573,9 @@ $ hledger -f- bal --lots
                  5 A  assets:avg:{2026-01-01}
                 10 A  assets:avg:{2026-02-01}
                $-150  assets:cash
-                 $75  equity:unrealised-gain
                 $-75  revenues:gain
 --------------------
-               $-150
+               $-225
                 15 A  
 
 # ** 24. A transfer out of an AVERAGE pool carries the pooled cost ($20)
@@ -616,10 +608,9 @@ account assets:avg  ; lots: AVERAGE
 $ hledger -f- bal --lots
                 10 A  assets:avg:{2026-02-01}
                 $100  assets:cash
-                $300  equity:unrealised-gain
                $-300  revenues:gain
 --------------------
-                $100
+               $-200
                 10 A  
 
 # ** 25. print --lots -x of a transfer into an AVERAGE account: both
@@ -708,10 +699,9 @@ $ hledger -f- bal --lots
              10 AAPL  assets:broker2:{2026-02-01}
                 $350  assets:cash
               $-1200  assets:checking
-                 $50  equity:unrealised-gain
                 $-50  revenues:gain
 --------------------
-               $-850
+               $-900
              15 AAPL  
 
 # ** 28. A global (*ALL) method mixed with a different method for the same

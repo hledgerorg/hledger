@@ -149,7 +149,6 @@ $ hledger -f- print --lots
     assets:stocks:{2026-01-15, $50}               -5 AAPL {2026-01-15, $50} @ $60
     assets:cash                                 $300
     revenue:gains                               $-50
-    equity:unrealised-gain                       $50
 
 >=
 
@@ -206,7 +205,6 @@ $ hledger -f- print --lots -x desc:sell
     assets:stocks:{2026-02-01, $55}               -5 AAPL {2026-02-01, $55} @ $60
     assets:cash                                 $900
     revenues:gain                              $-125
-    equity:unrealised-gain                      $125
 
 >=
 
@@ -231,7 +229,6 @@ $ hledger -f- print --lots -x desc:sell
     assets:stocks:{2026-02-01, $55}               -5 AAPL {2026-02-01, $55} @ $60
     assets:cash                                 $900
     revenues:gain                              $-125
-    equity:unrealised-gain                      $125
 
 >=
 
@@ -256,7 +253,6 @@ $ hledger -f- print desc:sell
     assets:stocks                                -15 AAPL @ $60
     assets:cash
     revenues:gain                              $-125
-    equity:unrealised-gain                      $125
 
 >=
 
@@ -267,7 +263,6 @@ $ hledger -f- print -x desc:sell
     assets:stocks                                -15 AAPL @ $60
     assets:cash                                 $900
     revenues:gain                              $-125
-    equity:unrealised-gain                      $125
 
 >=
 
@@ -279,7 +274,6 @@ $ hledger -f- print --lots desc:sell
     assets:stocks:{2026-02-01, $55}               -5 AAPL @ $60
     assets:cash
     revenues:gain                              $-125
-    equity:unrealised-gain                      $125
 
 >=
 
@@ -322,7 +316,6 @@ $ hledger -f- print --lots -x desc:sell
     assets:stocks                                  0 AAPL                         =* 0 AAPL
     assets:cash                                $1400
     revenues:gain                              $-300
-    equity:unrealised-gain                      $300
 
 >=
 
@@ -413,7 +406,6 @@ $ hledger -f- print --lots -x desc:sell
     assets:stocks:{2026-01-15, $50}               -5 AAPL {2026-01-15, $50} @ $60
     assets:cash                                 $300
     revenues:gain                               $-50
-    equity:unrealised-gain                       $50
 
 >=
 
@@ -518,7 +510,6 @@ commodity AAPL  ; lots:
 $ hledger -f- bal --lots -N
                $-359  assets:cash
             5.0 AAPL  assets:stocks:{2026-01-15, $80}
-                 $49  equity:unrealised-gain
             0.1 AAPL  expenses:fees
                 $-49  revenue:gains
 
@@ -547,7 +538,6 @@ $ hledger -f- print -x --lots desc:transfer
     assets:cold wallet:{2026-03-06, $1,980.78}     0.999601 ETH {2026-03-06, $1,980.78}
     expenses:fees:trading                          0.000399 ETH @ $1,992.36
     revenues:gain                                 $0
-    equity:unrealised-gain                        $0
 
 >=
 
@@ -579,7 +569,6 @@ $ hledger -f- print --lots --infer-equity
     equity:conversion:$-AAPL:AAPL                 10 AAPL
     equity:conversion:$-AAPL:$                 $-600
     income:capital                             $-100
-    equity:unrealised-gain                      $100
 
 >=
 
@@ -618,7 +607,7 @@ $ hledger -f- print --lots
 >=1
 
 # ** 34. An imprecise per-unit cost basis produces sub-Rs0.005 noise in
-# calculated gain. The user-written rgain matches at the entry's local
+# calculated gain. The user-written gain matches at the entry's local
 # Rs precision (2 dp), so it is accepted and the entry is balanced.
 # 9.216 × 1801.215277778 = 16600.000000002, off by 0.000000002 from the
 # Rs16600.00 paid; this rounds away at the entry's 2 dp tolerance.
@@ -643,7 +632,6 @@ $ hledger -f- print --lots
     assets:savings                              Rs19403.24
     assets:fund:{2017-04-09, Rs1801.215277778}       -9.216 FUND {Rs1801.215277778} @@ Rs19403.24
     income:capital                              Rs-2803.24
-    equity:unrealised-gain                       Rs2803.24
 
 >=
 
@@ -720,8 +708,7 @@ $ hledger -f- print -a date:2026-02
 2026-02-01 sell all
     assets:broker1:{2026-01-01, $4.34782609}      -2.3 ABC {2026-01-01, $4.34782609} @@ $25 = 0 ABC  ; ptype: dispose
     assets:cash                                  $25
-    revenues:gain                               $-15  ; ptype: rgain, generated-posting:
-    equity:unrealised-gain                       $15  ; ptype: ugain, generated-posting:
+    revenues:gain                               $-15  ; ptype: gain, generated-posting:
 
 >=
 
@@ -749,7 +736,6 @@ $ hledger -f- print --lots -x
     assets:broker1:{2021-03-08, $3.33333333}      -3 ABC {2021-03-08, $3.33333333} @ $4
     assets:cash                                  $12
     revenues:gain                                $-2
-    equity:unrealised-gain                        $2
 
 >=
 
@@ -817,3 +803,194 @@ $ hledger -f- bal --lots -N
               40 AAA  assets:broker:{2022-02-01, "0002", $0}
                $-100  assets:cash
              -20 AAA  equity:bonus
+
+# ** 42. Disposals balance at cost basis, with a single realised-gain posting
+# and no unrealised-gain counterpart. So the accounting equation holds: after
+# selling everything and closing revenue to equity, the books balance. #2731
+<
+commodity AAPL  ; lots:
+
+2026-01-01 opening
+    equity:opening  $-500
+    assets:cash      $500
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks     -10 AAPL @ $70
+    assets:cash      $700
+
+2026-03-01 retain
+    revenues:gain     $200
+    equity:retained  $-200
+$ hledger -f- bal
+                $700  assets:cash
+               $-500  equity:opening
+               $-200  equity:retained
+--------------------
+                   0  
+
+# ** 43. With an explicit gain posting, a missing cash amount is inferred
+# from the proceeds, as if the gain posting were not there.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash
+    revenues:gain  $-100
+$ hledger -f- print -x
+2026-02-01 buy
+    assets:cash                                $-500
+    assets:stocks                                 10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL @ $70
+    assets:cash                                 $350
+    revenues:gain                              $-100
+
+>=
+
+# ** 44. Likewise a missing transacted price is inferred from the proceeds.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL
+    assets:cash  $350
+    revenues:gain  $-100
+$ hledger -f- print -x
+2026-02-01 buy
+    assets:cash                                $-500
+    assets:stocks                                 10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL @@ $350
+    assets:cash                                 $350
+    revenues:gain                              $-100
+
+>=
+
+# ** 45. A gain posting in a lot transfer (which has no gain) is an error.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 transfer
+    assets:stocks  -5 AAPL
+    assets:broker   5 AAPL
+    revenues:gain  $-100
+$ hledger -f- print
+>2 /realised gain amount is wrong.
+  written:    \$-100
+  calculated: 0/
+>=1
+
+# ** 46. An old-style unrealised-gain counter posting is no longer expected,
+# and unbalances the entry.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain  $-100
+    equity:unrealised-gain  $100
+$ hledger -f- print
+>2 /sum should be 0 but is \$100
+  \$-350  \+  \$350  \+  \$100  =  \$100  \(excluding gain postings\)/
+>=1
+
+# ** 47. But an unrealised-gain posting with its own asset-side counterpart
+# (eg reversing a manual revaluation) is an ordinary balanced pair.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain  $-100
+    assets:stocks:revaluation  $-100
+    equity:unrealised-gain  $100
+$ hledger -f- bal -N
+               $-150  assets:cash
+              5 AAPL  assets:stocks
+               $-100  assets:stocks:revaluation
+                $100  equity:unrealised-gain
+               $-100  revenues:gain
+
+# ** 48. An explicit gain posting also works with --auto (whose preliminary
+# balancing runs early).
+<
+commodity AAPL  ; lots:
+
+= assets:cash
+    (budget)  *0.1
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain  $-100
+$ hledger -f- print --auto
+2026-02-01 buy
+    assets:cash                                $-500
+    (budget)                                    $-50
+    assets:stocks                                 10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL @ $70
+    assets:cash                                 $350
+    (budget)                                     $35
+    revenues:gain                              $-100
+
+>=
+
+# ** 49. And with --ignore-lots, an entry with an explicit gain posting still loads
+# (the gain amount is not checked).
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain  $-99
+$ hledger -f- print --ignore-lots
+2026-02-01 buy
+    assets:cash                                $-500
+    assets:stocks                                 10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL @ $70
+    assets:cash                                 $350
+    revenues:gain                               $-99
+
+>=

@@ -42,11 +42,29 @@ To distinguish transacted costs (@) from cost basis ({}).
 
 ### Compute realised gain from the disposal postings only
 
-The synthetic `rgain`/`ugain` pair is sized from `Σ aquantity × (B − T)`
+The generated gain posting is sized from `Σ aquantity × (B − T)`
 over non-acquire postings with both basis and transacted cost — not from
 the entry's full cost-basis residual. This isolates real capital gain
 from acquire-side bookkeeping mistakes (eg a typo'd `{B}` or a fee being
 double-counted into basis).
+
+### Disposals balance at cost basis (historical cost accounting)
+
+2026-09, #2731. Disposal entries get a single realised gain posting, and are
+understood to balance at cost basis: the disposed units count as `q × B`,
+the gain posting supplies `q × (T − B)`, and the proceeds are `q × T`.
+Previously an `equity:unrealised-gain` counter posting was also generated so
+that disposals balanced at transacted cost; but with no revaluation postings
+ever crediting that account, it accumulated a phantom balance equal to minus
+the cumulative realised gains, so `bse` failed to balance even after
+everything was sold. The alternative, mark-to-market accounting (keeping the
+counter posting and generating revaluation postings as prices change), is
+legitimate but more complex, and historical cost is what hledger 1 users
+already do. Implementation: the balancer sets aside postings tagged
+`_ptype:gain` (equivalent to basis balancing, since `q×B + q×(T−B) = q×T`,
+and checkable before lot matching); the gain amount is verified after lot
+matching. `-B`/`--value=cost` still converts at transacted cost (a possible
+follow-up). Revaluation postings could be added later as an optional layer.
 
 ### Don't enforce basis = transacted cost in acquisitions by default
 

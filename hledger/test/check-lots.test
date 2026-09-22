@@ -110,7 +110,7 @@ $ hledger -f - check lots
 
 # ** 11. --ignore-lots disables lot checking but not basic lot inference,
 # so entries which balance with lots enabled still balance: here the
-# unrealised gain counterpart posting is still generated.
+# user-written gain posting is still set aside by the balancer.
 <
 2026-01-15 buy
     assets:checking  $-500
@@ -130,7 +130,6 @@ $ hledger -f - print -I
     assets:stocks                                 -5 AAPL {$50} @ $55
     assets:cash                                 $275
     revenues:gains                              $-25
-    equity:unrealised-gain                       $25
 
 >=
 

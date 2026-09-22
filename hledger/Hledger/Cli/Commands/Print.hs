@@ -139,7 +139,7 @@ print' opts@CliOpts{rawopts_=rawopts} j = do
   let
     -- lbl = lbl_ "print'"
     hasPtype t p = ("_ptype", t) `elem` ptags p
-    isGeneratedGainPosting p = hasPtype "rgain" p || hasPtype "ugain" p
+    isGeneratedGainPosting p = hasPtype "gain" p
     setFullPrecisionExceptGain p
       | isGeneratedGainPosting p = p
       | otherwise = postingTransformAmount mixedAmountSetFullPrecision p

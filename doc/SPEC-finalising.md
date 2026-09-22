@@ -55,17 +55,17 @@ journalFinalise
   -- Pre-balancing cost/equity tagging
   8.  journalTagCostsAndEquityAndMaybeInferCosts(1st)  -- tag conversion equity postings + redundant costs (helps balancer ignore them)
 
-  -- Generate auto postings
-  9.  journalAddAutoPostings            -- if --auto, do transaction balancing (preliminary) to infer some missing amounts/costs,
-                                        -- then apply auto posting rules. Calls journalBalanceTransactions.
-
-  -- Lot cost basis and transacted cost inference (before balancing; always run,
+  -- Lot cost basis and transacted cost inference, gain posting tagging (before balancing; always run,
   -- so lot entries balance the same with or without --ignore-lots;
   -- lenient with --ignore-lots: their errors are skipped, leaving the affected postings unchanged)
-  10. journalInferBasisFromAccountNames  -- if account name has a {…} lot subaccount, parse cost basis from it
-  11. journalInferPostingsTransactedCost -- infer cost from cost basis of acquire postings
-  12. journalAddGainOrUGainPosting       -- if only one of rgain/ugain is written, add the other
-                                         -- (pre-balancer, so the ordinary balancer accepts the paired disposal)
+  9.  journalInferBasisFromAccountNames  -- if account name has a {…} lot subaccount, parse cost basis from it
+  10. journalInferPostingsTransactedCost -- infer cost from cost basis of acquire postings
+  11. journalTagGainPostings             -- in disposals, tag user-written gain postings _ptype:gain,
+                                         -- so the balancer sets them aside (disposals balance at cost basis)
+
+  -- Generate auto postings
+  12. journalAddAutoPostings            -- if --auto, do transaction balancing (preliminary) to infer some missing amounts/costs,
+                                        -- then apply auto posting rules. Calls journalBalanceTransactions.
 
   -- Transaction balancing (main)
   13. journalBalanceTransactionsAndDeferAssertions
@@ -98,7 +98,7 @@ journalFinalise
                                         -- infer cost basis for bare disposals, normalize transacted cost
   25. journalCheckAcquireBasis         -- gated separately on `hledger check basis` (not on checklots);
                                        -- error if any acquire posting has cost basis ≠ transacted cost
-  26. journalAddOrCheckGainPostings    -- for disposals with no gain postings, add the rgain+ugain pair
+  26. journalAddOrCheckGainPostings    -- for disposals with no gain posting, add the gain posting
                                        -- sized at the disposal gain; otherwise check any user-written
                                        -- gain amount against the disposal gain
   27. journalStripBalancerCopiedBases  -- always: remove balancer-copied basis annotations,
@@ -127,9 +127,9 @@ An arrow A → B means "A must run before B".
 - **journalTagCostsAndEquityAndMaybeInferCosts(1st) → journalBalanceTransactions**
   The balancer needs to know which costs are redundant (equity-paired) to ignore them.
 
-- **journalClassifyLotPostings → journalInferPostingsTransactedCost**
-  Transacted cost inference skips `transfer-to` postings (which have no selling price),
-  so it needs the `_ptype` tag to be present.
+- **journalTagGainPostings → journalAddAutoPostings**
+  Auto postings do a preliminary balancing pass, which must set aside any
+  user-written gain postings just as the main pass does.
 
 - **journalInferPostingsTransactedCost → journalBalanceTransactions**
   The balancer needs transacted costs to correctly infer missing amounts
@@ -150,7 +150,7 @@ An arrow A → B means "A must run before B".
 
 - **journalCheckAcquireBasis → journalAddOrCheckGainPostings**
   When an acquire posting has B ≠ T, we want the structural error to surface
-  before any gain-pair-specific diagnostic (the gain pair's amount would be
+  before any gain-specific diagnostic (the gain amount would be
   meaningless given the imbalance).
 
 ### Design decisions
@@ -214,7 +214,7 @@ Several steps only run with specific flags:
 | journalTagCostsAndEquity (2nd)         | `--infer-costs`                                                 |
 | journalInferEquityFromCosts            | `--infer-equity`                                                |
 | journalInferBasisFromAccountNames      | always; lenient (skips its errors) with `--ignore-lots`/`-I`, unless restored by `--strict` or `hledger check lots` |
-| journalAddGainOrUGainPosting           | always; lenient, as above                                       |
+| journalTagGainPostings                 | always; lenient, as above                                       |
 | journalClassifyLotPostings             | default; skipped by `--ignore-lots`/`-I`; restored by `--strict` or `hledger check lots` |
 | journalCheckLotsTagValues              | same                                                            |
 | journalCheckLotsMethodCoherence        | same                                                            |

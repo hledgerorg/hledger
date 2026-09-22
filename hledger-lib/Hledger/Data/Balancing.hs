@@ -57,7 +57,7 @@ import Hledger.Data.Types
 import Hledger.Data.AccountName (accountNameType, isAccountNamePrefixOf)
 import Hledger.Data.Amount
 import Hledger.Data.Journal
-import Hledger.Data.Lots (lotBaseAccount, transactionAutoSplitFeeOutflows)
+import Hledger.Data.Lots (isGainPosting, lotBaseAccount, transactionAutoSplitFeeOutflows, transactionTagGainPostings)
 import Hledger.Data.Posting
 import Hledger.Data.Transaction
 import Hledger.Data.Errors
@@ -120,9 +120,13 @@ transactionCheckBalanced BalancingOpts{commodity_styles_=_mglobalstyles, txn_bal
 
     -- convert a posting's amount to cost,
     -- unless it has been marked as a redundant cost (equivalent to some nearby equity conversion postings),
-    -- in which case ignore it.
+    -- in which case ignore it;
+    -- or it is a disposal's realised gain posting, which is set aside: a disposal
+    -- balances at cost basis, which is equivalent to its non-gain postings balancing
+    -- at transacted cost (see Hledger.Data.Lots.transactionTagGainPostings).
     postingBalancingAmount p
       | costPostingTagName `elem` map fst (ptags p) = mixedAmountStripCosts $ pamount p
+      | isGainPosting p                            = nullmixedamt
       | otherwise                                   = mixedAmountCost $ pamount p
 
     lookszero = case txn_balancing_ of
@@ -134,7 +138,9 @@ transactionCheckBalanced BalancingOpts{commodity_styles_=_mglobalstyles, txn_bal
 
     -- check that the sum looks like zero
     (rsumcost,  bvsumcost)  = (foldMap postingBalancingAmount rps, foldMap postingBalancingAmount bvps)
-    (rsumamts,  bvsumamts)  = (map     postingBalancingAmount rps, map     postingBalancingAmount bvps)
+    (rsumamts,  bvsumamts)  = (map postingBalancingAmount (nongain rps), map postingBalancingAmount (nongain bvps))
+    nongain = filter (not . isGainPosting)
+    gainnote ps = if any isGainPosting ps then "  (excluding gain postings)" else ""
     (rsumok,    bvsumok)    = (lookszero rsumcost, lookszero bvsumcost)
     (rsumokold, bvsumokold) = (lookszeroatglobaldisplayprecision rsumcost, lookszeroatglobaldisplayprecision bvsumcost)
 
@@ -158,7 +164,7 @@ transactionCheckBalanced BalancingOpts{commodity_styles_=_mglobalstyles, txn_bal
           | not rsignsok  = "The real postings all have the same sign."
           | otherwise     = "The real postings' sum should be 0 but is "
               ++ showamt rsumcost
-              ++ "\n  " ++ intercalate "  +  " (map showamt rsumamts) ++ "  =  " ++ showamt rsumcost
+              ++ "\n  " ++ intercalate "  +  " (map showamt rsumamts) ++ "  =  " ++ showamt rsumcost ++ gainnote rps
               ++ (if rsumokold then oldbalancingmsg else "")
               ++ lotmismatchmsg rps
         bvmsg
@@ -166,7 +172,7 @@ transactionCheckBalanced BalancingOpts{commodity_styles_=_mglobalstyles, txn_bal
           | not bvsignsok = "The balanced virtual postings all have the same sign."
           | otherwise     = "The balanced virtual postings' sum should be 0 but is: "
               ++ showamt bvsumcost
-              ++ "\n  " ++ intercalate " + " (map showamt bvsumamts) ++ " = " ++ showamt bvsumcost
+              ++ "\n  " ++ intercalate " + " (map showamt bvsumamts) ++ " = " ++ showamt bvsumcost ++ gainnote bvps
               ++ (if bvsumokold then oldbalancingmsg else "")
               ++ lotmismatchmsg bvps
         -- When a balancing conversion cost was not inferred because of a
@@ -227,7 +233,7 @@ balanceSingleTransaction bopts = fmap fst . balanceTransactionHelper bopts
 -- error message if both fail). Lot classification runs after balancing and
 -- will classify the split postings (#2686, #2692).
 balanceTransactionHelperMaybeSplittingLotFees :: BalancingOpts -> Transaction -> Either String (Transaction, [(AccountName, MixedAmount)])
-balanceTransactionHelperMaybeSplittingLotFees bopts t
+balanceTransactionHelperMaybeSplittingLotFees bopts t0
   | S.null lotfulcomms = balanceTransactionHelper bopts t  -- not a lots journal
   | length (tpostings t2) == length (tpostings t) = balanceTransactionHelper bopts t  -- no split applied
   | otherwise = case balanceTransactionHelper bopts t2 of
@@ -235,6 +241,11 @@ balanceTransactionHelperMaybeSplittingLotFees bopts t
       Left _      -> balanceTransactionHelper bopts t
   where
     lotfulcomms = lotful_commodities_ bopts
+    -- Tag any user-written gain postings in a disposal first, so the balancer
+    -- sets them aside. (journalFinalise does this too, but callers balancing a
+    -- single entry, like hledger add, rely on it happening here.)
+    t = transactionTagGainPostings (verbose_balancing_tags_ bopts) (accountNameType (account_types_ bopts)) (`S.member` lotfulcomms)
+          (accountUsesNoLotsWith (account_lots_tags_ bopts)) t0
     t2 = transactionAutoSplitFeeOutflows (verbose_balancing_tags_ bopts) (accountNameType (account_types_ bopts)) (`S.member` lotfulcomms)
            (accountUsesNoLotsWith (account_lots_tags_ bopts)) t
 
@@ -321,10 +332,11 @@ transactionInferBalancingAmount styles _atypes t@Transaction{tpostings=ps}
   where
     lbl = lbl_ "transactionInferBalancingAmount"
     (amountfulrealps, amountlessrealps) = partition hasAmount (realPostings t)
-    realsum = maSum $ map (mixedAmountCost . pamount) amountfulrealps
+    -- Gain postings in a disposal are set aside (see transactionCheckBalanced).
+    realsum = maSum $ map (mixedAmountCost . pamount) $ filter (not . isGainPosting) amountfulrealps
       -- & dbg9With (lbl "real balancing amount".showMixedAmountOneLine)
     (amountfulbvps, amountlessbvps) = partition hasAmount (balancedVirtualPostings t)
-    bvsum = maSum $ map (mixedAmountCost . pamount) amountfulbvps
+    bvsum = maSum $ map (mixedAmountCost . pamount) $ filter (not . isGainPosting) amountfulbvps
 
     inferamount :: Posting -> (Posting, Maybe MixedAmount)
     inferamount p =
@@ -449,7 +461,7 @@ costInferrerFor :: Bool -> S.Set CommoditySymbol -> Transaction -> PostingRealne
 costInferrerFor lenientlots lotfulcomms t pt = maybe id infercost inferFromAndTo
   where
     lbl = lbl_ "costInferrerFor"
-    postings     = filter (\p -> preal p == pt) $ tpostings t
+    postings     = filter (\p -> preal p == pt && not (isGainPosting p)) $ tpostings t  -- gain postings are set aside, as in transactionCheckBalanced
     pcommodities = map acommodity $ concatMap (amounts . pamount) postings
     sumamounts   = amounts $ sumPostings postings  -- amounts normalises to one amount per commodity & price
 

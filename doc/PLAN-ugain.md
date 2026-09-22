@@ -1,90 +1,61 @@
-# Plan: continuous unrealised-gain tracking via generated postings
+# Plan: optional unrealised-gain (revaluation) postings
 
 ## Background
 
-Today `equity:unrealised-gain` only receives a single posting at disposal
-time, sized at the disposal gain. Conceptually it should accumulate
-continuously: each market-price change should generate a synthetic
-revaluation transaction, posting `Dr asset (revaluation) / Cr ugain`,
-so the ugain account's history is inspectable in `print`, `register`, and
-`bal` like any other account. Disposal then becomes a clean reclassification:
-the existing `rgain`+`ugain` pair shape stays, but the ugain side is sized
-from the disposed lot's accumulated revaluation balance rather than computed
-on the spot.
+hledger records gains by the historical cost convention (see DECISIONS.md,
+"Disposals balance at cost basis"): a disposal gets one realised gain
+posting, and unrealised gains are not posted, only reported from market
+prices (`holdings`, `--gain`, `-V` vs `-B`).
 
-This was the trade-off discussed in commit
-[80b320acc](https://github.com/hledgerorg/hledger/commit/80b320acc):
-that commit chose not to generate revaluation postings, paying the cost of
-a less inspectable ugain in exchange for less synthetic noise.
-The disposal-only-gain rework (see that commit, and "Compute realised gain
-from the disposal postings only" in DECISIONS.md) is forward-compatible with continuous ugain tracking
-— the synthetic `rgain`+`ugain` pair shape we kept is exactly what
-disposal-time reclassification would produce.
+Earlier (until 2026-09) each disposal also received an
+`equity:unrealised-gain` counter posting, intended as the second half of a
+mark-to-market scheme in which revaluation postings (`Dr asset /
+Cr equity:unrealised-gain`) would accrue unrealised gain as prices move,
+and disposal would recycle the disposed lot's accumulated gain to realised.
+The revaluation half was never implemented (commit 80b320acc chose not to
+generate revaluation postings, to avoid synthetic noise), leaving the
+counter posting as a plug that broke the accounting equation (#2731).
+
+## The optional layer
+
+Revaluation postings could still be offered, as an opt-in on top of
+historical cost, giving a ledger trail of unrealised gains (inspectable in
+`register`, attributable to periods in `is`/`bse`):
+
+```journal
+2026-03-01 revalue AAPL at $70          ; generated from a P directive
+    equity:unrealised-gain            $-200    ; 10 AAPL x ($70 - $50)
+    assets:stocks:revaluation          $200    ; or the lot subaccount itself
+
+2026-03-01 sell some
+    assets:stocks    -5 AAPL {$50} @ $70       ; balances at basis: -$250
+    assets:cash       $350
+    revenues:gain    $-100                     ; realised gain
+    equity:unrealised-gain   $100              ; reverse the disposed lot's accumulated revaluation...
+    assets:stocks:revaluation  $-100           ; ...and its asset-side write-up
+```
+
+Note the two conventions: crediting an equity reserve and recycling it at
+disposal (through other comprehensive income), versus crediting
+`revenues:unrealised gain` so it hits the income statement each period
+(fair value through profit or loss, no recycling). The U account type
+suits the former.
 
 ## Open design questions
 
-1. **What's the asset-side posting representation?**
-   - Pure `$` mixed into a commodity-tracked account?
-   - Parallel `assets:revaluation:*` account?
-   - Extension of the lot data model with a market-value field?
+1. Asset-side representation: `$` posted into the lot subaccount (makes
+   `bal` show "5 AAPL, $200"), a parallel `assets:...:revaluation` account,
+   or a market-value field in the lot model.
+2. Trigger: each `P` directive, each transaction with a differing price,
+   period boundaries, or on demand at report time.
+3. Partial disposals and non-FIFO methods: which fraction of a lot's
+   accumulated revaluation to reverse.
+4. `-B`/cost reports: with revaluations in asset accounts, "cost" reports
+   would show market carrying value unless revaluation accounts are
+   excluded.
 
-2. **When are revaluations triggered?**
-   - Each `P` directive?
-   - Each transaction whose `@`/`@@` price differs from the lot's last-known price?
-   - Explicit valuation dates?
-   - Period boundaries (month-end, year-end)?
-   - On-demand at report time only?
+## Status
 
-3. **How does disposal-time reclassification scale with accumulated ugain?**
-   - Partial disposals — what fraction of the lot's accumulated ugain transfers to rgain?
-   - Interaction with FIFO/LIFO/HIFO/AVERAGE selection.
-   - Lot-level vs. commodity-level vs. account-level revaluation tracking.
-
-## What this would look like end-to-end (sketch)
-
-```journal
-2026-01-01 buy
-    assets:broker     100 AAPL {$50}
-    assets:cash      -$5000
-
-P 2026-02-01 AAPL $60      ; → synthetic revaluation transaction generated:
-                            ;   Dr assets:broker:{...}      $1000  ; +$1000 over basis
-                            ;   Cr equity:unrealised-gain  -$1000
-
-P 2026-03-01 AAPL $70      ; → another synthetic revaluation:
-                            ;   Dr assets:broker:{...}      $1000
-                            ;   Cr equity:unrealised-gain  -$1000
-
-2026-04-01 sell
-    assets:broker    -100 AAPL {$50} @ $70
-    assets:cash      $7000
-                            ; equity:unrealised-gain currently shows -$2000.
-                            ; Disposal-time reclassification posts:
-                            ;   Cr revenues:gain           -$2000
-                            ;   Dr equity:unrealised-gain   $2000
-                            ; ugain returns to $0 for this lot.
-```
-
-Each step is consistent at transacted-cost balance and produces a real
-posting trail visible in `print`/`register`/`bal`.
-
-## Why this is parked
-
-Each open question above has multiple plausible answers with different
-trade-offs around storage, UX, and scaling. Picking one without a real
-prototype risks locking in a direction we'd regret. The current pair
-shape works correctly for one-shot disposal-time gain recognition, which
-covers the common reporting need; users who want continuous unrealised
-tracking can use `bal -V` (market-value report) which derives the same
-information at report time without persisting it.
-
-Worth revisiting when:
-- Users start asking for `register equity:unrealised-gain` to show the
-  history of their paper gains, not just realisations.
-- A jurisdiction-specific tax workflow makes period-end revaluation
-  posting mandatory rather than optional.
-- The disposal-time reclassification math turns out to need more state
-  than `aquantity × (B − T)` per lot (eg cost-basis adjustments from
-  corporate actions that retroactively change the gain).
-
-Until then: out of scope.
+Parked. The common need (realised gain at disposal, unrealised gain as a
+report) is covered without it. Revisit if users want a posting history of
+paper gains, or a tax workflow requires period-end revaluation entries.

@@ -20,7 +20,7 @@ Comparing roi and holdings
 (For a realistic comparison, with transfers, fees and closed
 positions, see lots.journal.)
 
-$ hledger -f examples/lots/irr.journal roi --inv assets:stocks --pnl 'revenues:gain|equity:unrealised-gain' -e 2026-04-01 --value=end,$
+$ hledger -f examples/lots/irr.journal roi --inv assets:stocks --pnl revenues:gain -e 2026-04-01 --value=end,$
 +---++------------+------------++---------------+----------+-------------+------++----------++------------+----------+
 |   ||      Begin |        End || Value (begin) | Cashflow | Value (end) |  PnL ||      IRR || TWR/period | TWR/year |
 +===++============+============++===============+==========+=============+======++==========++============+==========+
@@ -44,8 +44,8 @@ total into unrealised ($360 value − $250 cost basis = $110) plus
 realised (5 sold × ($70 − $50) = $100).
 
 The two invocation details that make the comparison fair: roi's
---pnl must include equity:unrealised-gain (else the generated ugain
-postings are miscounted as external cashflows), and --value=end,$
+--pnl must include revenues:gain (else the generated gain postings
+are miscounted as external cashflows), and --value=end,$
 with -e 2026-04-01 puts roi's valuation on the same date and price
 as holdings'.
 

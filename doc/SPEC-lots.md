@@ -46,7 +46,7 @@ without introducing new ones. It splits the lot pipeline in two:
   the same as with lots enabled: `journalInferBasisFromAccountNames` (in
   lenient mode: an invalid or conflicting lot subaccount name leaves the
   posting unchanged, an ordinary subaccount, instead of erroring),
-  `journalInferPostingsTransactedCost`, `journalAddGainOrUGainPosting` (in
+  `journalInferPostingsTransactedCost`, `journalTagGainPostings` (in
   lenient mode: the amountless-gain-posting error is skipped), and
   `journalStripBalancerCopiedBases`. The transaction balancer also stays
   lot-aware (`lotful_commodities_`/`account_lots_tags_` are populated as
@@ -332,9 +332,9 @@ directly without a redundant `{}` annotation on the amount.
 
 After inferring cost basis, we identify and classify lot postings.
 A `_ptype` tag is added to each classified posting to record its type:
-`acquire`, `dispose`, `transfer-from`, `transfer-to`, or `gain` (the last
-applies to user-written postings on Gain-type accounts; `rgain` and
-`ugain`, used on inferred postings, come later).
+`acquire`, `dispose`, `transfer-from`, or `transfer-to`. (Realised gain
+postings are tagged `gain` separately: user-written ones before balancing by
+`transactionTagGainPostings`, generated ones by `journalAddOrCheckGainPostings`.)
 
 (`journalClassifyLotPostings` → `transactionClassifyLotPostings`)
 
@@ -630,9 +630,18 @@ So a lot transaction can be broadly classified as "acquire", "transfer", or "dis
 
 ## Transaction balancing
 
-All transactions, including disposals, are balanced by the ordinary
-transaction-balancing rule — sum postings at transacted cost (ignoring cost
-basis), sum must be zero, infer at most one missing amount per commodity.
+All transactions are balanced by the ordinary transaction-balancing rule —
+sum postings at transacted cost (ignoring cost basis), sum must be zero,
+infer at most one missing amount per commodity — with one refinement for
+disposals: their realised gain postings (tagged `_ptype:gain`, see
+"Disposal transactions" below) are set aside, contributing nothing to the
+sum or to inferred amounts. This makes a disposal balance at cost basis:
+since `q×B + q×(T−B) = q×T`, "the non-gain postings sum to zero at
+transacted cost" is the same statement as "all postings, gain included,
+sum to zero with the disposed units valued at basis"; and it can be
+checked before lot matching has determined B. The gain amount itself is
+checked after lot matching (`journalAddOrCheckGainPostings`), which closes
+the loop. (Historical cost accounting: unrealised gains are not posted.)
 
 When the balancer infers a conversion cost between two commodities, and
 exactly one of them has classified lot postings — or, failing that, is
@@ -666,35 +675,35 @@ a cost basis `B` and a transacted cost `T`, contribute `aquantity × (B − T)`.
 
 ### Gain postings
 
-Conceptually, each disposal transaction has a balanced pair of postings,
-representing the disposal's capital gain or loss:
+Each disposal transaction has a **gain** posting (its realised gain), usually
+to a Gain-type account (default `revenues:gain`), carrying the negated gain.
+There is no counter posting: the disposal balances at cost basis (see
+"Transaction balancing" above), the disposed units leaving at their basis
+and the gain making up the difference from the proceeds. (Until 2026-09 a
+balancing `equity:unrealised-gain` posting was also generated, so that
+disposals balanced at transacted cost; it was dropped, see #2731 and
+DECISIONS.md, because without revaluation postings it left a permanent
+phantom equity balance and broke the accounting equation.)
 
-- a **realised gain** posting (rgain), often to a Gain-type account (default `revenues:gain`)
-- an **unrealised gain** posting (ugain) with opposite sign, usually to an UnrealisedGain-type account
-  (default `equity:unrealised-gain`).
+### Gain account type
 
-The two sum to zero so the transaction balancer accepts the disposal.
-They reclassify the unrealised gain accumulated since acquisition, as realised gain.
-
-### Gain/UnrealisedGain account types
-
-The Gain and UnrealisedGain account types can be declared explicitly via `type:` tags:
+The Gain account type can be declared explicitly via a `type:` tag:
 
 ```
-account revenues:gain           ; type: G
-account equity:unrealised-gain  ; type: U
+account revenues:gain  ; type: G
 ```
 
-They are also inferred from conventional English account names
+It is also inferred from conventional English account names
 (see the regex table under
 [Account types](https://hledger.org/hledger.html#account-types) in the user manual).
-For example `revenues:gain`, `income:capital-gains`, `equity:unrealised-gain`,
-and `equity:unrealized gains` are all detected automatically.
+For example `revenues:gain` and `income:capital-gains` are detected automatically.
+(The UnrealisedGain/U type, eg `equity:unrealised-gain`, still exists for
+users' own accounts, but hledger generates no postings to it.)
 
-Declaring and using these account types is not strictly required,
-but they can improve error checking in disposals,
-they help select an account for inferred gain postings,
-and they facilitate more precise querying.
+Declaring and using this account type is not strictly required,
+but it can improve error checking in disposals,
+it selects the account for inferred gain postings,
+and it facilitates more precise querying.
 
 ### Disposal journal entries
 
@@ -703,23 +712,21 @@ Disposal transactions can be written in any of these styles. The user manual's
 
 Styles are listed in the same order as the manual, from implicit to explicit.
 
-1. **No gain postings.**
+1. **No gain posting.**
   After lot matching, hledger computes the disposal gain
-  and infers realised gain and unrealised gain postings for the transaction
+  and infers a realised gain posting for the transaction
   (`journalAddOrCheckGainPostings`).
   The inferred amounts are rounded to the entry's local precision for the gain commodity
   (or if that is 0, and the gain has non-zero cents, decimal precision 2.
   See "Gain precision" below).
 
-2. **Only rgain written, not using a type:G account.**
-  hledger identifies rgain posting(s) heuristically: one or more postings 
+2. **Only the gain posting written, not using a type:G account.**
+  hledger identifies gain posting(s) heuristically: one or more postings 
   whose account type is not Asset, Liability, or Equity (or a subtype of these),
   which have not been classified as a lot movement by the lot classifier,
   and whose non-gain siblings sum to zero (or have a multi-commodity imbalance).
-  Also if the lot classifier added a `_ptype:gain` tag, that indicates a gain posting
-  (though currently we don't expect that without a type:G account).
-  When gain postings are detected, hledger tags them with `_ptype:rgain`,
-  and infers a single balancing ugain posting to the default UnrealisedGain account.
+  When gain postings are detected, hledger tags them with `_ptype:gain`
+  (`transactionTagGainPostings`, before balancing), and the balancer sets them aside.
   After lot matching, the transaction's gain amount is checked against
   the calculated gain at the entry's local precision; sub-last-place-unit differences
   are tolerated (see "Gain precision" below), but larger discrepancies
@@ -734,17 +741,17 @@ Styles are listed in the same order as the manual, from implicit to explicit.
   classifier: they neither make an entry look like a disposal nor
   count in the residual sums.
 
-3. **Only rgain written, using a type:G account.**
-  hledger identifies the rgain posting by the type:G account,
-  and infers a balancing ugain posting. The gain amount must be written explicitly, and is checked.
+3. **Only the gain posting written, using a type:G account.**
+  hledger identifies the gain posting by the type:G account and tags it,
+  as above. The gain amount must be written explicitly, and is checked.
 
-4. **rgain and ugain postings written, identified by their type:G and U accounts.**
-  All is explicit (including the gain amounts). No inference is needed; hledger checks the gain amount.
+(A fourth style, with an explicit `equity:unrealised-gain` counter posting,
+was supported until 2026-09; such entries now fail to balance.)
 
 ### Gain precision
 
-Inferred gain amounts (cases 1, 2, 3) and the gain-validation
-comparison (cases 2-4) operate at the **entry's local precision** for
+Inferred gain amounts (case 1) and the gain-validation
+comparison (cases 2-3) operate at the **entry's local precision** for
 the gain commodity (ie, the maximum precision seen among the
 posting amounts in that commodity).
 
@@ -868,10 +875,14 @@ Pre-balancing:
    elided cash amount balances at cost. Transfer destinations are recognised by
    shape and skipped: an explicit negative same-commodity same-quantity
    counterpart, or an equity posting with no cost-basis amounts (equity transfer).
-3. **journalAddGainOrUGainPosting** — if the user has written an explicit rgain or ugain
-   posting without its counterpart, add the matching balancing posting (pre-balancer,
-   so the ordinary balancer accepts the paired transaction). Disposal transactions
-   are recognised by shape: a negative lotful or cost-basis amount.
+3. **journalTagGainPostings** — in disposal transactions (recognised by shape:
+   a negative lotful or cost-basis amount), tag user-written realised gain
+   postings `_ptype:gain`, so the balancer sets them aside; error on an
+   amountless one (unless lenient). Runs before auto postings, whose
+   preliminary balancing needs the tags too. The per-transaction
+   `transactionTagGainPostings` also runs inside the balancer
+   (`balanceTransactionHelperMaybeSplittingLotFees`), for callers which
+   balance single entries, like `hledger add`.
 
 Balancing (`journalBalanceTransactions`): infers balance-assignment and elided
 amounts. For lots journals it uses `balanceTransactionHelperMaybeSplittingLotFees`:
@@ -913,9 +924,10 @@ Post-balancing:
    not on `checklots`. Errors if any acquire posting has cost basis differing
    from its transacted cost (per-unit). Default mode skips this check; see
    [DECISIONS.md](DECISIONS.md) for the rationale.
-9. **journalAddOrCheckGainPostings** — for disposals with no gain postings yet, add
-   the rgain + ugain pair sized at the disposal gain. Also validates that any
-   user-written gain amount matches the disposal gain.
+9. **journalAddOrCheckGainPostings** — for disposals with no gain posting yet, add
+   the gain posting sized at the disposal gain. Also validates that any
+   user-written (tagged) gain amount matches the disposal gain — including in a
+   non-disposal, eg a transfer, where the gain is zero.
 
 The gated stages raise errors when the journal contains lot-related content that
 can't be resolved (missing lot cost, ambiguous selectors, dispose before acquire,
@@ -993,7 +1005,7 @@ classify and balance as if the user had written:
     expenses:fees     0.000399 ETH @ $1,992.36
 ```
 
-(with the rgain and ugain postings then generated as usual; note an
+(with the gain posting then generated as usual; note an
 elided gain posting must not be written - disposals reject amountless
 gain postings with an error, whether their amounts are explicit or
 inferred by balancing).
@@ -1099,12 +1111,12 @@ or:
 Explanation:
 
 1. The missing @ price (or missing cash amount) is inferred by the ordinary
-   transaction balancer so the postings balance at transacted cost.
+   transaction balancer so the non-gain postings balance at transacted cost
+   (any user-written gain posting having been set aside).
 2. 15 AAPL are reduced from one or more existing lots, selected by
    `assets:stock`'s / `AAPL`'s / default (FIFO) reduction method.
 3. `journalAddOrCheckGainPostings` computes the disposal gain
    (`aquantity × (B − T)` summed over non-acquire postings whose amounts
    carry both basis and transacted cost) and adds a realised-gain posting
-   (rgain) and a matching unrealised-gain posting (ugain) with the opposite
-   sign. The pair sums to zero, so the disposal stays balanced under the
-   ordinary transacted-cost rule.
+   or checks the user-written one. The entry now balances at cost
+   basis.

@@ -203,10 +203,10 @@ hledger: Error: -:6:
   |     expenses:fees                                  0.05 A @ $150
   |     income:gains
 
-Postings were read as: transfer-from, transfer-to, unclassified, gain; and generated: dispose, balance-assertion.
-This disposal has an amountless gain or unrealised-gain posting.
+Postings were read as: transfer-from, transfer-to, unclassified, unclassified; and generated: dispose, balance-assertion.
+This disposal has an amountless gain posting.
 Write the amount explicitly, or omit the posting entirely
-(hledger will then infer both rgain and ugain from the cost basis).
+(hledger will then infer the realised gain from the cost basis).
 >=1
 
 # ** 14. Referencing a lot that doesn't exist (here, a label the lot doesn't
