@@ -56,10 +56,12 @@ import Data.Word (Word8)
 ------------------------------------------------------------------------------
 -- Types
 
--- | Which operation to perform on conversion transactions.
--- (There was also an "infer equity postings" operation, but that is now done 
+-- | Which cost conversion to perform on amounts, if any:
+-- to cost basis where known, otherwise transacted cost (-B/--value=cost);
+-- or to transacted cost always (--value=transacted).
+-- (There was also an "infer equity postings" operation, but that is now done
 -- earlier, in journal finalisation.)
-data ConversionOp = NoConversionOp | ToCost
+data ConversionOp = NoConversionOp | ToCost | ToTransactedCost
   deriving (Show,Eq)
 
 -- | What kind of value conversion should be done on amounts ?
@@ -228,8 +230,9 @@ mixedAmountApplyValuation priceoracle styles periodlast today postingdate v =
 
 -- | Convert an Amount to its cost if requested, and style it appropriately.
 amountToCost :: M.Map CommoditySymbol AmountStyle -> ConversionOp -> Amount -> Amount
-amountToCost styles ToCost         = styleAmounts styles . amountCost
-amountToCost _      NoConversionOp = id
+amountToCost styles ToCost           = styleAmounts styles . amountCostBasis
+amountToCost styles ToTransactedCost = styleAmounts styles . amountCost
+amountToCost _      NoConversionOp   = id
 
 -- | Apply a specified valuation to this amount, using the provided
 -- price oracle, and reference dates. Also fix up its display style
@@ -308,13 +311,14 @@ amountValueAtDate priceoracle styles mto d a =
 -- between the valued amount and the value of the cost basis (see
 -- mixedAmountApplyValuation).
 --
--- Note: the "cost basis" subtracted here is the sum of every contributing
--- posting's transacted cost, regardless of direction. When a disposal posting
--- records its sale price with @ (rather than carrying lot cost via {cost}),
+-- Note: the cost subtracted here is the sum of every contributing posting's
+-- cost basis where known (lot postings), else transacted cost, regardless of
+-- direction. For a non-lot disposal posting recording its sale price with @,
 -- the negative quantity flips its cost contribution from acquisition cost to
 -- negated sale proceeds, so the result accumulates realised gain alongside
 -- any unrealised gain on remaining units. In other words, with bare @ this
--- reports total gain since inception.
+-- reports total gain since inception; with lot tracking, the unrealised gain
+-- on the remaining units.
 --
 -- If the commodity we are valuing in is not the same as the commodity of the
 -- cost, this will value the cost at the same date as the primary amount. This
@@ -322,7 +326,7 @@ amountValueAtDate priceoracle styles mto d a =
 -- posting date. If so, let us know and we can change this behaviour.
 mixedAmountApplyGain :: PriceOracle -> M.Map CommoditySymbol AmountStyle -> Day -> Day -> Day -> ValuationType -> MixedAmount -> MixedAmount
 mixedAmountApplyGain priceoracle styles periodlast today postingdate v ma =
-  mixedAmountApplyValuation priceoracle styles periodlast today postingdate v $ ma `maMinus` mixedAmountCost ma
+  mixedAmountApplyValuation priceoracle styles periodlast today postingdate v $ ma `maMinus` mixedAmountCostBasis ma
 
 -- | Calculate the gain of each component amount, that is the
 -- difference between the valued amount and the value of the cost basis.
@@ -333,7 +337,7 @@ mixedAmountApplyGain priceoracle styles periodlast today postingdate v ma =
 -- posting date. If so, let us know and we can change this behaviour.
 mixedAmountGainAtDate :: PriceOracle -> M.Map CommoditySymbol AmountStyle -> Maybe CommoditySymbol -> Day -> MixedAmount -> MixedAmount
 mixedAmountGainAtDate priceoracle styles mto d ma =
-  mixedAmountValueAtDate priceoracle styles mto d $ ma `maMinus` mixedAmountCost ma
+  mixedAmountValueAtDate priceoracle styles mto d $ ma `maMinus` mixedAmountCostBasis ma
 
 ------------------------------------------------------------------------------
 -- Market price lookup

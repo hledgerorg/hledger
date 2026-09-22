@@ -1151,3 +1151,89 @@ commodity AAPL  ; lots:
     revenues:gain                              $-100
 
 >=
+
+# ** 57. -B converts lot postings at cost basis: after a partial sale the
+# stock account's cost balance is the cost of the units still held.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+$ hledger -f- bal -B -N assets:stocks
+                $250  assets:stocks
+
+# ** 58. --value=transacted shows the transacted amounts (net cash invested) instead.
+$ hledger -f- bal --value=transacted -N assets:stocks
+                $150  assets:stocks
+
+# ** 59. So cost reports balance, like the entries: after selling everything
+# and closing revenue to equity, bal -B sums to zero and shows no stock cost.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 opening
+    equity:opening  $-500
+    assets:cash      $500
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks     -10 AAPL @ $70
+    assets:cash      $700
+
+2026-03-01 retain
+    revenues:gain     $200
+    equity:retained  $-200
+$ hledger -f- bal -B
+                $700  assets:cash
+               $-500  equity:opening
+               $-200  equity:retained
+--------------------
+                   0  
+
+# ** 60. Also for a disposal from several lots, whose per-lot fragments are
+# merged in non---lots reports (the conversion happens before merging).
+<
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-01-02 buy
+    assets:cash     $-600
+    assets:stocks      10 AAPL @ $60
+
+2026-02-01 sell
+    assets:stocks     -15 AAPL @ $70
+    assets:cash
+$ hledger -f- reg -B assets:stocks
+2026-01-01 buy                  assets:stocks                 $500          $500
+2026-01-02 buy                  assets:stocks                 $600         $1100
+2026-02-01 sell                 assets:stocks                $-800          $300
+
+# ** 61. print -B shows lot postings converted too.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+$ hledger -f- print -B desc:sell
+2026-03-01 sell
+    assets:stocks                              $-250
+    assets:cash                                 $350
+    revenues:gain                              $-100
+
+>=

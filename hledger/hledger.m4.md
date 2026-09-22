@@ -5473,6 +5473,12 @@ Now when you add the `-B`/`--cost` flag to reports ("B" is from Ledger's -B/--ba
 any amounts which have been annotated with costs will be converted to their cost's commodity (in the report output).
 Ie they will be displayed "at cost" or "at sale price".
 
+For [lot](#lot-reporting) postings, which carry a cost basis, `-B` converts to the cost basis instead:
+a disposal shows what the disposed units cost, not what they sold for,
+consistent with how such entries balance, so eg a lot account's cost balance is the
+cost of the units still held (and zero once they are all sold), and `bse -B` balances.
+To see transacted amounts (proceeds) instead, use `--value=transacted`.
+
 Some things to note:
 
 - Costs are attached to specific posting amounts in specific transactions, and once recorded they do not change.
@@ -5831,13 +5837,15 @@ Amounts for which no valuation commodity can be found are not converted.
 
 `-V` and `-X` are special cases of the more general `--value` option:
 
-     --value=TYPE[,COMM]  TYPE is then, end, now or YYYY-MM-DD.
+     --value=TYPE[,COMM]  TYPE is then, end, now, YYYY-MM-DD, cost or transacted.
                           COMM is an optional commodity symbol.
                           Shows amounts converted to:
                           - default valuation commodity (or COMM) using market prices at posting dates
                           - default valuation commodity (or COMM) using market prices at period end(s)
                           - default valuation commodity (or COMM) using current market prices
                           - default valuation commodity (or COMM) using market prices at some date
+                          - cost basis, or else transacted cost (like -B)
+                          - transacted cost only
 
 The TYPE part selects cost or value and valuation date:
 
@@ -5857,6 +5865,15 @@ The TYPE part selects cost or value and valuation date:
 `--value=YYYY-MM-DD`
 : Convert amounts to their value in the default valuation commodity
   using market prices on this date.
+
+`--value=cost`
+: Convert amounts to their cost basis where they have one (lot postings),
+  otherwise to their transacted cost. Same as `-B`/`--cost`; see [Reporting at cost](#reporting-at-cost).
+
+`--value=transacted`
+: Convert amounts to their transacted cost or sale amount (`@`/`@@`),
+  ignoring any cost basis. This is `-B`'s behaviour for non-lot postings,
+  and shows proceeds rather than cost for lot disposals.
 
 To select a different valuation commodity, add the optional `,COMM` part:
 a comma, then the target commodity's symbol. Eg: **`--value=now,EUR`**.

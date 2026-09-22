@@ -235,7 +235,7 @@ reportflags = [
  ,flagReq  ["depth"]         (\s opts -> Right $ setopt "depth" s opts) "DEPTHEXP" "if a number (or -NUM): show only top NUM levels of accounts. If REGEXP=NUM, only apply limiting to accounts matching the regular expression."
 
   -- valuation
- ,flagNone ["B","cost"]      (setboolopt "B") "convert amounts to their cost/sale amount (@/@@)"
+ ,flagNone ["B","cost"]      (setboolopt "B") "convert amounts to their cost basis ({}), or else their cost/sale amount (@/@@)"
     -- ^ no "valuation mode:" prefix for this one, it's not mutually exclusive
  ,flagNone ["V","market"]    (setboolopt "V")
     (unwords
@@ -254,6 +254,8 @@ reportflags = [
       ,"'end':      value at period end(s)"
       ,"'now':      value today"
       ,"YYYY-MM-DD: value on given date"
+      ,"'cost':     cost basis, or else transacted cost (same as -B)"
+      ,"'transacted': transacted cost/sale amount (@/@@) only"
       ])
 
   -- display

@@ -64,6 +64,7 @@ module Hledger.Data.Amount (
   (@@),
   amountWithCommodity,
   amountCost,
+  amountCostBasis,
   amountIsZero,
   amountLooksZero,
   amountSetQuantity,
@@ -140,6 +141,7 @@ module Hledger.Data.Amount (
   mixedAmountStripCosts,
   -- ** arithmetic
   mixedAmountCost,
+  mixedAmountCostBasis,
   maNegate,
   maPlus,
   maMinus,
@@ -378,6 +380,16 @@ amountCost a@Amount{aquantity=q, acost=mp} =
       Nothing                                  -> a
       Just (UnitCost  p@Amount{aquantity=pq}) -> p{aquantity=pq * q}
       Just (TotalCost p@Amount{aquantity=pq}) -> p{aquantity=pq}
+
+-- | Convert an Amount to its cost basis when it has a cost basis annotation
+-- with a cost (as lot postings do after lot processing), otherwise to its
+-- transacted cost as amountCost does. This is what -B/--value=cost reports:
+-- for a lot disposal it gives what the disposed units cost, not the proceeds.
+amountCostBasis :: Amount -> Amount
+amountCostBasis a@Amount{aquantity=q, acostbasis=mcb} =
+    case mcb >>= cbCost of
+      Just b@Amount{aquantity=bq} -> b{aquantity=bq * q}
+      Nothing                     -> amountCost a
 
 -- | Strip all costs from an Amount
 amountStripCost :: Amount -> Amount
@@ -1184,6 +1196,13 @@ mixedAmountCost :: MixedAmount -> MixedAmount
 mixedAmountCost (Mixed ma) =
     foldl' (\m a -> maAddAmount m (amountCost a)) (Mixed noCosts) withCosts
   where (noCosts, withCosts) = M.partition (isNothing . acost) ma
+
+-- | Convert all component amounts to cost basis (or else transacted cost)
+-- where possible (see amountCostBasis).
+mixedAmountCostBasis :: MixedAmount -> MixedAmount
+mixedAmountCostBasis (Mixed ma) =
+    foldl' (\m a -> maAddAmount m (amountCostBasis a)) (Mixed noCosts) withCosts
+  where (noCosts, withCosts) = M.partition (\a -> isNothing (acost a) && isNothing (acostbasis a >>= cbCost)) ma
 
 -- -- | MixedAmount derived Eq instance in Types.hs doesn't know that we
 -- -- want $0 = EUR0 = 0. Yet we don't want to drag all this code over there.

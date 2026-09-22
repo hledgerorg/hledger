@@ -179,9 +179,10 @@ toggleEmpty = over empty__ not
 toggleConversionOp :: UIState -> UIState
 toggleConversionOp ui = (over value valOff) (over conversionop toggleCostMode ui)
   where
-    toggleCostMode Nothing               = Just ToCost
-    toggleCostMode (Just NoConversionOp) = Just ToCost
-    toggleCostMode (Just ToCost)         = Just NoConversionOp
+    toggleCostMode Nothing                     = Just ToCost
+    toggleCostMode (Just NoConversionOp)       = Just ToCost
+    toggleCostMode (Just ToCost)               = Just NoConversionOp
+    toggleCostMode (Just ToTransactedCost)     = Just NoConversionOp
     valOff _                             = Nothing
 
 -- | Toggle between showing primary amounts or values (using valuation specified at startup, or a default).

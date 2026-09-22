@@ -643,6 +643,16 @@ checked before lot matching has determined B. The gain amount itself is
 checked after lot matching (`journalAddOrCheckGainPostings`), which closes
 the loop. (Historical cost accounting: unrealised gains are not posted.)
 
+Cost reports follow the same convention: `-B`/`--value=cost` converts an
+amount with a cost basis to that basis (`amountCostBasis`), else to its
+transacted cost, so a disposal converts to what the units cost and cost
+reports balance; `--value=transacted` (`ToTransactedCost`) converts at
+transacted cost only. Since collapsing lot detail (when `--lots` is off)
+merges a multi-lot disposal's fragments into one amount with an unspecified
+basis, the -B conversion is applied before collapsing, in
+`journalTransform` (`maybeConvertToCostBasis`); the later per-report
+conversion is then a no-op for those amounts.
+
 When the balancer infers a conversion cost between two commodities, and
 exactly one of them has classified lot postings — or, failing that, is
 declared lotful (eg when its posting's amount comes from a balance

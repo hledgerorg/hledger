@@ -1442,7 +1442,8 @@ journalCollapseLotDetail j
                   -- selected by method, which re-reads equivalently under
                   -- the default method.
                   merged = maSum (map pamount (p:run))
-                  survivor = (untagLotsplit p){pamount = if null run then merged else mapMixedAmount unspecifiedBasis merged}
+                  hadBasis = any (any (isJust . acostbasis) . amountsRaw . pamount) (p:run)
+                  survivor = (untagLotsplit p){pamount = if null run || not hadBasis then merged else mapMixedAmount unspecifiedBasis merged}
                   unspecifiedBasis a = a{acostbasis = Just (CostBasis Nothing Nothing Nothing)}
               in survivor : go rest
           | otherwise = p : go ps

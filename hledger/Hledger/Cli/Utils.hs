@@ -146,7 +146,18 @@ journalTransform opts =
       maybePivot opts
   <&> maybeWarnAboutAnon opts
   <&> maybeObfuscate opts
+  <&> maybeConvertToCostBasis opts
   <&> maybeCollapseLotDetail opts
+
+-- | With -B/--value=cost, convert amounts to cost basis now, before lot
+-- detail is collapsed: collapsing merges a multi-lot disposal's per-lot
+-- fragments (which may have different bases) into one amount with an
+-- unspecified basis, after which the basis values would be lost. The later
+-- per-report cost conversion is then a no-op for these amounts.
+maybeConvertToCostBasis :: CliOpts -> Journal -> Journal
+maybeConvertToCostBasis opts
+  | conversionop_ (_rsReportOpts $ reportspec_ opts) == Just ToCost = journalToCost ToCost
+  | otherwise = id
 
 -- | Collapse lot-tracking detail (strip lot subaccounts, drop synthetic lot-processing
 -- postings) so reports show the user's original form. Skipped when --lots is set,

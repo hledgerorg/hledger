@@ -229,6 +229,7 @@ printEntries opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j =
       | opts ^. infer_costs = id
       -- with -B/-V/-X/--value ("because of #551, and because of print -V valuing only one posting when there's an implicit txn price.")
       | has (value . _Just) opts = id
+      | isJust (conversionop_ $ _rsReportOpts rspec) = id
       -- For transactions containing priced auto-split postings (from lot transfer
       -- auto-split), keep the explicit form: reverting to the original would drop
       -- the priced dispose fragment while keeping its generated gain postings,

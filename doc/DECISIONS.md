@@ -63,8 +63,10 @@ legitimate but more complex, and historical cost is what hledger 1 users
 already do. Implementation: the balancer sets aside postings tagged
 `_ptype:gain` (equivalent to basis balancing, since `q×B + q×(T−B) = q×T`,
 and checkable before lot matching); the gain amount is verified after lot
-matching. `-B`/`--value=cost` still converts at transacted cost (a possible
-follow-up). Revaluation postings could be added later as an optional layer.
+matching. `-B`/`--value=cost` converts lot postings at cost basis too, so
+cost reports agree with balancing (`bse -B` balances; a sold-out lot account
+shows 0); `--value=transacted` gives the transacted-cost view (proceeds).
+Revaluation postings could be added later as an optional layer.
 (This reinstates the approach of 76696caec/24412e6e9 (2026-02), which
 80b320acc (2026-04) had replaced with the counter posting to avoid a
 balancing exception; the exception is now explained as basis balancing,

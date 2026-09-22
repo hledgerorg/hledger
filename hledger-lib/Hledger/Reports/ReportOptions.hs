@@ -582,13 +582,13 @@ valuationTypeFromRawOpts rawopts = case (balancecalcopt rawopts, directval) of
       | n == "value" = valueopt v
       | otherwise    = Nothing
     valueopt v
-      | t `elem` ["cost","c"]  = AtEnd . Just <$> mc  -- keep supporting --value=cost,COMM for now
+      | t `elem` ["cost","c","transacted"] = AtEnd . Just <$> mc  -- keep supporting --value=cost,COMM for now
       | t `elem` ["then" ,"t"] = Just $ AtThen mc
       | t `elem` ["end" ,"e"]  = Just $ AtEnd  mc
       | t `elem` ["now" ,"n"]  = Just $ AtNow  mc
       | otherwise = case parsedate t of
             Just d  -> Just $ AtDate d mc
-            Nothing -> usageError $ "could not parse \""++t++"\" as valuation type, should be: then|end|now|t|e|n|YYYY-MM-DD"
+            Nothing -> usageError $ "could not parse \""++t++"\" as valuation type, should be: cost|transacted|then|end|now|c|t|e|n|YYYY-MM-DD"
       where
         -- parse --value's value: TYPE[,COMM]
         (t,c') = break (==',') v
@@ -609,6 +609,7 @@ conversionOpFromRawOpts rawopts
     conversionopfromrawopt (n,v)  -- option name, value
       | n == "B"                                    = Just ToCost
       | n == "value", takeWhile (/=',') v `elem` ["cost", "c"] = Just ToCost  -- keep supporting --value=cost for now
+      | n == "value", takeWhile (/=',') v == "transacted" = Just ToTransactedCost
       | otherwise                                   = Nothing
 
 -- | Parse the depth arguments. This can be either a flat depth that applies to

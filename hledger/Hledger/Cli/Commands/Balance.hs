@@ -333,7 +333,7 @@ balancemode = hledgerCommandMode
     ,flagNone ["valuechange"] (setboolopt "valuechange")
       (calcprefix ++ "show total change of value of period-end historical balances (caused by deposits, withdrawals, market price fluctuations)")
     ,flagNone ["gain"] (setboolopt "gain")
-      (calcprefix ++ "show capital gain/loss (historical balance value minus the net of postings' transacted costs; equals unrealised gain if nothing has been disposed of)")
+      (calcprefix ++ "show capital gain/loss (historical balance value minus cost basis, or transacted cost where there is none)")
     -- XXX --budget[=DESCPAT], --forecast[=PERIODEXP], could be more consistent
     ,flagOpt "" ["budget"] (\s opts -> Right $ setopt "budget" s opts) "DESCPAT"
       (unlines
@@ -1320,8 +1320,9 @@ budgetReportAsTable ropts@ReportOpts{..} (PeriodicReport spans items totrow) =
                 _   -> Nothing
               where
                 costedAmounts = case conversionop_ of
-                    Just ToCost -> amounts . mixedAmountCost
-                    _           -> amounts . mixedAmountStripCosts  -- strip any lingering cost info that would prevent unification
+                    Just ToCost           -> amounts . mixedAmountCostBasis
+                    Just ToTransactedCost -> amounts . mixedAmountCost
+                    _                     -> amounts . mixedAmountStripCosts  -- strip any lingering cost info that would prevent unification
 
             -- | Like percentage, but accept multicommodity actual and budget amounts,
             -- and extract the specified commodity from both.
