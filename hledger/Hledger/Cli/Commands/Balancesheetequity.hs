@@ -17,28 +17,29 @@ import System.Console.CmdArgs.Explicit
 
 import Hledger
 import Hledger.Cli.CliOptions
+import Hledger.Cli.Message qualified as Msg
 import Hledger.Cli.CompoundBalanceCommand
 
 balancesheetequitySpec = CompoundBalanceCommandSpec {
   cbcdoc      = $(embedFileRelative "Hledger/Cli/Commands/Balancesheetequity.txt"),
-  cbctitle    = "Balance Sheet With Equity",
+  cbctitle    = Msg.Noun Msg.BalanceSheetWithEquity,
   cbcqueries  = [
      CBCSubreportSpec{
-      cbcsubreporttitle="Assets"
+      cbcsubreporttitle=Msg.Assets
      ,cbcsubreportquery=Type [Asset]
      ,cbcsubreportoptions=(\ropts -> ropts{normalbalance_=Just NormallyPositive})
      ,cbcsubreporttransform=id
      ,cbcsubreportincreasestotal=True
      }
     ,CBCSubreportSpec{
-      cbcsubreporttitle="Liabilities"
+      cbcsubreporttitle=Msg.Liabilities
      ,cbcsubreportquery=Type [Liability]
      ,cbcsubreportoptions=(\ropts -> ropts{normalbalance_=Just NormallyNegative})
      ,cbcsubreporttransform=fmap maNegate
      ,cbcsubreportincreasestotal=False
      }
     ,CBCSubreportSpec{
-      cbcsubreporttitle="Equity"
+      cbcsubreporttitle=Msg.Equity
      ,cbcsubreportquery=Type [Equity]
      ,cbcsubreportoptions=(\ropts -> ropts{normalbalance_=Just NormallyNegative})
      ,cbcsubreporttransform=fmap maNegate

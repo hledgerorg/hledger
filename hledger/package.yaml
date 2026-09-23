@@ -118,6 +118,7 @@ dependencies:
 # But for older (or older-GHC) stackage snapshots, we must still allow builds with older haskeline,
 # even though they will have the add display bug on Windows. I think this is the best we can do for now.
 - haskeline >=0.6
+- haskell-gettext
 - http-client
 - http-types
 - microlens >=0.4

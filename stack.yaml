@@ -10,4 +10,5 @@ packages:
 compiler: ghc-9.14
 resolver: nightly-2026-09-01
 
-extra-deps: []
+extra-deps:
+- haskell-gettext-0.1.2.0

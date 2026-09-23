@@ -1,0 +1,110 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: de\n"
+
+msgid "None"
+msgstr " "
+
+msgid "Account"
+msgstr "Posten"
+
+msgid "Revenues"
+msgstr "Einnahmen"
+
+msgid "Expenses"
+msgstr "Ausgaben"
+
+msgid "Assets"
+msgstr "Vermögen"
+
+msgid "Liabilities"
+msgstr "Verbindlichkeiten"
+
+msgid "Equity"
+msgstr "Eigenkapital"
+
+msgid "CashFlows"
+msgstr "Kapitalflüsse"
+
+msgid "Net"
+msgstr "Überschuss:"
+#msgstr "Gewinn:"
+
+msgid "Total"
+msgstr "Gesamt:"
+
+msgid "Average"
+msgstr "Durchschnitt"
+
+msgid "RightTotal"
+msgstr "      Gesamt"
+
+msgid "RightAverage"
+msgstr "Durchschnitt"
+
+
+msgid "Commodity"
+msgstr "Einheit"
+
+msgid "Balance"
+msgstr "Bilanz"
+
+msgid "Budget"
+msgstr "Budget"
+
+
+msgid "IncomeStatement"
+msgstr "Einnahmenüberschussrechnung"
+
+msgid "IncomeStatement_genus"
+msgstr "_f"
+
+msgid "BalanceSheet"
+msgstr "Bilanz"
+
+msgid "BalanceSheet_genus"
+msgstr "_f"
+
+msgid "BalanceSheetWithEquity"
+msgstr "Bilanz mit Eigenkapital"
+
+msgid "BalanceSheetWithEquity_genus"
+msgstr "_f"
+
+msgid "CashflowStatement"
+msgstr "Kapitalflussrechnung"
+
+msgid "CashflowStatement_genus"
+msgstr "_f"
+
+
+msgid "Periodic_f"
+msgstr "Periodische "
+
+msgid "Days1_f"
+msgstr "Tägliche "
+
+msgid "Weeks1_f"
+msgstr "Wöchentliche "
+
+msgid "Weeks2_f"
+msgstr "Zweiwöchentliche "
+
+msgid "Months1_f"
+msgstr "Monatliche "
+
+msgid "Months2_f"
+msgstr "Zweimonatliche "
+
+msgid "Months3_f"
+msgstr "Vierteljährliche "
+
+msgid "Months6_f"
+msgstr "Halbjährliche "
+
+msgid "Years1_f"
+msgstr "Jährliche "
+
+msgid "Years2_f"
+msgstr "Zweijährliche "

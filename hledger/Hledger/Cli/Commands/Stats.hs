@@ -172,8 +172,9 @@ showLedgerStats verbose l today spn =
          showelapsed Nothing = ""
          showelapsed (Just dys) = printf " (%d %s)" dys' direction
                                    where dys' = abs dys
-                                         direction | dys >= 0 = "days ago" :: String
-                                                   | otherwise = "days from now"
+                                         unit = if dys' == 1 then "day" else "days" :: String
+                                         direction | dys >= 0 = unit ++ " ago"
+                                                   | otherwise = unit ++ " from now"
          tnum1 = length ts  -- Integer would be better
          showstart (DateSpan (Just efd) _) = show $ fromEFDay efd
          showstart _ = ""

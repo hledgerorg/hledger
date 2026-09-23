@@ -153,6 +153,7 @@ library
     , file-embed >=0.0.10
     , filepath
     , hashtables >=1.2.3.1 && <1.3 || >=1.4.0
+    , haskell-gettext >=0.1.2.0 && <0.2
     , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , microlens-th >=0.4
@@ -215,6 +216,7 @@ test-suite doctest
     , file-embed >=0.0.10
     , filepath
     , hashtables >=1.2.3.1 && <1.3 || >=1.4.0
+    , haskell-gettext >=0.1.2.0 && <0.2
     , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , microlens-th >=0.4
@@ -276,6 +278,7 @@ test-suite unittest
     , file-embed >=0.0.10
     , filepath
     , hashtables >=1.2.3.1 && <1.3 || >=1.4.0
+    , haskell-gettext >=0.1.2.0 && <0.2
     , hledger-lib
     , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4

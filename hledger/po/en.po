@@ -1,0 +1,109 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: de\n"
+
+msgid "None"
+msgstr " "
+
+msgid "Account"
+msgstr "Account"
+
+msgid "Revenues"
+msgstr "Revenues"
+
+msgid "Expenses"
+msgstr "Expenses"
+
+msgid "Assets"
+msgstr "Assets"
+
+msgid "Liabilities"
+msgstr "Liabilities"
+
+msgid "Equity"
+msgstr "Equity"
+
+msgid "CashFlows"
+msgstr "Cash flows"
+
+msgid "Net"
+msgstr "Net:"
+
+msgid "Total"
+msgstr "Total:"
+
+msgid "Average"
+msgstr "Average"
+
+msgid "RightTotal"
+msgstr "  Total"
+
+msgid "RightAverage"
+msgstr "Average"
+
+
+msgid "Commodity"
+msgstr "Commodity"
+
+msgid "Balance"
+msgstr "Balance"
+
+msgid "Budget"
+msgstr "Budget"
+
+
+msgid "IncomeStatement"
+msgstr "Income Statement"
+
+msgid "IncomeStatement_genus"
+msgstr "_"
+
+msgid "BalanceSheet"
+msgstr "Balance Sheet"
+
+msgid "BalanceSheet_genus"
+msgstr "_"
+
+msgid "BalanceSheetWithEquity"
+msgstr "Balance Sheet With Equity"
+
+msgid "BalanceSheetWithEquity_genus"
+msgstr "_"
+
+msgid "CashflowStatement"
+msgstr "Cashflow Statement"
+
+msgid "CashflowStatement_genus"
+msgstr "_"
+
+
+msgid "Periodic_"
+msgstr "Periodic "
+
+msgid "Days1_"
+msgstr "Daily "
+
+msgid "Weeks1_"
+msgstr "Weekly "
+
+msgid "Weeks2_"
+msgstr "Biweekly "
+
+msgid "Months1_"
+msgstr "Monthly "
+
+msgid "Months2_"
+msgstr "Bimonthly "
+
+msgid "Months3_"
+msgstr "Quarterly "
+
+msgid "Months6_"
+msgstr "Half-yearly "
+
+msgid "Years1_"
+msgstr "Yearly "
+
+msgid "Years2_"
+msgstr "Biennial "

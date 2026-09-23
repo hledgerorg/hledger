@@ -39,7 +39,6 @@ import Data.Aeson (ToJSON(..))
 import Data.Bifunctor (Bifunctor(..))
 import Data.Decimal (Decimal)
 import Data.Maybe (mapMaybe)
-import Data.Text (Text)
 import GHC.Generics (Generic)
 
 import Hledger.Data
@@ -181,27 +180,27 @@ prrMapMaybeName f row = case f $ prrName row of
 --
 -- It is used in compound balance report commands like balancesheet,
 -- cashflow and incomestatement.
-data CompoundPeriodicReport a b = CompoundPeriodicReport
-  { cbrTitle      :: Text
+data CompoundPeriodicReport msg a b = CompoundPeriodicReport
+  { cbrTitle      :: msg
   , cbrDates      :: [DateSpan]
-  , cbrSubreports :: [(Text, PeriodicReport a b, Bool)]
+  , cbrSubreports :: [(msg, PeriodicReport a b, Bool)]
   , cbrTotals     :: PeriodicReportRow () b
   } deriving (Show, Functor, Generic, ToJSON)
 
-instance HasAmounts b => HasAmounts (CompoundPeriodicReport a b) where
+instance HasAmounts b => HasAmounts (CompoundPeriodicReport msg a b) where
   styleAmounts styles cpr@CompoundPeriodicReport{cbrSubreports, cbrTotals} =
     cpr{
         cbrSubreports = styleAmounts styles cbrSubreports
       , cbrTotals     = styleAmounts styles cbrTotals
       }
 
-instance HasAmounts b => HasAmounts (Text, PeriodicReport a b, Bool) where
+instance HasAmounts b => HasAmounts (msg, PeriodicReport a b, Bool) where
   styleAmounts styles (a,b,c) = (a,styleAmounts styles b,c)
 
 -- | Description of one subreport within a compound balance report.
 -- Part of a "CompoundBalanceCommandSpec", but also used in hledger-lib.
-data CBCSubreportSpec a = CBCSubreportSpec
-  { cbcsubreporttitle          :: Text                      -- ^ The title to use for the subreport
+data CBCSubreportSpec msg a = CBCSubreportSpec
+  { cbcsubreporttitle          :: msg                       -- ^ The title to use for the subreport
   , cbcsubreportquery          :: Query                     -- ^ The Query to use for the subreport
   , cbcsubreportoptions        :: ReportOpts -> ReportOpts  -- ^ A function to transform the ReportOpts used to produce the subreport
   , cbcsubreporttransform      :: PeriodicReport DisplayName MixedAmount -> PeriodicReport a MixedAmount  -- ^ A function to transform the result of the subreport

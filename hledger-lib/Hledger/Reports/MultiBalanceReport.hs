@@ -38,6 +38,7 @@ where
 import Control.Applicative (liftA2)
 #endif
 import Control.Monad (guard)
+import Data.Default (Default, def)
 import Data.Foldable (toList)
 import Data.HashSet qualified as HS
 import Data.List (sortOn)
@@ -115,15 +116,17 @@ multiBalanceReportWith rspec' j priceoracle = report
 
 -- | Generate a compound balance report from a list of CBCSubreportSpec. This
 -- shares postings between the subreports.
-compoundBalanceReport :: ReportSpec -> Journal -> [CBCSubreportSpec a]
-                      -> CompoundPeriodicReport a MixedAmount
+compoundBalanceReport :: (Default msg)
+                      => ReportSpec -> Journal -> [CBCSubreportSpec msg a]
+                      -> CompoundPeriodicReport msg a MixedAmount
 compoundBalanceReport rspec j = compoundBalanceReportWith rspec j (journalPriceOracle infer j)
   where infer = infer_prices_ $ _rsReportOpts rspec
 
 -- | A helper for compoundBalanceReport, similar to multiBalanceReportWith.
-compoundBalanceReportWith :: ReportSpec -> Journal -> PriceOracle
-                          -> [CBCSubreportSpec a]
-                          -> CompoundPeriodicReport a MixedAmount
+compoundBalanceReportWith :: (Default msg)
+                          => ReportSpec -> Journal -> PriceOracle
+                          -> [CBCSubreportSpec msg a]
+                          -> CompoundPeriodicReport msg a MixedAmount
 compoundBalanceReportWith rspec' j priceoracle subreportspecs = cbr
   where
     -- Queries, report/column dates.
@@ -162,7 +165,7 @@ compoundBalanceReportWith rspec' j priceoracle subreportspecs = cbr
         subreportTotal (_, sr, increasestotal) =
             (if increasestotal then id else fmap maNegate) $ prTotals sr
 
-    cbr = CompoundPeriodicReport "" (maybeDayPartitionToDateSpans colspans) subreports overalltotals
+    cbr = CompoundPeriodicReport def (maybeDayPartitionToDateSpans colspans) subreports overalltotals
 
 
 -- | Remove any date queries and insert queries from the report span.
