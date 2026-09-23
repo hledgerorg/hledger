@@ -429,6 +429,13 @@ If this environment variable exists (with any value, including empty),
 hledger will not use ANSI color codes in terminal output,
 unless overridden by an explicit `--color=y` or `--colour=y` option.
 
+**LANGUAGE**, **LC_ALL**, **LC_MESSAGES**, **LANG**
+When the `--lang=auto` option is used, these select the language of report titles and headings,
+following the usual gettext rules: the effective locale is `LC_ALL`, else `LC_MESSAGES`, else `LANG`;
+if that is `C`, `POSIX` or unset, English is used; otherwise the languages listed in `LANGUAGE`
+(colon-separated) are tried first, then the effective locale.
+See [Languages](#languages).
+
 # PART 2: COMMANDS
 
 
@@ -5264,10 +5271,50 @@ In both `--title` and `--subreport-titles`, you can use `\n` to generate a newli
 In [multi-period reports](#report-intervals)
 each period has a heading describing its date range or end date.
 When date ranges correspond to natural period boundaries,
-they are described compactly by default (month names are in english, currently).
-Eg: `2026`, `Q1`, `Jan`, `W02`.
+they are described compactly by default.
+Eg: `2026`, `Q1`, `Jan`, `W02`. (Month names follow the [`--lang` option](#languages).)
 You can disable these compact descriptions by using `--period-titles=dates`;
 then periods will always be described as `STARTDATE..ENDDATE`.
+
+# Languages
+
+hledger's output is in English by default.
+Report titles, section headings, column headings, month names and similar structural text
+can be shown in another language with the `--lang` option (which can also be set in a [config file](#config-files)),
+when a translation catalog for that language is available.
+(This is hledger's localization support; it covers the language of hledger's own text,
+not number or date formats, which come from the journal, as described below.)
+
+- `--lang=LANG` selects a language by its tag, like `de` or `pt-BR`. An unavailable language is an error.
+- `--lang=auto` selects the language from the environment
+  (the LANGUAGE, LC_ALL, LC_MESSAGES and LANG variables, see [Environment](#environment)), falling back to English.
+- `--lang=en`, or no `--lang` option, selects English.
+
+To always get German output, for example, put it in your config file's general options:
+
+```
+# ~/.config/hledger/hledger.conf
+--lang de
+```
+
+Currently a German catalog is built in.
+Catalogs are [gettext PO files](https://www.gnu.org/software/gettext/manual/html_node/PO-Files.html),
+which the usual translation tools can edit.
+hledger also looks for catalogs in the `locale` subdirectory of its config directory
+(`~/.config/hledger/locale/LANG.po` on unix, `%APPDATA%\hledger\locale\LANG.po` on windows),
+and merges a catalog found there over the built-in catalog for the same language, if any.
+So a translator can work on a new language with a released hledger,
+and a user can adjust terminology to taste.
+Contributed catalogs are welcome, and no programming is needed:
+see [Translating hledger](https://hledger.org/TRANSLATING.html) in the developer docs.
+
+Only hledger's own structural text is translated.
+Your data (account names, descriptions, amounts) is never changed;
+dates keep their ISO format, and numbers keep the display styles declared for each commodity.
+Error messages, journal-format output, and the column headings of CSV, TSV and JSON output stay in English,
+since they are commonly read by other programs.
+Report titles, however, are translated wherever they appear, as they would be with `--title`;
+and an explicit `--title` or `--subreport-titles` is always used as given, untranslated.
 
 # Amount formatting
 

@@ -34,6 +34,7 @@ import Text.Hamlet (hamletFile)
 import Text.Printf (printf)
 import Yesod
 
+import Hledger.Utils.I18n (Translations, tr)
 import Hledger
 import Hledger.Cli.Utils (writeFileWithBackupIfChanged)
 import Hledger.Web.Settings (manualurl)
@@ -78,8 +79,8 @@ helplink topic label _ = H.a ! A.href u ! A.target "hledgerhelp" $ toHtml label
   where u = textValue $ manualurl <> if T.null topic then "" else T.cons '#' topic
 
 -- | Render a "BalanceReport" as html.
-balanceReportAsHtml :: Eq r => (r, r) -> r -> Bool -> Journal -> Text -> [QueryOpt] -> BalanceReport -> HtmlUrl r
-balanceReportAsHtml (journalR, registerR) here hideEmpty j qparam qopts (items, total) =
+balanceReportAsHtml :: Eq r => (r, r) -> r -> Bool -> Translations -> Journal -> Text -> [QueryOpt] -> BalanceReport -> HtmlUrl r
+balanceReportAsHtml (journalR, registerR) here hideEmpty trs j qparam qopts (items, total) =
   $(hamletFile "templates/balance-report.hamlet")
   where
     l = ledgerFromJournal Any j
@@ -92,21 +93,24 @@ balanceReportAsHtml (journalR, registerR) here hideEmpty j qparam qopts (items, 
 -- | Links to the balance report page, single-period and for each
 -- interval, carrying the current search and date span; the report being
 -- shown, identified by the interval it was built with, is marked.
-balanceReportLinks :: r -> Text -> DateSpan -> Interval -> HtmlUrl r
-balanceReportLinks balanceR qparam spn current =
+balanceReportLinks :: r -> Translations -> Text -> DateSpan -> Interval -> HtmlUrl r
+balanceReportLinks balanceR trs qparam spn current =
   $(hamletFile "templates/balance-links.hamlet")
   where
+    -- TRANSLATORS: the label before the balance page's report links.
+    reportlabel = tr trs "Report:"
     -- Each link's label and title is a whole phrase, not a word slotted
     -- into a sentence: an adjective that fits one language's sentence does
     -- not fit another's, so a translation cannot be assembled from parts.
+    -- TRANSLATORS: the balance page's report links: each link's text, and its tooltip.
     reports :: [(Text, Text, Maybe Text, Interval)]
     reports =
-      [ ("Balance",   "Show the balance report",           Nothing,          NoInterval)
-      , ("Yearly",    "Show the yearly balance report",    Just "yearly",    Years 1)
-      , ("Quarterly", "Show the quarterly balance report", Just "quarterly", Quarters 1)
-      , ("Monthly",   "Show the monthly balance report",   Just "monthly",   Months 1)
-      , ("Weekly",    "Show the weekly balance report",    Just "weekly",    Weeks 1)
-      , ("Daily",     "Show the daily balance report",     Just "daily",     Days 1)
+      [ (tr trs "Balance",   tr trs "Show the balance report",           Nothing,          NoInterval)
+      , (tr trs "Yearly",    tr trs "Show the yearly balance report",    Just "yearly",    Years 1)
+      , (tr trs "Quarterly", tr trs "Show the quarterly balance report", Just "quarterly", Quarters 1)
+      , (tr trs "Monthly",   tr trs "Show the monthly balance report",   Just "monthly",   Months 1)
+      , (tr trs "Weekly",    tr trs "Show the weekly balance report",    Just "weekly",    Weeks 1)
+      , (tr trs "Daily",     tr trs "Show the daily balance report",     Just "daily",     Days 1)
       ]
     -- Each link keeps the period's date span, so that changing the
     -- interval does not silently widen the report to the whole journal.

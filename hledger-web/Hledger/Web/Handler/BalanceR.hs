@@ -16,6 +16,7 @@ import Hledger.Cli.CliOptions
 import Hledger.Cli.Commands.Balance qualified as Balance
 import Hledger.Query qualified as Query
 import Data.Text qualified as T
+import Hledger.Utils.I18n (tr, trf)
 
 import Hledger.Web.Import
 import Hledger.Web.WebOptions
@@ -28,13 +29,13 @@ import Hledger.Write.Spreadsheet (Cell, NumLines)
 getBalanceR :: Handler Html
 getBalanceR = do
   checkServerSideUiEnabled
-  VD{j, q, qopts, qparam, opts, today} <- getViewData
+  VD{j, q, qopts, qparam, opts, today, trs} <- getViewData
   require ViewPermission
   -- The period parameter is a period expression as for -p: an interval
   -- ("monthly"), a date span ("2024"), or both ("monthly in 2024").
   -- An empty one is no period at all, as from a search form with nothing in it.
   mperiod <- (>>= \p -> if T.null p then Nothing else Just p) <$> lookupGetParam "period"
-  let filtered = if q /= Any then ", filtered" else "" :: Text
+  let withFilter t = if q /= Any then trf trs "{title}, filtered" [("title", t)] else t
       rspecOrig = reportspec_ $ cliopts_ opts
       roptsOrig = _rsReportOpts rspecOrig
       eperiod = case mperiod of
@@ -43,14 +44,16 @@ getBalanceR = do
         Just p  -> either (Left . errorBundlePretty) Right $ parsePeriodExpr today p
 
   defaultLayout $ do
-    setTitle "balance - hledger-web"
+    -- TRANSLATORS: the browser tab title of this page.
+    setTitleI (HMsg "balance - hledger-web")
+
     case eperiod of
       -- No report links here: this page is a dead end until the navigation
       -- question (#2242) is settled, see the pull request.
       Left err -> Yesod.toWidget $ do
-        H.h2 $ H.toHtml $ reportTitle roptsOrig "Balance report" <> filtered
+        H.h2 $ H.toHtml $ withFilter $ reportTitle roptsOrig $ tr trs "Balance report"
         H.div ! A.class_ "alert alert-danger" $ do
-          "Could not parse the period expression:"
+          H.toHtml $ tr trs "Could not parse the period expression:"
           H.pre $ H.toHtml err
       Right (ivl, spn) -> do
         let -- A date: search term can carry an interval too (eg
@@ -93,7 +96,7 @@ getBalanceR = do
                       Balance.balanceReportAsSpreadsheetParts oneLineNoCostFmt ropts $
                         styleAmounts (journalCommodityStylesWith HardRounding j) $
                           balanceReport rspec j
-                in ( reportTitle ropts "Balance report"
+                in ( reportTitle ropts $ tr trs "Balance report"
                    , ([toList header], map toList body, map toList totals))
               _ ->
                 let mbr = styleAmounts (journalCommodityStylesWith HardRounding j) $
@@ -102,8 +105,8 @@ getBalanceR = do
                    , Balance.multiBalanceReportAsSpreadsheetParts oneLineNoCostFmt ropts
                        (Balance.allCommoditiesFromPeriodicReport $ prRows mbr) mbr
                    )
-        Yesod.toWidget $ H.h2 $ H.toHtml $ title <> filtered
-        Yesod.toWidget $ balanceReportLinks BalanceR qparam spn reportinterval
+        Yesod.toWidget $ H.h2 $ H.toHtml $ withFilter title
+        Yesod.toWidget $ balanceReportLinks BalanceR trs qparam spn reportinterval
         Yesod.toWidget $ reportTable parts
 
 -- | The heading for a report: --title if one was given, otherwise the

@@ -15,6 +15,7 @@ import Data.Text qualified as T
 import Safe (tailSafe)
 import Text.Hamlet (hamletFile)
 
+import Hledger.Utils.I18n (tr, trc, trf)
 import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Web.Import
@@ -28,13 +29,14 @@ import Hledger.Web.Widget.Common
 getRegisterR :: Handler Html
 getRegisterR = do
   checkServerSideUiEnabled
-  VD{perms, j, q, opts, qparam, qopts, today} <- getViewData
+  VD{perms, j, q, opts, qparam, qopts, today, trs} <- getViewData
   require ViewPermission
 
-  let (a,inclsubs) = fromMaybe ("all accounts",True) $ inAccount qopts
-      s1 = if inclsubs then "" else " (excluding subaccounts)"
-      s2 = if q /= Any then ", filtered" else ""
-      header = a <> s1 <> s2
+  let title = case inAccount qopts of
+        Nothing         -> tr trs "all accounts"
+        Just (a, True)  -> a
+        Just (a, False) -> trf trs "{account} (excluding subaccounts)" [("account", a)]
+      header = if q /= Any then trf trs "{title}, filtered" [("title", title)] else title
 
   let rspec = reportspec_ (cliopts_ opts)
       acctQuery = fromMaybe Any (inAccountQuery qopts)
@@ -51,12 +53,13 @@ getRegisterR = do
         styleAmounts (journalCommodityStylesWith HardRounding j) $
         accountTransactionsReport rspec{_rsQuery=q} j acctQuery
       balancelabel
-        | isJust (inAccount qopts), balanceaccum_ (_rsReportOpts rspec) == Historical = "Historical Total"
-        | isJust (inAccount qopts) = "Period Total"
-        | otherwise                = "Total"
+        | isJust (inAccount qopts), balanceaccum_ (_rsReportOpts rspec) == Historical = trc trs "column heading" "Historical Total"
+        | isJust (inAccount qopts) = trc trs "column heading" "Period Total"
+        | otherwise                = trc trs "column heading" "Total"
       transactionFrag = transactionFragment j
   defaultLayout $ do
-    setTitle "register - hledger-web"
+    -- TRANSLATORS: the browser tab title of this page.
+    setTitleI (HMsg "register - hledger-web")
     $(widgetFile "register")
 
 -- cf. Hledger.Reports.AccountTransactionsReport.accountTransactionsReportItems

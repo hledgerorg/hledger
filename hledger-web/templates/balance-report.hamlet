@@ -1,8 +1,8 @@
 <tr :here == journalR:.inacct>
   <td .top .acct>
     <a href=@{journalR} :here == journalR:.inacct
-       title="Show general journal entries, most recent first">
-      Journal
+       title=#{tr trs "Show general journal entries, most recent first"}>
+      #{tr trs "Journal"}
   <td .top>
 $forall (acct, adisplay, aindent, abal) <- items
   <tr
@@ -12,11 +12,11 @@ $forall (acct, adisplay, aindent, abal) <- items
       <div .ff-wrapper>
         \#{indent aindent}
         <a.acct-name href="@?{(registerR, [("q", replaceInacct qparam $ accountQuery acct)])}"
-           title="Show transactions affecting this account and subaccounts">
+           title=#{tr trs "Show transactions affecting this account and subaccounts"}>
           #{adisplay}
         $if hasSubAccounts acct
           <a href="@?{(registerR, [("q", replaceInacct qparam $ accountOnlyQuery acct)])}" .only.hidden-sm.hidden-xs
-             title="Show transactions affecting this account but not subaccounts">only
+             title=#{tr trs "Show transactions affecting this account but not subaccounts"}>#{tr trs "only"}
     <td .amount>
       ^{mixedAmountAsHtml abal}
 <tr .total>

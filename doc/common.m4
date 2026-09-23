@@ -164,5 +164,8 @@ General help flags:
      --debug=[1-9]          show this much debug output (default: 1)
      --pager=YN             use a pager when needed ? y/yes (default) or n/no
      --color=YNA --colour   use ANSI color ? y/yes, n/no, or auto (default)
+     --lang=LANG            language for report titles and headings: a
+                            language tag like de, auto (from the environment),
+                            or en (default)
 ```
 }} )m4_dnl '

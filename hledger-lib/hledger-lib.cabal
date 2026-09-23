@@ -38,6 +38,7 @@ tested-with:
 extra-source-files:
     CHANGES.md
     README.md
+    locale/de.po
     test/unittest.hs
     test/doctests.hs
 
@@ -103,6 +104,7 @@ library
       Hledger.Reports.ReportTypes
       Hledger.Utils
       Hledger.Utils.Debug
+      Hledger.Utils.I18n
       Hledger.Utils.IO
       Hledger.Utils.Parse
       Hledger.Utils.Regex

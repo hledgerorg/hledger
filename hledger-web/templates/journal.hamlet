@@ -3,16 +3,16 @@
 
 $if elem AddPermission perms
   <a #addformlink href="#" role="button"
-     data-toggle="modal" data-target="#addmodal" title="Add a new transaction to the journal">
-    Add a transaction
+     data-toggle="modal" data-target="#addmodal" title=_{HMsg "Add a new transaction to the journal"}>
+    _{HMsg "Add a transaction"}
 
 <div .table-responsive>
   <table .transactionsreport .table .table-condensed>
     <thead>
-      <th .date>Date
-      <th .description>Description
-      <th .account>Account
-      <th .amount>Amount
+      <th .date>_{HMsgc "column heading" "Date"}
+      <th .description>_{HMsgc "column heading" "Description"}
+      <th .account>_{HMsgc "column heading" "Account"}
+      <th .amount>_{HMsgc "column heading" "Amount"}
 
     $forall torig <- items
       <tr .title ##{transactionFrag torig} title="#{showTransaction torig}">

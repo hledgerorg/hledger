@@ -310,6 +310,7 @@ import Text.Tabular.AsciiWide
 
 import System.IO qualified as IO
 
+import Hledger.Utils.I18n (tr, trc, trf)
 import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils
@@ -410,7 +411,7 @@ balance opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
             "tsv"  -> printTSV . budgetReportAsCsv ropts
             "html" -> (<>"\n") . htmlAsLazyText . budgetReportAsHtml ropts
             "fods" -> printFods IO.localeEncoding .
-                      Map.singleton "Budget Report" . budgetReportAsSpreadsheet oneLineNoCostFmt ropts
+                      Map.singleton (tr (translations_ ropts) "Budget Report") . budgetReportAsSpreadsheet oneLineNoCostFmt ropts
             _      -> error' $ unsupportedOutputFormatError fmt
       writeOutputLazyText opts $ render budgetreport
 
@@ -423,7 +424,7 @@ balance opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
               "html" -> (<>"\n") . htmlAsLazyText . multiBalanceReportAsHtml ropts
               "json" -> (<>"\n") . toJsonText
               "fods" -> printFods IO.localeEncoding .
-                        Map.singleton "Multi-period Balance Report" . multiBalanceReportAsSpreadsheet ropts
+                        Map.singleton (tr (translations_ ropts) "Multi-period Balance Report") . multiBalanceReportAsSpreadsheet ropts
               _      -> const $ error' $ unsupportedOutputFormatError fmt  -- PARTIAL:
         writeOutputLazyText opts $ render report
 
@@ -435,7 +436,7 @@ balance opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
               "tsv"  -> printTSV . balanceReportAsCsv ropts
               "html" -> (<>"\n") . htmlAsLazyText . balanceReportAsHtml ropts
               "json" -> (<>"\n") . toJsonText
-              "fods" -> printFods IO.localeEncoding . Map.singleton "Balance Report" . (,) (1,0) . balanceReportAsSpreadsheet oneLineNoCostFmt ropts
+              "fods" -> printFods IO.localeEncoding . Map.singleton (tr (translations_ ropts) "Balance Report") . (,) (1,0) . balanceReportAsSpreadsheet oneLineNoCostFmt ropts
               _      -> error' $ unsupportedOutputFormatError fmt  -- PARTIAL:
         writeOutputLazyText opts $ render report
   where
@@ -800,7 +801,7 @@ multiBalanceReportAsSpreadsheetParts ::
      [[Ods.Cell Ods.NumLines Text]],
      [[Ods.Cell Ods.NumLines Text]])
 multiBalanceReportAsSpreadsheetParts fmt opts@ReportOpts{..}
-  allCommodities (PeriodicReport colspans items tr) =
+  allCommodities (PeriodicReport colspans items totrow) =
     (allHeaders, concatMap fullRowAsTexts items, addTotalBorders totalrows)
   where
     accountCell label = (Ods.defaultCell label) {Ods.cellClass = accountClass}
@@ -839,7 +840,7 @@ multiBalanceReportAsSpreadsheetParts fmt opts@ReportOpts{..}
       if no_total_
         then []
         else addRowSpanHeader (accountCell totalRowHeadingSpreadsheet) $
-                rowAsText Total (simpleDateSpanCell period_titles_) tr
+                rowAsText Total (simpleDateSpanCell period_titles_) totrow
     rowAsText rc dsCell =
         map (map (fmap wbToText)) .
         multiBalanceRowAsCellBuilders fmt opts colspans allCommodities rc dsCell
@@ -887,27 +888,29 @@ multiBalanceReportAsText ropts r = TB.toLazyText $
 multiBalanceReportTitle :: ReportOpts -> MultiBalanceReport -> Text
 multiBalanceReportTitle ropts@ReportOpts{..} r = effectiveTitle ropts defaultTitle
   where
-    defaultTitle = mtitle <> " in " <> showDateSpan (periodicReportSpan r) <> valuationdesc <> ":"
+    -- TRANSLATORS: the multi-period balance report title, eg "Balance changes in 2024, valued at period ends:".
+    defaultTitle = trf translations_ "{report} in {dates}{valuation}:"
+      [ ("report", mtitle), ("dates", showDateSpan (periodicReportSpan r)), ("valuation", valuationdesc) ]
 
     mtitle = case (balancecalc_, balanceaccum_) of
-        (CalcValueChange, PerPeriod  ) -> "Period-end value changes"
-        (CalcValueChange, Cumulative ) -> "Cumulative period-end value changes"
-        (CalcGain,        PerPeriod  ) -> "Incremental gain"
-        (CalcGain,        Cumulative ) -> "Cumulative gain"
-        (CalcGain,        Historical ) -> "Historical gain"
-        (_,               PerPeriod  ) -> "Balance changes"
-        (_,               Cumulative ) -> "Ending balances (cumulative)"
-        (_,               Historical)  -> "Ending balances (historical)"
+        (CalcValueChange, PerPeriod  ) -> tr translations_ "Period-end value changes"
+        (CalcValueChange, Cumulative ) -> tr translations_ "Cumulative period-end value changes"
+        (CalcGain,        PerPeriod  ) -> tr translations_ "Incremental gain"
+        (CalcGain,        Cumulative ) -> tr translations_ "Cumulative gain"
+        (CalcGain,        Historical ) -> tr translations_ "Historical gain"
+        (_,               PerPeriod  ) -> tr translations_ "Balance changes"
+        (_,               Cumulative ) -> tr translations_ "Ending balances (cumulative)"
+        (_,               Historical)  -> tr translations_ "Ending balances (historical)"
     valuationdesc =
         (case conversionop_ of
-            Just ToCost -> ", converted to cost"
+            Just ToCost -> tr translations_ ", converted to cost"
             _           -> "")
         <> (case value_ of
-            Just (AtThen _mc)    -> ", valued at posting date"
+            Just (AtThen _mc)    -> tr translations_ ", valued at posting date"
             Just (AtEnd _mc) | changingValuation -> ""
-            Just (AtEnd _mc)     -> ", valued at period ends"
-            Just (AtNow _mc)     -> ", current value"
-            Just (AtDate d _mc)  -> ", valued at " <> showDate d
+            Just (AtEnd _mc)     -> tr translations_ ", valued at period ends"
+            Just (AtNow _mc)     -> tr translations_ ", current value"
+            Just (AtDate d _mc)  -> trf translations_ ", valued at {date}" [("date", showDate d)]
             Nothing              -> "")
 
     changingValuation = case (balancecalc_, balanceaccum_) of
@@ -947,9 +950,9 @@ multiBalanceReportAsPartTable ::
     ReportOpts -> [CommoditySymbol] -> MultiBalanceReport ->
     Table T.Text T.Text WideBuilder
 multiBalanceReportAsPartTable
-    opts@ReportOpts{summary_only_, average_, balanceaccum_}
+    opts@ReportOpts{summary_only_, average_}
     allCommodities
-    (PeriodicReport spans items tr) =
+    (PeriodicReport spans items totrow) =
    maybetranspose $
    addtotalrow $
    Table
@@ -958,7 +961,7 @@ multiBalanceReportAsPartTable
      (concat rows)
   where
     colheadings =
-      ["Commodity" | layout_ opts == LayoutBare]
+      [trc (translations_ opts) "column heading" "Commodity" | layout_ opts == LayoutBare]
       ++
       case layout_ opts of
           LayoutBareWide ->
@@ -967,9 +970,9 @@ multiBalanceReportAsPartTable
           _ -> spanNames
     spanNames =
         (guard (not summary_only_) >>
-            map (reportPeriodName (period_titles_ opts) balanceaccum_ spans) spans)
-        ++ ["  Total" | multiBalanceHasTotalsColumn opts]
-        ++ ["Average" | average_]
+            map (reportPeriodName opts spans) spans)
+        ++ ["  " <> trc (translations_ opts) "column heading" "Total" | multiBalanceHasTotalsColumn opts]
+        ++ [trc (translations_ opts) "column heading" "Average" | average_]
     (accts, rows) = unzip $ fmap fullRowAsTexts items'
       where
         isLeaf rs row = not $ any (\r -> T.isPrefixOf (displayFull (prrName row) <> ":") (displayFull (prrName r))) rs
@@ -983,7 +986,7 @@ multiBalanceReportAsPartTable
     addtotalrow
       | no_total_ opts = id
       | otherwise =
-        let totalrows = multiBalanceRowAsText opts allCommodities tr
+        let totalrows = multiBalanceRowAsText opts allCommodities totrow
             rowhdrs = Group NoLine $ map Header $ totalRowHeadingText : replicate (length totalrows - 1) ""
             colhdrs = Header [] -- unused, concatTables will discard
         in (flip (concatTables SingleLine) $ Table rowhdrs colhdrs totalrows)
@@ -1103,17 +1106,19 @@ budgetReportAsText ropts budgetr = TB.toLazyText $
 budgetReportTitle :: ReportOpts -> BudgetReport -> Text
 budgetReportTitle ropts@ReportOpts{..} budgetr = effectiveTitle ropts defaultTitle
   where
-    defaultTitle = "Budget performance in " <> showDateSpan (periodicReportSpan budgetr)
-           <> (case conversionop_ of
-                 Just ToCost -> ", converted to cost"
+    -- TRANSLATORS: the budget report title, eg "Budget performance in 2024, valued at period ends:".
+    defaultTitle = trf translations_ "Budget performance in {dates}{valuation}:"
+      [ ("dates", showDateSpan (periodicReportSpan budgetr)), ("valuation", valuationdesc) ]
+    valuationdesc =
+              (case conversionop_ of
+                 Just ToCost -> tr translations_ ", converted to cost"
                  _           -> "")
            <> (case value_ of
-                 Just (AtThen _mc)   -> ", valued at posting date"
-                 Just (AtEnd _mc)    -> ", valued at period ends"
-                 Just (AtNow _mc)    -> ", current value"
-                 Just (AtDate d _mc) -> ", valued at " <> showDate d
+                 Just (AtThen _mc)   -> tr translations_ ", valued at posting date"
+                 Just (AtEnd _mc)    -> tr translations_ ", valued at period ends"
+                 Just (AtNow _mc)    -> tr translations_ ", current value"
+                 Just (AtDate d _mc) -> trf translations_ ", valued at {date}" [("date", showDate d)]
                  Nothing             -> "")
-           <> ":"
 
 -- | Build a 'Table' from a multi-column balance report.
 budgetReportAsTable :: ReportOpts -> BudgetReport -> Table Text Text WideBuilder
@@ -1146,10 +1151,10 @@ budgetReportAsTable ropts@ReportOpts{..} (PeriodicReport spans items totrow) =
         in
           (flip (concatTables SingleLine) $ Table rowhdrs colhdrs totalrows)  -- XXX ?
 
-    colheadings = ["Commodity" | layout_ == LayoutBare]
-                  ++ (if not summary_only_ then map (reportPeriodName period_titles_ balanceaccum_ spans) spans else [])
-                  ++ ["  Total" | row_total_]
-                  ++ ["Average" | average_]
+    colheadings = [trc translations_ "column heading" "Commodity" | layout_ == LayoutBare]
+                  ++ (if not summary_only_ then map (reportPeriodName ropts spans) spans else [])
+                  ++ ["  " <> trc translations_ "column heading" "Total" | row_total_]
+                  ++ [trc translations_ "column heading" "Average" | average_]
 
     (accts, rows, totalrows) =
       (accts'

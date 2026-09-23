@@ -44,6 +44,7 @@ module Hledger.Data.Dates (
   showDateSpan,
   showDateSpanDebug,
   showDateSpanAbbrev,
+  showDateSpanAbbrevWith,
   showDateSpanFull,
   elapsedSeconds,
   prevday,
@@ -154,6 +155,10 @@ showDateSpanDebug (DateSpan b e)= "DateSpan (" <> show b <> ") (" <> show e <> "
 -- in the current locale.
 showDateSpanAbbrev :: DateSpan -> Text
 showDateSpanAbbrev = showPeriodAbbrev . dateSpanAsPeriod
+
+-- | Like showDateSpanAbbrev, but take the month names from this time locale.
+showDateSpanAbbrevWith :: TimeLocale -> DateSpan -> Text
+showDateSpanAbbrevWith loc = showPeriodAbbrevWith loc . dateSpanAsPeriod
 
 -- | Render a datespan as a full ISO date range "YYYY-MM-DD..YYYY-MM-DD"
 -- (inclusive end), regardless of whether it represents a standard
