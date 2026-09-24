@@ -97,7 +97,10 @@ formatCell cell =
     let content =
             if Text.null $ cellAnchor cell
                 then str
-                else (H.a ! A.href (H.textValue $ cellAnchor cell)) str in
+                else foldl (!) H.a
+                        (A.href (H.textValue $ cellAnchor cell) :
+                         [A.title (H.textValue $ cellTitle cell) | not $ Text.null $ cellTitle cell])
+                        str in
     -- Mark date cells with a "date" class, so eg wrapping within dates
     -- can be prevented with css; borders are classes too.
     let class_ =
@@ -190,6 +193,10 @@ tests_Hledger_Write_Html = testGroup "Write.Html" [
       @?= "<td align=\"right\"><span class=\"amount\">$1</span>, <span class=\"amount\">2 €</span></td>"
     -- links, totals, borders
     cell (str "a") {cellAnchor = "register?q=a&b"} @?= "<td><a href=\"register?q=a&amp;b\">a</a></td>"
+    cell (str "a") {cellAnchor = "register?q=a", cellTitle = "Show \"a\""}
+      @?= "<td><a href=\"register?q=a\" title=\"Show &quot;a&quot;\">a</a></td>"
+    -- a title without an anchor has nothing to describe
+    cell (str "a") {cellTitle = "t"} @?= "<td>a</td>"
     cell (str "Total:") {cellStyle = Body Total, cellBorder = Spr.noBorder {Spr.borderTop = Spr.DoubleLine}}
       @?= "<td class=\"border-top-double\"><b>Total:</b></td>"
     cell (Spr.headerCell "h" :: Cell Spr.NumLines Text) {cellClass = Spr.Class "account", cellBorder = Spr.noBorder {Spr.borderBottom = Spr.SingleLine}}

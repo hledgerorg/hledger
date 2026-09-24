@@ -10,8 +10,10 @@ module Hledger.Reports.AccountTransactionsReport (
   AccountTransactionsReport,
   AccountTransactionsReportItem,
   accountTransactionsReport,
+  accountTransactionsReportWithStart,
   accountTransactionsReportItems,
   transactionRegisterDate,
+  transactionRegisterDateExtra,
   triOrigTransaction,
   triDate,
   triAmount,
@@ -28,7 +30,7 @@ import Data.List.Extra (nubSort)
 import Data.Maybe (catMaybes)
 import Data.Ord (Down(..), comparing)
 import Data.Text qualified as T
-import Data.Time.Calendar (Day)
+import Data.Time.Calendar (Day, fromGregorian)
 
 import Hledger.Data
 import Hledger.Query
@@ -99,7 +101,15 @@ triCommodityAmount c = filterMixedAmountByCommodity c  . triAmount
 triCommodityBalance c = filterMixedAmountByCommodity c  . triBalance
 
 accountTransactionsReport :: ReportSpec -> Journal -> Query -> AccountTransactionsReport
-accountTransactionsReport rspec@ReportSpec{_rsReportOpts=ropts} j thisacctq = items
+accountTransactionsReport rspec j = snd . accountTransactionsReportWithStart rspec j
+
+-- | The account transactions report, and the balance its running total
+-- starts from: zero, or, with historical balances and a start date in
+-- the query, the sum of the account's postings before that date (with
+-- --average, their average per transaction). A register can show the
+-- latter as a balance brought forward.
+accountTransactionsReportWithStart :: ReportSpec -> Journal -> Query -> (MixedAmount, AccountTransactionsReport)
+accountTransactionsReportWithStart rspec@ReportSpec{_rsReportOpts=ropts} j thisacctq = (startbal, items)
   where
     -- A depth limit should not affect the account transactions report; it should show all transactions in/below this account.
     -- Queries on currency or amount are also ignored at this stage; they are handled earlier, before valuation.
@@ -169,7 +179,7 @@ accountTransactionsReport rspec@ReportSpec{_rsReportOpts=ropts} j thisacctq = it
       -- sort by the transaction's register date, then index, for accurate starting balance
       . dbg5With (("ts4:\n"++).pshowTransactions.map snd)
       . sortBy (comparing (Down . fst) <> comparing (Down . tindex . snd))
-      . map (\t -> (transactionRegisterDate wd reportq thisacctq t, t))
+      . map (\t -> (transactionRegisterDateExtra (journalAccountType j) wd reportq thisacctq t, t))
       . map (if invert_ ropts then (\t -> t{tpostings = map postingNegateMainAmount $ tpostings t}) else id)
       $ jtxns acctJournal
 
@@ -227,11 +237,17 @@ accountTransactionsReportItem reportq thisacctq runningcalc signfn accttypefn (i
 -- - the transaction date, or its secondary date if --date2 was used.
 --
 transactionRegisterDate :: WhichDate -> Query -> Query -> Transaction -> Day
-transactionRegisterDate wd reportq thisacctq t
+transactionRegisterDate = transactionRegisterDateExtra (const Nothing)
+
+-- | Like 'transactionRegisterDate', but given the accounts' types, so
+-- that a type: term in the report query matches postings here as it
+-- does in the report itself.
+transactionRegisterDateExtra :: (AccountName -> Maybe AccountType) -> WhichDate -> Query -> Query -> Transaction -> Day
+transactionRegisterDateExtra accttypefn wd reportq thisacctq t
   | not $ null thisacctps = minimum $ map (postingDateOrDate2 wd) thisacctps
   | otherwise             = transactionDateOrDate2 wd t
   where
-    reportps   = tpostings $ filterTransactionPostings reportq t
+    reportps   = tpostings $ filterTransactionPostingsExtra accttypefn reportq t
     thisacctps = filter (matchesPosting thisacctq) reportps
 
 -- -- | Generate a short readable summary of some postings, like
@@ -290,4 +306,26 @@ filterAccountTransactionsReportByCommodity comm =
 -- tests
 
 tests_AccountTransactionsReport = testGroup "AccountTransactionsReport" [
+  testCase "accountTransactionsReportWithStart" $ do
+    let checking = Acct $ toRegex' "assets:bank:checking"
+        fromJune = Date $ DateSpan (Just $ Exact $ fromGregorian 2008 6 1) Nothing
+        rspec accum = defreportspec{_rsQuery=fromJune, _rsReportOpts=defreportopts{balanceaccum_=accum}}
+        (histstart, histitems) = accountTransactionsReportWithStart (rspec Historical) samplejournal checking
+        (start, items) = accountTransactionsReportWithStart (rspec PerPeriod) samplejournal checking
+    -- with historical balances, the running balance starts from the postings before the start date
+    showMixedAmount histstart @?= "$1.00"
+    map (showMixedAmount . triBalance) histitems @?= ["$1.00", "$2.00", "$1.00", "$2.00"]
+    -- otherwise from zero
+    showMixedAmount start @?= "0"
+    map (showMixedAmount . triBalance) items @?= ["0", "$1.00", "0", "$1.00"]
+
+ ,testCase "transactionRegisterDateExtra" $ do
+    let t = nulltransaction{tdate=fromGregorian 2008 1 1, tpostings=[
+              ("assets:bank:checking" `post` usd 1){pdate=Just $ fromGregorian 2008 1 5}
+             ,"income:salary" `post` usd (-1)]}
+        checking = Acct $ toRegex' "assets:bank:checking"
+        assettypes a = if "assets" `T.isPrefixOf` a then Just Asset else Nothing
+    -- a type: term in the report query matches the posting only when the account types are known
+    transactionRegisterDate PrimaryDate (Type [Asset]) checking t @?= fromGregorian 2008 1 1
+    transactionRegisterDateExtra assettypes PrimaryDate (Type [Asset]) checking t @?= fromGregorian 2008 1 5
  ]
