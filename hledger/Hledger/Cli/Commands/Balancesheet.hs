@@ -11,6 +11,7 @@ The @balancesheet@ command prints a simple balance sheet.
 module Hledger.Cli.Commands.Balancesheet (
   balancesheetmode
  ,balancesheet
+ ,balancesheetSpec
 ) where
 
 import System.Console.CmdArgs.Explicit
@@ -20,6 +21,7 @@ import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.CompoundBalanceCommand
 
+balancesheetSpec :: CompoundBalanceCommandSpec
 balancesheetSpec = CompoundBalanceCommandSpec {
   cbcdoc      = $(embedFileRelative "Hledger/Cli/Commands/Balancesheet.txt"),
   -- TRANSLATORS: the report title, with its reporting interval if any. Each is a
