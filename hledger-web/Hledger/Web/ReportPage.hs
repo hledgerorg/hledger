@@ -140,12 +140,12 @@ columnHeading ropts colspans spn =
 -- the cells that link (the columns' periods) get the given heading text
 -- and link for their span.
 relinkDateHeaders ::
-  (DateSpan -> Text) -> (DateSpan -> Text) -> [DateSpan] -> [Cell NumLines Text] -> [Cell NumLines Text]
-relinkDateHeaders heading link = go
+  Translations -> (DateSpan -> Text) -> (DateSpan -> Text) -> [DateSpan] -> [Cell NumLines Text] -> [Cell NumLines Text]
+relinkDateHeaders trs heading link = go
   where
     go (spn:spns) (c:cs)
       | not (T.null $ cellAnchor c) =
-          c {cellContent = heading spn, cellAnchor = link spn, cellTitle = "Show this report for this period"} : go spns cs
+          c {cellContent = heading spn, cellAnchor = link spn, cellTitle = tr trs "Show this report for this period"} : go spns cs
     go spns (c:cs) = c : go spns cs
     go _ [] = []
 

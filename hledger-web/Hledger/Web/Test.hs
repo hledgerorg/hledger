@@ -680,6 +680,197 @@ hledgerWebTest = do
       statusIs 200
       bodyContains "title=\"expenses:food\">"
 
+  -- The financial statements: the balancesheet, balancesheetequity,
+  -- incomestatement, and cashflow commands' reports, with declared and
+  -- inferred account types, and each figure linked to its register.
+  tj <- fmap (either error' id) . runExceptT . journalFinalise biopts "statements.journal" "" =<<
+          readJournal'' (T.pack $ unlines  -- PARTIAL: readJournal'' should not fail
+            ["account liabilities:card  ; type:L"
+            ,"account equity:opening    ; type:E"
+            ,"2025-01-01 opening"
+            ,"    assets:bank:checking   1000"
+            ,"    equity:opening"
+            ,"2025-01-05 pay"
+            ,"    assets:bank:checking   100"
+            ,"    income:salary"
+            ,"2025-02-05 lunch"
+            ,"    expenses:food           10"
+            ,"    liabilities:card"
+            ,"2025-02-06 snack"
+            ,"    expenses:snacks<i>x      1"
+            ,"    liabilities:card"])
+  runTests "hledger-web financial statements" [] tj $ do
+
+    yit "serves the balance sheet, with ending balances, in sections" $ do
+      get BalancesheetR
+      statusIs 200
+      bodyContains "<h2>Balance Sheet 2025-02-06</h2>"
+      bodyContains "<tr class=\"section\"><th colspan=\"2\" scope=\"rowgroup\">Assets</th></tr>"
+      bodyContains "<tr class=\"section\"><th colspan=\"2\" scope=\"rowgroup\">Liabilities</th></tr>"
+      bodyContains "<tr class=\"subtotal\">"
+      bodyContains "<tfoot>"
+      bodyContains "Net:"
+      -- figures link to registers in historical mode, restricted to the
+      -- section's account types; a liability's says its sign differs
+      bodyContains "href=\"register?q=inacct:assets:bank:checking+type:A&amp;accum=historical\""
+      bodyContains "href=\"register?q=inacct:liabilities:card+date:2025-01-01..2025-02-07+type:L&amp;accum=historical\" title=\"Show the transactions behind this balance, which the register shows with the opposite sign\">"
+      -- a section total links to the section's account types, the net total to all of them
+      bodyContains "href=\"register?q=type:L+date:2025-01-01..2025-02-07&amp;accum=historical\""
+      bodyContains "href=\"register?q=type:AL+date:2025-01-01..2025-02-07&amp;accum=historical\""
+      -- shown as positive amounts, and without inline styles
+      bodyNotContains "class=\"amount negative\""
+      bodyNotContains "style=\""
+
+    yit "serves the multi-period balance sheet, headed by end dates linking to this report" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalancesheetR
+        addGetParam "period" "monthly"
+      statusIs 200
+      bodyContains "<h2>Monthly Balance Sheet 2025-01-31..2025-02-28</h2>"
+      bodyContains ">2025-01-31<"
+      bodyContains ">2025-02-28<"
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?period=2025-01\" title=\"Show this report for this period\"")
+      bodyContains "<input type=\"hidden\" name=\"period\" value=\"monthly\">"
+
+    yit "shows balance changes instead when asked, and says so" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalancesheetR
+        addGetParam "accum" "change"
+      statusIs 200
+      bodyContains "<h2>Balance Sheet 2025-01-01..2025-02-06 (Balance Changes)</h2>"
+      bodyNotContains "accum=historical"
+      -- the search form and the interval links keep the override
+      bodyContains "<input type=\"hidden\" name=\"accum\" value=\"change\">"
+      bodyContains "/balancesheet?period=monthly&amp;accum=change\""
+
+    yit "does not keep the balance sheet's own mode as a parameter" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalancesheetR
+        addGetParam "accum" "historical"
+      statusIs 200
+      bodyContains "<h2>Balance Sheet 2025-02-06</h2>"
+      bodyNotContains "name=\"accum\""
+
+    yit "reports an accumulation mode it does not know" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalancesheetR
+        addGetParam "accum" "bogus"
+      statusIs 200
+      bodyContains "<h2>Balance Sheet</h2>"
+      bodyContains "Unknown balance accumulation mode"
+      bodyNotContains "<tfoot>"
+
+    yit "serves the income statement, with changes, revenues shown positive" $ do
+      get IncomestatementR
+      statusIs 200
+      bodyContains "<h2>Income Statement 2025-01-01..2025-02-06</h2>"
+      bodyContains ">Revenues</th>"
+      bodyContains ">Expenses</th>"
+      bodyContains "href=\"register?q=inacct:income:salary+date:2025-01-01..2025-02-07+type:R\" title=\"Show the transactions that make up this amount, which the register shows with the opposite sign\">"
+      bodyContains "href=\"register?q=type:RX+date:2025-01-01..2025-02-07\" title=\"Show the transactions that make up this total, which the register shows with the opposite sign\">"
+      bodyNotContains "accum="
+
+    yit "shows the income statement's ending balances when asked, and says so" $ do
+      request $ do
+        setMethod "GET"
+        setUrl IncomestatementR
+        addGetParam "accum" "historical"
+      statusIs 200
+      bodyContains "<h2>Income Statement 2025-02-06 (Historical Ending Balances)</h2>"
+      bodyContains "<input type=\"hidden\" name=\"accum\" value=\"historical\">"
+      bodyContains "href=\"register?q=inacct:income:salary+type:R&amp;accum=historical\""
+
+    yit "serves the cashflow statement, with one section and no net total" $ do
+      get CashflowR
+      statusIs 200
+      bodyContains "<h2>Cashflow Statement 2025-01-01..2025-02-06</h2>"
+      bodyContains ">Cash flows</th>"
+      bodyNotContains "<tfoot>"
+
+    yit "serves the balance sheet with equity" $ do
+      get BalancesheetequityR
+      statusIs 200
+      bodyContains "<h2>Balance Sheet With Equity 2025-02-06</h2>"
+      bodyContains ">Equity</th>"
+      bodyContains "href=\"register?q=type:ALE+date:2025-01-01..2025-02-07&amp;accum=historical\""
+
+    yit "links the reports to one another, marking the one shown, and to the balance report" $ do
+      request $ do
+        setMethod "GET"
+        setUrl IncomestatementR
+        addGetParam "period" "quarterly"
+        addGetParam "q" "inacct:assets:bank:checking expenses"
+      statusIs 200
+      -- the links keep the period and the search minus its account term
+      bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/incomestatement?period=quarterly&amp;q=expenses\" title=\"Show revenues and expenses\"")
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?period=quarterly&amp;q=expenses\" title=\"Show assets, liabilities, and net worth\"")
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balance?period=quarterly&amp;q=expenses\" title=\"Show the balance report: any accounts, by period\"")
+
+    yit "links the balance report to the statements too" $ do
+      get BalanceR
+      statusIs 200
+      bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/balance\" title=\"Show the balance report: any accounts, by period\"")
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/incomestatement\" title=\"Show revenues and expenses\"")
+
+    yit "escapes account names and search terms in the statements" $ do
+      get IncomestatementR
+      statusIs 200
+      bodyContains "title=\"Show transactions affecting this account and subaccounts\">expenses:snacks&lt;i&gt;x</a>"
+      bodyNotContains "snacks<i>x"
+      request $ do
+        setMethod "GET"
+        setUrl IncomestatementR
+        addGetParam "q" "<img src=x onerror=alert(1)>"
+      statusIs 200
+      bodyNotContains "<img src=x onerror"
+
+  -- A journal whose accounts have no recognizable types has empty statements.
+  uj <- fmap (either error' id) . runExceptT . journalFinalise biopts "untyped.journal" "" =<<
+          readJournal'' (T.pack $ unlines  -- PARTIAL: readJournal'' should not fail
+            ["2025-01-01 x"
+            ,"    aaa   1"
+            ,"    bbb"])
+  runTests "hledger-web financial statements without account types" [] uj $ do
+
+    yit "explains an empty statement, pointing to how account types are found" $ do
+      get BalancesheetR
+      statusIs 200
+      bodyContains "No accounts of the types this report shows were found"
+      bodyContains "hledger.html#account-types"
+      bodyNotContains "balancereport"
+
+    yit "says when a search matches nothing instead" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalancesheetR
+        addGetParam "q" "zzz"
+      statusIs 200
+      bodyContains "Nothing matches this search in this period."
+      bodyNotContains "account-types"
+
+  -- Typed accounts whose balances net to zero: hidden with -E, but there.
+  zj <- fmap (either error' id) . runExceptT . journalFinalise biopts "zeroed.journal" "" =<<
+          readJournal'' (T.pack $ unlines  -- PARTIAL: readJournal'' should not fail
+            ["account assets:bank      ; type:A"
+            ,"account liabilities:loan ; type:L"
+            ,"2025-01-01 borrow"
+            ,"    assets:bank        100"
+            ,"    liabilities:loan"
+            ,"2025-02-01 repay"
+            ,"    assets:bank       -100"
+            ,"    liabilities:loan"])
+  runTests "hledger-web financial statements with -E" [("empty","")] zj $ do
+
+    yit "says when the accounts are all hidden zero balances" $ do
+      get BalancesheetR
+      statusIs 200
+      bodyContains "All the accounts this report shows have zero balances, which are hidden."
+      bodyNotContains "account-types"
+
   -- A commodity directive sets the display precision; the page must apply it,
   -- as the sidebar beside it and the command line report do.
   sj <- fmap (either error' id) . runExceptT . journalFinalise biopts "styled.journal" "" =<<

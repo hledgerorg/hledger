@@ -9,6 +9,7 @@ module Hledger.Web.Widget.Common
   , accountOnlyQuery
   , balanceReportAsHtml
   , linksRow
+  , reportLinks
   , intervalLinks
   , accumulationLinks
   , helplink
@@ -100,6 +101,13 @@ balanceReportAsHtml (journalR, registerR) here hideEmpty trs j qparam qopts (ite
 -- another's, so a translation cannot be assembled from parts.
 linksRow :: Text -> [(Text, Text, (r, [(Text, Text)]), Bool)] -> HtmlUrl r
 linksRow rowlabel items = $(hamletFile "templates/balance-links.hamlet")
+
+-- | Links to the report pages, given as route, label, and title,
+-- keeping the given parameters; the page being shown is marked.
+reportLinks :: Eq r => Translations -> r -> [(Text, Text)] -> [(r, Text, Text)] -> HtmlUrl r
+reportLinks trs here kept menu =
+  -- TRANSLATORS: the label before a page's report links.
+  linksRow (tr trs "Report:") [ (tr trs label, tr trs title, (route, kept), route == here) | (route, label, title) <- menu ]
 
 -- | Links to the same report page for each reporting interval, keeping
 -- the search, the period's date span, and the given parameters; the

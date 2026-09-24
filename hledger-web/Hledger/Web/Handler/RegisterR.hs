@@ -51,10 +51,15 @@ getRegisterR = do
       qParams t = [("q", t) | not (T.null t)]
       acctQuery = fromMaybe Any (inAccountQuery qopts)
       acctlink acc = (RegisterR, ("q", replaceInacct qparam $ accountQuery acc) : accumParams)
+      -- In an account's register a type: term selects the postings
+      -- totaled, not the accounts named beside them: a liability's
+      -- register names the accounts it was posted against, whatever their
+      -- types. A register of all accounts of a type names those accounts.
       otherTransAccounts =
           map (\(acct,(name,comma)) -> (acct, (T.pack name, T.pack comma))) .
           undecorateLinks . elideRightDecorated 40 . decorateLinks .
-          addCommas . preferReal . otherTransactionAccounts j q acctQuery
+          addCommas . preferReal . otherTransactionAccounts j displayq acctQuery
+      displayq = if isJust (inAccount qopts) then filterQuery (not . queryIsType) q else q
       addCommas xs =
           zip xs $
           zip (map (T.unpack . accountSummarisedName . paccount) xs) $

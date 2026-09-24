@@ -91,6 +91,7 @@ $if elem ViewPermission perms
                 <li> _{HMsg "Multiple currencies in balances are displayed one above the other"}
                 <li> _{HMsg "Click account name links to see transactions affecting that account, with running balance"}
                 <li> _{HMsg "Click date links to see journal entries on that date"}
+                <li> _{HMsg "The balance sheet and income statement show liabilities, equity, and revenues as positive amounts; their registers show them negative, as hledger does"}
           <div .col-xs-6>
             <p>
               <b>_{HMsgc "help heading" "Search"}

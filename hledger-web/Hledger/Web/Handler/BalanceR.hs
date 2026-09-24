@@ -17,7 +17,7 @@ import Hledger.Utils.I18n (tr, trf)
 import Hledger.Web.Import
 import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
-import Hledger.Web.Widget.Common (accumulationLinks, intervalLinks, removeDates)
+import Hledger.Web.Widget.Common (accumulationLinks, intervalLinks, removeDates, removeInacct, reportLinks)
 
 
 -- | The balance or multi-period balance view, with sidebar.
@@ -54,6 +54,9 @@ getBalanceR = do
             periodParams = [("period", p) | Just p <- [rpPeriod]]
             accumParams = [("accum", "historical") | accum == Historical]
             qParams = [("q", qparam) | not (T.null qparam)]
+            -- links to the other reports keep the search, minus any account
+            -- term, which the reports ignore, and the period as given
+            menuParams = periodParams ++ [("q", qt) | let qt = T.unwords $ removeInacct qparam, not (T.null qt)]
             -- A column heading opens this report for that column's period,
             -- in place of any date terms in the search, which the column
             -- narrows anyway.
@@ -77,8 +80,9 @@ getBalanceR = do
               _ ->
                 let (h, b, t) = Balance.multiBalanceReportAsSpreadsheetParts oneLineNoCostFmt ropts mbr
                 in ( reportTitle ropts $ trimColon $ Balance.multiBalanceReportTitle ropts mbr
-                   , map (relinkDateHeaders (columnHeading ropts colspans) headinglink colspans) h, b, t)
+                   , map (relinkDateHeaders trs (columnHeading ropts colspans) headinglink colspans) h, b, t)
         Yesod.toWidget $ H.h2 $ H.toHtml $ withFilter title
+        Yesod.toWidget $ reportLinks trs BalanceR menuParams [(r, l, t) | (r, l, t, _) <- reportMenu]
         Yesod.toWidget $ accumulationLinks trs BalanceR (periodParams ++ qParams) accum
         Yesod.toWidget $ intervalLinks trs BalanceR accumParams qparam rpSpan rpInterval
         Yesod.toWidget $ reportTable header [(Nothing, body, [])] totals

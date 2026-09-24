@@ -45,9 +45,14 @@ import Yesod
 import Yesod.Default.Config
 import Yesod.Form.I18n.German (germanFormMessage)
 
-import Hledger.Utils.I18n (Translations(..), langTagCandidates, resolveLang, tr, trc)
+import Hledger.Utils.I18n (Translations(..), i18n, langTagCandidates, resolveLang, tr, trc)
 import Hledger
 import Hledger.Cli (CliOpts(..), journalReloadIfChanged)
+import Hledger.Cli.Commands.Balancesheet (balancesheetSpec)
+import Hledger.Cli.Commands.Balancesheetequity (balancesheetequitySpec)
+import Hledger.Cli.Commands.Cashflow (cashflowSpec)
+import Hledger.Cli.Commands.Incomestatement (incomestatementSpec)
+import Hledger.Cli.CompoundBalanceCommand (CompoundBalanceCommandSpec(..))
 import Hledger.Web.Settings (Extra(..), widgetFile)
 import Hledger.Web.Settings.StaticFiles
 import Hledger.Web.WebOptions
@@ -168,7 +173,7 @@ instance Yesod App where
     -- accumulation mode, and the register's mode. The mode is kept only
     -- when it is not the default, as the pages' own links carry it.
     let keepable :: Text -> Text -> Bool
-        keepable "accum" v = v == "historical"
+        keepable "accum" v = Just v == keptAccum here
         keepable _       v = not (T.null v)
     keptParams <- fmap catMaybes . for (keptParamNames here) $ \name ->
       fmap (name,) . mfilter (keepable name) <$> lookupGetParam name
@@ -355,9 +360,32 @@ checkServerSideUiEnabled = do
     --  permissionDenied "server-side UI is disabled due to --serve-api"
     sendResponseStatus status403 ("server-side UI is disabled due to --serve-api" :: Text)
 
+-- | The report pages, in menu order, each with its link's label and
+-- title, and its default accumulation mode: the statements' commands'
+-- own, and balance changes for the balance report.
+reportMenu :: [(Route App, Text, Text, BalanceAccumulation)]
+reportMenu =
+  -- TRANSLATORS: the report links above each report page: each link's text, and its tooltip.
+  [ (BalancesheetR,       i18n "Balance sheet",             i18n "Show assets, liabilities, and net worth",          cbcaccum balancesheetSpec)
+  , (BalancesheetequityR, i18n "Balance sheet with equity", i18n "Show assets, liabilities, and equity",             cbcaccum balancesheetequitySpec)
+  , (IncomestatementR,    i18n "Income statement",          i18n "Show revenues and expenses",                       cbcaccum incomestatementSpec)
+  , (CashflowR,           i18n "Cashflow statement",        i18n "Show changes in liquid assets",                    cbcaccum cashflowSpec)
+  , (BalanceR,            i18n "Balance report",            i18n "Show the balance report: any accounts, by period", PerPeriod)
+  ]
+
 -- | The report pages: those that take a period and an accumulation mode.
 reportRoutes :: [Route App]
-reportRoutes = [BalanceR]
+reportRoutes = [route | (route, _, _, _) <- reportMenu]
+
+-- | The accum parameter value a page's links keep: the mode that is
+-- not the page's default. (The register totals the period by default.)
+keptAccum :: Route App -> Maybe Text
+keptAccum route =
+  case [dflt | (r, _, _, dflt) <- reportMenu, r == route] of
+    [Historical]           -> Just "change"
+    [_]                    -> Just "historical"
+    _ | route == RegisterR -> Just "historical"
+    _                      -> Nothing
 
 -- | The query parameters a page's own links keep.
 keptParamNames :: Route App -> [Text]

@@ -105,6 +105,7 @@ library
       Hledger.Web.Handler.JournalR
       Hledger.Web.Handler.MiscR
       Hledger.Web.Handler.RegisterR
+      Hledger.Web.Handler.StatementsR
       Hledger.Web.Handler.UploadR
       Hledger.Web.Import
       Hledger.Web.Main
