@@ -1,0 +1,77 @@
+# * balance report links with --base-url
+
+# ** 1. Column headings link to the register for the column's period, as a
+# period expression that reads back as the same span: a week is written
+# out with its exclusive end date, not as an ISO week name.
+<
+2025-01-15 a
+  assets:cash  10
+  income
+
+2025-01-22 b
+  assets:cash  20
+  income
+
+$ hledger -f- bal -W -O html --base-url ''
+> /<a href="register\?q=date:2025-01-13\.\.2025-01-20">2025-W03</
+>= 0
+
+# ** 2. The heading keeps its display form; only the link's term changes.
+<
+2025-01-15 a
+  assets:cash  10
+  income
+
+2025-02-20 b
+  assets:cash  20
+  income
+
+$ hledger -f- bal -M --period-titles=dates -O html --base-url ''
+> /<a href="register\?q=date:2025-01">2025-01-01\.\.2025-01-31</
+>= 0
+
+# ** 3. A span that is not a calendar period keeps its last day: the
+# heading shows the inclusive end date, the term the exclusive one.
+<
+2025-01-15 a
+  assets:cash  10
+  income
+
+2025-02-20 b
+  assets:cash  20
+  income
+
+$ hledger -f- bal -M -p 2025-01-15..2025-03-01 -O html --base-url ''
+> /<a href="register\?q=date:2025-01-15\.\.2025-02-15">2025-01-15\.\.2025-02-14</
+>= 0
+
+# ** 4. The same term in the tidy layout's period column.
+<
+2025-01-15 a
+  assets:cash  10
+  income
+
+$ hledger -f- bal -W --layout=tidy -O html --base-url ''
+> /<a href="register\?q=inacct:assets:cash\+date:2025-01-13\.\.2025-01-20">2025-W03</
+>= 0
+
+# ** 5. An inacct: term in the query is not carried into the links, which
+# name their own account.
+<
+2025-01-15 a
+  assets:cash  10
+  income
+
+$ hledger -f- bal -O html --base-url '' inacct:assets
+> /<a href="register\?q=inacct:assets:cash">assets:cash</
+>= 0
+
+# ** 6. Without --base-url, no links.
+<
+2025-01-15 a
+  assets:cash  10
+  income
+
+$ hledger -f- bal -W -O html
+> !/<a href/
+>= 0
