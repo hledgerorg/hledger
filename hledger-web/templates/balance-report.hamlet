@@ -9,14 +9,13 @@ $forall (acct, adisplay, aindent, abal) <- items
      :matchesAcctSelector acct:.inacct
      :hideEmpty && not (isInterestingAccount acct):.hide>
     <td .acct :not (isInterestingAccount acct):.empty>
-      <div .ff-wrapper>
-        \#{indent aindent}
-        <a.acct-name href="@?{(registerR, [("q", replaceInacct qparam $ accountQuery acct)])}"
-           title="Show transactions affecting this account and subaccounts">
-          #{adisplay}
-        $if hasSubAccounts acct
-          <a href="@?{(registerR, [("q", replaceInacct qparam $ accountOnlyQuery acct)])}" .only.hidden-sm.hidden-xs
-             title="Show transactions affecting this account but not subaccounts">only
+      \#{indent aindent}
+      <a.acct-name href="@?{(registerR, [("q", replaceInacct qparam $ accountQuery acct)])}"
+         title="Show transactions affecting this account and subaccounts">
+        #{adisplay}
+      $if hasSubAccounts acct
+        <a href="@?{(registerR, [("q", replaceInacct qparam $ accountOnlyQuery acct)])}" .only.hidden-sm.hidden-xs
+           title="Show transactions affecting this account but not subaccounts">only
     <td .amount>
       ^{mixedAmountAsHtml abal}
 <tr .total>
