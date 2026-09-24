@@ -505,12 +505,16 @@ compoundBalanceReportAsSpreadsheetParts fmt accountLabel ropts specs cbr =
     unlinked = map (map (\c -> c {Spr.cellAnchor = mempty, Spr.cellTitle = mempty}))
     linkedWhen mterm rows = maybe (unlinked rows) (const rows) mterm
 
+    -- A section's rows link with its type term as well, so that their
+    -- registers exclude a subaccount of another type, as the figures do.
     section spec (subreporttitle, mbr, _increasestotal) = (subreporttitle, bodyrows, totalsrows)
       where
         sropts = cbcsubreportoptions spec ropts
-        (_, bodyrows, _) =
-          balanceSubReportAsSpreadsheetParts fmt sropts{no_total_ = True} allCommodities mbr
         sectionterm = typeTerm $ cbcsubreportquery spec
+        (_, bodyrows, _) =
+          balanceSubReportAsSpreadsheetParts fmt
+            sropts{no_total_ = True, querystring_ = maybeToList sectionterm ++ querystring_ sropts}
+            allCommodities mbr
         totalsrows
           | no_total_ ropts = []
           | otherwise =
