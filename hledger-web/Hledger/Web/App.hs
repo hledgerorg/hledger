@@ -12,13 +12,14 @@ and then Application.hs completes the job.
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE ViewPatterns          #-}
 
 module Hledger.Web.App where
 
 import Control.Applicative ((<|>))
-import Control.Monad (join, when, unless)
+import Control.Monad (join, mfilter, when, unless)
 -- import Control.Monad.Except (runExceptT)  -- now re-exported by Hledger
 import Data.ByteString.Base64 qualified as B64
 import Data.ByteString.Char8 qualified as BC
@@ -26,7 +27,7 @@ import Data.Foldable (for_)
 import Data.Map qualified as M
 import Data.Traversable (for)
 import Data.IORef (IORef, readIORef, writeIORef)
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -156,22 +157,23 @@ instance Yesod App where
     let browsemode = server_mode_ opts == ServeBrowse
 
     let rspec = reportspec_ (cliopts_ opts)
-        ropts = _rsReportOpts rspec
         ropts' = (_rsReportOpts rspec)
           {accountlistmode_ = ALTree  -- force tree mode for sidebar
           ,empty_           = True    -- show zero items by default
           }
         rspec' = rspec{_rsQuery=q,_rsReportOpts=ropts'}
 
-    -- The balance page's period parameter, which its search form and the
-    -- form's clear button keep.
-    periodParams <- case here of
-      BalanceR -> maybe [] (\p -> [("period", p)]) <$> lookupGetParam "period"
-      _        -> pure []
+    -- The parameters the search form and its clear button keep, so that
+    -- a search does not reset the page: a report page's period and
+    -- accumulation mode, and the register's mode. The mode is kept only
+    -- when it is not the default, as the pages' own links carry it.
+    let keepable :: Text -> Text -> Bool
+        keepable "accum" v = v == "historical"
+        keepable _       v = not (T.null v)
+    keptParams <- fmap catMaybes . for (keptParamNames here) $ \name ->
+      fmap (name,) . mfilter (keepable name) <$> lookupGetParam name
 
-    hideEmptyAccts <- if empty_ ropts
-                         then return True
-                         else (== Just "1") . lookup "hideemptyaccts" . reqCookies <$> getRequest
+    hideEmptyAccts <- hideEmptyAccounts
 
     let accounts =
           balanceReportAsHtml (JournalR, RegisterR) here hideEmptyAccts trs j qparam qopts $
@@ -352,6 +354,26 @@ checkServerSideUiEnabled = do
     -- this one gives 500 internal server error when called from defaultLayout:
     --  permissionDenied "server-side UI is disabled due to --serve-api"
     sendResponseStatus status403 ("server-side UI is disabled due to --serve-api" :: Text)
+
+-- | The report pages: those that take a period and an accumulation mode.
+reportRoutes :: [Route App]
+reportRoutes = [BalanceR]
+
+-- | The query parameters a page's own links keep.
+keptParamNames :: Route App -> [Text]
+keptParamNames route
+  | route `elem` reportRoutes = ["period", "accum"]
+  | route == RegisterR        = ["accum"]
+  | otherwise                 = []
+
+-- | Are zero-balance accounts hidden ? They are with -E at startup, or
+-- with the hideemptyaccts cookie the e key sets.
+hideEmptyAccounts :: Handler Bool
+hideEmptyAccounts = do
+  App{appOpts} <- getYesod
+  if empty_ $ _rsReportOpts $ reportspec_ $ cliopts_ appOpts
+    then return True
+    else (== Just "1") . lookup "hideemptyaccts" . reqCookies <$> getRequest
 
 -- | Find out if the sidebar should be visible. Show it, unless there is a
 -- showsidebar cookie set to "0", or a ?sidebar=0 query parameter.

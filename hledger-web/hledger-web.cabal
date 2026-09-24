@@ -108,6 +108,7 @@ library
       Hledger.Web.Handler.UploadR
       Hledger.Web.Import
       Hledger.Web.Main
+      Hledger.Web.ReportPage
       Hledger.Web.Settings
       Hledger.Web.Settings.StaticFiles
       Hledger.Web.Test
@@ -137,6 +138,7 @@ library
     , conduit
     , conduit-extra >=1.1
     , containers >=0.5.9
+    , cookie
     , data-default
     , directory >=1.2.3.0
     , entropy

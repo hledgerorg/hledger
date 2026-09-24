@@ -4,7 +4,7 @@ hledger-web's pages are made of.
 
 They render "Hledger.Write.Spreadsheet" tables as HTML tables: the CLI's
 @-O html@ output uses 'styledTableHtml' and 'titledTableHtml', and
-hledger-web's report pages use 'formatRow' inside their own table markup.
+hledger-web's report pages use 'formatCell' inside their own table markup.
 blaze's text renderer writes everything on one line, so for human readability
 we inject raw newlines between elements (see 'nl').
 -}

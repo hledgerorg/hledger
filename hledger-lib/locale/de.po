@@ -622,9 +622,6 @@ msgstr "Der Periodenausdruck konnte nicht gelesen werden:"
 msgid "Report:"
 msgstr "Bericht:"
 
-msgid "Balance"
-msgstr "Salden"
-
 msgid "Yearly"
 msgstr "Jährlich"
 
@@ -639,24 +636,6 @@ msgstr "Wöchentlich"
 
 msgid "Daily"
 msgstr "Täglich"
-
-msgid "Show the balance report"
-msgstr "Saldenbericht anzeigen"
-
-msgid "Show the yearly balance report"
-msgstr "Jährlichen Saldenbericht anzeigen"
-
-msgid "Show the quarterly balance report"
-msgstr "Vierteljährlichen Saldenbericht anzeigen"
-
-msgid "Show the monthly balance report"
-msgstr "Monatlichen Saldenbericht anzeigen"
-
-msgid "Show the weekly balance report"
-msgstr "Wöchentlichen Saldenbericht anzeigen"
-
-msgid "Show the daily balance report"
-msgstr "Täglichen Saldenbericht anzeigen"
 
 msgctxt "column heading"
 msgid "Date"
@@ -770,3 +749,50 @@ msgstr "Einheit"
 #. The register command's spreadsheet sheet name.
 msgid "Register"
 msgstr "Register"
+
+#. hledger-web: the balance page's interval and accumulation links, and the register's balance mode.
+msgid "Interval:"
+msgstr "Intervall:"
+
+msgctxt "interval"
+msgid "None"
+msgstr "Keins"
+
+msgid "Show one column for the whole period"
+msgstr "Eine Spalte für den ganzen Zeitraum anzeigen"
+
+msgid "Show a column per year"
+msgstr "Eine Spalte pro Jahr anzeigen"
+
+msgid "Show a column per quarter"
+msgstr "Eine Spalte pro Quartal anzeigen"
+
+msgid "Show a column per month"
+msgstr "Eine Spalte pro Monat anzeigen"
+
+msgid "Show a column per week"
+msgstr "Eine Spalte pro Woche anzeigen"
+
+msgid "Show a column per day"
+msgstr "Eine Spalte pro Tag anzeigen"
+
+msgid "Show:"
+msgstr "Anzeigen:"
+
+msgid "Ending balances"
+msgstr "Endsalden"
+
+msgid "Show how much each balance changed in each period"
+msgstr "Anzeigen, wie sich jeder Saldo in jeder Periode verändert hat"
+
+msgid "Show each balance at the end of each period, including everything before it"
+msgstr "Jeden Saldo am Ende jeder Periode anzeigen, einschließlich allem davor"
+
+msgid "Unknown balance accumulation mode:"
+msgstr "Unbekannter Kumulierungsmodus:"
+
+msgid "Show the running balance from the start of this period"
+msgstr "Den laufenden Saldo ab Beginn dieses Zeitraums anzeigen"
+
+msgid "Show the running balance including everything before this period"
+msgstr "Den laufenden Saldo einschließlich allem vor diesem Zeitraum anzeigen"

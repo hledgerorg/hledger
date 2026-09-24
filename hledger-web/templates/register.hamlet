@@ -2,7 +2,7 @@
   #{header}
 
 <div>
-  ^{registerChartHtml qparam (T.unpack balancelabel) $ accountTransactionsReportByCommodity items}
+  ^{registerChartHtml qparam accumParams (T.unpack balancelabel) $ accountTransactionsReportByCommodity items}
 
 <div.table-responsive>
   <table .table.table-condensed>
@@ -15,7 +15,7 @@
         <th>_{HMsgc "column heading" "To/From Account(s)"}
         <th .amount>_{HMsgc "column heading" "Amount Out/In"}
         <th .amount>
-          #{balancelabel}
+          <a href=@?{accumToggle} title="#{accumToggleTitle}">#{balancelabel}
 
     <tbody>
       $forall (torig, tacct, split, _acct, amt, bal) <- items
@@ -34,6 +34,21 @@
               ^{mixedAmountAsHtml amt}
           <td .amount>
             ^{mixedAmountAsHtml bal}
+      $if historical
+        $maybe start <- mstart
+          <tr .broughtforward>
+            <td .date nowrap>
+              #{show (snd start)}
+            <td .description>
+              Balance brought forward
+            <td .account>
+            <td .amount>
+            <td .amount>
+              $if mixedAmountLooksZero startbal
+                ^{mixedAmountAsHtml startbal}
+              $else
+                <a href=@?{broughtForwardLink start} title="Show the transactions before this period">
+                  ^{mixedAmountAsHtml startbal}
 
 $if elem AddPermission perms
   ^{addModal AddR j today}

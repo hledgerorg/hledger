@@ -22,7 +22,7 @@ import Hledger.Web.Import
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Widget.Common
-             (accountQuery, mixedAmountAsHtml,
+             (accountQuery, accountOnlyQuery, mixedAmountAsHtml,
               transactionFragment, removeDates, removeInacct, replaceInacct)
 
 -- | The main journal/account register view, with accounts sidebar.
@@ -31,6 +31,11 @@ getRegisterR = do
   checkServerSideUiEnabled
   VD{perms, j, q, opts, qparam, qopts, today, trs} <- getViewData
   require ViewPermission
+  -- With accum=historical the running balance is the account's balance,
+  -- starting from before the query's start date, rather than a total of
+  -- the transactions shown; a report's ending balance links here that way,
+  -- so that the balance ends on the figure clicked.
+  historical <- (== Just "historical") <$> lookupGetParam "accum"
 
   let title = case inAccount qopts of
         Nothing         -> tr trs "all accounts"
@@ -38,24 +43,47 @@ getRegisterR = do
         Just (a, False) -> trf trs "{account} (excluding subaccounts)" [("account", a)]
       header = if q /= Any then trf trs "{title}, filtered" [("title", title)] else title
 
-  let rspec = reportspec_ (cliopts_ opts)
+  let rspec0 = reportspec_ (cliopts_ opts)
+      ropts = (_rsReportOpts rspec0){balanceaccum_ = if historical then Historical else PerPeriod}
+      rspec = rspec0{_rsReportOpts = ropts}
+      -- links staying on this register keep its mode
+      accumParams = [("accum", "historical") | historical]
+      qParams t = [("q", t) | not (T.null t)]
       acctQuery = fromMaybe Any (inAccountQuery qopts)
-      acctlink acc = (RegisterR, [("q", replaceInacct qparam $ accountQuery acc)])
+      acctlink acc = (RegisterR, ("q", replaceInacct qparam $ accountQuery acc) : accumParams)
       otherTransAccounts =
           map (\(acct,(name,comma)) -> (acct, (T.pack name, T.pack comma))) .
           undecorateLinks . elideRightDecorated 40 . decorateLinks .
-          addCommas . preferReal . otherTransactionAccounts q acctQuery
+          addCommas . preferReal . otherTransactionAccounts j q acctQuery
       addCommas xs =
           zip xs $
           zip (map (T.unpack . accountSummarisedName . paccount) xs) $
           tailSafe (", "<$xs) ++ [""]
-      items =
-        styleAmounts (journalCommodityStylesWith HardRounding j) $
-        accountTransactionsReport rspec{_rsQuery=q} j acctQuery
+      styles = journalCommodityStylesWith HardRounding j
+      (startbal, items) =
+        bimap (styleAmounts styles) (styleAmounts styles) $
+        accountTransactionsReportWithStart rspec{_rsQuery=q} j acctQuery
       balancelabel
-        | isJust (inAccount qopts), balanceaccum_ (_rsReportOpts rspec) == Historical = trc trs "column heading" "Historical Total"
+        | historical               = trc trs "column heading" "Historical Total"
         | isJust (inAccount qopts) = trc trs "column heading" "Period Total"
         | otherwise                = trc trs "column heading" "Total"
+      -- The balance column's heading switches the mode.
+      accumToggle = (RegisterR, qParams qparam ++ [("accum", "historical") | not historical])
+      accumToggleTitle
+        | historical = tr trs "Show the running balance from the start of this period"
+        | otherwise  = tr trs "Show the running balance including everything before this period"
+      -- In historical mode with a start date, the balance brought forward
+      -- from before it is the oldest row, linking to the transactions
+      -- before the period: those before the start date by the kind of
+      -- date (primary or secondary) the report took it from, as the
+      -- report chooses the balance's cutoff.
+      mstart = asum [ (,) secondary <$> queryStartDate secondary q
+                    | secondary <- [date2_ ropts, not $ date2_ ropts] ]
+      broughtForwardLink (secondary, start) =
+        (RegisterR, [("q", T.unwords $
+          maybe [] (\(acc, incl) -> [if incl then accountQuery acc else accountOnlyQuery acc]) (inAccount qopts) ++
+          [(if secondary then "date2:.." else "date:..") <> showDate start] ++
+          removeDates (T.unwords $ removeInacct qparam))])
       transactionFrag = transactionFragment j
   defaultLayout $ do
     -- TRANSLATORS: the browser tab title of this page.
@@ -63,8 +91,8 @@ getRegisterR = do
     $(widgetFile "register")
 
 -- cf. Hledger.Reports.AccountTransactionsReport.accountTransactionsReportItems
-otherTransactionAccounts :: Query -> Query -> Transaction -> [Posting]
-otherTransactionAccounts reportq thisacctq torig
+otherTransactionAccounts :: Journal -> Query -> Query -> Transaction -> [Posting]
+otherTransactionAccounts j reportq thisacctq torig
     -- no current account ? summarise all matched postings
     | thisacctq == None  = reportps
     -- only postings to current account ? summarise those
@@ -72,7 +100,8 @@ otherTransactionAccounts reportq thisacctq torig
     -- summarise matched postings to other account(s)
     | otherwise          = otheracctps
     where
-      reportps = tpostings $ filterTransactionPostings reportq torig
+      -- given the account types, so that a type: term matches postings here as in the report
+      reportps = tpostings $ filterTransactionPostingsExtra (journalAccountType j) reportq torig
       (thisacctps, otheracctps) = partition (matchesPosting thisacctq) reportps
       otheraccts = nub $ map paccount otheracctps
 
@@ -106,11 +135,11 @@ decorateLinks = concatMap $ \(acct, (name, comma)) ->
 -- | The register balance chart: its markup, carrying the per-commodity
 -- series as JSON in a data attribute. hledger.js draws it with flot on page
 -- load; see registerChartInit there.
-registerChartHtml :: Text -> String -> [(CommoditySymbol, [AccountTransactionsReportItem])] -> HtmlUrl AppRoute
-registerChartHtml q title percommoditytxnreports = $(hamletFile "templates/chart.hamlet")
+registerChartHtml :: Text -> [(Text, Text)] -> String -> [(CommoditySymbol, [AccountTransactionsReportItem])] -> HtmlUrl AppRoute
+registerChartHtml q accumParams title percommoditytxnreports = $(hamletFile "templates/chart.hamlet")
  where
    charttitle = if null title then "" else title ++ ":"
-   nodatelink = (RegisterR, [("q", T.unwords $ removeDates q)])
+   nodatelink = (RegisterR, [("q", t) | let t = T.unwords $ removeDates q, not (T.null t)] ++ accumParams)
    -- One entry per commodity: its symbol, and per transaction the point flot
    -- plots followed by the texts the tooltip and click handler show.
    seriesjson = encodeToLazyText $ map commoditySeries percommoditytxnreports

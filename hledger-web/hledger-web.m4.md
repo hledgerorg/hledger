@@ -213,18 +213,33 @@ Changes which would leave the journal file(s) unparseable or invalid
 # BALANCE REPORTS
 
 Besides the journal and account registers, hledger-web can show the
-[balance report](hledger.md#balance) at `/balance`, with each account
-linked to its register. No page links to it yet: it is reachable by
-entering the url, until there are more such reports and a navigation
-scheme to hold them. A `period` parameter, like the command line's
-`-p/--period`, selects the interval and/or the period, eg
-`/balance?period=monthly` or `/balance?period=quarterly in 2025`;
-column headings link to the register for that period.
+[balance report](hledger.md#balance) at `/balance`. No page links to it
+yet: it is reachable by entering the url, until there are more such
+reports and a navigation scheme to hold them. A `period` parameter,
+like the command line's `-p/--period`, selects the interval and/or the
+period, eg `/balance?period=monthly` or
+`/balance?period=quarterly in 2025`; the links above the report offer
+the usual intervals.
 The search box filters the report like the other pages, including
 `depth:` terms, and the general report options given at startup, such
 as `--depth`, `-B`, or `-V`, apply. A `date:` term can set the interval
 too, as on the command line (`date:monthly`, or
 `"date:quarterly in 2025"`), and wins over the `period` parameter.
+
+The report shows balance changes, or with an `accum=historical`
+parameter, which the "Ending balances" link above it sets, each
+account's balance at the end of each period.
+Every figure links to the register it is derived from: the account's
+transactions in that period, whose final balance is the figure. (The
+two can differ when a transaction's postings have dates of their own:
+the report counts such a posting in its own period, while the register
+shows its whole transaction.)
+An ending balance's register runs in historical mode (its own
+`accum=historical`): its running balance starts from the balance
+brought forward from before the period, shown as its oldest row, and
+its balance column's heading switches between the two modes.
+Account names link to their registers, and column headings to this
+report for that period.
 
 # RELOADING
 

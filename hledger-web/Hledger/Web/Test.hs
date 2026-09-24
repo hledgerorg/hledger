@@ -59,6 +59,7 @@ import System.Environment (setEnv, unsetEnv)
 import System.FilePath ((</>))
 import Test.Hspec (expectationFailure, hspec)
 import Text.Printf (printf)
+import Web.Cookie (defaultSetCookie, setCookieName, setCookieValue)
 import Yesod.Default.Config
 import Yesod.Test
 
@@ -392,8 +393,8 @@ hledgerWebTest = do
       statusIs 200
       bodyContains "<title>Salden - hledger-web</title>"
       bodyContains "<h2>Saldenbericht</h2>"
-      bodyContains "Bericht:"
-      bodyContains "title=\"Monatlichen Saldenbericht anzeigen\">Monatlich</a>"
+      bodyContains "Intervall:"
+      bodyContains "title=\"Eine Spalte pro Monat anzeigen\">Monatlich</a>"
 
   -- A translation is viewer-controlled text: it must be rendered as text
   -- wherever it lands, including inside attributes.
@@ -558,6 +559,127 @@ hledgerWebTest = do
       statusIs 200
       bodyNotContains "name=\"period\""
 
+    yit "shows balance changes for a period, and says so" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "2025-02"
+      statusIs 200
+      bodyContains "<h2>Balance changes in 2025-02</h2>"
+      -- the report's own links are relative (the sidebar's are not)
+      bodyNotContains "href=\"register?q=inacct:income:salary"
+      bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/balance?period=2025-02\" title=\"Show how much")
+
+    yit "shows ending balances with accum=historical, asking their registers for the same" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "2025-02"
+        addGetParam "accum" "historical"
+      statusIs 200
+      bodyContains "<h2>Ending balances (historical) in 2025-02</h2>"
+      -- no February postings, but a balance, whose register must start from before February
+      bodyContains "href=\"register?q=inacct:income:salary+date:2025-02&amp;accum=historical\""
+      -- the search form and the interval links keep the mode; the mode links mark it
+      bodyContains "<input type=\"hidden\" name=\"accum\" value=\"historical\">"
+      bodyContains "/balance?period=monthly%202025-02&amp;accum=historical\""
+      bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/balance?period=2025-02&amp;accum=historical\"")
+
+    yit "heads ending balance columns with their end dates, linking to this report for the period" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "monthly"
+        addGetParam "accum" "historical"
+      statusIs 200
+      bodyContains ">2025-01-31<"
+      bodyContains ">2025-02-28<"
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balance?period=2025-01&amp;accum=historical\" title=\"Show this report for this period\"")
+
+    yit "links a balance change column's heading to this report for the period" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "monthly"
+        addGetParam "q" "date:2025"
+      statusIs 200
+      bodyContains ">2025-01<"
+      -- the column's period replaces the search's date term
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balance?period=2025-01\" title=\"Show this report for this period\"")
+
+    yit "reports an accumulation mode it does not know" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "accum" "bogus"
+      statusIs 200
+      bodyContains "Unknown balance accumulation mode"
+      bodyNotContains "<tfoot>"
+
+    yit "keeps the accumulation mode off the journal page's search form" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "accum" "historical"
+      statusIs 200
+      bodyNotContains "name=\"accum\""
+
+  -- The register: a period's transactions, with a running total from zero,
+  -- or with accum=historical, the account's balance from before the period.
+  runTests "hledger-web register page" [] bj $ do
+
+    -- The register's table has a tbody; the sidebar, which shows the same
+    -- accounts, has none, so these assertions look only at the register.
+    yit "totals the period from zero by default" $ do
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:bank:checking date:2025-02"
+      statusIs 200
+      bodyContains ">Period Total</a>"
+      htmlAnyContain "#main-content tbody td.amount" "-10"
+      bodyNotContains ">90<"
+      bodyNotContains "Balance brought forward"
+      bodyNotContains "name=\"accum\""
+      -- the balance column's heading switches to historical mode
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/register?q=inacct%3Aassets%3Abank%3Achecking%20date%3A2025-02&amp;accum=historical\" title=\"Show the running balance including everything before this period\">Period Total</a>")
+
+    yit "starts from the balance brought forward with accum=historical" $ do
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:bank:checking date:2025-02"
+        addGetParam "accum" "historical"
+      statusIs 200
+      bodyContains ">Historical Total</a>"
+      htmlAnyContain "#main-content tbody td.amount" "90"
+      -- the oldest row is the balance brought forward, linking to the transactions before the period
+      htmlAnyContain "#main-content tbody tr.broughtforward td.amount" "100"
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/register?q=inacct%3Aassets%3Abank%3Achecking%20date%3A..2025-02-01\" title=\"Show the transactions before this period\">")
+      -- the search form, the other-account links, and the chart's base link keep the mode
+      bodyContains "<input type=\"hidden\" name=\"accum\" value=\"historical\">"
+      bodyContains "&amp;accum=historical#"
+      bodyContains ("data-baselink=\"" ++ defbaseurl defhost defport ++ "/register?q=inacct%3Aassets%3Abank%3Achecking&amp;accum=historical\"")
+      -- the heading switches back, dropping the mode
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/register?q=inacct%3Aassets%3Abank%3Achecking%20date%3A2025-02\" title=\"Show the running balance from the start of this period\">Historical Total</a>")
+
+    yit "cuts the balance brought forward off by the kind of date the query has" $ do
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:bank:checking date2:2025-02"
+        addGetParam "accum" "historical"
+      statusIs 200
+      bodyContains "date2%3A..2025-02-01\" title=\"Show the transactions before this period\">"
+
+    yit "names the other accounts of a type: search's transactions" $ do
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "type:X date:2025-02"
+      statusIs 200
+      bodyContains "title=\"expenses:food\">"
+
   -- A commodity directive sets the display precision; the page must apply it,
   -- as the sidebar beside it and the command line report do.
   sj <- fmap (either error' id) . runExceptT . journalFinalise biopts "styled.journal" "" =<<
@@ -592,6 +714,13 @@ hledgerWebTest = do
       get BalanceR
       statusIs 200
       bodyContains "href=\"register?q=inacct:assets:zeroed\""
+
+    yit "hides them when the sidebar does (the e key's cookie)" $ do
+      testSetCookie defaultSetCookie{setCookieName = "hideemptyaccts", setCookieValue = "1"}
+      get BalanceR
+      statusIs 200
+      bodyContains "href=\"register?q=inacct:assets:kept\""
+      bodyNotContains "href=\"register?q=inacct:assets:zeroed\""
 
   runTests "hledger-web with -E" [("empty","")] ej $ do
 
