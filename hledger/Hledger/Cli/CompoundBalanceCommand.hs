@@ -17,7 +17,6 @@ module Hledger.Cli.CompoundBalanceCommand (
 import Control.Monad (guard, unless, void)
 import Data.Bifunctor (second)
 import Data.Foldable (traverse_)
-import Data.Function ((&))
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Safe (atMay)
@@ -38,6 +37,7 @@ import Text.Tabular.AsciiWide as Tabular hiding (render)
 
 import Hledger.Utils.I18n qualified as I18n
 import Hledger
+import Hledger.Cli.Anchor (LinkOpts(..), headerDateSpanCell)
 import Hledger.Cli.Commands.Balance
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils (unsupportedOutputFormatError, writeOutputLazyText, warnIfLargeMultiPeriodReport)
@@ -215,13 +215,13 @@ compoundBalanceCommand CompoundBalanceCommandSpec{..} opts@CliOpts{reportspec_=r
     -- render appropriately
     render = case outputFormatFromOpts opts of
       "txt"  -> compoundBalanceReportAsText ropts'
-      "csv"  -> printCSV . compoundBalanceReportAsCsv ropts'
-      "tsv"  -> printTSV . compoundBalanceReportAsCsv ropts'
-      "html" -> (<>"\n") . htmlAsLazyText . compoundBalanceReportAsHtml ropts'
+      "csv"  -> printCSV . compoundBalanceReportAsCsv ropts' cbcqueries
+      "tsv"  -> printTSV . compoundBalanceReportAsCsv ropts' cbcqueries
+      "html" -> (<>"\n") . htmlAsLazyText . compoundBalanceReportAsHtml ropts' cbcqueries
       "fods" -> printFods IO.localeEncoding .
                 fmap (second NonEmpty.toList) . uncurry Map.singleton .
                 compoundBalanceReportAsSpreadsheet
-                    oneLineNoCostFmt "Account" (Just "") ropts'
+                    oneLineNoCostFmt "Account" (Just "") ropts' cbcqueries
       "json" -> toJsonText
       x      -> error' $ unsupportedOutputFormatError x
 
@@ -339,12 +339,13 @@ compoundBalanceReportAsText ropts (CompoundPeriodicReport title _colspans subrep
 -- Subreports' CSV is concatenated, with the headings rows replaced by a
 -- subreport title row, and an overall title row, one headings row, and an
 -- optional overall totals row is added.
-compoundBalanceReportAsCsv :: ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount -> CSV
-compoundBalanceReportAsCsv ropts cbr =
+compoundBalanceReportAsCsv ::
+  ReportOpts -> [CBCSubreportSpec DisplayName] -> CompoundPeriodicReport DisplayName MixedAmount -> CSV
+compoundBalanceReportAsCsv ropts specs cbr =
     let spreadsheet =
             snd $ snd $
             compoundBalanceReportAsSpreadsheet
-                machineFmt "Account" Nothing ropts cbr
+                machineFmt "Account" Nothing ropts specs cbr
         title = cbrTitle cbr
         titleRows | T.null title = []
                   | otherwise =
@@ -354,11 +355,12 @@ compoundBalanceReportAsCsv ropts cbr =
         titleRows ++ NonEmpty.toList spreadsheet
 
 -- | Render a compound balance report as HTML.
-compoundBalanceReportAsHtml :: ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount -> Html
-compoundBalanceReportAsHtml ropts cbr =
+compoundBalanceReportAsHtml ::
+  ReportOpts -> [CBCSubreportSpec DisplayName] -> CompoundPeriodicReport DisplayName MixedAmount -> Html
+compoundBalanceReportAsHtml ropts specs cbr =
   let (title, (_fixed, cells)) =
           compoundBalanceReportAsSpreadsheet
-              oneLineNoCostFmt "" (Just nbsp) ropts cbr
+              oneLineNoCostFmt "" (Just nbsp) ropts specs cbr
   in do
     -- the builtin styles, then the optional user stylesheet so it can override them
     H.style $ preEscapedToHtml $ stylesheet $
@@ -373,12 +375,15 @@ compoundBalanceReportAsHtml ropts cbr =
     -- Do not use `styledTableHtml` here since that leads to nested `<table>`s.
     H.table $ nl <> (traverse_ formatRow $ fmap (map (fmap toHtml)) cells)
 
--- | Render a compound balance report as Spreadsheet.
+-- | Render a compound balance report as Spreadsheet. The subreport specs
+-- it was made from say how each section's figures link: the section's
+-- account types restrict its totals' registers, and a section shown with
+-- normally negative accounts says so in its links' titles.
 compoundBalanceReportAsSpreadsheet ::
   AmountFormat -> T.Text -> Maybe T.Text ->
-  ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount ->
+  ReportOpts -> [CBCSubreportSpec DisplayName] -> CompoundPeriodicReport DisplayName MixedAmount ->
   (T.Text, ((Int, Int), NonEmpty [Spr.Cell Spr.NumLines T.Text]))
-compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts cbr =
+compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts specs cbr =
   let
     CompoundPeriodicReport title colspans subreports totalrow = cbr
     leadingHeaders =
@@ -387,17 +392,22 @@ compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts cbr =
           LayoutTidy -> map Spr.headerCell tidyColumnLabels
           LayoutBare -> [Spr.headerCell "Commodity"]
           _ -> []
-    dataHeaders =
+    -- A period heading links to the register for that period; its text
+    -- is the period's end date in a historical report.
+    dataHeaderCells =
       (guard (layout_ ropts /= LayoutTidy) >>) $
-      map
-        -- column headings stay English in these formats, month names included
-        (reportPeriodName ropts{translations_ = I18n.noTranslations} colspans)
-        (if not (summary_only_ ropts) then colspans else []) ++
-      (guard (multiBalanceHasTotalsColumn ropts) >> ["Total"]) ++
-      (guard (average_ ropts) >> ["Average"])
+      [ (headerDateSpanCell (date2_ ropts) (period_titles_ ropts) (balance_base_url_ ropts) (querystring_ ropts) spn) {
+          Spr.cellBorder = Spr.noBorder,
+          -- column headings stay English in these formats, month names included
+          Spr.cellContent = reportPeriodName ropts{translations_ = I18n.noTranslations} colspans spn
+        }
+      | not (summary_only_ ropts), spn <- colspans ] ++
+      (guard (multiBalanceHasTotalsColumn ropts) >> [Spr.headerCell "Total"]) ++
+      (guard (average_ ropts) >> [Spr.headerCell "Average"])
+    dataHeaders = map Spr.cellContent dataHeaderCells
     headerrow =
       leadingHeaders ++
-      concatMap (Spr.horizontalSpan subColumns . Spr.headerCell) dataHeaders
+      concatMap (Spr.horizontalSpan subColumns) dataHeaderCells
 
     blankrow =
       fmap (Spr.horizontalSpan headerrow . Spr.defaultCell) maybeBlank
@@ -407,14 +417,37 @@ compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts cbr =
             _ -> [()]
     allCommodities = allCommoditiesFromSubreports subreports
 
+    -- The account type codes a section is selected by, which its totals'
+    -- registers need; a section not selected by type gets no such links.
+    typeCodes q = case q of
+      Type ts -> Just $ T.concat $ map (T.pack . show) ts
+      _       -> Nothing
+    typeTerm = fmap ("type:" <>) . typeCodes
+    -- Is a section shown with its figures negated, as normally negative
+    -- accounts are ?
+    negated spec = normalbalance_ (cbcsubreportoptions spec ropts) == Just NormallyNegative
+    unlinked = map (map (\c -> c {Spr.cellAnchor = mempty, Spr.cellTitle = mempty}))
+    linkedWhen mterm rows = maybe (unlinked rows) (const rows) mterm
+
     -- Make rows for a subreport: its title row, not the headings row,
     -- the data rows, any totals row, and a blank row for whitespace.
+    -- The section is rendered with its own report options, so that its
+    -- links say when its figures are negated, and its totals link to the
+    -- registers of its account types.
     subreportrows ::
-      (T.Text, MultiBalanceReport, Bool) -> [[Spr.Cell Spr.NumLines T.Text]]
-    subreportrows (subreporttitle, mbr, _increasestotal) =
+      (CBCSubreportSpec DisplayName, (T.Text, MultiBalanceReport, Bool)) -> [[Spr.Cell Spr.NumLines T.Text]]
+    subreportrows (spec, (subreporttitle, mbr, _increasestotal)) =
       let
-        (_, bodyrows, mtotalsrows) =
-          balanceSubReportAsSpreadsheetParts fmt ropts allCommodities mbr
+        sropts = cbcsubreportoptions spec ropts
+        (_, bodyrows, _) =
+          balanceSubReportAsSpreadsheetParts fmt sropts{no_total_ = True} allCommodities mbr
+        sectionterm = typeTerm $ cbcsubreportquery spec
+        mtotalsrows
+          | no_total_ ropts = []
+          | otherwise =
+              linkedWhen sectionterm $
+              multiBalanceTotalsRows fmt sropts (reportLinkOpts sropts (prDates mbr)) (maybeToList sectionterm)
+                  allCommodities (prDates mbr) totalRowHeadingSpreadsheet (prTotals mbr)
         accountCell =
             (Spr.defaultCell subreporttitle) {
                 Spr.cellStyle = Spr.Body Spr.Total,
@@ -434,21 +467,22 @@ compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts cbr =
         mtotalsrows ++
         maybeToList blankrow
 
+    -- The net total's register is that of all the sections' account
+    -- types. It shows the net with the opposite sign when a section's
+    -- negation is not undone by subtracting it, as an income statement's
+    -- revenues are added negated.
+    netterm = fmap (("type:" <>) . T.concat) $ traverse (typeCodes . cbcsubreportquery) specs
+    netnegated = any (\spec -> negated spec /= not (cbcsubreportincreasestotal spec)) specs
     totalrows =
       if no_total_ ropts || length subreports == 1 then []
       else
-        multiBalanceRowAsCellBuilders fmt ropts colspans allCommodities
-            Total (simpleDateSpanCell $ period_titles_ ropts) totalrow
-                             -- make a table of rendered lines of the report totals row
-        & map (map (fmap wbToText))
-        & Spr.addRowSpanHeader
-            ((Spr.defaultCell "Net:") {Spr.cellClass = accountClass})
-                             -- insert a headings column, with Net: on the first line only
-        & addTotalBorders    -- marking the first row for special styling
+        linkedWhen netterm $
+        multiBalanceTotalsRows fmt ropts (reportLinkOpts ropts colspans){loNegated = netnegated}
+            (maybeToList netterm) allCommodities colspans "Net:" totalrow
 
   in  (title,
         ((1, multiBalanceReportNumHeaderColumns $ layout_ ropts),
-            headerrow :| concatMap subreportrows subreports ++ totalrows))
+            headerrow :| concatMap subreportrows (zip specs subreports) ++ totalrows))
 
 -- | All commodities appearing in any of these subreports, sorted.
 -- Used as the commodity column order for LayoutBareWide across the whole

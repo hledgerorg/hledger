@@ -355,3 +355,61 @@ Income Statement 2025-01-01
 ------------++------------
  expenses:y ||          0 
  expenses:x ||          1 
+
+# ** 12. With --base-url, a revenues figure says the register shows it
+# with the opposite sign, and a revenues total links to the revenue
+# accounts' register.
+<
+2025-01-10 salary
+  assets:bank  100
+  income:salary
+
+2025-01-25 loan
+  assets:bank  50
+  liabilities:loan
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f - is -M -O html --base-url ''
+> /<a href="register\?q=type:R\+date:2025-01" title="Show the transactions that make up this total, which the register shows with the opposite sign">/
+>= 0
+
+# ** 13. An expenses total links to the expense accounts' register, with
+# no note: it shows as the register does.
+<
+2025-01-10 salary
+  assets:bank  100
+  income:salary
+
+2025-01-25 loan
+  assets:bank  50
+  liabilities:loan
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f - is -M -O html --base-url ''
+> /<a href="register\?q=type:X\+date:2025-02" title="Show the transactions that make up this total">/
+>= 0
+
+# ** 14. The net total is revenues minus expenses, the opposite of the
+# register's sum of both.
+<
+2025-01-10 salary
+  assets:bank  100
+  income:salary
+
+2025-01-25 loan
+  assets:bank  50
+  liabilities:loan
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f - is -M -O html --base-url ''
+> /<a href="register\?q=type:RX\+date:2025-01" title="Show the transactions that make up this total, which the register shows with the opposite sign">/
+>= 0
