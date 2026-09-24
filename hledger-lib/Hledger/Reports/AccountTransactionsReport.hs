@@ -25,9 +25,10 @@ module Hledger.Reports.AccountTransactionsReport (
 )
 where
 
+import Data.Foldable (asum)
 import Data.List (mapAccumR, nub, partition, sortBy)
 import Data.List.Extra (nubSort)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Ord (Down(..), comparing)
 import Data.Text qualified as T
 import Data.Time.Calendar (Day, fromGregorian)
@@ -167,11 +168,15 @@ accountTransactionsReportWithStart rspec@ReportSpec{_rsReportOpts=ropts} j thisa
         numpriorts = length priorpss
         priorsum = sumPostings $ concat priorpss
         priorq = dbg5 "priorq" $ And [thisacctq, tostartdateq, datelessreportq]
-        tostartdateq =
-          case mstartdate of
-            Just _  -> Date (DateSpan Nothing (Exact <$> mstartdate))
-            Nothing -> None  -- no start date specified, there are no prior postings
-        mstartdate = queryStartDate (date2_ ropts) reportq
+        -- The postings before the report start, by whichever kind of date
+        -- the query's start date is: the report's kind if it has one,
+        -- else the other, so that a date2: term selects the prior postings
+        -- by secondary date as it selects the report's postings.
+        -- With no start date, there are no prior postings.
+        tostartdateq = fromMaybe None $ asum [cutoff (date2_ ropts), cutoff (not $ date2_ ropts)]
+        cutoff secondary =
+          (if secondary then Date2 else Date) . DateSpan Nothing . Just . Exact
+            <$> queryStartDate secondary reportq
         datelessreportq = filterQuery (not . queryIsDateOrDate2) reportq
 
     items =
@@ -318,6 +323,10 @@ tests_AccountTransactionsReport = testGroup "AccountTransactionsReport" [
     -- otherwise from zero
     showMixedAmount start @?= "0"
     map (showMixedAmount . triBalance) items @?= ["0", "$1.00", "0", "$1.00"]
+    -- a date2: start date counts too, by secondary date (here the same days)
+    let fromJune2 = Date2 $ DateSpan (Just $ Exact $ fromGregorian 2008 6 1) Nothing
+        (histstart2, _) = accountTransactionsReportWithStart (rspec Historical){_rsQuery=fromJune2} samplejournal checking
+    showMixedAmount histstart2 @?= "$1.00"
 
  ,testCase "transactionRegisterDateExtra" $ do
     let t = nulltransaction{tdate=fromGregorian 2008 1 1, tpostings=[
