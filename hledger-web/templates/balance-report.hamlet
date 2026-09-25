@@ -4,6 +4,13 @@
        title=#{tr trs "Show general journal entries, most recent first"}>
       #{tr trs "Journal"}
   <td .top>
+$# A report's label spans both columns: it is longer than an account name,
+$# and nothing goes beside it.
+$forall (route, label, title) <- reports
+  <tr :here == route:.inacct>
+    <td .top .acct colspan=2>
+      <a href=@?{(route, reportParams)} :here == route:.inacct title=#{tr trs title}>
+        #{tr trs label}
 $forall (acct, adisplay, aindent, abal) <- items
   <tr
      :matchesAcctSelector acct:.inacct
@@ -22,7 +29,7 @@ $forall (acct, adisplay, aindent, abal) <- items
         ^{mixedAmountAsHtml abal}
       $else
         <a href="@?{(registerR, [("q", replaceInacct qparam $ accountQuery acct)])}"
-           title="Show the transactions that make up this balance">
+           title=#{tr trs "Show the transactions that make up this balance"}>
           ^{mixedAmountAsHtml abal}
 <tr .total>
   <td>
@@ -30,5 +37,5 @@ $forall (acct, adisplay, aindent, abal) <- items
     $if mixedAmountLooksZero total
       ^{mixedAmountAsHtml total}
     $else
-      <a href="@?{totallink}" title="Show the transactions that make up this total">
+      <a href="@?{totallink}" title=#{tr trs "Show the transactions that make up this total"}>
         ^{mixedAmountAsHtml total}

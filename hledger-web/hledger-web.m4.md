@@ -143,16 +143,19 @@ If this is not working see [Install > Shell completions](install.html#shell-comp
 
 hledger-web's main views are:
 
-- the **journal view** (the home page), showing journal entries, newest first, with their postings; and
+- the **journal view** (the home page), showing journal entries, newest first, with their postings;
 - the **register view**, showing the transactions affecting one account (and its subaccounts),
-  with a running balance and a balance chart.
+  with a running balance and a balance chart; and
+- the **report views**, described [below](#reports): the balance sheet, income statement,
+  and cashflow statement, linked from the sidebar, and the balance sheet with equity and
+  the general balance report, linked from those.
 
 The **sidebar** lists accounts and their balances (parent balances include subaccounts,
 and multiple commodities are shown one above the other).
 Click an account name to see its register, or an amount to see the transactions it is
 made of. In the journal and register views, click a date to see that day's journal entries.
 
-The **search form** filters both views with hledger's [query](hledger.md#queries) syntax,
+The **search form** filters every view with hledger's [query](hledger.md#queries) syntax,
 eg `expenses date:thismonth`; the help dialog summarises the query types.
 The current view and search are reflected in the URL, so views can be bookmarked and shared.
 
@@ -221,9 +224,8 @@ reports of the command line's
 [cashflow](hledger.md#cashflow) commands, at `/balancesheet`,
 `/balancesheetequity`, `/incomestatement`, and `/cashflow`, and the
 general [balance report](hledger.md#balance) at `/balance`.
-The pages link to one another, but no other page links to them yet:
-they are reachable by entering a url, until there is a navigation
-scheme to hold them.
+The sidebar links to the balance sheet, income statement, and cashflow
+statement, and each report page links to all five.
 
 A `period` parameter, like the command line's `-p/--period`, selects
 the interval and/or the period, eg `/balancesheet?period=monthly` or

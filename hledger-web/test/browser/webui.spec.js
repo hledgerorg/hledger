@@ -276,4 +276,21 @@ test.describe('sidebar', () => {
     expect(pageErrors).toEqual([]);
   });
 
+  test('links to the financial statements, marking the one shown', async ({ page }) => {
+    // at a laptop width the sidebar is narrow; the report labels must still fit
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await page.goto('/journal');
+    const clipped = await page.locator('#sidebar-menu td.top').evaluateAll(
+      tds => tds.filter(td => td.scrollWidth > td.clientWidth).map(td => td.textContent.trim()));
+    expect(clipped).toEqual([]);
+    await page.locator('#sidebar-menu a', { hasText: 'Income statement' }).click();
+    await expect(page).toHaveURL(/\/incomestatement$/);
+    await expect(page.locator('#main-content h2')).toContainText('Income Statement');
+    await expect(page.locator('#sidebar-menu tr.inacct a')).toHaveText('Income statement');
+    // from a report, the other reports are one click away in the Report row
+    await page.locator('#main-content .report-links a', { hasText: 'Balance sheet with equity' }).click();
+    await expect(page).toHaveURL(/\/balancesheetequity$/);
+    expect(pageErrors).toEqual([]);
+  });
+
 });

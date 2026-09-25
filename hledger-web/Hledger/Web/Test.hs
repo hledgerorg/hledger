@@ -883,6 +883,41 @@ hledgerWebTest = do
       bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/balance\" title=\"Show the balance report: any accounts, by period\"")
       bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/incomestatement\" title=\"Show revenues and expenses\"")
 
+    yit "lists the balance sheet, income statement, and cashflow statement in the sidebar, marking the one shown" $ do
+      get BalancesheetR
+      statusIs 200
+      bodyContains ("<tr class=\"inacct\"><td class=\"top acct\" colspan=\"2\"><a class=\"inacct\" href=\"" ++ defbaseurl defhost defport ++ "/balancesheet\" title=\"Show assets, liabilities, and net worth\">Balance sheet</a>")
+      bodyContains ("<tr><td class=\"top acct\" colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/incomestatement\" title=\"Show revenues and expenses\">Income statement</a>")
+      bodyContains ("<a href=\"" ++ defbaseurl defhost defport ++ "/cashflow\" title=\"Show changes in liquid assets\">Cashflow statement</a>")
+      -- the other two reports are in the Report row, not the sidebar
+      bodyNotContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/balancesheetequity\"")
+
+    yit "gives the sidebar's report links the search minus its account term, and the period" $ do
+      request $ do
+        setMethod "GET"
+        setUrl IncomestatementR
+        addGetParam "period" "quarterly"
+        addGetParam "accum" "historical"
+        addGetParam "q" "inacct:assets:bank:checking expenses"
+      statusIs 200
+      -- the period is kept, the mode is not: it belongs to this report
+      bodyContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?period=quarterly&amp;q=expenses\" title=\"Show assets, liabilities, and net worth\">")
+      bodyNotContains "/balancesheet?period=quarterly&amp;accum"
+
+    yit "links the sidebar's reports from the journal and register too" $ do
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:bank:checking date:2025"
+      statusIs 200
+      bodyContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?q=date%3A2025\" title=\"Show assets, liabilities, and net worth\">")
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "q" "date:2025"
+      statusIs 200
+      bodyContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/incomestatement?q=date%3A2025\" title=\"Show revenues and expenses\">")
+
     yit "escapes account names and search terms in the statements" $ do
       get IncomestatementR
       statusIs 200

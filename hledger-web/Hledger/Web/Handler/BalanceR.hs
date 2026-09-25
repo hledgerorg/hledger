@@ -82,7 +82,7 @@ getBalanceR = do
                 in ( reportTitle ropts $ trimColon $ Balance.multiBalanceReportTitle ropts mbr
                    , map (relinkDateHeaders trs (columnHeading ropts colspans) headinglink colspans) h, b, t)
         Yesod.toWidget $ H.h2 $ H.toHtml $ withFilter title
-        Yesod.toWidget $ reportLinks trs BalanceR menuParams [(r, l, t) | (r, l, t, _) <- reportMenu]
+        Yesod.toWidget $ reportLinks trs BalanceR menuParams $ reportLinkItems reportMenu
         Yesod.toWidget $ accumulationLinks trs BalanceR (periodParams ++ qParams) accum
         Yesod.toWidget $ intervalLinks trs BalanceR accumParams qparam rpSpan rpInterval
         Yesod.toWidget $ reportTable header [(Nothing, body, [])] totals

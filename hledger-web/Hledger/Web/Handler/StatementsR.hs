@@ -57,7 +57,7 @@ statementPage here tabtitle spec = do
   let withFilter t = if q /= Any then trf trs "{title}, filtered" [("title", t)] else t
       rspecOrig = reportspec_ $ cliopts_ opts
       roptsOrig = _rsReportOpts rspecOrig
-      menu = [(r, l, t) | (r, l, t, _) <- reportMenu]
+      menu = reportLinkItems reportMenu
 
   defaultLayout $ do
     setTitleI (HMsg tabtitle)

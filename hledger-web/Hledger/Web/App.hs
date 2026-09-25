@@ -56,7 +56,7 @@ import Hledger.Cli.CompoundBalanceCommand (CompoundBalanceCommandSpec(..))
 import Hledger.Web.Settings (Extra(..), widgetFile)
 import Hledger.Web.Settings.StaticFiles
 import Hledger.Web.WebOptions
-import Hledger.Web.Widget.Common (balanceReportAsHtml)
+import Hledger.Web.Widget.Common (balanceReportAsHtml, removeInacct)
 import Data.List (isPrefixOf)
 
 -- | The site argument for your application. This can be a good place to
@@ -181,8 +181,15 @@ instance Yesod App where
 
     hideEmptyAccts <- hideEmptyAccounts
 
-    let accounts =
-          balanceReportAsHtml (JournalR, RegisterR) here hideEmptyAccts trs j qparam qopts $
+    -- The sidebar's report links keep the search, minus any account term,
+    -- which the reports ignore, and a report page's period, as the report
+    -- pages' own Report row does.
+    let sidebarReports = reportLinkItems $ filter rmInSidebar reportMenu
+        sidebarParams =
+          [p | p@("period", _) <- keptParams] ++
+          [("q", qt) | let qt = T.unwords $ removeInacct qparam, not (T.null qt)]
+        accounts =
+          balanceReportAsHtml (JournalR, RegisterR) here sidebarReports sidebarParams hideEmptyAccts trs j qparam qopts $
           styleAmounts (journalCommodityStylesWith HardRounding j) $
           balanceReport rspec' j
 
@@ -361,28 +368,43 @@ checkServerSideUiEnabled = do
     --  permissionDenied "server-side UI is disabled due to --serve-api"
     sendResponseStatus status403 ("server-side UI is disabled due to --serve-api" :: Text)
 
--- | The report pages, in menu order, each with its link's label and
--- title, and its default accumulation mode: the statements' commands'
--- own, and balance changes for the balance report.
-reportMenu :: [(Route App, Text, Text, BalanceAccumulation)]
+-- | A report page as the menus show it.
+data ReportMenuItem = ReportMenuItem {
+    rmRoute     :: Route App,
+    rmLabel     :: Text,
+    rmTitle     :: Text,
+    rmAccum     :: BalanceAccumulation,
+      -- ^ the page's default accumulation mode: its command's own for a
+      --   statement, balance changes for the balance report
+    rmInSidebar :: Bool
+      -- ^ has a row in the sidebar (the others are one click away, in the
+      --   report pages' own Report row)
+}
+
+-- | The report pages, in menu order.
+reportMenu :: [ReportMenuItem]
 reportMenu =
-  -- TRANSLATORS: the report links above each report page: each link's text, and its tooltip.
-  [ (BalancesheetR,       i18n "Balance sheet",             i18n "Show assets, liabilities, and net worth",          cbcaccum balancesheetSpec)
-  , (BalancesheetequityR, i18n "Balance sheet with equity", i18n "Show assets, liabilities, and equity",             cbcaccum balancesheetequitySpec)
-  , (IncomestatementR,    i18n "Income statement",          i18n "Show revenues and expenses",                       cbcaccum incomestatementSpec)
-  , (CashflowR,           i18n "Cashflow statement",        i18n "Show changes in liquid assets",                    cbcaccum cashflowSpec)
-  , (BalanceR,            i18n "Balance report",            i18n "Show the balance report: any accounts, by period", PerPeriod)
+  -- TRANSLATORS: the report links above each report page and in the sidebar: each link's text, and its tooltip.
+  [ ReportMenuItem BalancesheetR       (i18n "Balance sheet")             (i18n "Show assets, liabilities, and net worth")          (cbcaccum balancesheetSpec)       True
+  , ReportMenuItem BalancesheetequityR (i18n "Balance sheet with equity") (i18n "Show assets, liabilities, and equity")             (cbcaccum balancesheetequitySpec) False
+  , ReportMenuItem IncomestatementR    (i18n "Income statement")          (i18n "Show revenues and expenses")                       (cbcaccum incomestatementSpec)    True
+  , ReportMenuItem CashflowR           (i18n "Cashflow statement")        (i18n "Show changes in liquid assets")                    (cbcaccum cashflowSpec)           True
+  , ReportMenuItem BalanceR            (i18n "Balance report")            (i18n "Show the balance report: any accounts, by period") PerPeriod                         False
   ]
+
+-- | The report pages' routes, labels, and titles, for a row of links.
+reportLinkItems :: [ReportMenuItem] -> [(Route App, Text, Text)]
+reportLinkItems items = [(rmRoute i, rmLabel i, rmTitle i) | i <- items]
 
 -- | The report pages: those that take a period and an accumulation mode.
 reportRoutes :: [Route App]
-reportRoutes = [route | (route, _, _, _) <- reportMenu]
+reportRoutes = map rmRoute reportMenu
 
 -- | The accum parameter value a page's links keep: the mode that is
 -- not the page's default. (The register totals the period by default.)
 keptAccum :: Route App -> Maybe Text
 keptAccum route =
-  case [dflt | (r, _, _, dflt) <- reportMenu, r == route] of
+  case [rmAccum i | i <- reportMenu, rmRoute i == route] of
     [Historical]           -> Just "change"
     [_]                    -> Just "historical"
     _ | route == RegisterR -> Just "historical"

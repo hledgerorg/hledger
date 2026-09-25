@@ -84,9 +84,12 @@ helplink :: Text -> Text -> HtmlUrl r
 helplink topic label _ = H.a ! A.href u ! A.target "hledgerhelp" $ toHtml label
   where u = textValue $ manualurl <> if T.null topic then "" else T.cons '#' topic
 
--- | Render a "BalanceReport" as html.
-balanceReportAsHtml :: Eq r => (r, r) -> r -> Bool -> Translations -> Journal -> Text -> [QueryOpt] -> BalanceReport -> HtmlUrl r
-balanceReportAsHtml (journalR, registerR) here hideEmpty trs j qparam qopts (items, total) =
+-- | Render a "BalanceReport" as the sidebar: the journal and report
+-- links (each report's route, label, and title, with the parameters
+-- their links carry), then the accounts. The current page's row is marked.
+balanceReportAsHtml ::
+  Eq r => (r, r) -> r -> [(r, Text, Text)] -> [(Text, Text)] -> Bool -> Translations -> Journal -> Text -> [QueryOpt] -> BalanceReport -> HtmlUrl r
+balanceReportAsHtml (journalR, registerR) here reports reportParams hideEmpty trs j qparam qopts (items, total) =
   $(hamletFile "templates/balance-report.hamlet")
   where
     l = ledgerFromJournal Any j
