@@ -165,6 +165,7 @@ instance Yesod App where
         ropts' = (_rsReportOpts rspec)
           {accountlistmode_ = ALTree  -- force tree mode for sidebar
           ,empty_           = True    -- show zero items by default
+          ,interval_        = NoInterval  -- one balance per account, over the search's own span
           }
         rspec' = rspec{_rsQuery=q,_rsReportOpts=ropts'}
 

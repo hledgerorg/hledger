@@ -66,6 +66,7 @@ import Yesod.Test
 import Hledger.Web.Application ( makeAppWith )
 import Hledger.Web.WebOptions  -- ( WebOpts(..), defwebopts, prognameandversion )
 import Hledger.Web.Import hiding (get, j)
+import Hledger.Web.Widget.Common (transactionFragment)
 import Hledger.Cli hiding (prognameandversion)
 
 
@@ -624,6 +625,72 @@ hledgerWebTest = do
       statusIs 200
       bodyNotContains "name=\"accum\""
 
+  -- The journal, register, and sidebar link to one another: a date to that
+  -- day's journal entries, an account to its register, an amount to the
+  -- register that derives it, an entry to itself on either page.
+  -- The journal, register, and sidebar link to one another: a date to that
+  -- day's journal entries, an account to its register, an amount to the
+  -- register that derives it, an entry to itself on either page.
+  let base = defbaseurl defhost defport
+      -- an entry's id (transaction-FILE-INDEX), as the pages compute it
+      frag desc = maybe (error' $ "no transaction " ++ desc) (transactionFragment bj) $
+        find ((== T.pack desc) . tdescription) (jtxns bj)
+  runTests "hledger-web journal, register, and sidebar links" [] bj $ do
+
+    yit "links a journal entry's date to that day's entries, and its accounts to their registers at the entry" $ do
+      get JournalR
+      statusIs 200
+      bodyContains ("href=\"" ++ base ++ "/journal?q=date%3A2025-01-05#" ++ frag "pay" ++ "\" title=\"Show the journal entries on this date\">")
+      bodyContains ("href=\"" ++ base ++ "/register?q=inacct%3Aassets%3Abank%3Achecking#" ++ frag "lunch" ++ "\" title=\"assets:bank:checking\">")
+
+    yit "narrows the journal to a day" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "q" "date:2025-02-05"
+      statusIs 200
+      bodyContains ("id=\"" ++ frag "lunch" ++ "\"")
+      bodyNotContains ("id=\"" ++ frag "pay" ++ "\"")
+
+    yit "gives register rows the journal's entry ids, and links dates to the entry on its day" $ do
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:bank:checking"
+      statusIs 200
+      bodyContains ("<tr id=\"" ++ frag "lunch" ++ "\"")
+      bodyContains ("href=\"" ++ base ++ "/journal?q=date%3A2025-02-05#" ++ frag "lunch" ++ "\" title=\"Show this entry and the other journal entries on its date\">")
+      bodyContains ("href=\"" ++ base ++ "/register?q=inacct%3Aexpenses%3Afood#" ++ frag "lunch" ++ "\" title=\"expenses:food\">")
+      -- the chart's points name the entries the same way, and its base link is the register's
+      bodyContains ("&quot;" ++ frag "lunch" ++ "&quot;")
+      bodyContains ("data-baselink=\"" ++ base ++ "/register?q=inacct%3Aassets%3Abank%3Achecking\"")
+
+    yit "replaces the search's date terms in a date link, and keeps its other terms" $ do
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:bank:checking date:2025-02 not:desc:\"x y\""
+      statusIs 200
+      bodyContains ("href=\"" ++ base ++ "/journal?q=date%3A2025-02-05%20%22not%3Adesc%3Ax%20y%22#" ++ frag "lunch" ++ "\"")
+      bodyNotContains "/journal?q=date%3A2025-02%20"
+
+    yit "links the sidebar's amounts where their account names go" $ do
+      get JournalR
+      statusIs 200
+      bodyContains ("<a href=\"" ++ base ++ "/register?q=inacct%3Aassets%3Abank%3Achecking\" title=\"Show the transactions that make up this balance\">")
+      -- an empty search adds no trailing term to the account links
+      bodyNotContains "inacct%3Aassets%20\""
+      -- an unfiltered journal's total is zero, and does not link
+      bodyNotContains "Show the transactions that make up this total"
+
+    yit "links the sidebar's total to the register of the search" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "q" "expenses"
+      statusIs 200
+      bodyContains ("<a href=\"" ++ base ++ "/register?q=expenses\" title=\"Show the transactions that make up this total\">")
+
   -- The register: a period's transactions, with a running total from zero,
   -- or with accum=historical, the account's balance from before the period.
   runTests "hledger-web register page" [] bj $ do
@@ -905,6 +972,9 @@ hledgerWebTest = do
       get BalanceR
       statusIs 200
       bodyContains "href=\"register?q=inacct:assets:zeroed\""
+      -- a zero sidebar amount has an empty register, and no link
+      bodyNotContains "inacct%3Aassets%3Azeroed\" title=\"Show the transactions that make up this balance\""
+      bodyContains "inacct%3Aassets%3Akept\" title=\"Show the transactions that make up this balance\""
 
     yit "hides them when the sidebar does (the e key's cookie)" $ do
       testSetCookie defaultSetCookie{setCookieName = "hideemptyaccts", setCookieValue = "1"}

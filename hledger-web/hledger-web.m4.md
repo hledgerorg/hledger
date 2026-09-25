@@ -149,7 +149,8 @@ hledger-web's main views are:
 
 The **sidebar** lists accounts and their balances (parent balances include subaccounts,
 and multiple commodities are shown one above the other).
-Click an account name to see its register, or a date to see that day's journal entries.
+Click an account name to see its register, or an amount to see the transactions it is
+made of. In the journal and register views, click a date to see that day's journal entries.
 
 The **search form** filters both views with hledger's [query](hledger.md#queries) syntax,
 eg `expenses date:thismonth`; the help dialog summarises the query types.

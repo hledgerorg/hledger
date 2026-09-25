@@ -18,8 +18,17 @@ $forall (acct, adisplay, aindent, abal) <- items
           <a href="@?{(registerR, [("q", replaceInacct qparam $ accountOnlyQuery acct)])}" .only.hidden-sm.hidden-xs
              title=#{tr trs "Show transactions affecting this account but not subaccounts"}>#{tr trs "only"}
     <td .amount>
-      ^{mixedAmountAsHtml abal}
+      $if mixedAmountLooksZero abal
+        ^{mixedAmountAsHtml abal}
+      $else
+        <a href="@?{(registerR, [("q", replaceInacct qparam $ accountQuery acct)])}"
+           title="Show the transactions that make up this balance">
+          ^{mixedAmountAsHtml abal}
 <tr .total>
   <td>
   <td .amount>
-    ^{mixedAmountAsHtml total}
+    $if mixedAmountLooksZero total
+      ^{mixedAmountAsHtml total}
+    $else
+      <a href="@?{totallink}" title="Show the transactions that make up this total">
+        ^{mixedAmountAsHtml total}

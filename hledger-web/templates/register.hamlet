@@ -2,7 +2,7 @@
   #{header}
 
 <div>
-  ^{registerChartHtml qparam accumParams (T.unpack balancelabel) $ accountTransactionsReportByCommodity items}
+  ^{registerChartHtml qparam accumParams transactionFrag (T.unpack balancelabel) $ accountTransactionsReportByCommodity items}
 
 <div.table-responsive>
   <table .table.table-condensed>
@@ -19,15 +19,16 @@
 
     <tbody>
       $forall (torig, tacct, split, _acct, amt, bal) <- items
-        <tr ##{tindex torig} title="#{showTransaction torig}">
+        <tr ##{transactionFrag torig} title="#{showTransaction torig}">
           <td .date nowrap>
-            <a href="@?{(JournalR, [("q", T.unwords $ removeInacct qparam)])}##{transactionFrag torig}">
+            <a href="@?{(JournalR, [("q", journalDayQuery qparam (tdate torig))])}##{transactionFrag torig}"
+               title="Show this entry and the other journal entries on its date">
               #{show (tdate tacct)}
           <td .description>
             #{textElideRight 30 (tdescription tacct)}
           <td .account>
             $forall (Posting { paccount = acc }, (summName,comma)) <- otherTransAccounts torig
-              <a href="@?{acctlink acc}##{tindex torig}" title="#{acc}">
+              <a href="@?{acctlink acc}##{transactionFrag torig}" title="#{acc}">
                 #{summName}</a>#{comma}
           <td .amount>
             $if not split || not (mixedAmountLooksZero amt)

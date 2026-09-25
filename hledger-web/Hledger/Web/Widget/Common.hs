@@ -21,6 +21,7 @@ module Hledger.Web.Widget.Common
   , removeDates
   , removeInacct
   , replaceInacct
+  , journalDayQuery
   ) where
 
 import Control.Monad.Except (ExceptT, mapExceptT)
@@ -28,6 +29,7 @@ import Data.Foldable (find, for_)
 import Data.List (elemIndex)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time.Calendar (Day)
 import System.FilePath (takeFileName)
 import Text.Blaze ((!), textValue)
 import Text.Blaze.Html5 qualified as H
@@ -93,6 +95,8 @@ balanceReportAsHtml (journalR, registerR) here hideEmpty trs j qparam qopts (ite
     isInterestingAccount acct = maybe False isInteresting $ ledgerAccount l acct
       where isInteresting a = not (all (mixedAmountLooksZero . bdexcludingsubs) . pdperiods $ adata a) || any isInteresting (asubs a)
     matchesAcctSelector acct = Just True == ((`matchesAccount` acct) <$> inAccountQuery qopts)
+    -- the register of everything the sidebar's search matches
+    totallink = (registerR, [("q", t) | let t = T.unwords $ removeInacct qparam, not (T.null t)])
 
 -- | A row of links above a report: a label, then each link's label,
 -- title, target, and whether it is the one being shown.
@@ -180,11 +184,22 @@ transactionFragment j Transaction{tindex, tsourcepos} =
 
 -- | The search's terms without its date terms, each quoted if it needs to be.
 removeDates :: Text -> [Text]
-removeDates = map quoteIfSpaced . Anchor.removeDates . Query.words'' queryprefixes
+removeDates = map quoteIfSpaced . Anchor.removeDates . searchTerms
 
 -- | The search's terms without those naming an account, each quoted if it needs to be.
 removeInacct :: Text -> [Text]
-removeInacct = map quoteIfSpaced . Anchor.removeInacct . Query.words'' queryprefixes
+removeInacct = map quoteIfSpaced . Anchor.removeInacct . searchTerms
+
+-- | The search's terms; none for an empty search.
+searchTerms :: Text -> [Text]
+searchTerms = filter (not . T.null) . Query.words'' queryprefixes
+
+-- | The search for the journal page narrowed to a day: the day's date
+-- term in place of any date terms, and without any account term, which
+-- the journal page does not use.
+journalDayQuery :: Text -> Day -> Text
+journalDayQuery qparam d =
+  T.unwords $ ("date:" <> showDate d) : removeDates (T.unwords $ removeInacct qparam)
 
 replaceInacct :: Text -> Text -> Text
 replaceInacct q acct = T.unwords $ acct : removeInacct q

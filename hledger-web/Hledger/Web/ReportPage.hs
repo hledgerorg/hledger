@@ -88,7 +88,7 @@ reportParams today rspecOrig qparam q qopts hideEmpty mperiod maccum = do
           -- zero items, which are shown by default, as the sidebar does.
           empty_ = not hideEmpty,
           balance_base_url_ = Just "",
-          querystring_ = Query.words'' queryprefixes qparam ++ dateTerm (date2_ roptsOrig) rpSpan,
+          querystring_ = filter (not . T.null) (Query.words'' queryprefixes qparam) ++ dateTerm (date2_ roptsOrig) rpSpan,
           interval_ = rpInterval
         }
       -- cf queryFromFlags

@@ -365,6 +365,21 @@ ul {
     color: #a94442;
 }
 
+/* A figure that links is not coloured as a link: the figure's own colour
+   (red for a negative amount, from the span inside) shows through. In the
+   sidebar it is not padded like an account link, and underlines on hover,
+   as the report pages' figures do. */
+.balancereport td.amount a,
+#sidebar-menu .main-menu .amount a {
+    color: inherit;
+}
+#sidebar-menu .main-menu .amount a {
+    padding: 0;
+}
+#sidebar-menu .main-menu .amount a:hover {
+    text-decoration: underline;
+}
+
 .col-any-0 {
     width:0 !important;
     height:0 !important;

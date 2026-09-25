@@ -17,7 +17,9 @@ $if elem AddPermission perms
     $forall torig <- items
       <tr .title ##{transactionFrag torig} title="#{showTransaction torig}">
         <td .date nowrap>
-          #{show (tdate torig)}
+          <a href="@?{(JournalR, [("q", journalDayQuery qparam (tdate torig))])}##{transactionFrag torig}"
+             title="Show the journal entries on this date">
+            #{show (tdate torig)}
         <td colspan=2>
           #{textElideRight 60 (tdescription torig)}
         <td .amount>
@@ -28,7 +30,7 @@ $if elem AddPermission perms
           <td>
           <td>
             &nbsp;
-            <a href="@?{acctlink acc}##{tindex torig}" title="#{acc}">
+            <a href="@?{acctlink acc}##{transactionFrag torig}" title="#{acc}">
               #{elideAccountName 40 acc}
           <td .amount>
             ^{mixedAmountAsHtml amt}

@@ -31,10 +31,10 @@ test.describe('page initialization', () => {
     expect(pageErrors).toEqual([]);
   });
 
-  // Register rows use bare-numeric ids (id="3"), and '#3' is not a valid CSS
-  // selector, so any code passing location.hash to querySelector must guard
-  // it. A failure here leaves the page half-initialized: no date picker, no
-  // keyboard shortcuts, no sidebar handlers.
+  // A url hash can be anything, eg an old bookmark's numeric row id, and
+  // '#3' is not a valid CSS selector, so any code passing location.hash to
+  // querySelector must guard it. A failure here leaves the page
+  // half-initialized: no date picker, no keyboard shortcuts, no sidebar handlers.
   test('register url with a numeric transaction hash initializes fully', async ({ page }) => {
     await page.goto('/register?q=inacct:assets:bank:checking#3');
     expect(pageErrors).toEqual([]);
