@@ -98,7 +98,10 @@ balanceReportAsHtml (journalR, registerR) here reports reportParams hideEmpty tr
     isInterestingAccount acct = maybe False isInteresting $ ledgerAccount l acct
       where isInteresting a = not (all (mixedAmountLooksZero . bdexcludingsubs) . pdperiods $ adata a) || any isInteresting (asubs a)
     matchesAcctSelector acct = Just True == ((`matchesAccount` acct) <$> inAccountQuery qopts)
-    -- the register of everything the sidebar's search matches
+    -- The journal, and the register of everything, for the sidebar's
+    -- search minus any account term; the search form's clear button is
+    -- the way out of a search.
+    journallink = (journalR, [("q", t) | let t = T.unwords $ removeInacct qparam, not (T.null t)])
     totallink = (registerR, [("q", t) | let t = T.unwords $ removeInacct qparam, not (T.null t)])
 
 -- | A row of links above a report: a label, then each link's label,

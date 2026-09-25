@@ -672,7 +672,8 @@ hledgerWebTest = do
         addGetParam "q" "inacct:assets:bank:checking date:2025-02 not:desc:\"x y\""
       statusIs 200
       bodyContains ("href=\"" ++ base ++ "/journal?q=date%3A2025-02-05%20%22not%3Adesc%3Ax%20y%22#" ++ frag "lunch" ++ "\"")
-      bodyNotContains "/journal?q=date%3A2025-02%20"
+      -- (the sidebar's Journal link keeps the search as typed; the date links are the ones with a fragment)
+      bodyNotContains "/journal?q=date%3A2025-02%20%22not%3Adesc%3Ax%20y%22#"
 
     yit "links the sidebar's amounts where their account names go" $ do
       get JournalR
@@ -682,6 +683,17 @@ hledgerWebTest = do
       bodyNotContains "inacct%3Aassets%20\""
       -- an unfiltered journal's total is zero, and does not link
       bodyNotContains "Show the transactions that make up this total"
+
+    yit "keeps the search, minus its account term, on the sidebar's Journal link" $ do
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:bank:checking date:2025"
+      statusIs 200
+      bodyContains ("<a href=\"" ++ base ++ "/journal?q=date%3A2025\" title=\"Show general journal entries, most recent first\">")
+      get JournalR
+      statusIs 200
+      bodyContains ("<a class=\"inacct\" href=\"" ++ base ++ "/journal\" title=\"Show general journal entries, most recent first\">")
 
     yit "links the sidebar's total to the register of the search" $ do
       request $ do

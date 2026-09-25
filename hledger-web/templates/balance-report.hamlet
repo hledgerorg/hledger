@@ -1,6 +1,6 @@
 <tr :here == journalR:.inacct>
   <td .top .acct>
-    <a href=@{journalR} :here == journalR:.inacct
+    <a href=@?{journallink} :here == journalR:.inacct
        title=#{tr trs "Show general journal entries, most recent first"}>
       #{tr trs "Journal"}
   <td .top>
