@@ -998,6 +998,8 @@ The HTML and [FODS] output formats can generate hyperlinks to `hledger-web` regi
 an account name links to the account's transactions, a period heading to the period's transactions,
 and, in the default layout, a figure to the transactions it is made of, in a register whose final
 balance is that figure (a historical balance report asks the register for its historical mode).
+The two can differ when a transaction's postings have dates of their own, since the report counts
+such a posting in its own period while the register shows its whole transaction.
 Each link says where it leads in its title, which browsers show on hover.
 E.g. if your `hledger-web` server is reachable at `http://localhost:5000`
 then you might run the `balance` command with the extra option `--base-url=http://localhost:5000`.
