@@ -45,6 +45,7 @@ module Hledger.Data.Dates (
   showDateSpanDebug,
   showDateSpanAbbrev,
   showDateSpanFull,
+  showDateSpanForQuery,
   elapsedSeconds,
   prevday,
   periodexprp,
@@ -164,6 +165,38 @@ showDateSpanFull (DateSpan mb me) =
   where
     start = maybe "" (formatTime defaultTimeLocale "%F" . fromEFDay) mb
     end   = maybe "" (formatTime defaultTimeLocale "%F" . addDays (-1) . fromEFDay) me
+
+-- | Render a datespan as a period expression that parses back to the
+-- same span, for a date: query term or a period parameter. Standard
+-- calendar periods take their compact form (2025, 2025Q1, 2025-01,
+-- 2025-01-15); any other span is written out with its exclusive end
+-- date, which is how the period expression syntax reads one
+-- (2025-01-13..2025-01-20); open ends stay open (2025-01-01..,
+-- ..2025-02-01); the unbounded span is "".
+--
+-- 'showDateSpan' is for display: it prints inclusive end dates and ISO
+-- week names, which a query would read as a day short or not at all.
+--
+-- >>> showDateSpanForQuery $ DateSpan (Just $ Exact $ fromGregorian 2025 1 1) (Just $ Exact $ fromGregorian 2026 1 1)
+-- "2025"
+-- >>> showDateSpanForQuery $ DateSpan (Just $ Exact $ fromGregorian 2025 1 13) (Just $ Exact $ fromGregorian 2025 1 20)
+-- "2025-01-13..2025-01-20"
+-- >>> showDateSpanForQuery $ DateSpan (Just $ Exact $ fromGregorian 2025 1 15) (Just $ Exact $ fromGregorian 2025 2 15)
+-- "2025-01-15..2025-02-15"
+-- >>> showDateSpanForQuery $ DateSpan (Just $ Exact $ fromGregorian 2025 1 1) Nothing
+-- "2025-01-01.."
+-- >>> showDateSpanForQuery $ DateSpan Nothing (Just $ Exact $ fromGregorian 2025 2 1)
+-- "..2025-02-01"
+-- >>> showDateSpanForQuery nulldatespan
+-- ""
+showDateSpanForQuery :: DateSpan -> Text
+showDateSpanForQuery spn = case dateSpanAsPeriod spn of
+  WeekPeriod b      -> T.pack $ iso b <> ".." <> iso (addDays 7 b)
+  PeriodBetween b e -> T.pack $ iso b <> ".." <> iso e
+  PeriodTo e        -> T.pack $ ".." <> iso e
+  PeriodAll         -> ""
+  p                 -> showPeriod p  -- a day, month, quarter, or year, or an open end
+  where iso = formatTime defaultTimeLocale "%F"
 
 -- | Get the current local date.
 getCurrentDay :: IO Day

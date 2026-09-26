@@ -8,6 +8,10 @@
 /journal         JournalR        GET
 /register        RegisterR       GET
 /balance         BalanceR        GET
+/balancesheet       BalancesheetR       GET
+/balancesheetequity BalancesheetequityR GET
+/incomestatement    IncomestatementR    GET
+/cashflow           CashflowR           GET
 /add             AddR            GET POST PUT
 
 /manage             ManageR         GET

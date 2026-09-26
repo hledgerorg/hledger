@@ -1,4 +1,4 @@
 <p .report-links>
-  Report:
-  $forall (label, title, mperiod, interval) <- reports
-    <a href=@?{link mperiod} :interval == current:.current title=#{title}>#{label}
+  #{rowlabel}
+  $forall (label, title, link, current) <- items
+    <a href=@?{link} :current:.current title=#{title}>#{label}

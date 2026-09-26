@@ -105,9 +105,20 @@ td.date {
   border-top: 1px solid #687385;
 }
 
-/* The row of links to the balance reports, on the journal and balance
-   pages; the report being shown is set in bold, like the sidebar's
-   current account. */
+/* A statement's sections: each section's title row, spaced from the
+   section above, and its subtotal rows under a hairline like the
+   footer's. Bootstrap separates the sections' tbodies with a rule of
+   its own. */
+.balancereport > tbody > tr.section > th {
+  padding-top: 1em;
+}
+.balancereport > tbody > tr.subtotal > td {
+  border-top: 1px solid #687385;
+}
+
+/* The rows of links above a report: to the other reports, to the
+   intervals, and on the balance report to its modes; the one being shown
+   is set in bold, like the sidebar's current account. */
 .report-links a {
   margin-left: 0.5em;
 }
@@ -352,6 +363,21 @@ ul {
 
 .negative {
     color: #a94442;
+}
+
+/* A figure that links is not coloured as a link: the figure's own colour
+   (red for a negative amount, from the span inside) shows through. In the
+   sidebar it is not padded like an account link, and underlines on hover,
+   as the report pages' figures do. */
+.balancereport td.amount a,
+#sidebar-menu .main-menu .amount a {
+    color: inherit;
+}
+#sidebar-menu .main-menu .amount a {
+    padding: 0;
+}
+#sidebar-menu .main-menu .amount a:hover {
+    text-decoration: underline;
 }
 
 .col-any-0 {

@@ -10,6 +10,7 @@ The @incomestatement@ command prints a simple income statement (profit & loss re
 module Hledger.Cli.Commands.Incomestatement (
   incomestatementmode
  ,incomestatement
+ ,incomestatementSpec
 ) where
 
 import System.Console.CmdArgs.Explicit
@@ -18,6 +19,7 @@ import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.CompoundBalanceCommand
 
+incomestatementSpec :: CompoundBalanceCommandSpec
 incomestatementSpec = CompoundBalanceCommandSpec {
   cbcdoc      = $(embedFileRelative "Hledger/Cli/Commands/Incomestatement.txt"),
   cbctitle    = "Income Statement",

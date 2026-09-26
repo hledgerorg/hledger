@@ -2,7 +2,7 @@
   #{header}
 
 <div>
-  ^{registerChartHtml qparam balancelabel $ accountTransactionsReportByCommodity items}
+  ^{registerChartHtml qparam accumParams transactionFrag balancelabel $ accountTransactionsReportByCommodity items}
 
 <div.table-responsive>
   <table .table.table-condensed>
@@ -15,25 +15,41 @@
         <th>To/From Account(s)
         <th .amount>Amount Out/In
         <th .amount>
-          #{balancelabel}
+          <a href=@?{accumToggle} title="#{accumToggleTitle}">#{balancelabel}
 
     <tbody>
       $forall (torig, tacct, split, _acct, amt, bal) <- items
-        <tr ##{tindex torig} title="#{showTransaction torig}">
+        <tr ##{transactionFrag torig} title="#{showTransaction torig}">
           <td .date nowrap>
-            <a href="@?{(JournalR, [("q", T.unwords $ removeInacct qparam)])}##{transactionFrag torig}">
+            <a href="@?{(JournalR, [("q", journalDayQuery qparam (tdate torig))])}##{transactionFrag torig}"
+               title="Show this entry and the other journal entries on its date">
               #{show (tdate tacct)}
           <td .description>
             #{textElideRight 30 (tdescription tacct)}
           <td .account>
             $forall (Posting { paccount = acc }, (summName,comma)) <- otherTransAccounts torig
-              <a href="@?{acctlink acc}##{tindex torig}" title="#{acc}">
+              <a href="@?{acctlink acc}##{transactionFrag torig}" title="#{acc}">
                 #{summName}</a>#{comma}
           <td .amount>
             $if not split || not (mixedAmountLooksZero amt)
               ^{mixedAmountAsHtml amt}
           <td .amount>
             ^{mixedAmountAsHtml bal}
+      $if historical
+        $maybe start <- mstart
+          <tr .broughtforward>
+            <td .date nowrap>
+              #{show (snd start)}
+            <td .description>
+              Balance brought forward
+            <td .account>
+            <td .amount>
+            <td .amount>
+              $if mixedAmountLooksZero startbal
+                ^{mixedAmountAsHtml startbal}
+              $else
+                <a href=@?{broughtForwardLink start} title="Show the transactions before this period">
+                  ^{mixedAmountAsHtml startbal}
 
 $if elem AddPermission perms
   ^{addModal AddR j today}

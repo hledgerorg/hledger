@@ -11,6 +11,7 @@ The @balancesheetequity@ command prints a simple balance sheet.
 module Hledger.Cli.Commands.Balancesheetequity (
   balancesheetequitymode
  ,balancesheetequity
+ ,balancesheetequitySpec
 ) where
 
 import System.Console.CmdArgs.Explicit
@@ -19,6 +20,7 @@ import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.CompoundBalanceCommand
 
+balancesheetequitySpec :: CompoundBalanceCommandSpec
 balancesheetequitySpec = CompoundBalanceCommandSpec {
   cbcdoc      = $(embedFileRelative "Hledger/Cli/Commands/Balancesheetequity.txt"),
   cbctitle    = "Balance Sheet With Equity",

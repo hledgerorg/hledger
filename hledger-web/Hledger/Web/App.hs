@@ -12,19 +12,20 @@ and then Application.hs completes the job.
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE ViewPatterns          #-}
 
 module Hledger.Web.App where
 
 import Control.Applicative ((<|>))
-import Control.Monad (join, when, unless)
+import Control.Monad (join, mfilter, when, unless)
 -- import Control.Monad.Except (runExceptT)  -- now re-exported by Hledger
 import Data.ByteString.Base64 qualified as B64
 import Data.ByteString.Char8 qualified as BC
 import Data.Traversable (for)
 import Data.IORef (IORef, readIORef, writeIORef)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
@@ -43,10 +44,15 @@ import Yesod.Default.Config
 
 import Hledger
 import Hledger.Cli (CliOpts(..), journalReloadIfChanged)
+import Hledger.Cli.Commands.Balancesheet (balancesheetSpec)
+import Hledger.Cli.Commands.Balancesheetequity (balancesheetequitySpec)
+import Hledger.Cli.Commands.Cashflow (cashflowSpec)
+import Hledger.Cli.Commands.Incomestatement (incomestatementSpec)
+import Hledger.Cli.CompoundBalanceCommand (CompoundBalanceCommandSpec(..))
 import Hledger.Web.Settings (Extra(..), widgetFile)
 import Hledger.Web.Settings.StaticFiles
 import Hledger.Web.WebOptions
-import Hledger.Web.Widget.Common (balanceReportAsHtml)
+import Hledger.Web.Widget.Common (balanceReportAsHtml, removeInacct)
 import Data.List (isPrefixOf)
 
 -- | The site argument for your application. This can be a good place to
@@ -140,25 +146,34 @@ instance Yesod App where
     let browsemode = server_mode_ opts == ServeBrowse
 
     let rspec = reportspec_ (cliopts_ opts)
-        ropts = _rsReportOpts rspec
         ropts' = (_rsReportOpts rspec)
           {accountlistmode_ = ALTree  -- force tree mode for sidebar
           ,empty_           = True    -- show zero items by default
+          ,interval_        = NoInterval  -- one balance per account, over the search's own span
           }
         rspec' = rspec{_rsQuery=q,_rsReportOpts=ropts'}
 
-    -- The balance page's period parameter, which its search form and the
-    -- form's clear button keep.
-    periodParams <- case here of
-      BalanceR -> maybe [] (\p -> [("period", p)]) <$> lookupGetParam "period"
-      _        -> pure []
+    -- The parameters the search form and its clear button keep, so that
+    -- a search does not reset the page: a report page's period and
+    -- accumulation mode, and the register's mode. The mode is kept only
+    -- when it is not the default, as the pages' own links carry it.
+    let keepable :: Text -> Text -> Bool
+        keepable "accum" v = Just v == keptAccum here
+        keepable _       v = not (T.null v)
+    keptParams <- fmap catMaybes . for (keptParamNames here) $ \name ->
+      fmap (name,) . mfilter (keepable name) <$> lookupGetParam name
 
-    hideEmptyAccts <- if empty_ ropts
-                         then return True
-                         else (== Just "1") . lookup "hideemptyaccts" . reqCookies <$> getRequest
+    hideEmptyAccts <- hideEmptyAccounts
 
-    let accounts =
-          balanceReportAsHtml (JournalR, RegisterR) here hideEmptyAccts j qparam qopts $
+    -- The sidebar's report links keep the search, minus any account term,
+    -- which the reports ignore, and a report page's period, as the report
+    -- pages' own Report row does.
+    let sidebarReports = reportLinkItems $ filter rmInSidebar reportMenu
+        sidebarParams =
+          [p | p@("period", _) <- keptParams] ++
+          [("q", qt) | let qt = T.unwords $ removeInacct qparam, not (T.null qt)]
+        accounts =
+          balanceReportAsHtml (JournalR, RegisterR) here sidebarReports sidebarParams hideEmptyAccts j qparam qopts $
           styleAmounts (journalCommodityStylesWith HardRounding j) $
           balanceReport rspec' j
 
@@ -299,6 +314,63 @@ checkServerSideUiEnabled = do
     -- this one gives 500 internal server error when called from defaultLayout:
     --  permissionDenied "server-side UI is disabled due to --serve-api"
     sendResponseStatus status403 ("server-side UI is disabled due to --serve-api" :: Text)
+
+-- | A report page as the menus show it.
+data ReportMenuItem = ReportMenuItem {
+    rmRoute     :: Route App,
+    rmLabel     :: Text,
+    rmTitle     :: Text,
+    rmAccum     :: BalanceAccumulation,
+      -- ^ the page's default accumulation mode: its command's own for a
+      --   statement, balance changes for the balance report
+    rmInSidebar :: Bool
+      -- ^ has a row in the sidebar (the others are one click away, in the
+      --   report pages' own Report row)
+}
+
+-- | The report pages, in menu order.
+reportMenu :: [ReportMenuItem]
+reportMenu =
+  [ ReportMenuItem BalancesheetR       "Balance sheet"             "Show assets, liabilities, and net worth"          (cbcaccum balancesheetSpec)       True
+  , ReportMenuItem BalancesheetequityR "Balance sheet with equity" "Show assets, liabilities, and equity"             (cbcaccum balancesheetequitySpec) False
+  , ReportMenuItem IncomestatementR    "Income statement"          "Show revenues and expenses"                       (cbcaccum incomestatementSpec)    True
+  , ReportMenuItem CashflowR           "Cashflow statement"        "Show changes in liquid assets"                    (cbcaccum cashflowSpec)           True
+  , ReportMenuItem BalanceR            "Balance report"            "Show the balance report: any accounts, by period" PerPeriod                         False
+  ]
+
+-- | The report pages' routes, labels, and titles, for a row of links.
+reportLinkItems :: [ReportMenuItem] -> [(Route App, Text, Text)]
+reportLinkItems items = [(rmRoute i, rmLabel i, rmTitle i) | i <- items]
+
+-- | The report pages: those that take a period and an accumulation mode.
+reportRoutes :: [Route App]
+reportRoutes = map rmRoute reportMenu
+
+-- | The accum parameter value a page's links keep: the mode that is
+-- not the page's default. (The register totals the period by default.)
+keptAccum :: Route App -> Maybe Text
+keptAccum route =
+  case [rmAccum i | i <- reportMenu, rmRoute i == route] of
+    [Historical]           -> Just "change"
+    [_]                    -> Just "historical"
+    _ | route == RegisterR -> Just "historical"
+    _                      -> Nothing
+
+-- | The query parameters a page's own links keep.
+keptParamNames :: Route App -> [Text]
+keptParamNames route
+  | route `elem` reportRoutes = ["period", "accum"]
+  | route == RegisterR        = ["accum"]
+  | otherwise                 = []
+
+-- | Are zero-balance accounts hidden ? They are with -E at startup, or
+-- with the hideemptyaccts cookie the e key sets.
+hideEmptyAccounts :: Handler Bool
+hideEmptyAccounts = do
+  App{appOpts} <- getYesod
+  if empty_ $ _rsReportOpts $ reportspec_ $ cliopts_ appOpts
+    then return True
+    else (== Just "1") . lookup "hideemptyaccts" . reqCookies <$> getRequest
 
 -- | Find out if the sidebar should be visible. Show it, unless there is a
 -- showsidebar cookie set to "0", or a ?sidebar=0 query parameter.

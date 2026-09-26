@@ -12,12 +12,16 @@ module Hledger.Cli.CompoundBalanceCommand (
   CompoundBalanceCommandSpec(..)
  ,compoundBalanceCommandMode
  ,compoundBalanceCommand
+ ,compoundBalanceReportTitle
+ ,applySubreportTitles
+ ,CompoundBalanceReportParts(..)
+ ,compoundBalanceReportAsSpreadsheetParts
+ ,allCommoditiesFromSubreports
 ) where
 
 import Control.Monad (guard, unless, void)
 import Data.Bifunctor (second)
 import Data.Foldable (traverse_)
-import Data.Function ((&))
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Safe (atMay)
@@ -37,6 +41,7 @@ import Text.Blaze.Html5.Attributes qualified as A
 import Text.Tabular.AsciiWide as Tabular hiding (render)
 
 import Hledger
+import Hledger.Cli.Anchor (LinkOpts(..), headerDateSpanCell)
 import Hledger.Cli.Commands.Balance
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils (unsupportedOutputFormatError, writeOutputLazyText)
@@ -137,89 +142,98 @@ compoundBalanceCommandMode CompoundBalanceCommandSpec{..} =
 
 -- | Generate a runnable command from a compound balance command specification.
 compoundBalanceCommand :: CompoundBalanceCommandSpec -> (CliOpts -> Journal -> IO ())
-compoundBalanceCommand CompoundBalanceCommandSpec{..} opts@CliOpts{reportspec_=rspec, rawopts_=rawopts} j = do
+compoundBalanceCommand spec@CompoundBalanceCommandSpec{..} opts@CliOpts{reportspec_=rspec, rawopts_=rawopts} j = do
     writeOutputLazyText opts $ render $ styleAmounts styles cbr
   where
     styles = journalCommodityStylesWith HardRounding j
-    ropts@ReportOpts{..} = _rsReportOpts rspec
+    ropts = _rsReportOpts rspec
     -- use the default balance type for this report, unless the user overrides
     mbalanceAccumulationOverride = balanceAccumulationOverride rawopts
     balanceaccumulation = fromMaybe cbcaccum mbalanceAccumulationOverride
     -- Set balance type in the report options.
     ropts' = ropts{balanceaccum_=balanceaccumulation}
 
-    title =
-         maybe "" (<>" ") mintervalstr
-      <> T.pack cbctitle
-      <> " "
-      <> titledatestr
-      <> maybe "" (" "<>) mtitleclarification
-      <> valuationdesc
-      where
-
-        -- XXX #1078 the title of ending balance reports
-        -- (Historical) should mention the end date(s) shown as
-        -- column heading(s) (not the date span of the transactions).
-        -- Also the dates should not be simplified (it should show
-        -- "2008/01/01-2008/12/31", not "2008").
-        titledatestr = case balanceaccumulation of
-            Historical -> showEndDates enddates
-            _          -> showDateSpan requestedspan
-          where
-            enddates = map (addDays (-1)) . mapMaybe spanEnd $ cbrDates cbr  -- these spans will always have a definite end date
-            requestedspan = fst $ reportSpan j rspec
-
-        mintervalstr = showInterval interval_
-
-        -- when user overrides, add an indication to the report title
-        -- Do we need to deal with overridden BalanceCalculation?
-        mtitleclarification = case (balancecalc_, balanceaccumulation, mbalanceAccumulationOverride) of
-            (CalcValueChange, PerPeriod,  _              ) -> Just "(Period-End Value Changes)"
-            (CalcValueChange, Cumulative, _              ) -> Just "(Cumulative Period-End Value Changes)"
-            (CalcGain,        PerPeriod,  _              ) -> Just "(Incremental Gain)"
-            (CalcGain,        Cumulative, _              ) -> Just "(Cumulative Gain)"
-            (CalcGain,        Historical, _              ) -> Just "(Historical Gain)"
-            (_,               _,          Just PerPeriod ) -> Just "(Balance Changes)"
-            (_,               _,          Just Cumulative) -> Just "(Cumulative Ending Balances)"
-            (_,               _,          Just Historical) -> Just "(Historical Ending Balances)"
-            _                                              -> Nothing
-
-        valuationdesc =
-          (case conversionop_ of
-               Just ToCost -> ", converted to cost"
-               _           -> "")
-          <> (case value_ of
-               Just (AtThen _mc)       -> ", valued at posting date"
-               Just (AtEnd _mc) | changingValuation -> ""
-               Just (AtEnd _mc)        -> ", valued at period ends"
-               Just (AtNow _mc)        -> ", current value"
-               Just (AtDate today _mc) -> ", valued at " <> showDate today
-               Nothing                 -> "")
-
-        changingValuation = case (balancecalc_, balanceaccum_) of
-            (CalcValueChange, PerPeriod)  -> True
-            (CalcValueChange, Cumulative) -> True
-            _                             -> False
-
     -- make a CompoundBalanceReport. The default heading is the auto-generated
-    -- title above; --title=TEXT overrides it (and =empty suppresses).
+    -- title; --title=TEXT overrides it (and =empty suppresses).
     -- --subreport-titles=A|B|... overrides per-subreport titles.
     cbr' = compoundBalanceReport rspec{_rsReportOpts=ropts'} j cbcqueries
     cbr  = applySubreportTitles ropts' $
-           cbr'{cbrTitle = effectiveTitle ropts' title}
+           cbr'{cbrTitle = effectiveTitle ropts' $ compoundBalanceReportTitle spec ropts mbalanceAccumulationOverride cbr'}
 
     -- render appropriately
     render = case outputFormatFromOpts opts of
       "txt"  -> compoundBalanceReportAsText ropts'
-      "csv"  -> printCSV . compoundBalanceReportAsCsv ropts'
-      "tsv"  -> printTSV . compoundBalanceReportAsCsv ropts'
-      "html" -> (<>"\n") . htmlAsLazyText . compoundBalanceReportAsHtml ropts'
+      "csv"  -> printCSV . compoundBalanceReportAsCsv ropts' cbcqueries
+      "tsv"  -> printTSV . compoundBalanceReportAsCsv ropts' cbcqueries
+      "html" -> (<>"\n") . htmlAsLazyText . compoundBalanceReportAsHtml ropts' cbcqueries
       "fods" -> printFods IO.localeEncoding .
                 fmap (second NonEmpty.toList) . uncurry Map.singleton .
                 compoundBalanceReportAsSpreadsheet
-                    oneLineNoCostFmt "Account" (Just "") ropts'
+                    oneLineNoCostFmt "Account" (Just "") ropts' cbcqueries
       "json" -> toJsonText
       x      -> error' $ unsupportedOutputFormatError x
+
+-- | The title of a compound balance report: the interval and report
+-- name, the dates, a note when the accumulation mode was overridden or
+-- the calculation is not the plain one, and the valuation. The report
+-- options are the command line's, with any accumulation override given
+-- separately, since the title says which it was.
+compoundBalanceReportTitle ::
+  CompoundBalanceCommandSpec -> ReportOpts -> Maybe BalanceAccumulation -> CompoundPeriodicReport a b -> T.Text
+compoundBalanceReportTitle CompoundBalanceCommandSpec{cbctitle=cbctitle, cbcaccum=cbcaccum} ReportOpts{..} mbalanceAccumulationOverride cbr =
+     maybe "" (<>" ") mintervalstr
+  <> T.pack cbctitle
+  <> " "
+  <> titledatestr
+  <> maybe "" (" "<>) mtitleclarification
+  <> valuationdesc
+  where
+    balanceaccumulation = fromMaybe cbcaccum mbalanceAccumulationOverride
+
+    -- XXX #1078 the title of ending balance reports
+    -- (Historical) should mention the end date(s) shown as
+    -- column heading(s) (not the date span of the transactions).
+    -- Also the dates should not be simplified (it should show
+    -- "2008/01/01-2008/12/31", not "2008").
+    titledatestr = case balanceaccumulation of
+        Historical -> showEndDates enddates
+        _          -> showDateSpan columnsspan
+      where
+        enddates = map (addDays (-1)) . mapMaybe spanEnd $ cbrDates cbr  -- these spans will always have a definite end date
+        -- the span the columns cover: the requested span, widened to whole intervals
+        columnsspan = spansSpan $ cbrDates cbr
+
+    mintervalstr = showInterval interval_
+
+    -- when user overrides, add an indication to the report title
+    -- Do we need to deal with overridden BalanceCalculation?
+    mtitleclarification = case (balancecalc_, balanceaccumulation, mbalanceAccumulationOverride) of
+        (CalcValueChange, PerPeriod,  _              ) -> Just "(Period-End Value Changes)"
+        (CalcValueChange, Cumulative, _              ) -> Just "(Cumulative Period-End Value Changes)"
+        (CalcGain,        PerPeriod,  _              ) -> Just "(Incremental Gain)"
+        (CalcGain,        Cumulative, _              ) -> Just "(Cumulative Gain)"
+        (CalcGain,        Historical, _              ) -> Just "(Historical Gain)"
+        (_,               _,          Just PerPeriod ) -> Just "(Balance Changes)"
+        (_,               _,          Just Cumulative) -> Just "(Cumulative Ending Balances)"
+        (_,               _,          Just Historical) -> Just "(Historical Ending Balances)"
+        _                                              -> Nothing
+
+    valuationdesc =
+      (case conversionop_ of
+           Just ToCost -> ", converted to cost"
+           _           -> "")
+      <> (case value_ of
+           Just (AtThen _mc)       -> ", valued at posting date"
+           Just (AtEnd _mc) | changingValuation -> ""
+           Just (AtEnd _mc)        -> ", valued at period ends"
+           Just (AtNow _mc)        -> ", current value"
+           Just (AtDate today _mc) -> ", valued at " <> showDate today
+           Nothing                 -> "")
+
+    changingValuation = case (balancecalc_, balanceaccum_) of
+        (CalcValueChange, PerPeriod)  -> True
+        (CalcValueChange, Cumulative) -> True
+        _                             -> False
 
 -- | Apply --subreport-titles overrides to a compound report's subreports.
 -- A `|`-separated argument overrides the corresponding subreport titles, in
@@ -344,12 +358,13 @@ compoundBalanceReportAsText ropts (CompoundPeriodicReport title _colspans subrep
 -- Subreports' CSV is concatenated, with the headings rows replaced by a
 -- subreport title row, and an overall title row, one headings row, and an
 -- optional overall totals row is added.
-compoundBalanceReportAsCsv :: ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount -> CSV
-compoundBalanceReportAsCsv ropts cbr =
+compoundBalanceReportAsCsv ::
+  ReportOpts -> [CBCSubreportSpec DisplayName] -> CompoundPeriodicReport DisplayName MixedAmount -> CSV
+compoundBalanceReportAsCsv ropts specs cbr =
     let spreadsheet =
             snd $ snd $
             compoundBalanceReportAsSpreadsheet
-                machineFmt "Account" Nothing ropts cbr
+                machineFmt "Account" Nothing ropts specs cbr
         title = cbrTitle cbr
         titleRows | T.null title = []
                   | otherwise =
@@ -359,11 +374,12 @@ compoundBalanceReportAsCsv ropts cbr =
         titleRows ++ NonEmpty.toList spreadsheet
 
 -- | Render a compound balance report as HTML.
-compoundBalanceReportAsHtml :: ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount -> Html
-compoundBalanceReportAsHtml ropts cbr =
+compoundBalanceReportAsHtml ::
+  ReportOpts -> [CBCSubreportSpec DisplayName] -> CompoundPeriodicReport DisplayName MixedAmount -> Html
+compoundBalanceReportAsHtml ropts specs cbr =
   let (title, (_fixed, cells)) =
           compoundBalanceReportAsSpreadsheet
-              oneLineNoCostFmt "" (Just nbsp) ropts cbr
+              oneLineNoCostFmt "" (Just nbsp) ropts specs cbr
   in do
     -- the builtin styles, then the optional user stylesheet so it can override them
     H.style $ preEscapedToHtml $ stylesheet $
@@ -378,31 +394,20 @@ compoundBalanceReportAsHtml ropts cbr =
     -- Do not use `styledTableHtml` here since that leads to nested `<table>`s.
     H.table $ nl <> (traverse_ formatRow $ fmap (map (fmap toHtml)) cells)
 
--- | Render a compound balance report as Spreadsheet.
+-- | Render a compound balance report as Spreadsheet: the heading row,
+-- then each section's title row, body rows, totals rows, and a blank row
+-- for whitespace if wanted, then the net total rows.
 compoundBalanceReportAsSpreadsheet ::
   AmountFormat -> T.Text -> Maybe T.Text ->
-  ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount ->
+  ReportOpts -> [CBCSubreportSpec DisplayName] -> CompoundPeriodicReport DisplayName MixedAmount ->
   (T.Text, ((Int, Int), NonEmpty [Spr.Cell Spr.NumLines T.Text]))
-compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts cbr =
+compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts specs cbr =
   let
-    CompoundPeriodicReport title colspans subreports totalrow = cbr
-    leadingHeaders =
-      Spr.headerCell accountLabel :
-      case layout_ ropts of
-          LayoutTidy -> map Spr.headerCell tidyColumnLabels
-          LayoutBare -> [Spr.headerCell "Commodity"]
-          _ -> []
-    dataHeaders =
-      (guard (layout_ ropts /= LayoutTidy) >>) $
-      map
-        (reportPeriodName
-            (period_titles_ ropts) (balanceaccum_ ropts) colspans)
-        (if not (summary_only_ ropts) then colspans else []) ++
-      (guard (multiBalanceHasTotalsColumn ropts) >> ["Total"]) ++
-      (guard (average_ ropts) >> ["Average"])
+    CompoundBalanceReportParts{..} = compoundBalanceReportAsSpreadsheetParts fmt accountLabel ropts specs cbr
+    dataHeaders = map Spr.cellContent cbrpDataHeaders
     headerrow =
-      leadingHeaders ++
-      concatMap (Spr.horizontalSpan subColumns . Spr.headerCell) dataHeaders
+      cbrpLeadingHeaders ++
+      concatMap (Spr.horizontalSpan subColumns) cbrpDataHeaders
 
     blankrow =
       fmap (Spr.horizontalSpan headerrow . Spr.defaultCell) maybeBlank
@@ -410,16 +415,10 @@ compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts cbr =
         case layout_ ropts of
             LayoutBareWide -> void allCommodities
             _ -> [()]
-    allCommodities = allCommoditiesFromSubreports subreports
+    allCommodities = allCommoditiesFromSubreports $ cbrSubreports cbr
 
-    -- Make rows for a subreport: its title row, not the headings row,
-    -- the data rows, any totals row, and a blank row for whitespace.
-    subreportrows ::
-      (T.Text, MultiBalanceReport, Bool) -> [[Spr.Cell Spr.NumLines T.Text]]
-    subreportrows (subreporttitle, mbr, _increasestotal) =
+    sectionrows (subreporttitle, bodyrows, totalsrows) =
       let
-        (_, bodyrows, mtotalsrows) =
-          balanceSubReportAsSpreadsheetParts fmt ropts allCommodities mbr
         accountCell =
             (Spr.defaultCell subreporttitle) {
                 Spr.cellStyle = Spr.Body Spr.Total,
@@ -436,24 +435,107 @@ compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts cbr =
       in
         titleRows ++
         bodyrows ++
-        mtotalsrows ++
+        totalsrows ++
         maybeToList blankrow
 
-    totalrows =
+  in  (cbrTitle cbr,
+        ((1, multiBalanceReportNumHeaderColumns $ layout_ ropts),
+            headerrow :| concatMap sectionrows cbrpSections ++ cbrpNetRows))
+
+-- | The parts of a compound balance report as spreadsheet cells, to be
+-- laid out as one table, or as a table with sections as hledger-web does.
+data CompoundBalanceReportParts = CompoundBalanceReportParts {
+    cbrpLeadingHeaders :: [Spr.Cell Spr.NumLines T.Text],
+      -- ^ The heading row's first cell(s): the account column's, and the
+      --   tidy and bare layouts' extra columns'.
+    cbrpDataHeaders    :: [Spr.Cell Spr.NumLines T.Text],
+      -- ^ Then a heading per data column: each period, linking to the
+      --   register for it, then the row total and average when shown.
+      --   In the bare-wide layout each of these spans the commodity columns.
+    cbrpSections       :: [(T.Text, [[Spr.Cell Spr.NumLines T.Text]], [[Spr.Cell Spr.NumLines T.Text]])],
+      -- ^ Each section's title, body rows, and totals rows.
+    cbrpNetRows        :: [[Spr.Cell Spr.NumLines T.Text]]
+      -- ^ The net total rows; none when there is one section or no totals.
+}
+
+-- | Render a compound balance report's parts as spreadsheet cells. The
+-- subreport specs it was made from say how each section's figures link:
+-- a section is rendered with its own report options, so that its links
+-- say when its figures are negated, and its totals link to the registers
+-- of its account types.
+compoundBalanceReportAsSpreadsheetParts ::
+  AmountFormat -> T.Text ->
+  ReportOpts -> [CBCSubreportSpec DisplayName] -> CompoundPeriodicReport DisplayName MixedAmount ->
+  CompoundBalanceReportParts
+compoundBalanceReportAsSpreadsheetParts fmt accountLabel ropts specs cbr =
+  CompoundBalanceReportParts {
+    cbrpLeadingHeaders = leadingHeaders,
+    cbrpDataHeaders = dataHeaderCells,
+    cbrpSections = zipWith section specs subreports,
+    cbrpNetRows = netrows
+  }
+  where
+    CompoundPeriodicReport _ colspans subreports totalrow = cbr
+    leadingHeaders =
+      Spr.headerCell accountLabel :
+      case layout_ ropts of
+          LayoutTidy -> map Spr.headerCell tidyColumnLabels
+          LayoutBare -> [Spr.headerCell "Commodity"]
+          _ -> []
+    -- A period heading links to the register for that period; its text
+    -- is the period's end date in a historical report.
+    dataHeaderCells =
+      (guard (layout_ ropts /= LayoutTidy) >>) $
+      [ (headerDateSpanCell (date2_ ropts) (period_titles_ ropts) (balance_base_url_ ropts) (querystring_ ropts) spn) {
+          Spr.cellBorder = Spr.noBorder,
+          Spr.cellContent = reportPeriodName (period_titles_ ropts) (balanceaccum_ ropts) colspans spn
+        }
+      | not (summary_only_ ropts), spn <- colspans ] ++
+      (guard (multiBalanceHasTotalsColumn ropts) >> [Spr.headerCell "Total"]) ++
+      (guard (average_ ropts) >> [Spr.headerCell "Average"])
+    allCommodities = allCommoditiesFromSubreports subreports
+
+    -- The account type codes a section is selected by, which its totals'
+    -- registers need; a section not selected by type gets no such links.
+    typeCodes q = case q of
+      Type ts -> Just $ T.concat $ map (T.pack . show) ts
+      _       -> Nothing
+    typeTerm = fmap ("type:" <>) . typeCodes
+    -- Is a section shown with its figures negated, as normally negative
+    -- accounts are ?
+    negated spec = normalbalance_ (cbcsubreportoptions spec ropts) == Just NormallyNegative
+    unlinked = map (map (\c -> c {Spr.cellAnchor = mempty, Spr.cellTitle = mempty}))
+    linkedWhen mterm rows = maybe (unlinked rows) (const rows) mterm
+
+    -- A section's rows link with its type term as well, so that their
+    -- registers exclude a subaccount of another type, as the figures do.
+    section spec (subreporttitle, mbr, _increasestotal) = (subreporttitle, bodyrows, totalsrows)
+      where
+        sropts = cbcsubreportoptions spec ropts
+        sectionterm = typeTerm $ cbcsubreportquery spec
+        (_, bodyrows, _) =
+          balanceSubReportAsSpreadsheetParts fmt
+            sropts{no_total_ = True, querystring_ = maybeToList sectionterm ++ querystring_ sropts}
+            allCommodities mbr
+        totalsrows
+          | no_total_ ropts = []
+          | otherwise =
+              linkedWhen sectionterm $
+              multiBalanceTotalsRows fmt sropts (reportLinkOpts sropts (prDates mbr)) (maybeToList sectionterm)
+                  allCommodities (prDates mbr) totalRowHeadingSpreadsheet (prTotals mbr)
+
+    -- The net total's register is that of all the sections' account
+    -- types. It shows the net with the opposite sign when a section's
+    -- negation is not undone by subtracting it, as an income statement's
+    -- revenues are added negated.
+    netterm = fmap (("type:" <>) . T.concat) $ traverse (typeCodes . cbcsubreportquery) specs
+    netnegated = any (\spec -> negated spec /= not (cbcsubreportincreasestotal spec)) specs
+    netrows =
       if no_total_ ropts || length subreports == 1 then []
       else
-        multiBalanceRowAsCellBuilders fmt ropts colspans allCommodities
-            Total (simpleDateSpanCell $ period_titles_ ropts) totalrow
-                             -- make a table of rendered lines of the report totals row
-        & map (map (fmap wbToText))
-        & Spr.addRowSpanHeader
-            ((Spr.defaultCell "Net:") {Spr.cellClass = accountClass})
-                             -- insert a headings column, with Net: on the first line only
-        & addTotalBorders    -- marking the first row for special styling
-
-  in  (title,
-        ((1, multiBalanceReportNumHeaderColumns $ layout_ ropts),
-            headerrow :| concatMap subreportrows subreports ++ totalrows))
+        linkedWhen netterm $
+        multiBalanceTotalsRows fmt ropts (reportLinkOpts ropts colspans){loNegated = netnegated}
+            (maybeToList netterm) allCommodities colspans "Net:" totalrow
 
 -- | All commodities appearing in any of these subreports, sorted.
 -- Used as the commodity column order for LayoutBareWide across the whole

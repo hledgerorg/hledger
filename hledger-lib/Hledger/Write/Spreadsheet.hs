@@ -149,6 +149,10 @@ data Cell border text =
         cellStyle :: Style,
         cellSpan :: Span,
         cellAnchor :: Text,
+        -- | A whole-phrase description of where 'cellAnchor' leads, for
+        -- writers that can attach one to a link (HTML's title attribute).
+        -- Ignored when there is no anchor.
+        cellTitle :: Text,
         cellClass :: Class,
         -- | The cell content split into parts to be joined with ", ":
         -- individual amounts of a multi-commodity amount, for writers
@@ -159,8 +163,8 @@ data Cell border text =
     }
 
 instance Functor (Cell border) where
-    fmap f (Cell typ border style span anchor class_ parts content) =
-        Cell typ border style span anchor class_ (map f parts) (f content)
+    fmap f (Cell typ border style span anchor title class_ parts content) =
+        Cell typ border style span anchor title class_ (map f parts) (f content)
 
 defaultCell :: (Lines border) => text -> Cell border text
 defaultCell text =
@@ -170,6 +174,7 @@ defaultCell text =
         cellStyle = Body Item,
         cellSpan = NoSpan,
         cellAnchor = mempty,
+        cellTitle = mempty,
         cellClass = Class mempty,
         cellParts = [],
         cellContent = text

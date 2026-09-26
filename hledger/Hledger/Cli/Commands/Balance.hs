@@ -304,7 +304,8 @@ import System.IO qualified as IO
 import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils
-import Hledger.Cli.Anchor (setAccountAnchor, renderPeriodHeading)
+import Hledger.Cli.Anchor (linkParams, composeAnchorWith, dateTerm, removeInacct,
+  withLink, setAccountAnchor, setAccountAnchorWith, renderPeriodHeading, amountPhrase)
 import Hledger.Cli.Commands.Balance.Internal
 import Hledger.Write.Csv (CSV, printCSV, printTSV)
 import Hledger.Write.Ods (printFods)
@@ -678,18 +679,35 @@ balanceReportAsSpreadsheetParts fmt opts (items, total) =
         _          -> [hCell "amount" "balance"]
     allCommodities =
         S.toAscList $ foldMap (\(_,_,_,ma) -> maCommodities ma) items
+    shownParents = shownParentsOf [name | (name, _, _, _) <- items]
+    -- The report's period, from -b/-e/-p. A date: query term is in the
+    -- query string already, and the report intersected the two.
+    periodterms = if period_ opts == PeriodAll then [] else dateTerm (date2_ opts) $ periodAsDateSpan $ period_ opts
+    linkquery = periodterms ++ querystring_ opts
     rows ::
         RowClass -> BalanceReportItem ->
         [NonEmpty (Ods.Cell Ods.NumLines Text)]
     rows rc (name, dispName, dep, ma) =
-      let accountCell =
-              setAccountAnchor
+      let lo = rowLinkOpts opts [] shownParents name
+          accountCell =
+              setAccountAnchorWith lo
                   (guard (rc==Value) >> balance_base_url_ opts)
-                  (querystring_ opts) name $
+                  linkquery name $
               (\c -> c{Ods.cellClass = accountClass}) $
               cell $ case rc of
                 Total -> dispName  -- show the total row heading as is; --drop etc. don't apply (#2688)
                 Value -> renderBalanceAcct opts nbsp (name, dispName, dep) in
+      -- The figure links where the account name does, or, in the total
+      -- row, to the register of everything in the report; a figure that
+      -- looks zero has an empty register, and no link.
+      let linkFigure
+            | not (figuresLink opts) || mixedAmountLooksZero ma = id
+            | rc == Value = withLink (Ods.cellAnchor accountCell) (amountPhrase lo False)
+            | otherwise =
+                withLink
+                    (composeAnchorWith (linkParams lo) (balance_base_url_ opts) $
+                        periodterms ++ removeInacct (querystring_ opts))
+                    (amountPhrase lo True) in
       addRowSpanHeaderNE accountCell $
       case layout_ opts of
       LayoutBareWide ->
@@ -704,7 +722,7 @@ balanceReportAsSpreadsheetParts fmt opts (items, total) =
       LayoutBare ->
           map (\a -> [cell $ acommodity a, renderAmount rc $ mixedAmount a])
           . amounts $ mixedAmountStripCosts ma
-      _ -> [[renderAmount rc ma]]
+      _ -> [[linkFigure $ renderAmount rc ma]]
 
     renderAmount rc mixedAmt =
         wbToText <$> cellFromMixedAmount bopts (amountClass rc, mixedAmt)

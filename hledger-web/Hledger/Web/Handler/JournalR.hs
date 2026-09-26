@@ -14,7 +14,7 @@ import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Widget.Common
             (accountQuery, mixedAmountAsHtml,
-             transactionFragment, replaceInacct)
+             transactionFragment, replaceInacct, journalDayQuery)
 
 -- | The formatted journal view, with sidebar.
 getJournalR :: Handler Html

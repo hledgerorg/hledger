@@ -1,9 +1,16 @@
 <tr :here == journalR:.inacct>
   <td .top .acct>
-    <a href=@{journalR} :here == journalR:.inacct
+    <a href=@?{journallink} :here == journalR:.inacct
        title="Show general journal entries, most recent first">
       Journal
   <td .top>
+$# A report's label spans both columns: it is longer than an account name,
+$# and nothing goes beside it.
+$forall (route, label, title) <- reports
+  <tr :here == route:.inacct>
+    <td .top .acct colspan=2>
+      <a href=@?{(route, reportParams)} :here == route:.inacct title=#{title}>
+        #{label}
 $forall (acct, adisplay, aindent, abal) <- items
   <tr
      :matchesAcctSelector acct:.inacct
@@ -18,8 +25,17 @@ $forall (acct, adisplay, aindent, abal) <- items
           <a href="@?{(registerR, [("q", replaceInacct qparam $ accountOnlyQuery acct)])}" .only.hidden-sm.hidden-xs
              title="Show transactions affecting this account but not subaccounts">only
     <td .amount>
-      ^{mixedAmountAsHtml abal}
+      $if mixedAmountLooksZero abal
+        ^{mixedAmountAsHtml abal}
+      $else
+        <a href="@?{(registerR, [("q", replaceInacct qparam $ accountQuery acct)])}"
+           title="Show the transactions that make up this balance">
+          ^{mixedAmountAsHtml abal}
 <tr .total>
   <td>
   <td .amount>
-    ^{mixedAmountAsHtml total}
+    $if mixedAmountLooksZero total
+      ^{mixedAmountAsHtml total}
+    $else
+      <a href="@?{totallink}" title="Show the transactions that make up this total">
+        ^{mixedAmountAsHtml total}

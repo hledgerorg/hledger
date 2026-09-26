@@ -13,7 +13,8 @@ import Data.Time (addDays)
 import Text.Tabular.AsciiWide (Header(..), Properties(..), Table(..), concatTables)
 
 import Hledger
-import Hledger.Cli.Anchor (setAccountAnchor, dateSpanCell, headerDateSpanCell, renderPeriodHeading)
+import Hledger.Cli.Anchor (LinkOpts(..), dateTerm, removeDates, withLink, setAccountAnchorWith,
+  dateSpanCellWith, totalDateSpanCell, headerDateSpanCell, renderPeriodHeading, amountPhrase)
 import Hledger.Write.Spreadsheet (rawTableContent, headerCell,
             addHeaderBorders, addRowSpanHeader,
             cellFromMixedAmount, cellsFromMixedAmount)
@@ -62,6 +63,38 @@ headerWithoutBorders = map (\c -> c {Ods.cellBorder = Ods.noBorder})
 
 simpleDateSpanCell :: PeriodTitles -> DateSpan -> Ods.Cell Ods.NumLines Text
 simpleDateSpanCell ph = Ods.defaultCell . renderPeriodHeading ph
+
+-- | Do this report's figures link to registers? Only when they are
+-- sums of postings, which is what a register shows.
+figuresLink :: ReportOpts -> Bool
+figuresLink ropts = balancecalc_ ropts == CalcChange && not (percent_ ropts)
+
+-- | The register link options of a report's rows: its accumulation
+-- mode, the span its columns cover, and whether it shows figures with
+-- the sign opposite to the register's (as the compound reports' negated
+-- sections do).
+reportLinkOpts :: ReportOpts -> [DateSpan] -> LinkOpts
+reportLinkOpts ropts colspans = LinkOpts {
+    loAccum        = balanceaccum_ ropts,
+    loSpan         = spansSpan colspans,
+    loDate2        = date2_ ropts,
+    loIncludesSubs = True,
+    loNegated      = normalbalance_ ropts == Just NormallyNegative
+}
+
+-- | The link options of one account's row: whether its figures include
+-- the subaccounts. In tree mode every row does. In list mode a row
+-- excludes them only when some of them have rows of their own; a
+-- depth-clipped row, or a parent whose children are not shown, sums them.
+rowLinkOpts :: ReportOpts -> [DateSpan] -> S.Set AccountName -> AccountName -> LinkOpts
+rowLinkOpts ropts colspans shownParents acct =
+    (reportLinkOpts ropts colspans) {
+        loIncludesSubs = tree_ ropts || acct `S.notMember` shownParents
+    }
+
+-- | The accounts that have a subaccount among the given rows.
+shownParentsOf :: [AccountName] -> S.Set AccountName
+shownParentsOf = S.fromList . concatMap parentAccountNames
 
 addTotalBorders ::
     (Functor f) =>
@@ -168,7 +201,9 @@ multiBalanceRowAsCellBuilders ::
 multiBalanceRowAsCellBuilders bopts ropts@ReportOpts{..} colspans allCommodities
       rc renderDateSpanCell (PeriodicReportRow _acct as rowtot rowavg) =
     case layout_ of
-      LayoutWide width -> [fmap (cellFromMixedAmount bopts{displayMaxWidth=width}) clsamts]
+      LayoutWide width ->
+          [zipWith linkFigure spanclsamts $
+            map (cellFromMixedAmount bopts{displayMaxWidth=width}) clsamts]
       LayoutTall       -> paddedTranspose Ods.emptyCell
                            . map (cellsFromMixedAmount bopts{displayMaxWidth=Nothing})
                            $ clsamts
@@ -191,10 +226,27 @@ multiBalanceRowAsCellBuilders bopts ropts@ReportOpts{..} colspans allCommodities
     cs = if all mixedAmountLooksZero allamts then [""] else S.toList $ foldMap maCommodities allamts
     classified = map ((,) (amountClass rc)) as
     allamts = map snd clsamts
-    clsamts = (if not summary_only_ then classified else []) ++
-                [(rowTotalClass rc, rowtot) |
-                    multiBalanceHasTotalsColumn ropts && not (null as)] ++
-                [(rowAverageClass rc, rowavg) | average_ && not (null as)]
+    clsamts = map snd spanclsamts
+    -- Each figure with its class, and the span it covers: a column's, the
+    -- whole report's for a row total, none for an average. The text
+    -- renderer passes no spans.
+    spanclsamts =
+        (if not summary_only_ then zip (map Just colspans ++ repeat Nothing) classified else []) ++
+        [(Just (spansSpan colspans) <* guard (not $ null colspans), (rowTotalClass rc, rowtot)) |
+            multiBalanceHasTotalsColumn ropts && not (null as)] ++
+        [(Nothing, (rowAverageClass rc, rowavg)) | average_ && not (null as)]
+    -- In the wide layout each figure links to the register it is derived
+    -- from, through the row's date span cell for the span it covers. A
+    -- figure that looks zero has an empty register, and a figure that is
+    -- not a sum of postings has none, so neither links. A totals row's
+    -- date span cell carries its own title.
+    linkFigure (Just spn, (_, amt)) c
+      | figuresLink ropts && not (mixedAmountLooksZero amt) =
+          let dsCell = renderDateSpanCell spn in
+          withLink (Ods.cellAnchor dsCell)
+              (if rc == Total then Ods.cellTitle dsCell
+               else amountPhrase (reportLinkOpts ropts colspans) False) c
+    linkFigure _ c = c
     addDateColumns spn@(DateSpan s e) remCols =
         (wbFromText <$> renderDateSpanCell spn) :
         wbDate (maybe "" showEFDate s) :
@@ -225,7 +277,7 @@ balanceSubReportAsSpreadsheetParts ::
      [[Ods.Cell Ods.NumLines Text]])
 balanceSubReportAsSpreadsheetParts fmt opts@ReportOpts{..}
   allCommodities (PeriodicReport colspans items tr) =
-    (allHeaders, concatMap fullRowAsTexts items, addTotalBorders totalrows)
+    (allHeaders, concatMap fullRowAsTexts items, totalrows)
   where
     accountCell label = (Ods.defaultCell label) {Ods.cellClass = accountClass}
     hCell cls label = (headerCell label) {Ods.cellClass = cls}
@@ -249,24 +301,48 @@ balanceSubReportAsSpreadsheetParts fmt opts@ReportOpts{..}
     -- stylesheet can align them with the figures below (cf amountClass).
     amountHeader c = c{Ods.cellClass = amountClass Value}
     dateHeaders =
-      (if not summary_only_ then map (amountHeader . headerDateSpanCell period_titles_ balance_base_url_ querystring_) colspans  else [] )++
+      (if not summary_only_ then map (amountHeader . headerDateSpanCell date2_ period_titles_ balance_base_url_ querystring_) colspans  else [] )++
       [hCell (rowTotalClass Value) "total" | multiBalanceHasTotalsColumn opts] ++
       [hCell (rowAverageClass Value) "average" | average_]
+    shownParents = shownParentsOf $ map prrFullName items
+    -- An account's link covers the span its row sums: the columns', which
+    -- can be wider than the span asked for. When none was asked for, the
+    -- register is left unrestricted, as the report is.
+    rowquery =
+        [t | requestedSpan, t <- dateTerm date2_ $ spansSpan colspans] ++ removeDates querystring_
+      where
+        requestedSpan = period_ /= PeriodAll || any isDateTerm querystring_
+        isDateTerm t = "date:" `T.isPrefixOf` t || "date2:" `T.isPrefixOf` t
     fullRowAsTexts row =
         addRowSpanHeader anchorCell $
-        rowAsText Value (dateSpanCell period_titles_ balance_base_url_ querystring_ acctName) row
+        map (map (fmap wbToText)) $
+        multiBalanceRowAsCellBuilders fmt opts colspans allCommodities Value
+            (dateSpanCellWith lo period_titles_ balance_base_url_ querystring_ acctName) row
       where acctName = prrFullName row
+            lo = rowLinkOpts opts colspans shownParents acctName
             anchorCell =
-              setAccountAnchor balance_base_url_ querystring_ acctName $
+              setAccountAnchorWith lo balance_base_url_ rowquery acctName $
               accountCell $ renderPeriodicAcct opts nbsp row
     totalrows =
       if no_total_
         then []
-        else addRowSpanHeader (accountCell totalRowHeadingSpreadsheet) $
-                rowAsText Total (simpleDateSpanCell period_titles_) tr
-    rowAsText rc dsCell =
-        map (map (fmap wbToText)) .
-        multiBalanceRowAsCellBuilders fmt opts colspans allCommodities rc dsCell
+        else multiBalanceTotalsRows fmt opts (reportLinkOpts opts colspans) []
+                allCommodities colspans totalRowHeadingSpreadsheet tr
+
+-- | The totals row of a multi-column report, as one or more rows of
+-- spreadsheet cells: the label, then a total per column, each linking
+-- to the register of everything in the report's query, plus the given
+-- terms, for that column.
+multiBalanceTotalsRows ::
+    AmountFormat -> ReportOpts -> LinkOpts -> [Text] -> [CommoditySymbol] -> [DateSpan] ->
+    Text -> PeriodicReportRow a MixedAmount -> [[Ods.Cell Ods.NumLines Text]]
+multiBalanceTotalsRows fmt opts@ReportOpts{..} lo extraquery allCommodities colspans label row =
+    addTotalBorders $
+    addRowSpanHeader ((Ods.defaultCell label) {Ods.cellClass = accountClass}) $
+    map (map (fmap wbToText)) $
+    multiBalanceRowAsCellBuilders fmt opts colspans allCommodities Total
+        (totalDateSpanCell lo period_titles_ balance_base_url_ extraquery querystring_)
+        row
 
 tidyColumnLabels :: [Text]
 tidyColumnLabels =

@@ -31,10 +31,10 @@ test.describe('page initialization', () => {
     expect(pageErrors).toEqual([]);
   });
 
-  // Register rows use bare-numeric ids (id="3"), and '#3' is not a valid CSS
-  // selector, so any code passing location.hash to querySelector must guard
-  // it. A failure here leaves the page half-initialized: no date picker, no
-  // keyboard shortcuts, no sidebar handlers.
+  // A url hash can be anything, eg an old bookmark's numeric row id, and
+  // '#3' is not a valid CSS selector, so any code passing location.hash to
+  // querySelector must guard it. A failure here leaves the page
+  // half-initialized: no date picker, no keyboard shortcuts, no sidebar handlers.
   test('register url with a numeric transaction hash initializes fully', async ({ page }) => {
     await page.goto('/register?q=inacct:assets:bank:checking#3');
     expect(pageErrors).toEqual([]);
@@ -273,6 +273,23 @@ test.describe('sidebar', () => {
     await page.locator('body').press('e');
     // the toggle is remembered server-side via the hideemptyaccts cookie
     await page.goto('/journal');
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('links to the financial statements, marking the one shown', async ({ page }) => {
+    // at a laptop width the sidebar is narrow; the report labels must still fit
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await page.goto('/journal');
+    const clipped = await page.locator('#sidebar-menu td.top').evaluateAll(
+      tds => tds.filter(td => td.scrollWidth > td.clientWidth).map(td => td.textContent.trim()));
+    expect(clipped).toEqual([]);
+    await page.locator('#sidebar-menu a', { hasText: 'Income statement' }).click();
+    await expect(page).toHaveURL(/\/incomestatement$/);
+    await expect(page.locator('#main-content h2')).toContainText('Income Statement');
+    await expect(page.locator('#sidebar-menu tr.inacct a')).toHaveText('Income statement');
+    // from a report, the other reports are one click away in the Report row
+    await page.locator('#main-content .report-links a', { hasText: 'Balance sheet with equity' }).click();
+    await expect(page).toHaveURL(/\/balancesheetequity$/);
     expect(pageErrors).toEqual([]);
   });
 

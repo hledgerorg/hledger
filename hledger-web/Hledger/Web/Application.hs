@@ -30,6 +30,7 @@ import Hledger.Web.Handler.UploadR
 import Hledger.Web.Handler.JournalR
 import Hledger.Web.Handler.RegisterR
 import Hledger.Web.Handler.BalanceR
+import Hledger.Web.Handler.StatementsR
 import Hledger.Web.Import
 import Hledger.Web.WebOptions (ServerMode(..), WebOpts(server_mode_), corsPolicy)
 
