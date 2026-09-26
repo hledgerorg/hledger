@@ -1,0 +1,107 @@
+# TRIGGER: Runs on any push to binaries-linux-arm64-cabal or binaries branches.
+# ACTION: Builds, unit-tests and saves the linux arm64 binary with cabal (dynamically linked).
+# Part of the uniform binaries-*-cabal family.
+#
+# NB: dynamic, not static. A static arm64 build would need an Alpine container, but GitHub only supports
+# JavaScript actions (checkout/cache) in Alpine containers on x64 runners, not arm64 - so the container
+# route dies at checkout. A static arm64 build would require running the JS actions on the host and the
+# build inside Alpine via an explicit `docker run`; deferred.
+# Being dynamic, the binary needs a glibc at least as new as the build machine's,
+# so we build on ubuntu 22.04 (glibc 2.35), which lets it run on eg Debian 12 / Raspberry Pi OS Bookworm (2.36).
+
+name: binaries-linux-arm64-cabal
+on:
+  push:
+    branches: [ binaries-linux-arm64-cabal, binaries-cabal, binaries ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04-arm
+
+    env:
+      ghc:   "9.14.1"     # match stack.yaml / hx.toml
+      cabal: "3.16.1.0"
+
+    steps:
+
+    - name: Show platform info
+      run: |
+        arch
+        uname -a
+
+    - name: Install system build deps
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y libgmp-dev zlib1g-dev libncurses-dev
+
+    - name: Check out
+      uses: actions/checkout@v7
+      # have to fetch everything for git describe for --version
+      with:
+        fetch-depth: 0
+
+    - name: Check embedded files
+      run: |
+        tools/checkembeddedfiles
+
+    - name: Set up GHC and cabal
+      id: setup
+      uses: haskell-actions/setup@v2
+      with:
+        ghc-version: ${{ env.ghc }}
+        cabal-version: ${{ env.cabal }}
+      # the setup action installs & caches the ghc/cabal toolchain and runs `cabal update`.
+
+    # Cache the compiled dependencies (the expensive part) at the action's reported store path.
+    # Like the hx workflows, we do NOT cache the project build (dist-newstyle) - keeps --version fresh.
+    - name: Cache - cabal store (compiled dependencies)
+      uses: actions/cache@v6
+      with:
+        path: ${{ steps.setup.outputs.cabal-store }}
+        key: ${{ runner.os }}-arm64-cabal-store-${{ env.ghc }}-${{ hashFiles('cabal.project', '**/*.cabal') }}
+        restore-keys: |
+             ${{ runner.os }}-arm64-cabal-store-${{ env.ghc }}-
+
+    - name: Cache - shelltestrunner binary (built once, then reused)
+      uses: actions/cache@v6
+      with:
+        path: ~/.local/bin/shelltest
+        key: ${{ runner.os }}-arm64-shelltest-1.11-${{ env.ghc }}
+
+    - name: Build with cabal
+      run: |
+        cabal build --ghc-options=-Werror hledger hledger-ui hledger-web
+
+    - name: Test (functional + unit tests via shelltest)
+      run: |
+        mkdir -p "$HOME/.local/bin"
+        export PATH="$HOME/.local/bin:$PATH"
+        for e in hledger hledger-ui hledger-web; do cp "$(cabal list-bin $e)" "$HOME/.local/bin/"; done
+        command -v shelltest >/dev/null || cabal install --overwrite-policy=always --install-method=copy --installdir "$HOME/.local/bin" shelltestrunner-1.11
+        shelltest --version
+        COLUMNS=80 shelltest --execdir -j16 hledger/test -x /_ -x /addons -x ledger-compat/ledger-baseline -x ledger-compat/ledger-regress -x ledger-compat/ledger-collected
+
+    - name: Gather binaries
+      run: |
+        mkdir tmp
+        cp $(cabal list-bin hledger)     tmp
+        cp $(cabal list-bin hledger-ui)  tmp
+        cp $(cabal list-bin hledger-web) tmp
+        cp hledger/embeddedfiles/*.1     tmp
+        cp hledger/embeddedfiles/*.info  tmp
+        cp hledger/shell-completion/hledger-completion.bash tmp
+        strip tmp/hledger tmp/hledger-ui tmp/hledger-web
+        cd tmp
+        tar cvf hledger-linux-arm64.tar hledger hledger-ui hledger-web *.1 *.info hledger-completion.bash
+        for e in hledger hledger-ui hledger-web; do
+          file "$e"
+          "./$e" --version
+        done
+
+    # upload-artifact loses execute permissions, so we tar the binaries to preserve them.
+    - name: Upload binaries
+      uses: actions/upload-artifact@v7
+      with:
+        name: hledger-linux-arm64
+        path: tmp/hledger-linux-arm64.tar
