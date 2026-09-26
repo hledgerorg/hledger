@@ -52,11 +52,12 @@ import Data.Text.Lazy.Encoding qualified as TLE
 import Network.Wai.Test (SResponse(..))
 import System.Directory (getTemporaryDirectory)
 import System.FilePath ((</>))
-import Test.Hspec (expectationFailure, hspec)
+import Test.Hspec (describe, expectationFailure, hspec, it, shouldBe)
 import Yesod.Default.Config
 import Yesod.Test
 
 import Hledger.Web.Application ( makeAppWith )
+import Hledger.Web.Paging (pageNumbers)
 import Hledger.Web.WebOptions  -- ( WebOpts(..), defwebopts, prognameandversion )
 import Hledger.Web.Import hiding (get, j)
 import Hledger.Cli hiding (prognameandversion)
@@ -103,19 +104,22 @@ journalFileLacks f t = do
 -- does not name that field, so yesod generates one (eg "f1"); find it rather
 -- than hardcode it, or a post can silently do nothing.
 editFieldName :: YesodExample App T.Text
-editFieldName = do
-  els <- htmlQuery "textarea"
+editFieldName = attrOfFirst "textarea" "name"
+
+-- | The value of an attribute of the first element matching a selector in
+-- the current page, failing the test if there is none.
+attrOfFirst :: T.Text -> T.Text -> YesodExample App T.Text
+attrOfFirst selector attr = do
+  els <- htmlQuery selector
   case els of
-    [] -> error' "no textarea in the edit form"
+    [] -> failing $ "no element matches " ++ T.unpack selector
     (e:_) -> do
-      let needle = "name=\""
+      let needle = attr <> "=\""
           html = TL.toStrict (TLE.decodeUtf8 e)
           (_, fromneedle) = T.breakOn needle html
-          afterneedle = T.drop (T.length needle) fromneedle
-          fieldname = T.takeWhile (/= '"') afterneedle
       if T.null fromneedle
-        then error' "the edit form's textarea has no name"
-        else return fieldname
+        then failing $ "the first " ++ T.unpack selector ++ " has no " ++ T.unpack attr
+        else return $ T.takeWhile (/= '"') $ T.drop (T.length needle) fromneedle
 
 -- | The current response's Content-Security-Policy header, failing the test
 -- if there is none.
@@ -145,6 +149,21 @@ hledgerWebTest :: IO ()
 hledgerWebTest = do
   putStrLn $ "Running tests for " ++ prognameandversion -- ++ " (--test --help for options)"
   let d = fromGregorian 2000 1 1
+
+  -- The pager's window of page numbers: up to ten, sliding with the current page.
+  hspec $ describe "pageNumbers" $ do
+    it "shows every page when there are ten or fewer" $ do
+      pageNumbers 1 3 `shouldBe` [1, 2, 3]
+      pageNumbers 3 3 `shouldBe` [1, 2, 3]
+      pageNumbers 1 1 `shouldBe` [1]
+    it "shows the first ten pages until the current one is past the middle" $ do
+      pageNumbers 1 30 `shouldBe` [1 .. 10]
+      pageNumbers 5 30 `shouldBe` [1 .. 10]
+      pageNumbers 6 30 `shouldBe` [2 .. 11]
+    it "keeps the current page in the middle, and the last ten at the end" $ do
+      pageNumbers 12 17 `shouldBe` [8 .. 17]
+      pageNumbers 17 17 `shouldBe` [8 .. 17]
+      pageNumbers 15 30 `shouldBe` [11 .. 20]
 
   runTests "hledger-web" [] nulljournal $ do
 
@@ -300,6 +319,20 @@ hledgerWebTest = do
             ,"    expenses:food           10"
             ,"    assets:bank:checking"])
   runTests "hledger-web balance page" [] bj $ do
+
+    -- With two transactions in one year there is nothing to page or to
+    -- move between, and the pages say nothing about it.
+    yit "shows no paging and no years row for a small journal" $ do
+      get JournalR
+      statusIs 200
+      bodyContains "lunch</td>"
+      bodyNotContains "Showing "
+      bodyNotContains "Years:"
+      get RegisterR
+      statusIs 200
+      bodyContains "lunch</td>"
+      bodyNotContains "Showing "
+      bodyNotContains "Years:"
 
     yit "serves the balance report, linking accounts to their register" $ do
       get BalanceR
@@ -650,4 +683,290 @@ hledgerWebTest = do
         get (DownloadR otherfile)
         statusIs 404
 
+  -- Paging (#586): the journal and register pages show the newest pageSize
+  -- transactions and link to the older pages, so that a page stays small
+  -- however large the journal is; and a row of years links to each year the
+  -- search matches. 2300 transactions, one a day from 2023-01-01, each
+  -- moving 1 into assets:cash from income, or from expenses:food for every
+  -- third one, so a page holds 1000 rows and the cash register's running
+  -- balance after the n-th transaction is n.
+  let pagingtxns = 2300 :: Int
+      pagingentry i = unlines
+        [ show (addDays (fromIntegral i - 1) (fromGregorian 2023 1 1)) ++ " txn " ++ show i
+        , "    assets:cash    1"
+        , if i `mod` 3 == 0 then "    expenses:food" else "    income"
+        ]
+      base = defbaseurl defhost defport
+  pagingj <- fmap (either error' id) . runExceptT . journalFinalise biopts "paging.journal" "" =<<
+          readJournal'' (T.pack $ concatMap pagingentry [1..pagingtxns])  -- PARTIAL: readJournal'' should not fail
+  runTests "hledger-web paging" [] pagingj $ do
 
+    yit "shows the newest page of the journal, with a link to the older ones" $ do
+      get JournalR
+      statusIs 200
+      bodyContains "Showing 1 to 1,000 of 2,300 transactions"
+      bodyContains "txn 2300</td>"
+      bodyContains "txn 1301</td>"
+      bodyNotContains "txn 1300</td>"
+      bodyContains "/journal?page=2\" title=\"Show the older transactions\">Older"
+      bodyNotContains "Show the newer transactions"
+      -- the newer link's place is held, so the numbers do not shift on page 2
+      bodyContains "<span class=\"newer placeholder\" aria-hidden=\"true\">‹ Newer</span>"
+      -- the pages by number, the current one marked and not a link
+      bodyContains "<span class=\"current\" aria-current=\"page\">1</span>"
+      bodyContains "/journal?page=2\" title=\"Show page 2\" aria-label=\"Page 2\">2</a>"
+      bodyContains "/journal?page=3\" title=\"Show page 3\" aria-label=\"Page 3\">3</a>"
+      bodyNotContains "Show page 1\""
+
+    yit "shows the requested page, linking both ways" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "page" "2"
+      statusIs 200
+      bodyContains "Showing 1,001 to 2,000 of 2,300 transactions"
+      bodyContains "txn 1300</td>"
+      bodyContains "txn 301</td>"
+      bodyNotContains "txn 1301</td>"
+      bodyNotContains "txn 300</td>"
+      bodyContains "/journal\" title=\"Show the newer transactions\">‹ Newer"
+      bodyContains "/journal?page=3\" title=\"Show the older transactions\">Older"
+      bodyContains "/journal\" title=\"Show page 1\" aria-label=\"Page 1\">1</a>"
+      bodyContains "<span class=\"current\" aria-current=\"page\">2</span>"
+      bodyContains "/journal?page=3\" title=\"Show page 3\" aria-label=\"Page 3\">3</a>"
+
+    yit "brings a page number past the end back to the last page" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "page" "99"
+      statusIs 200
+      bodyContains "Showing 2,001 to 2,300 of 2,300 transactions"
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "page" "18446744073709551617"  -- past an Int, too
+      statusIs 200
+      bodyContains "Showing 2,001 to 2,300 of 2,300 transactions"
+      bodyContains "txn 1</td>"
+      bodyContains "/journal?page=2\" title=\"Show the newer transactions\">‹ Newer"
+      bodyNotContains "Show the older transactions"
+      bodyContains "<span class=\"older placeholder\" aria-hidden=\"true\">Older ›</span>"
+
+    yit "treats a page number that is not a positive integer as the first page" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "page" "x"
+      statusIs 200
+      bodyContains "Showing 1 to 1,000 of 2,300 transactions"
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "page" "0"
+      statusIs 200
+      bodyContains "Showing 1 to 1,000 of 2,300 transactions"
+
+    yit "pages only when there are more than pageSize transactions" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "q" "date:..2025-09-27"  -- txn 1000 is on 2025-09-26
+      statusIs 200
+      bodyNotContains "Showing "
+      bodyContains "txn 1000</td>"
+      bodyContains "txn 1</td>"
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "q" "date:..2025-09-28"
+      statusIs 200
+      bodyContains "Showing 1 to 1,000 of 1,001 transactions"
+      bodyNotContains "txn 1</td>"
+
+    yit "opens the page holding a linked transaction" $ do
+      -- A register row's date link, or a posting's account link, names its
+      -- transaction, so the view it opens can show the page holding it and
+      -- the browser can scroll to it. The transactions' indices depend on
+      -- how the journal was read, so take them from the pages.
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "page" "2"
+      statusIs 200
+      jid <- attrOfFirst "tr.title" "id"  -- transaction-F-N
+      let jtxn = T.takeWhileEnd (/= '-') jid
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "txn" jtxn
+      statusIs 200
+      bodyContains "Showing 1,001 to 2,000 of 2,300 transactions"
+      bodyContains ("id=\"" ++ T.unpack jid ++ "\"")
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:cash"
+        addGetParam "page" "3"
+      statusIs 200
+      rid <- attrOfFirst "#main-content tbody tr" "id"
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:cash"
+        addGetParam "txn" rid
+      statusIs 200
+      bodyContains "Showing 2,001 to 2,300 of 2,300 transactions"
+      bodyContains ("<tr id=\"" ++ T.unpack rid ++ "\"")
+      -- a transaction the search does not show gives the first page
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:income"
+        addGetParam "txn" "0"
+      statusIs 200
+      bodyContains "Showing 1 to 1,000 of 1,534 transactions"
+      -- The links carry the transaction: a posting's account link on the
+      -- journal, and a row's date and account links on the register.
+      get JournalR
+      statusIs 200
+      jid1 <- attrOfFirst "tr.title" "id"
+      let jtxn1 = T.unpack $ T.takeWhileEnd (/= '-') jid1
+      bodyContains ("/register?q=inacct%3Aassets%3Acash&amp;txn=" ++ jtxn1 ++ "#" ++ jtxn1 ++ "\"")
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:cash"
+        addGetParam "page" "2"
+      statusIs 200
+      rid2 <- T.unpack <$> attrOfFirst "#main-content tbody tr" "id"
+      bodyContains ("/journal?txn=" ++ rid2 ++ "#")
+      bodyContains ("&amp;txn=" ++ rid2 ++ "#" ++ rid2 ++ "\"")
+
+    yit "lists the years the search matches, each linking to that year" $ do
+      get JournalR
+      statusIs 200
+      bodyContains "<span>Years:</span>"
+      bodyContains ("<a class=\"current\" href=\"" ++ base ++ "/journal\" aria-current=\"page\" title=\"Show all years\">All</a>")
+      bodyContains "/journal?q=date%3A2023\" title=\"Show only 2023\">2023</a>"
+      bodyContains "/journal?q=date%3A2024\" title=\"Show only 2024\">2024</a>"
+      bodyContains "/journal?q=date%3A2029\" title=\"Show only 2029\">2029</a>"
+
+    yit "keeps every year in the row when the search is narrowed to one" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "q" "date:2024"
+      statusIs 200
+      bodyNotContains "Showing "  -- 366 transactions fit on one page
+      bodyContains ("<a class=\"current\" href=\"" ++ base ++ "/journal?q=date%3A2024\" aria-current=\"page\" title=\"Show only 2024\">2024</a>")
+      bodyContains "/journal?q=date%3A2025\" title=\"Show only 2025\""
+      bodyContains ("<a href=\"" ++ base ++ "/journal\" title=\"Show all years\">All</a>")
+
+    yit "carries the rest of the search in the year links" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "q" "income date:2024"
+      statusIs 200
+      bodyContains "/journal?q=date%3A2025%20income\" title=\"Show only 2025\""
+      bodyContains ("<a class=\"current\" href=\"" ++ base ++ "/journal?q=date%3A2024%20income\" aria-current=\"page\" title=\"Show only 2024\"")
+      bodyContains ("<a href=\"" ++ base ++ "/journal?q=income\" title=\"Show all years\"")
+
+    yit "counts the years by the same matching as the rows" $ do
+      -- A search term that a posting can fail while its transaction matches:
+      -- the register admits the transaction on the matching posting, and so
+      -- must the years row, whether or not the search has a date term.
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:cash not:acct:expenses date:2024"
+      statusIs 200
+      rows <- htmlQuery "#main-content tbody tr"
+      assertEq "the rows the years row counts" (length rows) 366
+      bodyNotContains "Showing "
+      bodyContains "title=\"Show only 2024\">2024</a>"
+      bodyContains "title=\"Show all years\">All</a>"
+
+    yit "counts the years by the search the year links make" $ do
+      -- A date term inside an expr: term is not one the year links replace,
+      -- so the years row counts what this search shows: one year, hence no row.
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "q" "expr:\"date:2024 and desc:txn\""
+      statusIs 200
+      bodyContains "txn 731</td>"  -- 2024-01-01
+      bodyNotContains "Years:"
+
+    yit "pages the register, with the running balance carried across pages" $ do
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:cash"
+      statusIs 200
+      bodyContains "Showing 1 to 1,000 of 2,300 transactions"
+      bodyContains "amount\">2300</span>"
+      bodyContains "amount\">1301</span>"
+      bodyNotContains "amount\">1300</span>"
+      bodyContains "/register?q=inacct%3Aassets%3Acash&amp;page=2\" title=\"Show the older transactions\""
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:cash"
+        addGetParam "page" "2"
+      statusIs 200
+      bodyContains "Showing 1,001 to 2,000 of 2,300 transactions"
+      bodyContains "amount\">1300</span>"
+      bodyContains "amount\">301</span>"
+      bodyNotContains "amount\">1301</span>"
+      -- the chart's data, JSON in an attribute with the transaction texts,
+      -- covers this page's rows only
+      bodyContains "txn 1300\\n"
+      bodyContains "txn 301\\n"
+      bodyNotContains "txn 1301\\n"
+      bodyNotContains "txn 300\\n"
+      -- the years row keeps the account
+      bodyContains "/register?q=date%3A2024%20inacct%3Aassets%3Acash\" title=\"Show only 2024\">2024</a>"
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:cash date:2024"
+      statusIs 200
+      bodyNotContains "Showing "
+      bodyContains ("<a class=\"current\" href=\"" ++ base ++ "/register?q=date%3A2024%20inacct%3Aassets%3Acash\"")
+
+  -- A startup depth limit does not apply to the register, nor to its years.
+  runTests "hledger-web paging with --depth" [("depth","1")] pagingj $ do
+
+    yit "counts the register's years without the depth limit" $ do
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:cash date:2024"
+      statusIs 200
+      bodyContains "title=\"Show only 2024\">2024</a>"
+      bodyContains "title=\"Show all years\">All</a>"
+
+  -- More than twenty years are grouped by decade, a row each: 21 years here.
+  let decadesentry y = unlines
+        [ show y ++ "-06-15 txn " ++ show y
+        , "    assets:cash    1"
+        , "    income"
+        ]
+  decadesj <- fmap (either error' id) . runExceptT . journalFinalise biopts "decades.journal" "" =<<
+          readJournal'' (T.pack $ concatMap decadesentry [2005..2025 :: Int])  -- PARTIAL: readJournal'' should not fail
+  runTests "hledger-web years row" [] decadesj $ do
+
+    yit "groups more than twenty years by decade" $ do
+      get JournalR
+      statusIs 200
+      bodyContains ">All</a>"
+      rows <- map (TL.toStrict . TLE.decodeUtf8) <$> htmlQuery "p.years"
+      assertEq "the All row, then one row per decade" (length rows) 4
+      let row2010s = rows !! 2
+      assertEq "the 2010s row is labelled" (T.isInfixOf "<span>2010s:</span>" row2010s) True
+      assertEq "2010 opens the 2010s row" (T.isInfixOf "date%3A2010\"" row2010s) True
+      assertEq "2019 ends the 2010s row" (T.isInfixOf "date%3A2019\"" row2010s) True
+      assertEq "2009 is not in the 2010s row" (T.isInfixOf "date%3A2009\"" row2010s) False
+      assertEq "2020 is not in the 2010s row" (T.isInfixOf "date%3A2020\"" row2010s) False

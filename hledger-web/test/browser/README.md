@@ -18,6 +18,11 @@ highlighting.
   hledger-web, with `--port 0` and the browser launcher stubbed, and checks that
   the browser is opened at the port the OS chose; it is skipped on Windows, where
   the launch cannot be intercepted.
+- `paging.spec.js` — the journal and register views page their transactions (#586):
+  what only a browser shows, a paged page loading without policy violations or
+  errors, the register chart drawn from the page's rows, and a link to a
+  transaction on another page scrolling to it. This spec starts a second
+  hledger-web on a generated journal of 2300 transactions.
 
 Nothing here is part of `stack build` or `stack test`; the suite is opt-in and needs
 node only to run it.

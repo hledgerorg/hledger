@@ -1,6 +1,9 @@
 <h2>
   #{header}
 
+^{yearsRow RegisterR qparam years}
+^{pagingLinks RegisterR qparam page}
+
 <div>
   ^{registerChartHtml qparam balancelabel $ accountTransactionsReportByCommodity items}
 
@@ -21,19 +24,21 @@
       $forall (torig, tacct, split, _acct, amt, bal) <- items
         <tr ##{tindex torig} title="#{showTransaction torig}">
           <td .date nowrap>
-            <a href="@?{(JournalR, [("q", T.unwords $ removeInacct qparam)])}##{transactionFrag torig}">
+            <a href="@?{journallink torig}##{transactionFrag torig}">
               #{show (tdate tacct)}
           <td .description>
             #{textElideRight 30 (tdescription tacct)}
           <td .account>
             $forall (Posting { paccount = acc }, (summName,comma)) <- otherTransAccounts torig
-              <a href="@?{acctlink acc}##{tindex torig}" title="#{acc}">
+              <a href="@?{acctlink acc torig}##{tindex torig}" title="#{acc}">
                 #{summName}</a>#{comma}
           <td .amount>
             $if not split || not (mixedAmountLooksZero amt)
               ^{mixedAmountAsHtml amt}
           <td .amount>
             ^{mixedAmountAsHtml bal}
+
+^{pagingLinks RegisterR qparam page}
 
 $if elem AddPermission perms
   ^{addModal AddR j today}

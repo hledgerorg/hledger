@@ -105,18 +105,52 @@ td.date {
   border-top: 1px solid #687385;
 }
 
-/* The row of links to the balance reports, on the journal and balance
-   pages; the report being shown is set in bold, like the sidebar's
-   current account. */
-.report-links a {
+/* A row of links under a page heading: the balance reports, the years
+   a search matches, the pages. The current one is set in bold, like the
+   sidebar's current account, and is not a link on the pages row. Each
+   link wraps as a unit, so a narrow screen breaks the row between links,
+   not inside one. */
+.report-links a,
+.report-links .current {
   margin-left: 0.5em;
+  white-space: nowrap;
 }
 .report-links .current {
   font-weight: bold;
 }
+/* The pages row keeps its shape from page to page: the newer and older
+   links hold their places when absent, and each page number has a cell
+   of its own, so the numbers do not shift when a link or a digit
+   appears. */
+.paging-nav a,
+.paging-nav .current,
+.paging-nav .placeholder {
+  display: inline-block;
+  margin-left: 0;
+  text-align: center;
+}
+.paging-nav a:not(.newer):not(.older),
+.paging-nav .current {
+  min-width: 2.2em;
+}
+.paging-nav .newer {
+  margin-right: 0.5em;
+}
+.paging-nav .older {
+  margin-left: 0.5em;
+}
+.paging-nav .placeholder {
+  visibility: hidden;
+}
 
 /*------------------------------------------------------------------------------------------*/
 /* 4. the add form */
+
+/* The journal page's link to it, kept a line's space above any rows of
+   links that follow it. */
+#addformlink + .report-links {
+  margin-top: 10px;
+}
 
 /* Each posting row is indented a little under the date and description. */
 #addform .account-group {

@@ -1,14 +1,16 @@
 #!/usr/bin/env stack
 -- stack script --resolver nightly-2026-06-01
 {-
-generatejournal.hs NUMTXNS NUMACCTS ACCTDEPTH [--chinese|--mixed]
+generatejournal.hs NUMTXNS NUMACCTS ACCTDEPTH [--chinese|--mixed] [--start=YYYY-MM-DD] [--days=N]
 
 This generates synthetic journal data for benchmarking & profiling. It
 prints a dummy journal on stdout, with NUMTXNS transactions, one per
-day, using NUMACCTS account names with depths up to ACCTDEPTH. It will
-also contain NUMACCTS P records, one per day. By default it uses only
-ascii characters, with --chinese it uses wide chinese characters, or
-with --mixed it uses both.
+day from 2000-01-01, using NUMACCTS account names with depths up to
+ACCTDEPTH. It will also contain NUMACCTS P records, one per day. By
+default it uses only ascii characters, with --chinese it uses wide
+chinese characters, or with --mixed it uses both. --start sets the
+first day, and --days spreads the transactions evenly over that many
+days instead of one per day, giving a sparse or a dense journal.
 -}
 
 module Main
@@ -17,6 +19,7 @@ import Data.Char
 import Data.Decimal
 import Data.List
 import Data.Time.Calendar
+import Data.Time.Format
 import Data.Time.LocalTime
 import Numeric
 import Safe (tailErr)
@@ -30,13 +33,27 @@ main = do
   let [numtxns, numaccts, acctdepth] = map read args :: [Int]
   -- today <- getCurrentDay
   -- let (year,_,_) = toGregorian today
-  let d = fromGregorian 2000 1 1
-  let dates = iterate (addDays 1) d
+  let d = maybe (fromGregorian 2000 1 1) parseDay $ optValue "--start=" opts
+      -- one per day, or spread evenly over the given number of days
+      dates = case optValue "--days=" opts of
+        Nothing   -> iterate (addDays 1) d
+        Just days -> let n = read days :: Int in [addDays (fromIntegral $ (i * n) `div` numtxns) d | i <- [0..]]
   let accts = pair $ cycle $ take numaccts $ uniqueAccountNames opts acctdepth
   let comms  = cycle ['A'..'Z']
   let rates = [0.70, 0.71 .. 1.3]
   mapM_ (\(n,d,(a,b),c,p) -> putStr $ showtxn n d a b c p) $ take numtxns $ zip5 [1..] dates accts comms (drop 1 comms)
   mapM_ (\(d,rate) -> putStr $ showmarketprice d rate) $ take numtxns $ zip dates (cycle $ rates ++ init (tailErr (reverse rates)))  -- PARTIAL tailErr succeeds because non-null rates list
+
+-- The value of the --NAME=VALUE option, if given.
+optValue :: String -> [String] -> Maybe String
+optValue name opts = case [drop (length name) o | o <- opts, name `isPrefixOf` o] of
+  (v:_) -> Just v
+  []    -> Nothing
+
+parseDay :: String -> Day
+parseDay s = case parseTimeM True defaultTimeLocale "%Y-%m-%d" s of
+  Just d  -> d
+  Nothing -> error $ "could not parse date: " ++ s
 
 showtxn :: Int -> Day -> String -> String -> Char -> Char -> String
 showtxn txnno date acct1 acct2 comm pricecomm =

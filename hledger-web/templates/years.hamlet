@@ -1,0 +1,12 @@
+$if manyYears
+  <p .report-links .years>
+    <span>Years:
+    <a href=@?{alllink} :allCurrent:.current :allCurrent:aria-current="page" title="Show all years">All
+    $if null byDecade
+      $forall y <- years
+        <a href=@?{yearlink y} :isCurrent y:.current :isCurrent y:aria-current="page" title="Show only #{y}">#{y}
+  $forall (decade, decadeYears) <- byDecade
+    <p .report-links .years>
+      <span>#{decade}:
+      $forall y <- decadeYears
+        <a href=@?{yearlink y} :isCurrent y:.current :isCurrent y:aria-current="page" title="Show only #{y}">#{y}

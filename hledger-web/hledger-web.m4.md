@@ -147,6 +147,12 @@ hledger-web's main views are:
 - the **register view**, showing the transactions affecting one account (and its subaccounts),
   with a running balance and a balance chart.
 
+Both views show the newest 1000 matching transactions, with links to the older
+and newer pages and to pages by number, so that a page stays a reasonable size
+however large the journal is (a `page` parameter in the URL names the page).
+When the matching transactions span more than one year, a row of years above the table
+links to each year's transactions; "All" widens the view again.
+
 The **sidebar** lists accounts and their balances (parent balances include subaccounts,
 and multiple commodities are shown one above the other).
 Click an account name to see its register, or a date to see that day's journal entries.

@@ -570,6 +570,9 @@ samplejournals:
     tools/generatejournal 10000 90000 10   > examples/10ktxns-90kaccts.journal
     tools/generatejournal 10000 100000 10  > examples/10ktxns-100kaccts.journal
     tools/generatejournal 10000 1000000 10 > examples/10ktxns-1maccts.journal
+    # for hledger-web's paging: a sparse century, ten transactions a year, and a dense year
+    tools/generatejournal 1000 20 3    --start=1926-01-01 --days=36500 > examples/century-sparse.journal
+    tools/generatejournal 6000 100 4   --start=2026-01-01 --days=365   > examples/dense-year.journal
 
 #    tools/generatejournal.hs 3 5 5 --chinese > examples/chinese.journal  # don't regenerate, keep the simple version
 # $ just --set BENCHEXES ledger,hledger  bench

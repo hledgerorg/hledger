@@ -18,6 +18,7 @@ import Text.Hamlet (hamletFile)
 import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Web.Import
+import Hledger.Web.Paging
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Widget.Common
@@ -30,6 +31,7 @@ getRegisterR = do
   checkServerSideUiEnabled
   VD{perms, j, q, opts, qparam, qopts, today} <- getViewData
   require ViewPermission
+  pagereq <- pageRequest
 
   let (a,inclsubs) = fromMaybe ("all accounts",True) $ inAccount qopts
       s1 = if inclsubs then "" else " (excluding subaccounts)"
@@ -38,7 +40,10 @@ getRegisterR = do
 
   let rspec = reportspec_ (cliopts_ opts)
       acctQuery = fromMaybe Any (inAccountQuery qopts)
-      acctlink acc = (RegisterR, [("q", replaceInacct qparam $ accountQuery acc)])
+      -- An account's register, opened on the page holding this transaction.
+      acctlink acc t = (RegisterR, [("q", replaceInacct qparam $ accountQuery acc), ("txn", T.pack $ show $ tindex t)])
+      -- The journal, opened on the page holding this transaction.
+      journallink t = (JournalR, [("q", qt) | let qt = T.unwords (removeInacct qparam), not (T.null qt)] ++ [("txn", T.pack $ show $ tindex t)])
       otherTransAccounts =
           map (\(acct,(name,comma)) -> (acct, (T.pack name, T.pack comma))) .
           undecorateLinks . elideRightDecorated 40 . decorateLinks .
@@ -47,9 +52,18 @@ getRegisterR = do
           zip xs $
           zip (map (T.unpack . accountSummarisedName . paccount) xs) $
           tailSafe (", "<$xs) ++ [""]
-      items =
+      -- The matching transactions, newest first; this page shows one page of them.
+      allitems =
         styleAmounts (journalCommodityStylesWith HardRounding j) $
         accountTransactionsReport rspec{_rsQuery=q} j acctQuery
+      (page, items) = pageOf pagereq (tindex . triOrigTransaction) allitems
+      -- The years the search matches in, ignoring any date term in it. A
+      -- year's count is by register date, while its page matches date:YYYY
+      -- against each posting's date, so a transaction with postings dated in
+      -- two years is counted once and shown in both.
+      years = map triDate $
+        maybe allitems (\dq -> accountTransactionsReport rspec{_rsQuery = dq} j acctQuery) $
+        datelessQuery today j qparam
       balancelabel
         | isJust (inAccount qopts), balanceaccum_ (_rsReportOpts rspec) == Historical = "Historical Total"
         | isJust (inAccount qopts) = "Period Total"

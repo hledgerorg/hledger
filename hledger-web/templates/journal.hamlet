@@ -6,6 +6,9 @@ $if elem AddPermission perms
      data-toggle="modal" data-target="#addmodal" title="Add a new transaction to the journal">
     Add a transaction
 
+^{yearsRow JournalR qparam years}
+^{pagingLinks JournalR qparam page}
+
 <div .table-responsive>
   <table .transactionsreport .table .table-condensed>
     <thead>
@@ -28,10 +31,12 @@ $if elem AddPermission perms
           <td>
           <td>
             &nbsp;
-            <a href="@?{acctlink acc}##{tindex torig}" title="#{acc}">
+            <a href="@?{acctlink acc torig}##{tindex torig}" title="#{acc}">
               #{elideAccountName 40 acc}
           <td .amount>
             ^{mixedAmountAsHtml amt}
+
+^{pagingLinks JournalR qparam page}
 
 $if elem AddPermission perms
   ^{addModal AddR j today}

@@ -146,18 +146,20 @@ transactionFragment j Transaction{tindex, tsourcepos} =
     -- or 0 if this txn has no known file (eg a forecasted txn)
     tfileindex = maybe 0 (+1) $ elemIndex (sourceName $ fst tsourcepos) (journalFilePaths j)
 
+-- | The search's terms without its date terms, quoted as needed.
 removeDates :: Text -> [Text]
 removeDates =
     map quoteIfSpaced .
     filter (\term ->
-        not $ T.isPrefixOf "date:" term || T.isPrefixOf "date2:" term) .
+        not $ T.null term || T.isPrefixOf "date:" term || T.isPrefixOf "date2:" term) .
     Query.words'' queryprefixes
 
+-- | The search's terms without its account terms, quoted as needed.
 removeInacct :: Text -> [Text]
 removeInacct =
     map quoteIfSpaced .
     filter (\term ->
-        not $ T.isPrefixOf "inacct:" term || T.isPrefixOf "inacctonly:" term) .
+        not $ T.null term || T.isPrefixOf "inacct:" term || T.isPrefixOf "inacctonly:" term) .
     Query.words'' queryprefixes
 
 replaceInacct :: Text -> Text -> Text
