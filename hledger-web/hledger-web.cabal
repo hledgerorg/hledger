@@ -42,8 +42,6 @@ extra-source-files:
     static/css/bootstrap-theme.min.css
     static/css/bootstrap.css
     static/css/bootstrap.min.css
-    static/css/bootstrap-theme.css.map
-    static/css/bootstrap.css.map
     static/fonts/glyphicons-halflings-regular.eot
     static/fonts/glyphicons-halflings-regular.svg
     static/fonts/glyphicons-halflings-regular.ttf

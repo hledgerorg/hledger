@@ -24,16 +24,7 @@
 }
 
 /* green */
-::-moz-placeholder {
-  font-style:italic;
-}
-:-moz-placeholder {
-  font-style:italic;
-}
-::-webkit-input-placeholder {
-  font-style:italic;
-}
- :-ms-input-placeholder {
+::placeholder {
   font-style:italic;
 }
 
@@ -297,11 +288,6 @@ ul {
     font-size: 16px;
 }
 
-#sidebar-menu .main-menu .ff-wrapper { /* This wrapper is needed because firefox won't apply overflow to a td-tag */
-    overflow:hidden;
-    text-overflow:ellipsis;
-}
-
 #sidebar-menu .main-menu .top {
     border: none !important;
 }
@@ -368,8 +354,6 @@ ul {
 @media screen and (max-width: 768px) {
     .row-offcanvas {
         position: relative;
-        -webkit-transition: all .25s ease-out;
-        -o-transition: all .25s ease-out;
         transition: all .25s ease-out;
     }
 
