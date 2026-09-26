@@ -1,0 +1,17 @@
+$if pgCount > 1
+  <p .report-links .paging>
+    <span>#{showing}
+  <p .report-links .paging-nav>
+    $maybe n <- mnewer
+      <a .newer href=@?{link n} title=#{tr trs "Show the newer transactions"}>‹ #{tr trs "Newer"}
+    $nothing
+      <span .newer .placeholder aria-hidden="true">‹ #{tr trs "Newer"}
+    $forall n <- numbers
+      $if n == pgNumber
+        <span .current aria-current="page">#{n}
+      $else
+        <a href=@?{link n} title=#{pageTitle n} aria-label=#{pageLabel n}>#{n}
+    $maybe n <- molder
+      <a .older href=@?{link n} title=#{tr trs "Show the older transactions"}>#{tr trs "Older"} ›
+    $nothing
+      <span .older .placeholder aria-hidden="true">#{tr trs "Older"} ›

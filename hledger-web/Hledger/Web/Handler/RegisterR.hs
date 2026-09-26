@@ -19,6 +19,7 @@ import Hledger.Utils.I18n (tr, trc, trf)
 import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Web.Import
+import Hledger.Web.Paging
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Widget.Common
@@ -36,6 +37,7 @@ getRegisterR = do
   -- the transactions shown; a report's ending balance links here that way,
   -- so that the balance ends on the figure clicked.
   historical <- (== Just "historical") <$> lookupGetParam "accum"
+  pagereq <- pageRequest
 
   let title = case inAccount qopts of
         Nothing         -> tr trs "all accounts"
@@ -50,7 +52,9 @@ getRegisterR = do
       accumParams = [("accum", "historical") | historical]
       qParams t = [("q", t) | not (T.null t)]
       acctQuery = fromMaybe Any (inAccountQuery qopts)
-      acctlink acc = (RegisterR, ("q", replaceInacct qparam $ accountQuery acc) : accumParams)
+      -- An account's register, keeping this register's mode, opened on the
+      -- page holding this transaction.
+      acctlink acc t = (RegisterR, ("q", replaceInacct qparam $ accountQuery acc) : ("txn", T.pack $ show $ tindex t) : accumParams)
       -- In an account's register a type: term selects the postings
       -- totaled, not the accounts named beside them: a liability's
       -- register names the accounts it was posted against, whatever their
@@ -65,9 +69,22 @@ getRegisterR = do
           zip (map (T.unpack . accountSummarisedName . paccount) xs) $
           tailSafe (", "<$xs) ++ [""]
       styles = journalCommodityStylesWith HardRounding j
-      (startbal, items) =
+      -- The matching transactions, newest first, and the balance brought
+      -- forward from before them; this page shows one page of them.
+      (startbal, allitems) =
         bimap (styleAmounts styles) (styleAmounts styles) $
         accountTransactionsReportWithStart rspec{_rsQuery=q} j acctQuery
+      (page, items) = pageOf pagereq (tindex . triOrigTransaction) allitems
+      -- The brought-forward row is older than every transaction, so it
+      -- ends the last page.
+      lastpage = pgNumber page >= pgCount page
+      -- The years the search matches in, ignoring any date term in it. A
+      -- year's count is by register date, while its page matches date:YYYY
+      -- against each posting's date, so a transaction with postings dated in
+      -- two years is counted once and shown in both.
+      years = map triDate $
+        maybe allitems (\dq -> accountTransactionsReport rspec{_rsQuery = dq} j acctQuery) $
+        datelessQuery today j qparam
       balancelabel
         | historical               = trc trs "column heading" "Historical Total"
         | isJust (inAccount qopts) = trc trs "column heading" "Period Total"

@@ -1,6 +1,9 @@
 <h2>
   #{header}
 
+^{yearsRow trs RegisterR qparam years}
+^{pagingLinks trs RegisterR qparam page}
+
 <div>
   ^{registerChartHtml qparam accumParams transactionFrag (T.unpack balancelabel) $ accountTransactionsReportByCommodity items}
 
@@ -28,14 +31,14 @@
             #{textElideRight 30 (tdescription tacct)}
           <td .account>
             $forall (Posting { paccount = acc }, (summName,comma)) <- otherTransAccounts torig
-              <a href="@?{acctlink acc}##{transactionFrag torig}" title="#{acc}">
+              <a href="@?{acctlink acc torig}##{transactionFrag torig}" title="#{acc}">
                 #{summName}</a>#{comma}
           <td .amount>
             $if not split || not (mixedAmountLooksZero amt)
               ^{mixedAmountAsHtml amt}
           <td .amount>
             ^{mixedAmountAsHtml bal}
-      $if historical
+      $if historical && lastpage
         $maybe start <- mstart
           <tr .broughtforward>
             <td .date nowrap>
@@ -50,6 +53,8 @@
               $else
                 <a href=@?{broughtForwardLink start} title=_{HMsg "Show the transactions before this period"}>
                   ^{mixedAmountAsHtml startbal}
+
+^{pagingLinks trs RegisterR qparam page}
 
 $if elem AddPermission perms
   ^{addModal AddR j today}

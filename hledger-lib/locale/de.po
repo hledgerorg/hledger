@@ -877,3 +877,43 @@ msgstr "Bilanz und Einnahmenüberschussrechnung zeigen Verbindlichkeiten, Eigenk
 
 msgid "The sidebar's report links show the balance sheet, income statement, and cashflow statement, each linking to the other reports"
 msgstr "Die Berichtslinks der Seitenleiste zeigen Bilanz, Einnahmenüberschussrechnung und Kapitalflussrechnung, jeweils mit Links zu den anderen Berichten"
+
+#. hledger-web: paging of the journal and register views.
+#, python-brace-format
+msgid "Showing {first} to {last} of {total} transactions"
+msgstr "Buchungen {first} bis {last} von {total}"
+
+msgid "Show the newer transactions"
+msgstr "Die neueren Buchungen anzeigen"
+
+msgid "Newer"
+msgstr "Neuere"
+
+msgid "Show the older transactions"
+msgstr "Die älteren Buchungen anzeigen"
+
+msgid "Older"
+msgstr "Ältere"
+
+#, python-brace-format
+msgid "Show page {n}"
+msgstr "Seite {n} anzeigen"
+
+#, python-brace-format
+msgid "Page {n}"
+msgstr "Seite {n}"
+
+msgctxt "years row"
+msgid "Years:"
+msgstr "Jahre:"
+
+msgid "Show all years"
+msgstr "Alle Jahre anzeigen"
+
+msgctxt "years row"
+msgid "All"
+msgstr "Alle"
+
+#, python-brace-format
+msgid "Show only {year}"
+msgstr "Nur {year} anzeigen"

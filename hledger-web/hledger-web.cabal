@@ -69,8 +69,10 @@ extra-source-files:
     templates/edit-form.hamlet
     templates/journal.hamlet
     templates/manage.hamlet
+    templates/paging.hamlet
     templates/register.hamlet
     templates/upload-form.hamlet
+    templates/years.hamlet
     hledger-web.1
     hledger-web.txt
     hledger-web.info
@@ -109,6 +111,7 @@ library
       Hledger.Web.Handler.UploadR
       Hledger.Web.Import
       Hledger.Web.Main
+      Hledger.Web.Paging
       Hledger.Web.ReportPage
       Hledger.Web.Settings
       Hledger.Web.Settings.StaticFiles
