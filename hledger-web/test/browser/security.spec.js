@@ -40,6 +40,19 @@ test.describe('journal data is rendered as text, not markup', () => {
     expect(await page.locator('#main-content img[src="x"]').count()).toBe(0);
   });
 
+  // The tooltip over a transaction is built by hledger.js from the entry's
+  // text, line by line, so the payload reaches the page a second time there.
+  test('the entry tooltip shows a payload as text', async ({ page }) => {
+    await page.goto('/journal');
+    const row = page.locator('#main-content tr.title', { hasText: 'Payee <img' });
+    await row.locator('td').nth(1).hover();
+    const tip = page.locator('.entry-tooltip');
+    await expect(tip).toBeVisible();
+    await expect(tip).toContainText(PAYLOAD);
+    expect(await tip.locator('img').count()).toBe(0);
+    expect(await xssFired(page)).toBe(false);
+  });
+
   test('the sidebar escapes a payload in an account name', async ({ page }) => {
     await page.goto('/journal');
     await expect(page.locator('#sidebar-menu')).toContainText('xss<script>');

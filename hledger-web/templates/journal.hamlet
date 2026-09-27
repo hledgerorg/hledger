@@ -15,7 +15,7 @@ $if elem AddPermission perms
       <th .amount>_{HMsgc "column heading" "Amount"}
 
     $forall torig <- items
-      <tr .title ##{transactionFrag torig} title="#{showTransaction torig}">
+      <tr .title ##{transactionFrag torig} data-entry="#{showTransaction torig}">
         <td .date nowrap>
           <a href="@?{(JournalR, [("q", journalDayQuery qparam (tdate torig))])}##{transactionFrag torig}"
              title=_{HMsg "Show the journal entries on this date"}>

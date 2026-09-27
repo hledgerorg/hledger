@@ -249,12 +249,48 @@ td.date {
 }
 
 /*------------------------------------------------------------------------------------------*/
-/* 5. the entry targeted by the url hash */
+/* 5. entries: the one the url hash targets, and the one under the pointer */
 
 /* Following a link to a transaction or posting marks it. */
 .table > tbody > tr:target > td,
 tr:target > td {
   background-color: var(--row-target);
+}
+
+/* Hovering a transaction shows its journal entry in this tooltip (see
+   entryTooltipInit in hledger.js), which is as wide as the entry's longest
+   line and set in a fixed-width font, so that the amounts line up as they do
+   in the journal. hledger.js places it and keeps it within the window. */
+.entry-tooltip {
+  position: fixed;
+  z-index: 1070;  /* bootstrap's level for tooltips */
+  width: max-content;
+  overflow: hidden;
+  padding: 6px 10px;
+  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #333;
+  background-color: #fff;
+  border: 1px solid rgba(0, 0, 0, .2);
+  border-radius: 4px;
+  box-shadow: 0 3px 9px rgba(0, 0, 0, .2);
+  /* Like a browser tooltip, it is never in the pointer's way. */
+  pointer-events: none;
+}
+.entry-tooltip > div {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* An entry taller than the window is cut off; this marks the cut. */
+.entry-tooltip.clipped::after {
+  content: "…";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 0 10px;
+  background-color: #fff;
 }
 
 code {

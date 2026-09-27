@@ -97,6 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  entryTooltipInit();
   registerChartInit();
 });
 
@@ -230,6 +231,123 @@ function getCookie(name) {
     var parts = c.split('=');
     return parts[0] === name ? parts.slice(1).join('=') : found;
   }, undefined);
+}
+
+//----------------------------------------------------------------------
+// ENTRY TOOLTIP
+//
+// Hovering a transaction in the journal or a register shows its journal
+// entry, the way a browser shows a title attribute, but in a fixed-width
+// font so that the amounts line up as they do in the journal. The rows carry
+// the entry in a data-entry attribute; in a title attribute the browser would
+// draw it itself, in a proportional font and wrapped at its own narrow width.
+// As with titles, the innermost one applies: over an account link, the
+// link's title (the full account name) shows instead.
+
+function entryTooltipInit() {
+  if (!document.querySelector('[data-entry]')) { return; }
+  var tip = document.createElement('div');
+  tip.className = 'entry-tooltip';
+  tip.setAttribute('aria-hidden', 'true');
+  tip.hidden = true;
+  document.body.appendChild(tip);
+
+  var row = null;         // the element with an entry under the pointer
+  var timer = null;       // set while waiting to show its entry
+  var clicked = false;    // set by a click, until the pointer leaves the row
+  var x, y;               // the pointer position, where the entry appears
+
+  function show() {
+    timer = null;
+    entryTooltipFill(tip, row.getAttribute('data-entry'));
+    entryTooltipPlace(tip, x, y);
+  }
+  function hide() {
+    clearTimeout(timer);
+    timer = null;
+    tip.hidden = true;
+  }
+
+  // Mouse only. A touch has no hover, and changing the page when a touch
+  // arrives over a link makes iOS treat the first tap as a hover, so the link
+  // would take two taps.
+  function track(e) {
+    if (e.pointerType !== 'mouse') { return; }
+    x = e.clientX;
+    y = e.clientY;
+    var el = e.target.closest('[title], [data-entry]');
+    var over = el && el.hasAttribute('data-entry') ? el : null;
+    if (over !== row) {
+      // Moving on to the next entry while one is showing shows the next at
+      // once, as with browser tooltips; otherwise it appears after a pause.
+      var showing = !tip.hidden;
+      hide();
+      row = over;
+      clicked = false;
+      if (row) {
+        if (showing) { show(); } else { timer = setTimeout(show, 500); }
+      }
+    } else if (row && tip.hidden && !timer && !clicked) {
+      // Still over the row after a scroll or a key press hid it.
+      timer = setTimeout(show, 500);
+    }
+  }
+  document.addEventListener('pointerover', track);
+  document.addEventListener('pointermove', track);
+
+  // Also like a browser tooltip, it goes away when the pointer leaves the
+  // window, and on a click, a key press or a scroll. After a click it stays
+  // away until the pointer leaves the row, so as not to cover a selection
+  // being made. Scroll events don't bubble, and the main pane scrolls by
+  // itself, hence the capture.
+  document.addEventListener('pointerout', function(e) {
+    if (!e.relatedTarget) { hide(); row = null; }
+  });
+  document.addEventListener('pointerdown', function() {
+    hide();
+    clicked = true;
+  });
+  document.addEventListener('keydown', hide);
+  document.addEventListener('scroll', hide, true);
+  window.addEventListener('blur', hide);
+}
+
+// Put an entry's lines in the tooltip.
+function entryTooltipFill(tip, entry) {
+  tip.textContent = '';
+  entry.replace(/\s+$/, '').split('\n').forEach(function(line) {
+    var div = document.createElement('div');
+    // Set as text, so that journal content cannot be parsed as markup.
+    div.textContent = line;
+    // A line too long for the window wraps, and its continuation is indented
+    // past the line's own indentation, so the entry keeps its shape.
+    var indent = (line.match(/^ */)[0].length + 2) + 'ch';
+    div.style.paddingLeft = indent;
+    div.style.textIndent = '-' + indent;
+    tip.appendChild(div);
+  });
+}
+
+// Show the tooltip below the pointer, or above it if there is no room below,
+// and keep it within the window.
+function entryTooltipPlace(tip, x, y) {
+  var margin = 8;
+  var vw = document.documentElement.clientWidth;
+  var vh = document.documentElement.clientHeight;
+  tip.style.maxWidth = (vw - 2 * margin) + 'px';
+  tip.style.maxHeight = (vh - 2 * margin) + 'px';
+  tip.style.left = '0';
+  tip.style.top = '0';
+  tip.hidden = false;
+  var w = tip.offsetWidth;
+  var h = tip.offsetHeight;
+  var top = y + 20;  // clear of the pointer's arrow
+  if (top + h > vh - margin) { top = y - margin - h; }
+  if (top < margin) { top = vh - margin - h; }
+  tip.style.left = Math.max(margin, Math.min(x, vw - margin - w)) + 'px';
+  tip.style.top = top + 'px';
+  // An entry taller than the window is cut off; the css marks the cut.
+  tip.classList.toggle('clipped', tip.scrollHeight > tip.clientHeight);
 }
 
 //----------------------------------------------------------------------
