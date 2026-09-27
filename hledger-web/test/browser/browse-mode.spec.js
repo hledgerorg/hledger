@@ -1,10 +1,11 @@
 // The default mode, with no --serve flag, opens a browser on hledger-web and
-// exits the server once no browser window has shown it for two minutes. The
-// page tells the server it is open by pinging /_ping, from hledger.js, on
-// load and then periodically (serveAndBrowse in Main.hs). This spec checks
-// that the page is marked for the ping in this mode, that the ping goes out
-// and is answered, and that it does so without any policy violation. It also
-// checks that with --port 0 the browser is opened at the port the OS chose.
+// exits the server once no browser window has shown it for fifteen minutes.
+// The page tells the server it is open by pinging /_ping, from hledger.js, on
+// load, periodically, and when it is shown again (serveAndBrowse in Main.hs).
+// This spec checks that the page is marked for the ping in this mode, that
+// the ping goes out and is answered, and that it does so without any policy
+// violation; that the page says so when it can't reach the server; and that
+// with --port 0 the browser is opened at the port the OS chose.
 //
 // It starts its own hledger-web with --port 0, learning the url from the
 // startup banner, and with the browser launcher stubbed out: hledger opens
@@ -56,6 +57,20 @@ test('in browse mode, the page pings the server so that it keeps serving', async
   expect((await (await ping).response()).status()).toBe(204);
   await expectNoViolations(page, violations);
   expect(pageErrors).toEqual([]);
+});
+
+test('the page says when it cannot reach the server, until it is shown again and can', async ({ page }) => {
+  const notice = page.locator('#server-stopped');
+  // as if the server had exited
+  await page.route('**/_ping', route => route.abort());
+  await page.goto(URL + '/journal');
+  await expect(notice).toBeVisible();
+
+  // as if it had been restarted; the next timed ping is 30s away, so it is
+  // the ping on showing the page that finds the server
+  await page.unroute('**/_ping');
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await expect(notice).toBeHidden();
 });
 
 test('with --port 0, the browser is opened at the port the OS chose', async () => {

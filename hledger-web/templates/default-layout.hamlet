@@ -42,6 +42,10 @@ $if elem ViewPermission perms
     })();
 
 <div#main-content .col-xs-12.#{mainShowmd}.#{mainShowsm}>
+  $# Shown by hledger.js while the page can't reach the server.
+  $if browsemode
+    <div #server-stopped .alert.alert-warning role=alert hidden>
+      _{HMsg "hledger-web is no longer running. It exits after fifteen minutes with no browser window showing it, or when stopped. To continue, start it again and reload this page."}
   $maybe m <- msg
     <div #message .alert.alert-info>#{m}
   $if elem ViewPermission perms

@@ -53,7 +53,7 @@ hledger-web can be run in three modes:
 - `--serve-browse` mode (the default):
   the app serves the web UI and JSON API,
   and opens your default web browser to show the app if possible,
-  and exits automatically once no browser window has shown it for two minutes.
+  and exits automatically once no browser window has shown it for fifteen minutes.
 
 - `--serve`: the app just serves the web UI and JSON API.
 

@@ -742,6 +742,9 @@ msgstr "Zurück"
 msgid "Saved journal {file}"
 msgstr "Journal {file} gespeichert"
 
+msgid "hledger-web is no longer running. It exits after fifteen minutes with no browser window showing it, or when stopped. To continue, start it again and reload this page."
+msgstr "hledger-web läuft nicht mehr. Es beendet sich nach fünfzehn Minuten ohne ein Browserfenster, das es anzeigt, oder wenn es angehalten wird. Zum Weiterarbeiten starten Sie es neu und laden diese Seite erneut."
+
 msgctxt "column heading"
 msgid "Commodity"
 msgstr "Einheit"

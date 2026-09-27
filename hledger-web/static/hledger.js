@@ -404,20 +404,37 @@ function registerChartSelect(ev, ranges) {
 // BROWSE MODE
 
 // In the default --serve-browse mode the server exits once no browser
-// window has shown it for two minutes (serveAndBrowse in Main.hs). It
-// knows a window is open because the page pings it: on load, then every
-// 30 seconds. Pages are marked for this by defaultLayout in browse mode
-// only; the server answers /_ping in that mode only. The ping goes to the
-// page's own origin, whatever address the browser reached us at (the
-// policy allows requests to our origin only), under the base url's path,
-// in case a proxy in front of us expects one.
+// window has shown it for fifteen minutes (serveAndBrowse in Main.hs). It
+// knows a window is open because the page pings it: on load, every 30
+// seconds, and whenever the page is shown again. Browsers run the timers of
+// background tabs less often, so the pings from a hidden page can be minutes
+// apart; the ping on showing makes up for that as soon as the page is seen.
+// Pages are marked for this by defaultLayout in browse mode only; the server
+// answers /_ping in that mode only. The ping goes to the page's own origin,
+// whatever address the browser reached us at (the policy allows requests to
+// our origin only), under the base url's path, in case a proxy in front of
+// us expects one.
+//
+// A ping that can't reach the server means it has stopped, so the page shows
+// the #server-stopped notice, and hides it again if a later ping gets through
+// (eg after the server was restarted on the same address).
 function browsePingInit() {
   if (!document.body.hasAttribute('data-browse-mode')) { return; }
   var base = new URL(document.hledgerWebBaseurl, document.baseURI);
   var url = base.pathname.replace(/\/$/, '') + '/_ping';
+  var notice = document.getElementById('server-stopped');
   var ping = function() {
-    fetch(url, { cache: 'no-store' }).catch(function() {});
+    fetch(url, { cache: 'no-store' }).then(
+      function() { if (notice) { notice.hidden = true; } },
+      function() { if (notice) { notice.hidden = false; } });
   };
   ping();
   setInterval(ping, 30000);
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') { ping(); }
+  });
+  // A page restored from the back/forward cache didn't run meanwhile.
+  window.addEventListener('pageshow', function(e) {
+    if (e.persisted) { ping(); }
+  });
 }
