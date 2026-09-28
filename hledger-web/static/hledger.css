@@ -2,7 +2,8 @@
  *
  * Conventions and the reasoning behind them: ../STYLE.md
  * Short version: no build step, nothing from a third party, style lives here
- * rather than in style= attributes, and amounts get tabular figures.
+ * rather than in style= attributes, colors come from the palette in section
+ * 1, and amounts get tabular figures.
  */
 
 /*------------------------------------------------------------------------------------------*/
@@ -14,13 +15,91 @@
 }
 
 /*------------------------------------------------------------------------------------------*/
-/* 1. colours */
+/* 1. colors */
 
-/* The UI is light-only; declare that so browser-drawn widgets
-   (datalist suggestions, date picker, scrollbars) stay light
-   instead of following the OS dark theme. */
+/* The pages are light or dark, following the setting of the OS or browser.
+   Every color this file sets is defined here once, light first and dark in
+   the media query below, and the rules use these properties rather than
+   literal colors; only shadows, black in both, are written out. color-scheme
+   lets the browser draw its own widgets (datalist suggestions, date picker,
+   scrollbars) to match. */
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
+
+  --bg: #fff;
+  --surface: #fff;               /* tooltips, dialogs, form fields, buttons */
+  --border: #ccc;                /* around fields, buttons and legend swatches */
+  --muted: #687385;              /* column headers, and the rule above totals */
+  --header-rule: #e6e8eb;        /* under column headers */
+  --row-hover: #f6f8fa;
+  --row-target: #fcf8e3;         /* the entry the url points to */
+  --negative: #a94442;           /* negative amounts, and errors */
+  --code: black;
+  --dialog-border: rgba(0, 0, 0, .2);
+
+  /* the account sidebar */
+  --account: #2f2f2f;
+  --account-current: #11427d;    /* the account shown, and the one under the pointer */
+  --account-current-bg: #f9f9f9;
+  --sidebar-rule: #ebebeb;
+
+  /* The register chart. hledger.js hands these to flot, which draws on a
+     canvas and understands only hex, rgb() and rgba() colors. */
+  --chart-grid: #545454;         /* frame, ticks and labels */
+  --chart-past-negative: #ffdddd;
+  --chart-future: #e0e0e0;
+  --chart-future-negative: #e8c8c8;
+  --chart-zero: #bb0000;
+}
+
+/* Printing is always light. Bootstrap prints every background as
+   transparent, and in the dark scheme the browser's own dark page would
+   show through. */
+@media print {
+  :root {
+    color-scheme: light;
+  }
+}
+
+/* On screen only, so that printing keeps the light colors too. */
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    /* In the light scheme bootstrap supplies these; section 9 applies
+       them in the dark. */
+    --text: #d3d7dd;
+    --rule: #30353d;             /* between table rows */
+    --link: #6fb1f7;
+    --link-hover: #9ccaff;
+    --surface-hover: #2c3139;    /* a button under the pointer or pressed, and code */
+    --border-hover: #5a626e;
+    --info: #9cc9f5;
+    --info-bg: #172a3d;
+    --info-border: #24476b;
+    --danger-bg: #3a1f22;
+    --danger-border: #6b3034;
+
+    --bg: #1b1e23;
+    --surface: #23272e;
+    --border: #434a54;
+    --muted: #8e98a5;
+    --header-rule: var(--rule);
+    --row-hover: #22262c;
+    --row-target: #3a3420;
+    --negative: #f28b82;
+    --code: #eef0f3;
+    --dialog-border: var(--border);
+
+    --account: var(--text);
+    --account-current: #8ec3ff;
+    --account-current-bg: #262b33;
+    --sidebar-rule: var(--rule);
+
+    --chart-grid: #9aa3ae;
+    --chart-past-negative: #3b2326;
+    --chart-future: #2a2e35;
+    --chart-future-negative: #3b2a2d;
+    --chart-zero: var(--negative);
+  }
 }
 
 /* green */
@@ -70,7 +149,7 @@ td.date {
 /* A row lights up under the pointer, which helps when reading a wide row
    across to its amount. The :target rule further down overrides this. */
 .table > tbody > tr:hover > td {
-  background-color: #f6f8fa;
+  background-color: var(--row-hover);
 }
 
 /* Column headers label the data, they are not part of it: small, spaced and
@@ -82,8 +161,8 @@ td.date {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #687385;
-  border-bottom: 1px solid #e6e8eb;
+  color: var(--muted);
+  border-bottom: 1px solid var(--header-rule);
   white-space: normal;
 }
 
@@ -102,7 +181,7 @@ td.date {
    totals, in tfoot, are bold (the writer's <b>) under a hairline in the
    header color, so the eye finds them without a heavier rule. */
 .table > tfoot > tr > td {
-  border-top: 1px solid #687385;
+  border-top: 1px solid var(--muted);
 }
 
 /* The row of links to the balance reports, on the journal and balance
@@ -164,12 +243,12 @@ td.date {
 /* Following a link to a transaction or posting marks it. */
 .table > tbody > tr:target > td,
 tr:target > td {
-  background-color: #fcf8e3;
+  background-color: var(--row-target);
 }
 
 code {
   font-weight: bold;
-  color: black;
+  color: var(--code);
 }
 
 /*------------------------------------------------------------------------------------------*/
@@ -184,7 +263,7 @@ dialog {
   margin-top: 30px;
   margin-bottom: 30px;
   padding: 0;
-  border: 1px solid rgba(0, 0, 0, .2);
+  border: 1px solid var(--dialog-border);
   border-radius: 6px;
   box-shadow: 0 3px 9px rgba(0, 0, 0, .5);
 }
@@ -229,8 +308,27 @@ dialog:focus {
   width: 10px;
   height: 10px;
   margin-right: 0.3em;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   vertical-align: middle;
+}
+
+/* flot writes the axis labels as html, in a color of its own set on their
+   container; a rule on the labels themselves outranks that. */
+#register-chart .flot-tick-label {
+  color: var(--chart-grid);
+}
+
+/* The tooltip over a point in the chart. Its plugin would style it inline,
+   out of reach of the palette, so hledger.js turns that off and it is
+   styled here instead. hledger.js colors the border to match the line. */
+#flotTip {
+  z-index: 1040;
+  padding: 0.4em 0.6em;
+  border: 1px solid;
+  border-radius: 0.5em;
+  background-color: var(--surface);
+  font-size: 0.8em;
+  white-space: nowrap;
 }
 
 /*------------------------------------------------------------------------------------------*/
@@ -269,7 +367,7 @@ ul {
 
 #sidebar-menu {
     overflow:hidden;
-    border-right: 1px solid #ebebeb;
+    border-right: 1px solid var(--sidebar-rule);
 }
 /* On wider screens, give the sidebar and the main content each their own
    vertical scrollbar so they scroll independently and the window itself doesn't
@@ -290,7 +388,7 @@ ul {
 
 #sidebar-menu .main-menu td {
     padding: 1px !important;
-    border-top: 1px solid #ebebeb;
+    border-top: 1px solid var(--sidebar-rule);
     overflow: hidden;
     white-space:nowrap;
     text-overflow:ellipsis;
@@ -310,12 +408,12 @@ ul {
     display: inline;
     font-size: 16px;
     font-weight: 500;
-    color: #2F2F2F;
+    color: var(--account);
     padding: 4px 20px;
 }
 
 #sidebar-menu .main-menu a:hover {
-    color: #11427D;
+    color: var(--account-current);
     text-decoration: none;
     background-color: transparent;
 }
@@ -331,8 +429,8 @@ ul {
 
 #sidebar-menu .main-menu .inacct, #sidebar-menu .main-menu .inacct .acct-name {
     font-weight: bold;
-    color: #11427D;
-    background-color: #f9f9f9;
+    color: var(--account-current);
+    background-color: var(--account-current-bg);
 }
 
 #sidebar-menu .main-menu .amount {
@@ -351,7 +449,7 @@ ul {
 }
 
 .negative {
-    color: #a94442;
+    color: var(--negative);
 }
 
 .col-any-0 {
@@ -408,4 +506,104 @@ ul {
     #sidebar-menu .main-menu td {
         max-width: 200px;
     }
+}
+
+/*------------------------------------------------------------------------------------------*/
+/* 9. bootstrap and the browser, in the dark */
+
+/* Bootstrap 3 is light only, as are some of the browser's own defaults for
+   the elements these pages use. In the dark scheme, restyle those parts with
+   the palette from section 1. */
+@media screen and (prefers-color-scheme: dark) {
+  body {
+    color: var(--text);
+    background-color: var(--bg);
+  }
+  a {
+    color: var(--link);
+  }
+  a:hover, a:focus {
+    color: var(--link-hover);
+  }
+  dialog {
+    color: var(--text);
+    background-color: var(--surface);
+  }
+  code {
+    background-color: var(--surface-hover);
+  }
+  pre {
+    color: var(--text);
+    background-color: var(--bg);
+    border-color: var(--border);
+  }
+
+  .table > tbody > tr > td,
+  .table > tbody > tr > th {
+    border-top-color: var(--rule);
+  }
+  .table-responsive,
+  .modal-header {
+    border-color: var(--rule);
+  }
+
+  .form-control,
+  .input-group-addon {
+    color: var(--text);
+    background-color: var(--surface);
+    border-color: var(--border);
+  }
+  .help-block {
+    color: var(--muted);
+  }
+  .has-error .help-block {
+    color: var(--negative);
+  }
+  .has-error .form-control,
+  .has-error .form-control:focus {
+    border-color: var(--negative);
+  }
+  .has-error .form-control:focus {
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 6px var(--negative);
+  }
+  .has-error .input-group-addon {
+    color: var(--negative);
+    background-color: var(--danger-bg);
+    border-color: var(--negative);
+  }
+
+  .btn-default {
+    color: var(--text);
+    background-color: var(--surface);
+    border-color: var(--border);
+  }
+  .btn-default:hover,
+  .btn-default:focus,
+  .btn-default:active,
+  .btn-default.active,
+  .btn-default:active:hover,
+  .btn-default:active:focus,
+  .btn-default.active:hover,
+  .btn-default.active:focus {
+    color: var(--text);
+    background-color: var(--surface-hover);
+    border-color: var(--border-hover);
+  }
+  .close,
+  .close:hover,
+  .close:focus {
+    color: var(--text);
+    text-shadow: none;
+  }
+
+  .alert-info {
+    color: var(--info);
+    background-color: var(--info-bg);
+    border-color: var(--info-border);
+  }
+  .alert-danger {
+    color: var(--negative);
+    background-color: var(--danger-bg);
+    border-color: var(--danger-border);
+  }
 }

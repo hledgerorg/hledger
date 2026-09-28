@@ -11,6 +11,9 @@ highlighting.
   data handed to the autocomplete's javascript. `fixture.journal` deliberately
   contains html/javascript payloads for this. Also the Content-Security-Policy: it is
   sent, nothing on any page violates it, and a script without the nonce is blocked.
+- `color-scheme.spec.js` — the dark color scheme: no page or dialog is left light or
+  hard to read in it, and the register chart is drawn again when the scheme changes, and
+  for printing.
 - `helpers.js`, `server.js` — shared by the specs: collecting policy violations and page
   errors, and starting hledger-web.
 - `browse-mode.spec.js` — the default mode (no `--serve`), where each page pings

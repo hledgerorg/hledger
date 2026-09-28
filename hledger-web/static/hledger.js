@@ -245,7 +245,6 @@ function registerChartInit() {
   // flot needs a container with a size, so do nothing while it is hidden.
   if (!$chartdiv.length || !$chartdiv.is(':visible')) { return; }
   var $label = $('#register-chart-label');
-  $label.text($chartdiv.attr('data-title'));
   var commodities = JSON.parse($chartdiv.attr('data-series'));
   // Each commodity is drawn as two flot series over the same points: a
   // stepped line for the running balance, and one clickable, hoverable point
@@ -264,17 +263,32 @@ function registerChartInit() {
       lines: { show: false }, points: { show: true },
     });
   });
-  var plot = registerChart($chartdiv, series);
-  registerChartLegend($label, plot);
+  // The page follows a change of color scheme by itself, and prints in the
+  // light one, but the chart is drawn on a canvas; draw it again for those.
+  var draw = function() {
+    $label.text($chartdiv.attr('data-title'));
+    registerChartLegend($label, registerChart($chartdiv, series));
+  };
+  draw();
+  ['(prefers-color-scheme: dark)', 'print'].forEach(function(query) {
+    window.matchMedia(query).addEventListener('change', draw);
+  });
   $chartdiv.bind('plotclick', registerChartClick);
   $chartdiv.bind('plotselected', registerChartSelect);
 }
 
 function registerChart($container, series) {
+  // The colors come from the palette in hledger.css, for the current scheme.
+  var style = getComputedStyle(document.documentElement);
+  var color = function(name) { return style.getPropertyValue(name).trim(); };
   // https://github.com/flot/flot/blob/master/API.md
   return $container.plot(
     series,
     {
+      series: {
+        // hollow points: filled with the page's own background
+        points: { fillColor: color('--bg') },
+      },
       xaxis: {
         mode: "time",
         timeformat: "%Y/%m/%d",
@@ -288,27 +302,28 @@ function registerChart($container, series) {
         show: false
       },
       grid: {
+        color: color('--chart-grid'),
         markings: function () {
           var now = Date.now();
           return [
             {
               xaxis: { to: now }, // past
               yaxis: { to: 0 },   // <0
-              color: '#ffdddd',
+              color: color('--chart-past-negative'),
             },
             {
               xaxis: { from: now }, // future
               yaxis: { from: 0 },   // >0
-              color: '#e0e0e0',
+              color: color('--chart-future'),
             },
             {
               xaxis: { from: now }, // future
               yaxis: { to: 0 },     // <0
-              color: '#e8c8c8',
+              color: color('--chart-future-negative'),
             },
             {
               yaxis: { from: 0, to: 0 }, // =0
-              color: '#bb0000',
+              color: color('--chart-zero'),
               lineWidth:1
             },
           ];
@@ -320,6 +335,8 @@ function registerChart($container, series) {
       // https://github.com/krzysu/flot.tooltip
       tooltip: true,
       tooltipOpts: {
+        // its look is in hledger.css (#flotTip), where the palette reaches it
+        defaultTheme: false,
         xDateFormat: "%Y/%m/%d",
         content:
           function(label, x, y, flotitem) {
