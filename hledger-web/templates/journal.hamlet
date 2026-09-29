@@ -18,7 +18,7 @@ $if elem AddPermission perms
       <tr .title ##{transactionFrag torig} title="#{showTransaction torig}">
         <td .date nowrap>
           <a href="@?{(JournalR, [("q", journalDayQuery qparam (tdate torig))])}##{transactionFrag torig}"
-             title="Show the journal entries on this date">
+             title=_{HMsg "Show the journal entries on this date"}>
             #{show (tdate torig)}
         <td colspan=2>
           #{textElideRight 60 (tdescription torig)}

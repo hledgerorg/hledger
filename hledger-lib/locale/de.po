@@ -796,3 +796,84 @@ msgstr "Den laufenden Saldo ab Beginn dieses Zeitraums anzeigen"
 
 msgid "Show the running balance including everything before this period"
 msgstr "Den laufenden Saldo einschließlich allem vor diesem Zeitraum anzeigen"
+
+msgid "Balance sheet"
+msgstr "Bilanz"
+
+msgid "Balance sheet with equity"
+msgstr "Bilanz mit Eigenkapital"
+
+msgid "Income statement"
+msgstr "Einnahmenüberschussrechnung"
+
+msgid "Cashflow statement"
+msgstr "Kapitalflussrechnung"
+
+msgid "Show assets, liabilities, and net worth"
+msgstr "Vermögen, Verbindlichkeiten und Reinvermögen anzeigen"
+
+msgid "Show assets, liabilities, and equity"
+msgstr "Vermögen, Verbindlichkeiten und Eigenkapital anzeigen"
+
+msgid "Show revenues and expenses"
+msgstr "Einnahmen und Ausgaben anzeigen"
+
+msgid "Show changes in liquid assets"
+msgstr "Veränderungen der liquiden Mittel anzeigen"
+
+msgid "Show the balance report: any accounts, by period"
+msgstr "Den Saldenbericht anzeigen: beliebige Konten, nach Perioden"
+
+msgid "balance sheet - hledger-web"
+msgstr "Bilanz - hledger-web"
+
+msgid "balance sheet with equity - hledger-web"
+msgstr "Bilanz mit Eigenkapital - hledger-web"
+
+msgid "income statement - hledger-web"
+msgstr "Einnahmenüberschussrechnung - hledger-web"
+
+msgid "cashflow statement - hledger-web"
+msgstr "Kapitalflussrechnung - hledger-web"
+
+msgid "Show this report for this period"
+msgstr "Diesen Bericht für diese Periode anzeigen"
+
+msgid "All the accounts this report shows have zero balances, which are hidden. Press e to show them."
+msgstr "Alle Konten dieses Berichts haben den Saldo null und sind ausgeblendet. Drücken Sie e, um sie anzuzeigen."
+
+msgid "No accounts of the types this report shows were found. Declare account types, or use hledger's standard top-level account names. "
+msgstr "Es wurden keine Konten der Typen gefunden, die dieser Bericht zeigt. Deklarieren Sie Kontotypen oder verwenden Sie die Standardnamen der obersten Kontoebene von hledger. "
+
+msgid "How hledger finds account types"
+msgstr "Wie hledger Kontotypen erkennt"
+
+msgid "Nothing matches this search in this period."
+msgstr "In diesem Zeitraum passt nichts zu dieser Suche."
+
+msgid "Show the transactions that make up this balance"
+msgstr "Die Buchungen anzeigen, aus denen sich dieser Saldo zusammensetzt"
+
+msgid "Show the transactions that make up this total"
+msgstr "Die Buchungen anzeigen, aus denen sich diese Summe zusammensetzt"
+
+msgid "Show the journal entries on this date"
+msgstr "Die Journalbuchungen dieses Tages anzeigen"
+
+msgid "Show this entry and the other journal entries on its date"
+msgstr "Diese und die anderen Journalbuchungen dieses Tages anzeigen"
+
+msgid "Balance brought forward"
+msgstr "Saldovortrag"
+
+msgid "Show the transactions before this period"
+msgstr "Die Buchungen vor diesem Zeitraum anzeigen"
+
+msgid "Click an amount to see the transactions it is made of, in a register ending on that amount"
+msgstr "Einen Betrag anklicken, um die Buchungen zu sehen, aus denen er besteht, in einem Register, das mit diesem Betrag endet"
+
+msgid "The balance sheet and income statement show liabilities, equity, and revenues as positive amounts; their registers show them negative, as hledger does"
+msgstr "Bilanz und Einnahmenüberschussrechnung zeigen Verbindlichkeiten, Eigenkapital und Einnahmen als positive Beträge; ihre Register zeigen sie negativ, wie hledger es tut"
+
+msgid "The sidebar's report links show the balance sheet, income statement, and cashflow statement, each linking to the other reports"
+msgstr "Die Berichtslinks der Seitenleiste zeigen Bilanz, Einnahmenüberschussrechnung und Kapitalflussrechnung, jeweils mit Links zu den anderen Berichten"

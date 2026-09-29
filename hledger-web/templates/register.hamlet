@@ -22,7 +22,7 @@
         <tr ##{transactionFrag torig} title="#{showTransaction torig}">
           <td .date nowrap>
             <a href="@?{(JournalR, [("q", journalDayQuery qparam (tdate torig))])}##{transactionFrag torig}"
-               title="Show this entry and the other journal entries on its date">
+               title=_{HMsg "Show this entry and the other journal entries on its date"}>
               #{show (tdate tacct)}
           <td .description>
             #{textElideRight 30 (tdescription tacct)}
@@ -41,14 +41,14 @@
             <td .date nowrap>
               #{show (snd start)}
             <td .description>
-              Balance brought forward
+              _{HMsg "Balance brought forward"}
             <td .account>
             <td .amount>
             <td .amount>
               $if mixedAmountLooksZero startbal
                 ^{mixedAmountAsHtml startbal}
               $else
-                <a href=@?{broughtForwardLink start} title="Show the transactions before this period">
+                <a href=@?{broughtForwardLink start} title=_{HMsg "Show the transactions before this period"}>
                   ^{mixedAmountAsHtml startbal}
 
 $if elem AddPermission perms
