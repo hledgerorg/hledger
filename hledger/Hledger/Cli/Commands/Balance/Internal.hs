@@ -12,7 +12,7 @@ import Data.Text qualified as T
 import Data.Time (addDays)
 import Text.Tabular.AsciiWide (Header(..), Properties(..), Table(..), concatTables)
 
-import Hledger.Utils.I18n (trc)
+import Hledger.Utils.I18n qualified as I18n
 import Hledger
 import Hledger.Cli.Anchor (setAccountAnchor, dateSpanCell, headerDateSpanCell, renderPeriodHeading)
 import Hledger.Write.Spreadsheet (rawTableContent, headerCell,
@@ -117,8 +117,9 @@ multiBalanceReportAsPartTable
      (Group multiColumnTableInterColumnBorder $ map Header colheadings)
      (concat rows)
   where
+    trc = I18n.trc (translations_ opts)
     colheadings =
-      [trc (translations_ opts) "column heading" "Commodity" | layout_ opts == LayoutBare]
+      [trc "column heading" "Commodity" | layout_ opts == LayoutBare]
       ++
       case layout_ opts of
           LayoutBareWide ->
@@ -128,8 +129,8 @@ multiBalanceReportAsPartTable
     spanNames =
         (guard (not summary_only_) >>
             map (reportPeriodName opts spans) spans)
-        ++ ["  " <> trc (translations_ opts) "column heading" "Total" | multiBalanceHasTotalsColumn opts]
-        ++ [trc (translations_ opts) "column heading" "Average" | average_]
+        ++ ["  " <> trc "column heading" "Total" | multiBalanceHasTotalsColumn opts]
+        ++ [trc "column heading" "Average" | average_]
     (accts, rows) = unzip $ fmap fullRowAsTexts items'
       where
         isLeaf rs row = not $ any (\r -> T.isPrefixOf (displayFull (prrName row) <> ":") (displayFull (prrName r))) rs

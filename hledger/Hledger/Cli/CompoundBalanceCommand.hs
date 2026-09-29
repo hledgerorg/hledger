@@ -36,7 +36,7 @@ import Text.Blaze.Html5 qualified as H
 import Text.Blaze.Html5.Attributes qualified as A
 import Text.Tabular.AsciiWide as Tabular hiding (render)
 
-import Hledger.Utils.I18n (noTranslations, tr, trf)
+import Hledger.Utils.I18n qualified as I18n
 import Hledger
 import Hledger.Cli.Commands.Balance
 import Hledger.Cli.CliOptions
@@ -149,11 +149,13 @@ compoundBalanceCommand CompoundBalanceCommandSpec{..} opts@CliOpts{reportspec_=r
     balanceaccumulation = fromMaybe cbcaccum mbalanceAccumulationOverride
     -- Set balance type in the report options.
     ropts' = ropts{balanceaccum_=balanceaccumulation}
+    tr  = I18n.tr  translations_
+    trf = I18n.trf translations_
 
     -- TRANSLATORS: the report title, eg "Monthly Balance Sheet 2024 (Historical Ending Balances), valued at period ends".
     -- {clarification} brings its own leading space when present.
-    title = trf translations_ "{report} {dates}{clarification}{valuation}"
-      [ ("report",        tr translations_ $ cbctitle $ titleInterval interval_)
+    title = trf "{report} {dates}{clarification}{valuation}"
+      [ ("report",        tr $ cbctitle $ titleInterval interval_)
       , ("dates",         titledatestr)
       , ("clarification", maybe "" (" " <>) mtitleclarification)
       , ("valuation",     valuationdesc)
@@ -175,26 +177,26 @@ compoundBalanceCommand CompoundBalanceCommandSpec{..} opts@CliOpts{reportspec_=r
         -- when user overrides, add an indication to the report title
         -- Do we need to deal with overridden BalanceCalculation?
         mtitleclarification = case (balancecalc_, balanceaccumulation, mbalanceAccumulationOverride) of
-            (CalcValueChange, PerPeriod,  _              ) -> Just $ tr translations_ "(Period-End Value Changes)"
-            (CalcValueChange, Cumulative, _              ) -> Just $ tr translations_ "(Cumulative Period-End Value Changes)"
-            (CalcGain,        PerPeriod,  _              ) -> Just $ tr translations_ "(Incremental Gain)"
-            (CalcGain,        Cumulative, _              ) -> Just $ tr translations_ "(Cumulative Gain)"
-            (CalcGain,        Historical, _              ) -> Just $ tr translations_ "(Historical Gain)"
-            (_,               _,          Just PerPeriod ) -> Just $ tr translations_ "(Balance Changes)"
-            (_,               _,          Just Cumulative) -> Just $ tr translations_ "(Cumulative Ending Balances)"
-            (_,               _,          Just Historical) -> Just $ tr translations_ "(Historical Ending Balances)"
+            (CalcValueChange, PerPeriod,  _              ) -> Just $ tr "(Period-End Value Changes)"
+            (CalcValueChange, Cumulative, _              ) -> Just $ tr "(Cumulative Period-End Value Changes)"
+            (CalcGain,        PerPeriod,  _              ) -> Just $ tr "(Incremental Gain)"
+            (CalcGain,        Cumulative, _              ) -> Just $ tr "(Cumulative Gain)"
+            (CalcGain,        Historical, _              ) -> Just $ tr "(Historical Gain)"
+            (_,               _,          Just PerPeriod ) -> Just $ tr "(Balance Changes)"
+            (_,               _,          Just Cumulative) -> Just $ tr "(Cumulative Ending Balances)"
+            (_,               _,          Just Historical) -> Just $ tr "(Historical Ending Balances)"
             _                                              -> Nothing
 
         valuationdesc =
           (case conversionop_ of
-               Just ToCost -> tr translations_ ", converted to cost"
+               Just ToCost -> tr ", converted to cost"
                _           -> "")
           <> (case value_ of
-               Just (AtThen _mc)       -> tr translations_ ", valued at posting date"
+               Just (AtThen _mc)       -> tr ", valued at posting date"
                Just (AtEnd _mc) | changingValuation -> ""
-               Just (AtEnd _mc)        -> tr translations_ ", valued at period ends"
-               Just (AtNow _mc)        -> tr translations_ ", current value"
-               Just (AtDate today _mc) -> trf translations_ ", valued at {date}" [("date", showDate today)]
+               Just (AtEnd _mc)        -> tr ", valued at period ends"
+               Just (AtNow _mc)        -> tr ", current value"
+               Just (AtDate today _mc) -> trf ", valued at {date}" [("date", showDate today)]
                Nothing                 -> "")
 
         changingValuation = case (balancecalc_, balanceaccum_) of
@@ -208,7 +210,7 @@ compoundBalanceCommand CompoundBalanceCommandSpec{..} opts@CliOpts{reportspec_=r
     cbr' = compoundBalanceReport rspec{_rsReportOpts=ropts'} j cbcqueries
     cbr  = applySubreportTitles ropts' $
            cbr'{cbrTitle = effectiveTitle ropts' title
-               ,cbrSubreports = [ (tr translations_ t, r, b) | (t, r, b) <- cbrSubreports cbr' ]}
+               ,cbrSubreports = [ (tr t, r, b) | (t, r, b) <- cbrSubreports cbr' ]}
 
     -- render appropriately
     render = case outputFormatFromOpts opts of
@@ -309,7 +311,7 @@ compoundBalanceReportAsText ropts (CompoundPeriodicReport title _colspans subrep
           --  ]
           coltotalslines = multiBalanceRowAsText ropts allCommodities totalsrow
           totalstable = Table
-            (Group NoLine $ map Header $ tr (translations_ ropts) "Net:" : replicate (length coltotalslines - 1) "")  -- row headers
+            (Group NoLine $ map Header $ I18n.tr (translations_ ropts) "Net:" : replicate (length coltotalslines - 1) "")  -- row headers
             (Header [])     -- column headers, concatTables will discard these
             coltotalslines  -- cell values         
 
@@ -389,7 +391,7 @@ compoundBalanceReportAsSpreadsheet fmt accountLabel maybeBlank ropts cbr =
       (guard (layout_ ropts /= LayoutTidy) >>) $
       map
         -- column headings stay English in these formats, month names included
-        (reportPeriodName ropts{translations_ = noTranslations} colspans)
+        (reportPeriodName ropts{translations_ = I18n.noTranslations} colspans)
         (if not (summary_only_ ropts) then colspans else []) ++
       (guard (multiBalanceHasTotalsColumn ropts) >> ["Total"]) ++
       (guard (average_ ropts) >> ["Average"])

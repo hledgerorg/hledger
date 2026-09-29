@@ -20,6 +20,13 @@ Conventions:
 
 - Short words used in more than one sense carry a context ('trc').
 
+- Use 'tr' (or 'trc', 'trf') where text is displayed and a 'Translations'
+  value is at hand, usually from the report options. Use 'i18n' (or
+  'i18nc') only to mark a literal that is stored earlier, in data such as
+  a report spec or a menu item, before any catalog is available; it is
+  then translated with 'tr' at display time. Both forms are what the
+  catalog extraction tool looks for.
+
 - A malformed catalog is reported as a warning and ignored.
 
 This module is experimental and its API may change.
@@ -152,9 +159,11 @@ trn t n singular plural = substitutePlaceholders [("n", T.pack (show n))] form
       if T.null f then Nothing else Just f
     english = if n == 1 then singular else plural
 
--- | Mark an English literal that will be translated later, by 'tr', at the
--- point where it is displayed. This is the identity; the catalog
--- extraction tool looks for it. (Like gettext's N_.)
+-- | Mark an English literal that is stored now, in data such as a report
+-- spec or a menu item, and translated later by 'tr' at the point where it
+-- is displayed. This is the identity; its purpose is to make the catalog
+-- extraction tool collect the literal. (Like gettext's N_.) Where a
+-- 'Translations' value is already at hand, use 'tr' directly instead.
 i18n :: Text -> Text
 i18n = id
 
