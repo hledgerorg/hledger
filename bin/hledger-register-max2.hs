@@ -1,14 +1,15 @@
 #!/usr/bin/env stack
 -- stack runghc --verbosity error --package hledger
 -- stack runghc --verbosity error --package hledger --package hledger-lib --package text --package safe 
--- stack script --compile --resolver nightly-2025-04-01 --verbosity error --package hledger --package text
--- stack script --compile --resolver nightly-2025-04-01 --verbosity error --package hledger --package hledger-lib --package text --package safe
+-- stack script --compile --resolver nightly-2026-06-01 --verbosity error --package hledger --package text
+-- stack script --compile --resolver nightly-2026-06-01 --verbosity error --package hledger --package hledger-lib --package text --package safe
 -- The topmost stack command above is used to run this script.
 -- stack script uses released hledger, stack runghc uses local hledger source.
 -- This script currently requires local hledger source, for Hledger.Cli.Script.
 ------------------------------------78----------------------------------------
 
-{-# LANGUAGE OverloadedStrings, PackageImports #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 
 import Hledger.Cli.Script
 import qualified "text" Data.Text as T
@@ -22,7 +23,7 @@ cmdmode = hledgerCommandMode (unlines
   ,"or:    hledger register-max -- [REGISTERARGS]"
   ,"For historical balances, add -H. For value, add -V --infer-market-prices."
   ,"Examples:"
-  ,"$ hledger-register-max -f examples/bcexample.hledger -H checking"
+  ,"$ hledger-register-max -f examples/bcexample.journal -H checking"
   ,"2013-01-03 Payroll  Assets:US:BofA:Checking  1350.60 USD  8799.22 USD"
     ------------------------------------78----------------------------------------
   ])
@@ -30,7 +31,7 @@ cmdmode = hledgerCommandMode (unlines
 
 main = do
   opts@CliOpts{reportspec_=rspec} <- getHledgerCliOpts cmdmode
-  withJournalDo opts $ \j -> do
+  withJournal opts $ \j -> do
     let
       r = postingsReport rspec j
       maxbal = fifth5 $ maximumBy (comparing fifth5) r

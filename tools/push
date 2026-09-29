@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# push [INTERVALSECS] - push master to github CI branch, watch for a successful run, then push to github master
+# push [INTERVALSECS] - push main to github CI branch, watch for a successful run, then push to github main
 
 set -e
 
 INTERVAL="${1:-10}"
 
-LOCALBRANCH=master
+LOCALBRANCH=main
 REMOTE=origin
 REMOTECIBRANCH=ci
-REMOTEMAINBRANCH=master
+REMOTEMAINBRANCH=main
 NUMRUNS=3
 NUMCOMMITS=5
 CISTARTDELAY=5   # between ci push and run start
-MAINPUSHDELAY=5  # between run end and master push
+MAINPUSHDELAY=5  # between run end and main push
 
 gitlog() {
     REF=$1
@@ -32,7 +32,7 @@ ciwait() {
     echo "waiting for CI to finish..."
     ciwatch "$INTERVAL"
     runlog
-    echo "waiting for master to notice CI success..."
+    echo "waiting for main to notice CI success..."
     sleep $MAINPUSHDELAY
 }
 

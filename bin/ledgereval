@@ -1,0 +1,8 @@
+#!/bin/sh
+# ledgereval [EXPR] - evaluate a Ledger value expression
+# This runs `ledger eval`, but also accepts standard input, and does not add a newline.
+# It's useful eg when converting Ledger's amount expressions to simple amounts.
+# Decimal places can be important, eg ledgereval '0.01 USD / 2' vs ledgereval '0.010 USD / 2'.
+
+expr="${*:-$(cat)}"
+printf '%s' "$(ledger eval "$expr")"

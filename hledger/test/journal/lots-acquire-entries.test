@@ -1,0 +1,266 @@
+# Testing lot acquisition journal entry variations, systematically.
+
+# * Acquire
+
+# ** With commodity/account not declared lotful
+
+# *** 1. acquire: implicit cost, non-lotful commmodity/account, asset. No lot posting detected.
+<
+2026-01-01 buy
+    assets:cash     -$500
+    assets:broker    10 AAPL
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:cash                                $-500
+    assets:broker                                 10 AAPL
+
+>=
+
+# *** 2. acquire: @ $50, non-lotful commodity/account, asset. No lot posting detected.
+<
+2026-01-01 buy
+    assets:broker    10 AAPL @ $50
+    assets:cash     -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker                                 10 AAPL @ $50
+    assets:cash                                $-500
+
+>=
+
+# *** 3. acquire: {$50}, non-lotful commodity/account, non-asset. Cost basis forces acquisition even from non-asset account.
+<
+2026-01-01 buy
+    equity:opening    10 AAPL {$50}
+    assets:cash      -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    equity:opening:{2026-01-01, $50}              10 AAPL {$50}  ; ptype: acquire
+    assets:cash                                $-500
+
+>=
+
+# *** 4. acquire: {$50}, non-lotful commodity/account, asset. Acquisition detected.
+<
+2026-01-01 buy
+    assets:broker    10 AAPL {$50}
+    assets:cash     -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $50}               10 AAPL {$50}  ; ptype: acquire
+    assets:cash                                $-500
+
+>=
+
+# ** With lotful commodity/account
+
+# *** 5. acquire: implicit cost, lotful commodity. Bare acquire detected, cost inferred from balancer.
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    10 AAPL
+    assets:cash     -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $50}               10 AAPL  ; ptype: acquire
+    assets:cash                                $-500
+
+>=
+
+# *** 6. acquire: @ $50, lotful commodity. Bare acquire detected, cost from @.
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    10 AAPL @ $50
+    assets:cash     -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $50}               10 AAPL @ $50  ; ptype: acquire
+    assets:cash                                $-500
+
+>=
+
+# *** 7. acquire: @@ $500, lotful commodity. Bare acquire detected, cost from @@.
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    10 AAPL @@ $500
+    assets:cash     -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $50}               10 AAPL @@ $500  ; ptype: acquire
+    assets:cash                                $-500
+
+>=
+
+# *** 8. acquire: {}. Acquisition detected, cost basis inferred from implicit cost.
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    10 AAPL {}
+    assets:cash     -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $50}               10 AAPL {}  ; ptype: acquire
+    assets:cash                                $-500
+
+>=
+
+# *** 9. acquire: {} @ $50. Acquisition detected, cost basis inferred from unit transacted cost.
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    10 AAPL {} @ $50
+    assets:cash     -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $50}               10 AAPL {} @ $50  ; ptype: acquire
+    assets:cash                                $-500
+
+>=
+
+# *** 10. acquire: {} @@ $500. Acquisition detected, cost basis inferred from total transacted cost.
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    10 AAPL {} @@ $500
+    assets:cash     -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $50}               10 AAPL {} @@ $500  ; ptype: acquire
+    assets:cash                                $-500
+
+>=
+
+# *** 11. acquire: {$50}. Acquisition detected.
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    10 AAPL {$50}
+    assets:cash     -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $50}               10 AAPL {$50}  ; ptype: acquire
+    assets:cash                                $-500
+
+>=
+
+# *** 12. acquire: {$50} @ $50. Acquisition detected.
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    10 AAPL {$50} @ $50
+    assets:cash     -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $50}               10 AAPL {$50} @ $50  ; ptype: acquire
+    assets:cash                                $-500
+
+>=
+
+# *** 13. acquire: {$50} @@ $500. Acquisition detected.
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    10 AAPL {$50} @@ $500
+    assets:cash     -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $50}               10 AAPL {$50} @@ $500  ; ptype: acquire
+    assets:cash                                $-500
+
+>=
+
+# *** 14. acquire: {{$500}}. Total cost basis divides cleanly to integer unit basis.
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    10 AAPL {{$500}}
+    assets:cash     -$500
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $50}               10 AAPL {$50}  ; ptype: acquire
+    assets:cash                                $-500
+
+>=
+
+# *** 15. acquire: {{$53}}. Total cost basis divides cleanly to a fractional unit basis;
+#         all decimal digits of the quotient are preserved (not rounded to the parsed total's precision).
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    5 AAPL {{$53}}
+    assets:cash     -$53
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $10.6}              5 AAPL {$10.6}  ; ptype: acquire
+    assets:cash                                 $-53
+
+>=
+
+# *** 16. acquire: {{$53}} divided by 7. Non-terminating unit basis is capped at
+#         the standard 8-decimal-place maximum (defaultMaxPrecision).
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    7 AAPL {{$53}}
+    assets:cash     -$53
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, $7.57142857}        7 AAPL {$7.57142857}  ; ptype: acquire
+    assets:cash                                 $-53
+
+>=
+
+# *** 17. acquire: {{DATE, "LABEL", TOTALCOST}}. The consolidated form (date and
+# label inside braces) is allowed inside double braces too; the cost is still
+# the total, divided by quantity to give unit basis.
+<
+commodity AAPL  ; lots:
+2026-01-01 buy
+    assets:broker    5 AAPL {{2026-01-01, "lot A", $250}}
+    assets:cash     -$250
+
+$ hledger -f- print --lots --verbose-tags
+2026-01-01 buy
+    assets:broker:{2026-01-01, "lot A", $50}       5 AAPL {2026-01-01, "lot A", $50}  ; ptype: acquire
+    assets:cash                                $-250
+
+>=
+
+# *** 18. An acquire entry with an unbalanced virtual posting in the lotful
+# commodity: virtual postings don't trigger gain detection (which would
+# set a posting aside, unbalancing the entry). The real posting
+# is a normal acquire, and the entry balances within display precision.
+<
+commodity $0.00
+commodity 0.00000000 A    ; lots:
+
+2017-12-01
+    (assets:cc:receivable)     A -0.22211127
+    assets:cc                   A 0.22211127 @ $3923.07
+    revenues:cc               $-871.36
+
+$ hledger -f- print -a
+2017-12-01
+    (assets:cc:receivable)                        -0.22211127 A
+    assets:cc:{2017-12-01, $3923.07}               0.22211127 A {$3923.07} @ $3923.07  ; ptype: acquire
+    revenues:cc                                $-871.36
+
+>=

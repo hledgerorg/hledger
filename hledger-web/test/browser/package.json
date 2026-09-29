@@ -1,0 +1,13 @@
+{
+  "name": "hledger-web-browser",
+  "private": true,
+  "description": "Browser end-to-end tests for hledger-web (Playwright). See README.md.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  },
+  "packageManager": "pnpm@10.33.0"
+}

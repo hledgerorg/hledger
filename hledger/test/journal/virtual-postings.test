@@ -60,8 +60,8 @@ $ hledger -f- balance --tree
   (c)
 $ hledger -f- print -x
 2023-01-01
-    (a)               0
-    (b)               0
-    (c)               0
+    (a)                                            0
+    (b)                                            0
+    (c)                                            0
 
 >=

@@ -1,0 +1,33 @@
+# * transactions command
+
+<
+2024-01-01 * (123) opening  ; a note
+    a    1
+    b
+
+2024-01-02 lunch
+    ; a full-line comment
+    c    2
+    d
+
+2024-01-03 ! dinner | with friends
+    c    3
+    d
+
+# ** 1. Show each transaction's first line only (date, status, code, description,
+# and same-line comment), suppressing comment and posting lines.
+$ hledger -f- transactions
+2024-01-01 * (123) opening  ; a note
+2024-01-02 lunch
+2024-01-03 ! dinner | with friends
+>=
+
+# ** 2. tx is an alias, and a query can select a subset of transactions.
+$ hledger -f- tx desc:lunch
+2024-01-02 lunch
+>=
+
+# ** 3. --match shows the one recent transaction most similar to DESC.
+$ hledger -f- transactions --match dinner
+2024-01-03 ! dinner | with friends
+>=

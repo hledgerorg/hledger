@@ -1,10 +1,11 @@
-$$$ hledger check -f  csvamountonenonzero.csv
->>>2 /Error: in CSV rules:
-While processing record: 2022-01-03,1,2
-while calculating amount for posting 1
-rule "amount-in %2" assigned value "1"
-rule "amount-out %3" assigned value "2"
+$ hledger check -f csvamountonenonzero.csv
+>2 /hledger: Error: .*csvamountonenonzero\.csv:5:
+5 \| 2022-01-03,1,2
 
-Multiple non-zero amounts were assigned for an amount field.
-Please ensure just one non-zero amount i/
->>>= 1
+Multiple non-zero amounts were assigned for an amount field, for posting 1\.
+record: 2022-01-03,1,2
+(.*
+)*rule "amount-in %2" assigned value "1" +\(.*rules:3\)
+rule "amount-out %3" assigned value "2" +\(.*rules:4\)
+/
+>= 1

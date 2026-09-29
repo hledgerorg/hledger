@@ -10,37 +10,39 @@
 #
 # The script is run once to capture its output, which is then adjusted
 # for use in a shelltest regex matcher:
-# - common regex metacharacters are escaped
 # - file paths are simplified
+# - common regex metacharacters are escaped
 # - any remaining problematic text is sanitised
 # - the regex is trimmed to <= 300 chars, to avoid a shelltestrunner limitation.
+#
+# The result is a first draft, usually needing some manual editing,
+# eg to loosen wording-sensitive lines with .* or to restore a truncated ending.
 
 SCRIPT="$1"
 TEST=$(echo "$SCRIPT" | sed -E 's/\.[^.]+$//').test
 
 {
-head -1 "$SCRIPT" | sed -E "s%#!/usr/bin/env -S (.*)%\$\$\$ \1 $SCRIPT%"
-printf ">>>2 /"
+# Commands not starting with hledger are indented, so that shelltest -w leaves them alone.
+head -1 "$SCRIPT" | sed -E -e "s%#!/usr/bin/env -S +(.*[^ ]) *$%\$ \1 $SCRIPT%" -e '/^\$ hledger /!s/^\$ /$  /'
+printf ">2 /"
 ./"$SCRIPT" 2>&1 | sed -E \
+  -e 's%[^ (]*/\./%PATHPREFIX%g' \
+  -e 's/\./\\./g' \
   -e 's/\^/\\^/g' \
   -e 's/\$/\\$/g' \
   -e 's/\+/\\+/g' \
   -e 's/\*/\\*/g' \
+  -e 's/\?/\\?/g' \
+  -e 's/\{/\\{/g' \
+  -e 's/\}/\\}/g' \
   -e 's/\[/\\[/g' \
   -e 's/\]/\\]/g' \
   -e 's/\(/\\(/g' \
   -e 's/\)/\\)/g' \
   -e 's/\|/\\|/g' \
-  -e 's%(hledger: Error: ).*/\./(.*)%\1.*\2%' \
   -e 's%/%\\/%g' \
-  | head -c 300
-printf "/\n>>>= 1\n"
+  -e 's%PATHPREFIX%.*%g' \
+  | head -c 300 \
+  | sed -E '$ s/([^\\])\\$/\1/'  # don't leave a dangling escape at the cut
+printf "/\n>= 1\n"
 } >"$TEST"
-
-
-#  -e 's%alias \\/\(\\/%alias \\/\\(\\/%' \
-#  -e 's%compiled: \(%compiled: \\(%' \
-
-# gnused() {  # GNU sed, called gsed on mac
-#     if hash gsed 2>/dev/null; then gsed "$@"; else sed "$@"; fi
-# }

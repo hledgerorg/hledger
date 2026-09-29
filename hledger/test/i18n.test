@@ -1,0 +1,114 @@
+# * --lang: translations for report structure text
+
+# ** 1. --lang translates a compound report's title, subreport titles and totals row.
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang de
+Bilanz 2008-12-31
+
+                    || 2008-12-31 
+====================++============
+ Vermögen           ||            
+--------------------++------------
+ assets:bank:saving ||         $1 
+ assets:cash        ||        $-2 
+--------------------++------------
+                    ||        $-1 
+====================++============
+ Verbindlichkeiten  ||            
+--------------------++------------
+ liabilities:debts  ||        $-1 
+--------------------++------------
+                    ||        $-1 
+====================++============
+ Überschuss:        ||          0 
+
+# ** 2. Month names in column headings, and the balance report title.
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bal -M --lang de
+Saldoänderungen in 2008:
+
+                      || Jan  Feb  Mär  Apr  Mai  Jun  Jul  Aug  Sep  Okt  Nov  Dez 
+======================++============================================================
+ assets:bank:checking ||  $1    0    0    0    0    0    0    0    0    0    0  $-1 
+ assets:bank:saving   ||   0    0    0    0    0   $1    0    0    0    0    0    0 
+ assets:cash          ||   0    0    0    0    0  $-2    0    0    0    0    0    0 
+ expenses:food        ||   0    0    0    0    0   $1    0    0    0    0    0    0 
+ expenses:supplies    ||   0    0    0    0    0   $1    0    0    0    0    0    0 
+ income:gifts         ||   0    0    0    0    0  $-1    0    0    0    0    0    0 
+ income:salary        || $-1    0    0    0    0    0    0    0    0    0    0    0 
+ liabilities:debts    ||   0    0    0    0    0    0    0    0    0    0    0   $1 
+----------------------++------------------------------------------------------------
+                      ||   0    0    0    0    0    0    0    0    0    0    0    0 
+
+# ** 3. The interval word, the valuation description and the totals column heading.
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal is -Q -T --lang de --value=then
+Vierteljährliche Einnahmenüberschussrechnung 2008, bewertet zum Buchungsdatum
+
+                   || 2008Q1  2008Q2  2008Q3  2008Q4    Gesamt 
+===================++==========================================
+ Einnahmen         ||                                          
+-------------------++------------------------------------------
+ income:gifts      ||      0      $1       0       0        $1 
+ income:salary     ||     $1       0       0       0        $1 
+-------------------++------------------------------------------
+                   ||     $1      $1       0       0        $2 
+===================++==========================================
+ Ausgaben          ||                                          
+-------------------++------------------------------------------
+ expenses:food     ||      0      $1       0       0        $1 
+ expenses:supplies ||      0      $1       0       0        $1 
+-------------------++------------------------------------------
+                   ||      0      $2       0       0        $2 
+===================++==========================================
+ Überschuss:       ||     $1     $-1       0       0         0 
+
+# ** 4. Titles are report data, so they are translated wherever --title applies,
+# including CSV; column headings and row labels in CSV stay English.
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang de -O csv
+"Bilanz 2008-12-31",""
+"Account","2008-12-31"
+"Vermögen",""
+"assets:bank:saving","$1"
+"assets:cash","$-2"
+"Total:","$-1"
+"Verbindlichkeiten",""
+"liabilities:debts","$-1"
+"Total:","$-1"
+"Net:","0"
+
+# ** 5. An explicit --title is used as is, untranslated.
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang de --title "Meine Bilanz" | head -1
+Meine Bilanz
+
+# ** 6. A language with no catalog is a usage error.
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang xx
+>2 /no translations are available for "xx"/
+>= 1
+
+# ** 7. --lang auto follows the environment, like gettext. (LC_CTYPE pins the output
+# encoding to a locale every CI machine has; the de_DE locale need not be installed.)
+$ XDG_CONFIG_HOME=/nonexistent LANGUAGE= LC_ALL= LC_MESSAGES= LC_CTYPE=en_US.UTF-8 LANG=de_DE.UTF-8 hledger -f sample.journal bs --lang auto | head -1
+Bilanz 2008-12-31
+
+# ** 8. LC_ALL=C forces English, even with LANGUAGE set.
+$ XDG_CONFIG_HOME=/nonexistent LANGUAGE=de LC_ALL=C hledger -f sample.journal bs --lang auto | head -1
+Balance Sheet 2008-12-31
+
+# ** 9. Without --lang, the environment is ignored and output is English.
+$ XDG_CONFIG_HOME=/nonexistent LANGUAGE=de LC_ALL=de_DE.UTF-8 hledger -f sample.journal bs | head -1
+Balance Sheet 2008-12-31
+
+# ** 10. CSV column headings stay English, month names included; only the title is translated.
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal is -M --lang de -O csv | head -2
+"Monatliche Einnahmenüberschussrechnung 2008","","","","","","","","","","","",""
+"Account","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"
+
+# ** 11. A report's title with a reporting interval is translated as one phrase,
+# so a translation can inflect, reorder or join the words. Equivalent intervals
+# share a title, and an unusual one is "Periodic".
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bse -Q --lang de | head -1
+Vierteljährliche Bilanz mit Eigenkapital 2008-03-31..2008-12-31
+
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal cf -p 'every 12 months' --lang de | head -1
+Jährliche Kapitalflussrechnung 2008
+
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal is -p 'every 3 days' --lang de | head -1
+Periodische Einnahmenüberschussrechnung 2008

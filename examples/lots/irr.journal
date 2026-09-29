@@ -1,0 +1,67 @@
+# A minimal example for comparing roi and holdings.
+
+commodity AAPL  ; lots:
+
+2026-01-15 buy
+    assets:stocks      10 AAPL @ $50
+    assets:cash     -$500
+
+2026-02-01 sell some at a gain
+    assets:stocks      -5 AAPL @ $70
+    assets:cash      $350
+
+P 2026-03-31 AAPL $72
+
+
+comment
+
+#############################################################################
+Comparing roi and holdings
+(For a realistic comparison, with transfers, fees and closed
+positions, see lots.journal.)
+
+$ hledger -f examples/lots/irr.journal roi --inv assets:stocks --pnl revenues:gain -e 2026-04-01 --value=end,$
++---++------------+------------++---------------+----------+-------------+------++----------++------------+----------+
+|   ||      Begin |        End || Value (begin) | Cashflow | Value (end) |  PnL ||      IRR || TWR/period | TWR/year |
++===++============+============++===============+==========+=============+======++==========++============+==========+
+| 1 || 2026-01-15 | 2026-03-31 ||             0 |     $150 |        $360 | $210 || 1809.07% ||     -1.39% |   -6.50% |
++---++------------+------------++---------------+----------+-------------+------++----------++------------+----------+
+
+$ hledger -f examples/lots/irr.journal holdings -N -e 2026-04-02
+Holdings on 2026-04-01
+
+               ||       Date  Age   Units  Avg cost  Price  Cost  Value  Weight  UGain  UGain%  RGain     XIRR
+===============++==============================================================================================
+ assets:stocks || 2026-01-15  76d  5 AAPL       $50    $72  $250   $360  100.0%   $110   44.0%   $100  1809.1%
+
+1. roi's PnL $210 = holdings' UGain $110 + RGain $100.
+
+Both reach it from the same facts: $500 was invested, $350 came back
+from the sale (roi's net Cashflow of $150), and the remaining 5 AAPL
+are worth $360 at the P price. roi computes PnL as value change
+minus net cashflow ($360 − $0 − $150); holdings splits the same
+total into unrealised ($360 value − $250 cost basis = $110) plus
+realised (5 sold × ($70 − $50) = $100).
+
+The two invocation details that make the comparison fair: roi's
+--pnl must include revenues:gain (else the generated gain postings
+are miscounted as external cashflows), and --value=end,$
+with -e 2026-04-01 puts roi's valuation on the same date and price
+as holdings'.
+
+2. holdings XIRR 1809.1% = roi IRR 1809.07% (holdings rounds to one decimal).
+
+
+holdings' -e 2026-04-02 moves the report date to 2026-04-01, which
+is exactly roi's discounting reference (its exclusive span end)
+under roi -e 2026-04-01. Both measure each cashflow's distance from
+2026-04-01 with the terminal $360 at distance zero, so they solve
+the identical equation. The valuation is unaffected because the
+price lookup still finds the P 2026-03-31 price of $72 from either
+date.
+
+If both commands are given the same -e DATE, holdings anchors at
+DATE−1 (the report date it displays in the title) while roi anchors
+at DATE (its exclusive end), with the terminal value at exponent
+zero in both.
+

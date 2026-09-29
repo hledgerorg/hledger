@@ -1,4 +1,4 @@
-FROM haskell as dev
+FROM haskell:9.12.2 AS dev
 
 RUN mkdir /root/hledger
 WORKDIR /root/hledger
@@ -21,11 +21,11 @@ RUN stack install
 
 FROM debian:stable-slim
 
-RUN apt-get update && apt-get -y install libtinfo5 libgmp10 && rm -rf /var/lib/apt/lists
+RUN apt-get update && apt-get -y install libtinfo6 libgmp10 && rm -rf /var/lib/apt/lists
 
 COPY --from=dev /root/.local/bin/hledger* /usr/bin/
 
-ENV LC_ALL C.UTF-8
+ENV LC_ALL=C.UTF-8
 
 RUN mkdir /data && touch /data/hledger.journal
 VOLUME /data

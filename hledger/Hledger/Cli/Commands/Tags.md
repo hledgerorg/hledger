@@ -1,32 +1,60 @@
 ## tags
 
-List the tags used in the journal, or their values.
-<!-- same section name as Journal > Tags; if reordering this and that, update all #tags[-1] links -->
+List the tag names used or declared in the journal, or their values.
+<!-- This section has the same name as Journal > Tags; 
+     if changing their relative order, all #tags[-1] links need to be updated -->
 
 ```flags
 Flags:
+     --used                 list tags used
+     --declared             list tags declared
+     --undeclared           list tags used but not declared
+     --unused               list tags declared but not used
+     --find                 list the first tag whose name is matched by the
+                            first argument (a case-insensitive infix regexp)
      --values               list tag values instead of tag names
-     --parsed               show tags/values in the order they were parsed,
+     --parsed               show them in the order they were parsed (mostly),
                             including duplicates
+     --directives           show tag names as tag directives, for use in
+                            journals
 ```
 
-This command lists the tag names used in the journal,
-whether on transactions, postings, or account declarations.
+This command lists tag names -
+all of them by default,
+or just the ones which have been used on transactions/postings/accounts,
+or declared with `tag` directives,
+or used but not declared,
+or declared but not used,
+or just the first one matched by a pattern (with `--find`, returning a non-zero exit code if it fails).
 
-With a TAGREGEX argument, only tag names matching this regular expression
-(case insensitive, infix matched) are shown.
+Note this command's non-standard first argument:
+it is a case-insensitive infix regular expression for matching tag names, which limits the tags shown.
+Any additional arguments are standard [query arguments](#queries), which limit the transactions, postings, or accounts providing tags.
 
-With QUERY arguments, only transactions and accounts matching this query are considered.
-If the query involves transaction fields (date:, desc:, amt:, ...),
-the search is restricted to the matched transactions and their accounts.
+With `--values`, the tags' unique non-empty values are listed instead.
 
-With the --values flag, the tags' unique non-empty values are listed instead.
-With -E/--empty, blank/empty values are also shown.
+With `-E`/`--empty`, blank/empty values are also shown.
 
-With --parsed, tags or values are shown in the order they were parsed, with duplicates included.
+With `--parsed`, tags or values are shown in the order they were parsed, with duplicates included.
 (Except, tags from account declarations are always shown first.)
 
-Tip: remember,
-accounts also acquire tags from their parents,
-postings also acquire tags from their account and transaction,
-transactions also acquire tags from their postings.
+With `--directives`, tag names are shown as valid tag directives, which could be pasted into a journal file.
+
+Remember that accounts also acquire tags from their parents;
+postings also acquire tags from their account and transaction;
+and transactions also acquire tags from their postings.
+
+Examples:
+
+```cli
+$ hledger tags
+broker
+receipt
+trip
+```
+
+```cli
+$ hledger tags --values
+acme
+paris
+```

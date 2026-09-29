@@ -1,0 +1,34 @@
+; Test journal for the e2e suite. Tests add to and edit a scratch copy of
+; this file, so it is safe to modify.
+;
+; The last transaction deliberately carries html/javascript payloads in a
+; description, an account name and a comment. security.spec.js asserts that
+; every view renders them as text. Please keep them here.
+
+2025-01-01 opening balances
+    assets:bank:checking          1000.00
+    equity:opening
+
+2025-01-05 Grocer Green | weekly shop
+    expenses:food:groceries         52.10
+    assets:bank:checking
+
+2025-01-10 Metro Transit
+    expenses:transport:transit      21.50
+    assets:bank:checking
+
+2025-02-01 * Employer Inc | payroll
+    assets:bank:checking          3200.00
+    income:salary
+
+2025-02-03 Grocer Green | weekly shop
+    expenses:food:groceries         48.75
+    assets:bank:checking
+
+2025-02-14 Cafe Luna
+    expenses:food:dining            18.00
+    assets:bank:checking
+
+2025-03-01 Payee <img src=x onerror="window.__xss=1"> | desc <img src=x onerror="window.__xss=1">  ; comment <img src=x onerror="window.__xss=1">
+    expenses:food:dining:xss<script>alert(1)</script>            1.00
+    assets:bank:checking

@@ -14,14 +14,14 @@
 $ hledger rewrite -f- ^income --add-posting '(liabilities:tax)  *.33  ; income tax' --verbose-tags
 2016-01-01 paycheck
     ; modified-transaction: 
-    income:remuneration           $-100
-    (liabilities:tax)              $-33  ; income tax, generated-posting: = ^income
-    income:donations               $-15
-    (liabilities:tax)            $-4.95  ; income tax, generated-posting: = ^income
+    income:remuneration                        $-100
+    (liabilities:tax)                           $-33  ; income tax, generated-posting: = ^income
+    income:donations                            $-15
+    (liabilities:tax)                            $-4.95  ; income tax, generated-posting: = ^income
     assets:bank
 
 2016-01-01 withdraw
-    assets:cash             $20
+    assets:cash                                  $20
     assets:bank
 
 >= 0
@@ -38,13 +38,13 @@ $ hledger rewrite -f- ^income --add-posting '(liabilities:tax)  *.33  ; income t
     expenses:gifts  ; [1/2]
 $ hledger rewrite -f- expenses:gifts --add-posting '(budget:gifts)  *-1'
 2016-01-01 withdraw
-    assets:cash             $20
+    assets:cash                                  $20
     assets:bank
 
 2016-01-01 gift
-    assets:cash               $-15
-    expenses:gifts                  ; [1/2]
-    (budget:gifts)            $-15  ; [2016-01-02]
+    assets:cash                                 $-15
+    expenses:gifts                                    ; [1/2]
+    (budget:gifts)                              $-15  ; [2016-01-02]
 
 >= 0
 
@@ -67,16 +67,16 @@ $ hledger rewrite -f- expenses:gifts --add-posting '(budget:gifts)  *-1'
   (assets:to bill:client2)   *150.00 CAD
 $ hledger rewrite -f-
 2017-04-24 * 09:00-09:25
-    (assets:unbilled:client1)           0.42h
-    (assets:to bill:client1)        42.00 CAD
+    (assets:unbilled:client1)                      0.42h
+    (assets:to bill:client1)                      42.00 CAD
 
 2017-04-25 * 10:00-11:15
-    (assets:unbilled:client1)           1.25h
-    (assets:to bill:client1)       125.00 CAD
+    (assets:unbilled:client1)                      1.25h
+    (assets:to bill:client1)                     125.00 CAD
 
 2017-04-25 * 14:00-15:32
-    (assets:unbilled:client2)           1.54h
-    (assets:to bill:client2)       231.00 CAD
+    (assets:unbilled:client2)                      1.54h
+    (assets:to bill:client2)                     231.00 CAD
 
 >= 0
 
@@ -102,18 +102,18 @@ $ hledger rewrite -f-
   income:consulting:client2
 $ hledger rewrite -f- -B
 2017-04-24 * 09:00-09:25
-    (assets:unbilled:client1)           0.42h
-    assets:to bill:client1             $42.00
+    (assets:unbilled:client1)                      0.42h
+    assets:to bill:client1                       $42.00
     income:consulting:client1
 
 2017-04-25 * 10:00-11:15
-    (assets:unbilled:client1)           1.25h
-    assets:to bill:client1            $125.00
+    (assets:unbilled:client1)                      1.25h
+    assets:to bill:client1                      $125.00
     income:consulting:client1
 
 2017-04-25 * 14:00-15:32
-    (assets:unbilled:client2)           1.54h
-    assets:to bill:client2            $231.00
+    (assets:unbilled:client2)                      1.54h
+    assets:to bill:client2                      $231.00
     income:consulting:client2
 
 >= 0
@@ -135,16 +135,16 @@ $ hledger rewrite -f- -B
 #     assets:bank
 $ hledger rewrite -f- assets:bank and 'amt:<0' --add-posting 'expenses:fee  $5'  --add-posting 'assets:bank  $-5'
 2016-01-01 withdraw
-    assets:cash              $20
+    assets:cash                                  $20
     assets:bank
-    expenses:fee              $5
-    assets:bank              $-5
+    expenses:fee                                  $5
+    assets:bank                                  $-5
 
 2016-01-02 withdraw
     assets:cash
-    assets:bank             $-30
-    expenses:fee              $5
-    assets:bank              $-5
+    assets:bank                                 $-30
+    expenses:fee                                  $5
+    assets:bank                                  $-5
 
 >= 0
 
@@ -184,36 +184,36 @@ $ hledger rewrite -f- assets:bank and 'amt:<0' --add-posting 'expenses:fee  $5' 
 $ hledger rewrite -f- date:2017/1  --add-posting 'Here comes Santa  $0' --verbose-tags
 2016-12-31
     ; modified-transaction: 
-    expenses:housing            $600
-    (budget:housing)           $-600  ; generated-posting: = ^expenses:housing
+    expenses:housing                            $600
+    (budget:housing)                           $-600  ; generated-posting: = ^expenses:housing
     assets:cash
 
 2017-01-01
     ; modified-transaction: 
-    expenses:food                $20
-    (budget:food)               $-20  ; generated-posting: = ^expenses:grocery ^expenses:food
-    Here comes Santa              $0  ; generated-posting: = date:2017/1
-    expenses:leisure             $15
-    (budget:misc)               $-15  ; generated-posting: = ^expenses not:housing not:grocery not:food
-    Here comes Santa              $0  ; generated-posting: = date:2017/1
-    expenses:grocery             $30
-    (budget:food)               $-30  ; generated-posting: = ^expenses:grocery ^expenses:food
-    Here comes Santa              $0  ; generated-posting: = date:2017/1
+    expenses:food                                $20
+    (budget:food)                               $-20  ; generated-posting: = ^expenses:grocery ^expenses:food
+    Here comes Santa                              $0  ; generated-posting: = date:2017/1
+    expenses:leisure                             $15
+    (budget:misc)                               $-15  ; generated-posting: = ^expenses not:housing not:grocery not:food
+    Here comes Santa                              $0  ; generated-posting: = date:2017/1
+    expenses:grocery                             $30
+    (budget:food)                               $-30  ; generated-posting: = ^expenses:grocery ^expenses:food
+    Here comes Santa                              $0  ; generated-posting: = date:2017/1
     assets:cash
-    Here comes Santa              $0  ; generated-posting: = date:2017/1
+    Here comes Santa                              $0  ; generated-posting: = date:2017/1
 
 2017-01-02
     ; modified-transaction: 
-    assets:cash              $200.00
-    Here comes Santa              $0  ; generated-posting: = date:2017/1
+    assets:cash                                 $200.00
+    Here comes Santa                              $0  ; generated-posting: = date:2017/1
     assets:bank
-    assets:bank               $-1.60  ; generated-posting: = ^assets:bank$ date:2017/1 amt:<0
-    expenses:fee               $1.60  ; cash withdraw fee, generated-posting: = ^assets:bank$ date:2017/1 amt:<0
-    (budget:misc)             $-1.60  ; generated-posting: = ^expenses not:housing not:grocery not:food
-    Here comes Santa              $0  ; generated-posting: = date:2017/1
+    assets:bank                                  $-1.60  ; generated-posting: = ^assets:bank$ date:2017/1 amt:<0
+    expenses:fee                                  $1.60  ; cash withdraw fee, generated-posting: = ^assets:bank$ date:2017/1 amt:<0
+    (budget:misc)                                $-1.60  ; generated-posting: = ^expenses not:housing not:grocery not:food
+    Here comes Santa                              $0  ; generated-posting: = date:2017/1
 
 2017-02-01
-    assets:cash         $100.00
+    assets:cash                                 $100.00
     assets:bank
 
 >= 0
@@ -230,17 +230,117 @@ $ hledger rewrite -f- date:2017/1  --add-posting 'Here comes Santa  $0' --verbos
 $ hledger rewrite --diff -f- assets:bank and 'amt:<0' --add-posting 'expenses:fee  $5'  --add-posting 'assets:bank  $-5'
 --- -
 +++ -
-@@ -1,3 +1,5 @@
+@@ -1,7 +1,11 @@
 -2016/01/01 withdraw
+-    assets:cash              $20
 +2016-01-01 withdraw
-     assets:cash              $20
++    assets:cash                                  $20
      assets:bank
-+    expenses:fee              $5
-+    assets:bank              $-5
-@@ -5,3 +7,5 @@
++    expenses:fee                                  $5
++    assets:bank                                  $-5
+ 
 -2016/01/02 withdraw
 +2016-01-02 withdraw
      assets:cash
-     assets:bank             $-30
-+    expenses:fee              $5
-+    assets:bank              $-5
+-    assets:bank             $-30
++    assets:bank                                 $-30
++    expenses:fee                                  $5
++    assets:bank                                  $-5
+>= 0
+
+# ** 8. --layout=hledger1 restores hledger1-style right-aligned amount layout.
+<
+2016/1/1 paycheck
+    income:remuneration     $-100
+    assets:bank
+$ hledger rewrite -f- ^income --add-posting '(liabilities:tax)  *.33' --layout=hledger1
+2016-01-01 paycheck
+    income:remuneration           $-100
+    (liabilities:tax)              $-33
+    assets:bank
+
+>=
+
+# ** 9. --layout affects the diff path too.
+<
+2016/01/01 paycheck
+    income:remuneration  $-100
+    assets:bank
+$ hledger rewrite --diff -f- ^income --add-posting '(liabilities:tax)  *.33' --layout=hledger1
+--- -
++++ -
+@@ -1,3 +1,4 @@
+-2016/01/01 paycheck
+-    income:remuneration  $-100
++2016-01-01 paycheck
++    income:remuneration           $-100
++    (liabilities:tax)              $-33
+     assets:bank
+
+# ** 10. Diffs show a few lines of unchanged context around each change,
+# so that patch can apply them. (#2548)
+<
+2016/01/01 a
+    expenses:x   $1
+    assets:b
+
+2016/01/02 b
+    expenses:y   $1
+    assets:b
+
+2016/01/03 c
+    expenses:z   $1
+    assets:b
+$ hledger rewrite --diff -f- expenses:y --add-posting '(budget:y)  *-1'
+--- -
++++ -
+@@ -2,8 +2,9 @@
+     expenses:x   $1
+     assets:b
+ 
+-2016/01/02 b
+-    expenses:y   $1
++2016-01-02 b
++    expenses:y                                    $1
++    (budget:y)                                   $-1
+     assets:b
+ 
+ 2016/01/03 c
+
+# ** 11. Transactions generated by a periodic rule have no journal entry of
+# their own, so they are left out of the diff rather than overwriting the rule.
+<
+= expenses:groceries
+    (budget:food)      *-1
+
+~ monthly from 2026-01
+    expenses:groceries    100 USD
+    assets:bank
+
+2026-01-15 Supermarket
+    expenses:groceries     50 USD
+    assets:bank           -50 USD
+$ hledger rewrite --diff -f- --forecast=2026-01-01..2026-03-01
+--- -
++++ -
+@@ -6,5 +6,6 @@
+     assets:bank
+ 
+ 2026-01-15 Supermarket
+-    expenses:groceries     50 USD
+-    assets:bank           -50 USD
++    expenses:groceries                            50 USD
++    (budget:food)                                -50 USD
++    assets:bank                                  -50 USD
+>2
+warning: 2 changed transactions are not shown in the diff, having no journal entry to patch:
+  2 generated by a periodic transaction rule
+
+# ** 12. Likewise transactions read from non-journal data, such as timeclock or CSV.
+<
+i 2026/01/01 09:00:00 work:coding
+o 2026/01/01 17:00:00
+$ hledger rewrite --diff -f timeclock:- --add-posting '(budget:t)  *-1'
+>2
+warning: 1 changed transaction is not shown in the diff, having no journal entry to patch:
+  1 read from -

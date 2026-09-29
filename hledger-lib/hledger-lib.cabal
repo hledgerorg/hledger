@@ -1,11 +1,11 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.38.0.
+-- This file has been generated from package.yaml by hpack version 0.39.6.
 --
 -- see: https://github.com/sol/hpack
 
 name:           hledger-lib
-version:        1.43.99
+version:        1.99
 synopsis:       A library providing the core functionality of hledger
 description:    This library contains hledger's core functionality.
                 It is used by most hledger* packages so that they support the same
@@ -34,19 +34,20 @@ license:        GPL-3.0-or-later
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    ghc==8.10.7, ghc==9.0.2, ghc==9.2.8, ghc==9.4.8, ghc==9.6.7, ghc==9.8.4, ghc==9.10.2, ghc==9.12.1
+    ghc==9.6.7, ghc==9.8.4, ghc==9.10.3, ghc==9.12.4, ghc==9.14.1
 extra-source-files:
     CHANGES.md
     README.md
+    locale/de.po
     test/unittest.hs
     test/doctests.hs
 
 source-repository head
   type: git
-  location: https://github.com/simonmichael/hledger
+  location: https://github.com/hledgerorg/hledger
 
 flag debug
-  description: Build with GHC 9.10+'s stack traces enabled
+  description: Build with GHC 9.10+ stack traces enabled
   manual: True
   default: False
 
@@ -56,10 +57,13 @@ library
       Hledger.Data
       Hledger.Data.Account
       Hledger.Data.AccountName
+      Hledger.Data.AccountType
       Hledger.Data.Amount
+      Hledger.Data.BalanceData
       Hledger.Data.Balancing
       Hledger.Data.Currency
       Hledger.Data.Dates
+      Hledger.Data.DayPartition
       Hledger.Data.Errors
       Hledger.Data.Journal
       Hledger.Data.JournalChecks
@@ -67,11 +71,13 @@ library
       Hledger.Data.JournalChecks.Uniqueleafnames
       Hledger.Data.Json
       Hledger.Data.Ledger
+      Hledger.Data.Lots
       Hledger.Data.Period
+      Hledger.Data.PeriodData
       Hledger.Data.PeriodicTransaction
-      Hledger.Data.StringFormat
       Hledger.Data.Posting
       Hledger.Data.RawOptions
+      Hledger.Data.StringFormat
       Hledger.Data.Timeclock
       Hledger.Data.Transaction
       Hledger.Data.TransactionModifier
@@ -83,35 +89,36 @@ library
       Hledger.Read.CsvReader
       Hledger.Read.InputOptions
       Hledger.Read.JournalReader
+      Hledger.Read.LatestDates
       Hledger.Read.RulesReader
-      Hledger.Read.TimedotReader
       Hledger.Read.TimeclockReader
-      Hledger.Write.Beancount
-      Hledger.Write.Csv
-      Hledger.Write.Ods
-      Hledger.Write.Html
-      Hledger.Write.Html.Attribute
-      Hledger.Write.Html.Blaze
-      Hledger.Write.Html.Lucid
-      Hledger.Write.Html.HtmlCommon
-      Hledger.Write.Spreadsheet
+      Hledger.Read.TimedotReader
       Hledger.Reports
-      Hledger.Reports.ReportOptions
-      Hledger.Reports.ReportTypes
       Hledger.Reports.AccountTransactionsReport
       Hledger.Reports.BalanceReport
       Hledger.Reports.BudgetReport
       Hledger.Reports.EntriesReport
       Hledger.Reports.MultiBalanceReport
       Hledger.Reports.PostingsReport
+      Hledger.Reports.ReportOptions
+      Hledger.Reports.ReportTypes
       Hledger.Utils
       Hledger.Utils.Debug
+      Hledger.Utils.I18n
       Hledger.Utils.IO
       Hledger.Utils.Parse
       Hledger.Utils.Regex
       Hledger.Utils.String
       Hledger.Utils.Test
       Hledger.Utils.Text
+      Hledger.Write.Beancount
+      Hledger.Write.Csv
+      Hledger.Write.Html
+      Hledger.Write.Html.Attribute
+      Hledger.Write.Journal
+      Hledger.Write.Ledger
+      Hledger.Write.Ods
+      Hledger.Write.Spreadsheet
       Text.Tabular.AsciiWide
       Text.WideString
   other-modules:
@@ -121,14 +128,15 @@ library
   hs-source-dirs:
       ./
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind
+  cpp-options: -DVERSION="1.99"
   build-depends:
       Decimal >=0.5.1
     , Glob >=0.9
-    , aeson >=1 && <2.3
+    , aeson >=2.2.5.1 && <2.4
     , aeson-pretty
     , ansi-terminal >=0.9
     , array
-    , base >=4.14 && <4.22
+    , base >=4.18 && <4.23
     , blaze-html
     , blaze-markup >=0.5.1
     , bytestring
@@ -141,35 +149,37 @@ library
     , data-default >=0.5
     , deepseq
     , directory >=1.2.6.1
-    , doclayout >=0.3 && <0.6
+    , doclayout >=0.3 && <0.7
     , encoding >=0.10
     , extra >=1.7.11
     , file-embed >=0.0.10
     , filepath
-    , hashtables >=1.2.3.1
-    , lucid
-    , megaparsec >=7.0.0 && <9.8
+    , hashtables >=1.2.3.1 && <1.3 || >=1.4.0
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , microlens-th >=0.4
     , mtl >=2.2.1
     , parser-combinators >=0.4.0
-    , pretty-simple >4 && <5
+    , pretty-simple ==4.*
     , process
     , regex-tdfa
     , safe >=0.3.20
+    , safe-exceptions
     , tabular >=0.2
     , tasty >=1.2.3
     , tasty-hunit >=0.10.0.2
     , template-haskell
+    , temporary
     , terminal-size >=0.3.3
     , text >=1.2.4.1
+    , these >=1.0.0
     , time >=1.5
     , timeit
     , transformers >=0.2
     , uglymemo
     , unordered-containers >=0.2
     , utf8-string >=0.3.5
-  default-language: Haskell2010
+  default-language: GHC2021
   if (flag(debug))
     cpp-options: -DDEBUG
 
@@ -179,14 +189,15 @@ test-suite doctest
   hs-source-dirs:
       test
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind
+  cpp-options: -DVERSION="1.99"
   build-depends:
       Decimal >=0.5.1
     , Glob >=0.7
-    , aeson >=1 && <2.3
+    , aeson >=2.2.5.1 && <2.4
     , aeson-pretty
     , ansi-terminal >=0.9
     , array
-    , base >=4.14 && <4.22
+    , base >=4.18 && <4.23
     , blaze-html
     , blaze-markup >=0.5.1
     , bytestring
@@ -199,40 +210,40 @@ test-suite doctest
     , data-default >=0.5
     , deepseq
     , directory >=1.2.6.1
-    , doclayout >=0.3 && <0.6
+    , doclayout >=0.3 && <0.7
     , doctest >=0.18.1
     , encoding >=0.10
     , extra >=1.7.11
     , file-embed >=0.0.10
     , filepath
-    , hashtables >=1.2.3.1
-    , lucid
-    , megaparsec >=7.0.0 && <9.8
+    , hashtables >=1.2.3.1 && <1.3 || >=1.4.0
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , microlens-th >=0.4
     , mtl >=2.2.1
     , parser-combinators >=0.4.0
-    , pretty-simple >4 && <5
+    , pretty-simple ==4.*
     , process
     , regex-tdfa
     , safe >=0.3.20
+    , safe-exceptions
     , tabular >=0.2
     , tasty >=1.2.3
     , tasty-hunit >=0.10.0.2
     , template-haskell
+    , temporary
     , terminal-size >=0.3.3
     , text >=1.2.4.1
+    , these >=1.0.0
     , time >=1.5
     , timeit
     , transformers >=0.2
     , uglymemo
     , unordered-containers >=0.2
     , utf8-string >=0.3.5
-  default-language: Haskell2010
+  default-language: GHC2021
   if (flag(debug))
     cpp-options: -DDEBUG
-  if impl(ghc >= 9.0) && impl(ghc < 9.2)
-    buildable: False
 
 test-suite unittest
   type: exitcode-stdio-1.0
@@ -240,14 +251,15 @@ test-suite unittest
   hs-source-dirs:
       test
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind
+  cpp-options: -DVERSION="1.99"
   build-depends:
       Decimal >=0.5.1
     , Glob >=0.9
-    , aeson >=1 && <2.3
+    , aeson >=2.2.5.1 && <2.4
     , aeson-pretty
     , ansi-terminal >=0.9
     , array
-    , base >=4.14 && <4.22
+    , base >=4.18 && <4.23
     , blaze-html
     , blaze-markup >=0.5.1
     , bytestring
@@ -260,29 +272,31 @@ test-suite unittest
     , data-default >=0.5
     , deepseq
     , directory >=1.2.6.1
-    , doclayout >=0.3 && <0.6
+    , doclayout >=0.3 && <0.7
     , encoding >=0.10
     , extra >=1.7.11
     , file-embed >=0.0.10
     , filepath
-    , hashtables >=1.2.3.1
+    , hashtables >=1.2.3.1 && <1.3 || >=1.4.0
     , hledger-lib
-    , lucid
-    , megaparsec >=7.0.0 && <9.8
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , microlens-th >=0.4
     , mtl >=2.2.1
     , parser-combinators >=0.4.0
-    , pretty-simple >4 && <5
+    , pretty-simple ==4.*
     , process
     , regex-tdfa
     , safe >=0.3.20
+    , safe-exceptions
     , tabular >=0.2
     , tasty >=1.2.3
     , tasty-hunit >=0.10.0.2
     , template-haskell
+    , temporary
     , terminal-size >=0.3.3
     , text >=1.2.4.1
+    , these >=1.0.0
     , time >=1.5
     , timeit
     , transformers >=0.2
@@ -290,6 +304,6 @@ test-suite unittest
     , unordered-containers >=0.2
     , utf8-string >=0.3.5
   buildable: True
-  default-language: Haskell2010
+  default-language: GHC2021
   if (flag(debug))
     cpp-options: -DDEBUG

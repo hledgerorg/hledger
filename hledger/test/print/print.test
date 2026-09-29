@@ -7,7 +7,7 @@
 
 $ hledger -f- print
 2023-01-01
-    (a)       0 A @ 0 B == 0 A @ 0 B
+    (a)                                            0 A @ 0 B == 0 A @ 0 B
 
 >=
 
@@ -21,10 +21,10 @@ $ hledger -f- print
 
 $ hledger -f- print -x
 2023-01-01
-    a             0 A
-    b             0 B
-    z             0 A
-    z             0 B
+    a                                              0 A
+    b                                              0 B
+    z                                              0 A
+    z                                              0 B
 
 >=
 
@@ -35,7 +35,7 @@ $ hledger -f- print -x
 
 $ hledger -f- print --depth 1
 2023-01-01
-    A:AA             0 A
+    A:AA                                           0 A
 
 >=
 
@@ -48,9 +48,92 @@ $ hledger -f- print --depth 1
 
 $ hledger -f- print --invert -x
 2025-01-01
-    a      -1 A @ 2 B = -1 A @ 2 B
-    b             2 B = 2 B
-    c             0 C = 0
+    a                                             -1 A @ 2 B = -1 A @ 2 B
+    b                                              2 B       =  2 B
+    c                                              0 C       =  0
 
 >=
 
+# ** 5. By default, posting amounts are aligned on their decimal marks at column 53.
+<
+2024-01-01
+  expenses:groceries:walmart      $10.00
+  assets:checking                $-10.00
+
+$ hledger -f- print
+2024-01-01
+    expenses:groceries:walmart                   $10.00
+    assets:checking                             $-10.00
+
+>=
+
+# ** 6. --layout=COL aligns decimals at column COL, but auto-shifts amounts further right
+# if needed to preserve 2+ spaces between accounts and amounts.
+# The first transaction below aligns at column 20, the second auto-shifts past column 20. 
+<
+2024-01-01
+  a    $1.00
+  b   $-1.00
+
+2024-01-02
+  expenses:groceries:walmart      $10.00
+  assets:checking                $-10.00
+
+$ hledger -f- print --layout=20
+2024-01-01
+    a            $1.00
+    b           $-1.00
+
+2024-01-02
+    expenses:groceries:walmart   $10.00
+    assets:checking             $-10.00
+
+>=
+
+# ** 7. --layout=hledger1 restores the right-aligned amount layout used in hledger 1.
+# The alignment position varies between transactions.
+<
+2024-01-01
+  expenses:groceries:walmart      $10.00
+  assets:checking                $-10.00
+
+2024-01-02
+  a    $1.00
+  b   $-1.00
+
+$ hledger -f- print --layout=hledger1
+2024-01-01
+    expenses:groceries:walmart          $10.00
+    assets:checking                    $-10.00
+
+2024-01-02
+    a           $1.00
+    b          $-1.00
+
+>=
+
+# ** 8. Balance-assertion `=` glyphs align one space right of the rightmost main amount,
+# and assertion amounts decimal-align with the leftmost asn amount one space right of
+# the widest operator (=, ==, =*, ==*).
+<
+2025-01-01
+    a              1.0 USD = 1.0 USD
+    b           123.45 USD == 123.45 USD
+    c                      ==* -124.45 USD
+
+$ hledger -f- print
+2025-01-01
+    a                                              1.0 USD  =      1.0 USD
+    b                                            123.45 USD ==   123.45 USD
+    c                                                       ==* -124.45 USD
+
+>=
+
+# ** 9. hledger1 layout keeps its single-space separator.
+$ hledger -f- print --layout=hledger1
+2025-01-01
+    a         1.0 USD = 1.0 USD
+    b      123.45 USD == 123.45 USD
+    c                 ==* -124.45 USD
+
+>=

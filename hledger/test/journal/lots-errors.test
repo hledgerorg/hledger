@@ -1,0 +1,713 @@
+# Tests for lot error behaviour.
+
+# ** 1. no lots available with --lots errors (exits 1)
+<
+2026-02-01 sell
+    assets:stocks    -5 AAPL {$50} @ $55
+    assets:cash       $275
+    revenues:gains
+
+$ hledger -f- print --lots 2>/dev/null
+>=1
+
+# ** 2. Unclassified lotful commodity posting in asset account is a hard error with --lots.
+# AAPL has lots: tag, assets:broker is an asset account, but the posting has no cost basis
+# and no price, so classification fails. With --lots this is an error.
+<
+commodity AAPL  ; lots:
+
+2026-01-15 mysterious
+    assets:broker    10 AAPL
+    income:mystery
+
+$ hledger -f- bal assets --lots 2>&1
+hledger: Error: -:4:
+  | 2026-01-15 mysterious
+4 |     assets:broker                                 10 AAPL
+  |     income:mystery
+
+AAPL is declared lotful (commodity lots: tag) but this posting was not classified as
+acquire, dispose, or transfer. Lot state will not be updated.
+Possible fixes: add a cost basis ({$X}), a price (@ $X),
+or check the account type declaration.
+>=1
+
+# ** 3. Zero-amount lotful posting (eg a balance assertion) is not an error with --lots.
+<
+commodity AAPL  ; lots:
+
+2026-01-15 check balance
+    assets:broker    0 AAPL = 0 AAPL
+    income:mystery
+
+$ hledger -f- bal assets --lots 2>&1
+--------------------
+                   0  
+>=0
+
+# ** 4. Implicit zero-amount lotful posting (balance assignment inferring zero) is not an error with --lots.
+<
+commodity AAPL  ; lots:
+
+2026-01-15 check balance
+    assets:broker    = 0 AAPL
+    income:mystery
+
+$ hledger -f- bal assets --lots 2>&1
+--------------------
+                   0  
+>=0
+
+# ** 5. Non-lotful commodity in asset account does not error with --lots.
+<
+2026-01-15 normal
+    assets:checking    $100
+    income:salary
+
+$ hledger -f- bal assets --lots 2>&1
+                $100  assets:checking
+--------------------
+                $100  
+>=0
+
+# ** 6. Gain posting does not trigger unclassified error with --lots.
+<
+account revenue:gains  ; type:V
+
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:cash
+
+2026-02-01 sell
+    assets:stocks    -5 AAPL {$50} @ $60
+    assets:cash      $300
+    revenue:gains
+
+$ hledger -f- bal assets --lots 2>&1
+               $-200  assets:cash
+              5 AAPL  assets:stocks:{2026-01-15, $50}
+--------------------
+               $-200
+              5 AAPL  
+>=0
+
+# ** 7. Bare acquire with no inferable cost errors with --lots.
+<
+commodity T  ; lots:
+
+2026-01-17 buy
+    assets:wj       -52 A
+    assets:broker    2220 T  ; @ $0.01
+    equity:conversion
+
+$ hledger -f- bal assets --lots 2>&1
+hledger: Error: -:5:
+  | 2026-01-17 buy
+  |     assets:wj                                    -52 A
+5 |     assets:broker                               2220 T  ; @ $0.01
+  |     equity:conversion
+
+T is lotful but this acquire posting has no cost basis or price.
+No lot will be created.
+
+Postings were read as: unclassified, acquire, unclassified.
+>=1
+
+# ** 8. A leaf account name enclosed in `{...}` that is not a valid lot name
+# errors at load time with the parse-failure message.
+<
+2026-01-01 literal brace account
+    assets:project:{not a lot}    $1
+    equity:opening               $-1
+
+$ hledger -f - print
+>2 /invalid lot name: not a lot/
+>= 1
+
+# ** 9. With --ignore-lots/-I, {...} leaf accounts are treated as ordinary subaccounts.
+<
+2026-01-01 literal brace account
+    assets:project:{not a lot}    $1
+    equity:opening               $-1
+
+$ hledger -f- -I print
+2026-01-01 literal brace account
+    assets:project:{not a lot}                    $1
+    equity:opening                               $-1
+
+>=
+
+# ** 10. `check lots` re-enables validation even when -I is used.
+<
+2026-01-01 literal brace account
+    assets:project:{not a lot}    $1
+    equity:opening               $-1
+
+$ hledger -f- -I check lots
+>2 /invalid lot name: not a lot/
+>= 1
+
+# ** 11. A lot subaccount name missing required parts (date and cost) also
+# triggers the lot-subaccount error.
+<
+2026-01-01 only label
+    assets:project:{"label only"}    $1
+    equity:opening                  $-1
+
+$ hledger -f - print
+>2 /lot subaccount name must contain a date and cost/
+>= 1
+
+# ** 12. The unclassified-posting error shows the entry as written in the
+# journal (balance assignments and elided amounts are not filled in), and
+# mentions the problem posting's inferred amount, which is not visible in
+# the excerpt (#2686).
+<
+commodity ABC ; lots:
+
+2021-03-08 gift received
+     revenues:gifts
+     assets:broker1    = 2.3 ABC
+
+$ hledger -f- bal assets --lots 2>&1
+hledger: Error: -:5:
+  | 2021-03-08 gift received
+  |     revenues:gifts
+5 |     assets:broker1                                   = 2.3 ABC
+
+ABC is declared lotful (commodity lots: tag) but this posting (with inferred amount 2.3 ABC) was not classified as
+acquire, dispose, or transfer. Lot state will not be updated.
+Possible fixes: add a cost basis ({$X}), a price (@ $X),
+or check the account type declaration.
+>=1
+
+# ** 13. An amountless gain posting is filled in with the calculated gain,
+# also when the disposal is only recognisable after a balance assignment
+# has been resolved (#2686): gain postings are set aside inside the balancer,
+# once amounts are known.
+<
+commodity A  ; lots:
+2026-01-15 buy
+    assets:x1    1 A {$100}
+    assets:cash
+
+2026-02-17 transfer with priced fee
+    assets:x1     = 0 A
+    assets:x2      0.95 A
+    expenses:fees  0.05 A @ $150
+    income:gains
+
+$ hledger -f- print -x --lots desc:transfer
+2026-02-17 transfer with priced fee
+    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
+    assets:x1:{2026-01-15, $100}                  -0.05 A {2026-01-15, $100} @ $150
+    assets:x1                                      0 A                              =* 0 A
+    assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
+    expenses:fees                                  0.05 A @ $150
+    income:gains                                 $-2.50
+
+>=
+
+# ** 14. Referencing a lot that doesn't exist (here, a label the lot doesn't
+# have) reports the non-matching selector and lists the account's available
+# lots. #2689
+<
+commodity ABC ; lots:
+
+2021-03-08 buy
+     equity:open-close   -$10
+     assets:broker1      2 ABC
+
+2026-08-10 closing balances
+    assets:broker1:{2021-03-08, "0001", $5}  -2 ABC
+    equity:opening/closing balances
+
+$ hledger -f- bal --lots 2>&1
+hledger: Error: -:7:
+7 | 2026-08-10 closing balances
+  |     assets:broker1:{2021-03-08, "0001", $5}       -2 ABC {2021-03-08, "0001", $5}
+  |     equity:opening/closing balances
+
+no lots matching {2021-03-08, "0001", $5} for commodity ABC in account assets:broker1 on 2026-08-10
+Available lots in this account:
+  {2021-03-08, $5}  2
+  Total: 2 ABC
+
+Postings were read as: transfer-from, unclassified.
+>=1
+
+# ** 15. A transfer-like entry whose lotful-commodity quantities don't add
+# up (eg a fee deducted in kind but recorded in cash) fails the balancedness
+# check: no cost is inferred for the mismatched residual, which would mask
+# the imbalance and surface as a confusing lot error instead. The error
+# explains why no cost was inferred. #2692
+<
+commodity ABC ; lots:
+
+2020-03-08 buy
+     assets:cash        -$10
+     assets:broker1      5 ABC
+
+2020-04-05 transfer, quantities mismatched
+     assets:broker1     -5 ABC
+     assets:broker2      4.9 ABC
+     expenses:fees       $1
+
+$ hledger -f- bal --lots 2>&1
+hledger: Error: -:7-10:
+7 | 2020-04-05 transfer, quantities mismatched
+  |     assets:broker1                                -5 ABC
+  |     assets:broker2                                 4.9 ABC
+  |     expenses:fees                                 $1
+
+This multi-commodity transaction is unbalanced.
+The real postings' sum should be 0 but is $1, -0.1 ABC
+  -5 ABC  +  4.9 ABC  +  $1  =  $1, -0.1 ABC
+Note, ABC is a lot-tracked commodity being transferred between accounts,
+so no balancing conversion cost was inferred; its quantities are expected
+to add up. If the difference is a fee, you can either
+- record the fee expense in the lot-tracked commodity, with posting(s)
+  adding up to the missing quantity
+- or split the sending posting into a transfer part and fee part(s)
+  matching the fee expense(s).
+(With --ignore-lots, a balancing conversion cost is inferred instead.)
+>=1
+
+# ** 16. A balanced transfer-like entry where more of the lotful commodity is
+# received than sent (eg sign errors or rounding-patched imported data) gets a
+# direction-aware hint, since a fee can't explain that direction.
+<
+commodity ABC ; lots:
+
+2020-03-08 buy
+     assets:cash        -$10
+     assets:broker1      5 ABC
+
+2020-04-05 transfer, more received than sent
+     assets:broker1     -4.9 ABC
+     expenses:fees      -0.1 ABC
+     assets:broker2      5 ABC
+
+$ hledger -f- bal --lots 2>&1
+hledger: Error: -:7:
+7 | 2020-04-05 transfer, more received than sent
+  |     assets:broker1                                -4.9 ABC
+  |     expenses:fees                                 -0.1 ABC
+  |     assets:broker2                                 5 ABC
+
+Mismatched transfer quantities for lot-tracked commodity ABC: 4.9 transferred out but 5 received.
+More was received than sent, which a fee can't explain;
+check the entry for sign errors or rounding adjustments.
+
+Postings were read as: transfer-from, unclassified, transfer-to.
+>=1
+
+# ** 17. Fee postings in the lot-tracked commodity which don't add up to the
+# missing quantity exactly (eg here, a fee recorded alongside an in-kind
+# rebate) are still an error, explaining the requirement.
+<
+commodity ABC ; lots:
+
+2020-03-08 buy
+     assets:cash        -$10
+     assets:broker1      5 ABC
+
+2020-04-05 transfer, fees don't match the missing quantity
+     assets:broker1     -5 ABC
+     assets:broker2      4.9 ABC
+     expenses:fees       0.15 ABC
+     revenues:rebate    -0.05 ABC
+
+$ hledger -f- bal --lots 2>&1
+hledger: Error: -:7:
+7 | 2020-04-05 transfer, fees don't match the missing quantity
+  |     assets:broker1                                -5 ABC
+  |     assets:broker2                                 4.9 ABC
+  |     expenses:fees                                  0.15 ABC
+  |     revenues:rebate                               -0.05 ABC
+
+Mismatched transfer quantities for lot-tracked commodity ABC: 5 transferred out but 4.9 received.
+If the difference is a fee, you can either
+- record the fee expense in the lot-tracked commodity, with posting(s)
+  adding up to the missing quantity
+- or split the sending posting into a transfer part and fee part(s)
+  matching the fee expense(s).
+
+Postings were read as: transfer-from, transfer-to, unclassified, unclassified.
+>=1
+
+# ** 18. A generic (unselected) outflow with insufficient lots reports just
+# the needed and available quantities, without listing lots.
+<
+commodity ADA ; lots:
+
+2026-01-01 reward
+    assets:wallet    2 ADA @ $0.41
+    revenues:staking
+
+2026-01-02 reward
+    assets:wallet    2 ADA @ $0.42
+    revenues:staking
+
+2026-01-03 reward
+    assets:wallet    2 ADA @ $0.43
+    revenues:staking
+
+2026-01-04 reward
+    assets:wallet    2 ADA @ $0.44
+    revenues:staking
+
+2026-01-05 reward
+    assets:wallet    2 ADA @ $0.45
+    revenues:staking
+
+2026-01-06 reward
+    assets:wallet    2 ADA @ $0.46
+    revenues:staking
+
+2026-01-07 reward
+    assets:wallet    2 ADA @ $0.47
+    revenues:staking
+
+2026-01-08 reward
+    assets:wallet    2 ADA @ $0.48
+    revenues:staking
+
+2026-01-09 reward
+    assets:wallet    2 ADA @ $0.49
+    revenues:staking
+
+2026-01-10 reward
+    assets:wallet    2 ADA @ $0.50
+    revenues:staking
+
+2026-01-11 reward
+    assets:wallet    2 ADA @ $0.51
+    revenues:staking
+
+2026-01-12 reward
+    assets:wallet    2 ADA @ $0.52
+    revenues:staking
+
+2026-02-01 sell too much
+    assets:wallet   -60 ADA @ $0.50
+    assets:cash     $30
+
+$ hledger -f- check 2>&1
+hledger: Error: -:51:
+51 | 2026-02-01 sell too much
+   |     assets:wallet                                -60 ADA @ $0.50
+   |     assets:cash                                  $30
+
+Insufficient lots for commodity ADA in account assets:wallet: need 60 but only 24 available
+
+Postings were read as: dispose, unclassified.
+>=1
+
+# ** 19. Disposing from an account with no lots shows a compact per-account
+# summary of where the commodity's lots are.
+<
+commodity ADA ; lots:
+
+2026-01-01 reward
+    assets:wallet    2 ADA @ $0.41
+    revenues:staking
+
+2026-01-02 reward
+    assets:wallet    2 ADA @ $0.42
+    revenues:staking
+
+2026-01-03 reward
+    assets:wallet    2 ADA @ $0.43
+    revenues:staking
+
+2026-01-04 reward
+    assets:wallet    2 ADA @ $0.44
+    revenues:staking
+
+2026-01-05 reward
+    assets:wallet    2 ADA @ $0.45
+    revenues:staking
+
+2026-01-06 reward
+    assets:wallet    2 ADA @ $0.46
+    revenues:staking
+
+2026-01-07 reward
+    assets:wallet    2 ADA @ $0.47
+    revenues:staking
+
+2026-01-08 reward
+    assets:wallet    2 ADA @ $0.48
+    revenues:staking
+
+2026-01-09 reward
+    assets:wallet    2 ADA @ $0.49
+    revenues:staking
+
+2026-01-10 reward
+    assets:wallet    2 ADA @ $0.50
+    revenues:staking
+
+2026-01-11 reward
+    assets:wallet    2 ADA @ $0.51
+    revenues:staking
+
+2026-01-12 reward
+    assets:wallet    2 ADA @ $0.52
+    revenues:staking
+
+2026-02-01 sell from the wrong account
+    assets:exchange  -1 ADA @ $0.50
+    assets:cash      $0.50
+
+$ hledger -f- check 2>&1
+hledger: Error: -:51:
+51 | 2026-02-01 sell from the wrong account
+   |     assets:exchange                               -1 ADA @ $0.50
+   |     assets:cash                                   $0.50
+
+no ADA lots available for disposal from account assets:exchange on 2026-02-01
+Lots of ADA in other accounts:
+  assets:wallet: 24 ADA in 12 lots
+
+Postings were read as: dispose, unclassified.
+>=1
+
+# ** 20. With an explicit lot selector, the same error also lists the
+# matching lots - at most 10, with a count and total of the rest.
+<
+commodity ADA ; lots:
+
+2026-01-01 reward 1
+    assets:wallet    2 ADA @ $0.41
+    revenues:staking
+
+2026-01-01 reward 2
+    assets:wallet    2 ADA @ $0.42
+    revenues:staking
+
+2026-01-01 reward 3
+    assets:wallet    2 ADA @ $0.43
+    revenues:staking
+
+2026-01-01 reward 4
+    assets:wallet    2 ADA @ $0.44
+    revenues:staking
+
+2026-01-01 reward 5
+    assets:wallet    2 ADA @ $0.45
+    revenues:staking
+
+2026-01-01 reward 6
+    assets:wallet    2 ADA @ $0.46
+    revenues:staking
+
+2026-01-01 reward 7
+    assets:wallet    2 ADA @ $0.47
+    revenues:staking
+
+2026-01-01 reward 8
+    assets:wallet    2 ADA @ $0.48
+    revenues:staking
+
+2026-01-01 reward 9
+    assets:wallet    2 ADA @ $0.49
+    revenues:staking
+
+2026-01-01 reward 10
+    assets:wallet    2 ADA @ $0.50
+    revenues:staking
+
+2026-01-01 reward 11
+    assets:wallet    2 ADA @ $0.51
+    revenues:staking
+
+2026-01-01 reward 12
+    assets:wallet    2 ADA @ $0.52
+    revenues:staking
+
+2026-02-01 sell too much from the selected lots
+    assets:wallet   -60 ADA {2026-01-01} @ $0.50
+    assets:cash     $30
+$ hledger -f- check 2>&1
+hledger: Error: -:51:
+51 | 2026-02-01 sell too much from the selected lots
+   |     assets:wallet                                -60 ADA {2026-01-01} @ $0.50
+   |     assets:cash                                  $30
+
+Insufficient lots for commodity ADA in account assets:wallet: need 60 but only 24 available
+Lots matching {2026-01-01}:
+  {2026-01-01, "0001", $0.41}  2
+  {2026-01-01, "0002", $0.42}  2
+  {2026-01-01, "0003", $0.43}  2
+  {2026-01-01, "0004", $0.44}  2
+  {2026-01-01, "0005", $0.45}  2
+  {2026-01-01, "0006", $0.46}  2
+  {2026-01-01, "0007", $0.47}  2
+  {2026-01-01, "0008", $0.48}  2
+  {2026-01-01, "0009", $0.49}  2
+  {2026-01-01, "0010", $0.50}  2
+  ...and 2 more lots
+  Total: 24 ADA
+
+Postings were read as: dispose, unclassified.
+>=1
+
+# ** 21. When a journal has both a lot error and a failing balance
+# assertion, the lot error is reported first (assertion failures are
+# deferred until the lot stages have run), even when the assertion
+# comes earlier in the journal.
+<
+commodity ADA ; lots:
+
+2026-01-01 buy
+    assets:wallet    2 ADA @ $1
+    assets:cash     -$2
+
+2026-01-02 wrong assertion
+    assets:cash      $0 = $-5
+
+2026-01-03 sell too much
+    assets:wallet   -5 ADA @ $1
+    assets:cash      $5
+$ hledger -f- check
+>2 /Insufficient lots for commodity ADA/
+>=1
+
+# ** 22. With --ignore-lots (but not -I, which also ignores assertions),
+# the same journal reports the assertion failure.
+$ hledger -f- check --ignore-lots
+>2 /Balance assertion failed in assets:cash/
+>=1
+
+# ** 23. An invalid date in a lot subaccount name is reported.
+<
+2026-01-01 buy
+    assets:stocks:{2026-02-30, $50}    10 AAPL
+    assets:checking
+$ hledger -f- check
+>2 /invalid date in lot name: 2026-02-30/
+>=1
+
+# ** 24. Two lots of a commodity with the same date and user-written label are an error.
+<
+2026-01-01 buy
+    assets:stocks    10 AAPL {2026-01-01, "a", $50}
+    assets:checking
+
+2026-01-02 buy
+    assets:stocks    10 AAPL {2026-01-01, "a", $60}
+    assets:checking
+$ hledger -f- check
+>2 /lot id is not unique: commodity AAPL, date 2026-01-01, label "a"/
+>=1
+
+# ** 25. So is a user-written label that collides with an automatically generated one.
+<
+2026-01-01 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-01-01 buy
+    assets:stocks    10 AAPL {$60}
+    assets:checking
+
+2026-01-05 buy
+    assets:stocks    10 AAPL {2026-01-01, "0001", $70}
+    assets:checking
+$ hledger -f- check
+>2 /duplicate lot id: \{2026-01-01, "0001", \$70\} for commodity AAPL/
+>=1
+
+# ** 26. Transferring two lotful commodities with one amountless receiving posting
+# is not supported; the error asks for separate postings.
+<
+commodity AAPL ; lots:
+commodity MSFT ; lots:
+
+2026-01-01 buy
+    assets:a    10 AAPL {$50}
+    assets:a     5 MSFT {$60}
+    assets:checking
+
+2026-01-02 move
+    assets:a   -10 AAPL
+    assets:a    -5 MSFT
+    assets:b
+$ hledger -f- check
+>2 /12 \|     assets:b
+(.*
+)*This transfer-to posting has amounts in several commodities \(10 AAPL, 5 MSFT\)\.
+.*
+please write these amounts on separate postings/
+>=1
+
+# ** 27. A new lot with a lot date but no cost, and no price to infer one from,
+# is an error. Here the lot comes from equity, like an opening balance.
+<
+2026-01-01 gift
+    assets:a    10 AAPL {2026-01-01}
+    equity:x   -10 AAPL
+$ hledger -f- check
+>2 /2 \|     assets:a +10 AAPL \{2026-01-01\}
+(.*
+)*This posting creates a new AAPL lot, but its lot annotation \{2026-01-01\} has no cost,
+.*
+.*eg \{2026-01-01, \$50\}/
+>=1
+
+# ** 28. Under SPECID, a disposal must select a lot.
+<
+commodity AAPL ; lots: SPECID
+
+2026-01-01 buy
+    assets:a    10 AAPL {$50}
+    assets:checking
+
+2026-01-02 sell
+    assets:a    -5 AAPL @ $60
+    assets:checking   $300
+$ hledger -f- check
+>2 /SPECID requires a lot selector on dispose postings/
+>=1
+
+# ** 29. Under AVERAGE, lots with different cost commodities can't be averaged.
+<
+commodity AAPL ; lots: AVERAGE
+
+2026-01-01 buy
+    assets:a    10 AAPL {$50}
+    assets:checking
+
+2026-01-02 buy
+    assets:a    10 AAPL {€40}
+    assets:checking
+$ hledger -f- check
+>2 /cannot average lots with different cost commodities/
+>=1
+
+# ** 30. hledger's consolidated lot syntax can't be mixed with ledger-style [DATE] or (NOTE).
+<
+2026-01-01 buy
+    assets:a    10 AAPL {2026-01-01, $50} [2026-01-01]
+    assets:checking
+$ hledger -f- check
+>2 /hledger lot syntax \{\.\.\.\} cannot be combined with ledger-style \[DATE\] or \(NOTE\)/
+>=1
+
+# ** 31. Likewise when an amountless sending posting has a lotful commodity and cash.
+<
+commodity AAPL ; lots:
+
+2026-01-01 buy
+    assets:a    10 AAPL {$50}
+    assets:checking
+
+2026-01-02 move account contents back
+    assets:b    10 AAPL
+    assets:b    $5
+    assets:a
+$ hledger -f- check
+>2 /This transfer-from posting has amounts in several commodities/
+>=1

@@ -1,4 +1,7 @@
-$$$ hledger check -f  csvtwofields.csv
->>>2 /Error: CSV record \["b"\] has less than two fields
+$ hledger check -f csvtwofields.csv
+>2 /hledger: Error: .*csvtwofields\.csv:4:
+4 \| b
+
+This CSV record has less than two fields\.
 /
->>>= 1
+>= 1

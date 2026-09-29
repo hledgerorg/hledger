@@ -1,9 +1,9 @@
-$$$ hledger check -f  csvifblocknonempty.csv
->>>2 /Error: .*csvifblocknonempty.csv.rules:2:1:
+$ hledger check -f  csvifblocknonempty.csv
+>2 /hledger: Error: .*csvifblocknonempty.csv.rules:2:1:
   \|
 2 \| if foo
   \| \^
 start of conditional block found, but no assignment rules afterward
 \(assignment rules in a conditional block should be indented\)
 /
->>>= 1
+>= 1

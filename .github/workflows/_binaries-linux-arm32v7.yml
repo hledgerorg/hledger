@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -40,7 +41,7 @@ jobs:
       # github UI always zips artifacts when they are downloaded, so we don't bother compressing the tar.
       # Unfortunately it means users must both unzip and untar.
       - name: Upload binaries artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hledger-linux-arm32v7
           path: tmp/hledger-linux-arm32v7.tar

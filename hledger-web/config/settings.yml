@@ -3,7 +3,6 @@ Default: &defaults
   port: 3000
   approot: "http://localhost:3000"
   copyright: " "
-  #analytics: UA-YOURCODE
 
 Development:
   <<: *defaults

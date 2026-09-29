@@ -3,13 +3,36 @@ packages: hledger-lib
           hledger-ui
           hledger-web
 
--- generate a ghc environment file, needed by doctest 
+constraints:
+  -- https://github.com/jtdaugherty/brick/issues/539
+  brick >= 2.10,
+  vty-windows >= 0.2.0.1,
+  -- https://github.com/haskell/haskeline/issues/130 / hledger #2410, see hledger/package.yaml
+  haskeline >= 0.8.4
+
+allow-newer:
+  aeson,
+  template-haskell
+
+
+-- cabal config suitable for working with ghc 9.14, for haskell-debugger
+-- with-compiler: ghc-9.14
+-- allow-newer: base,containers,ghc,ghc-bignum,template-haskell,time
+
+-- generate a ghc environment file, to let doctest work
 -- (eg: ./.ghc.environment.x86_64-darwin-8.8.3). 
 -- cabal 3 doesn't write these by default.
--- https://github.com/simonmichael/hledger/issues/1139
+-- https://github.com/hledgerorg/hledger/issues/1139
 -- https://github.com/sol/doctest/issues/245#issuecomment-583171683
 -- cabal 2 doesn't understand this flag, but it's just a warning; should be ok.
 -- cabal 3 still fails with doctest the first time; you have to run it
 -- a second time. Hopefully in practice it won't fail, because of a
 -- preceding cabal build.
 write-ghc-environment-files: always
+
+-- haskell-debugger/cabal.project has these, useful ?
+-- executable-dynamic: True
+-- package *
+--     -- Speeds up a bit
+--     library-vanilla: False
+

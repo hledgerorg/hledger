@@ -1,0 +1,224 @@
+# * command aliases (custom commands) defined in config files
+# See https://hledger.org/dev/hledger.html#command-aliases
+
+# ** 1. An [alias] section line defines a custom command.
+$  printf '[alias]\nlist = files\n' >$$.conf; hledger --conf $$.conf -f /dev/null list; rm -f $$.conf
+/dev/null
+
+# ** 2. The alias's arguments are used.
+<
+2026-01-01
+  a:x  1
+  a:y  1
+  b   -2
+$  printf '[alias]\nmybal = balance --tree -N\n' >$$.conf; hledger --conf $$.conf -f- mybal; rm -f $$.conf
+                   2  a
+                   1    x
+                   1    y
+                  -2  b
+
+# ** 3. Extra options/arguments written after the alias name are added at the end,
+# so they can override the alias's arguments.
+<
+2026-01-01
+  a:x  1
+  a:y  1
+  b   -2
+$  printf '[alias]\nmybal = balance --tree -N\n' >$$.conf; hledger --conf $$.conf -f- mybal --flat; rm -f $$.conf
+                   1  a:x
+                   1  a:y
+                  -2  b
+
+# ** 4. An alias's command line can span several more-indented lines, and lines
+# can be commented out.
+<
+2026-01-01
+  a:x  1
+  a:y  1
+  b   -2
+$  printf '[alias]\nmybal = balance --tree\n  # --flat\n  -N\n' >$$.conf; hledger --conf $$.conf -f- mybal; rm -f $$.conf
+                   2  a
+                   1    x
+                   1    y
+                  -2  b
+
+# ** 5. If the same alias name is defined more than once, the last definition wins.
+<
+2026-01-01
+  a:x  1
+  a:y  1
+  b   -2
+$  printf '[alias]\nmybal = balance --tree -N\nmybal = balance --flat -N\n' >$$.conf; hledger --conf $$.conf -f- mybal; rm -f $$.conf
+                   1  a:x
+                   1  a:y
+                  -2  b
+
+# ** 6. Command aliases can not override builtin command names.
+$  printf '[alias]\nfiles = stats\n' >$$.conf; hledger --conf $$.conf -f /dev/null files; rm -f $$.conf
+/dev/null
+
+# ** 7. Command aliases do override addon commands with the same name.
+$ mkdir -p $$d; printf '#!/bin/sh\necho ADDON RAN\n' >$$d/hledger-zzzz; chmod +x $$d/hledger-zzzz; printf '[alias]\nzzzz = files\n' >$$.conf; PATH=$$d:$PATH hledger --conf $$.conf -f /dev/null zzzz; rm -rf $$d $$.conf
+/dev/null
+
+# ** 8. An alias can refer to itself; the name is then resolved as an addon command.
+# This allows adding default options to an addon command.
+$ mkdir -p $$d; printf '#!/bin/sh\necho ADDON RAN: $@\n' >$$d/hledger-zzzz; chmod +x $$d/hledger-zzzz; printf '[alias]\nzzzz = zzzz --extra\n' >$$.conf; PATH=$$d:$PATH hledger --conf $$.conf -f /dev/null zzzz; rm -rf $$d $$.conf
+> /ADDON RAN: --extra/
+
+# ** 9. An alias can refer to another alias.
+$  printf '[alias]\nlist2 = list1\nlist1 = files\n' >$$.conf; hledger --conf $$.conf -f /dev/null list2; rm -f $$.conf
+/dev/null
+
+# ** 10. An alias whose command is unrecognised gives a helpful error.
+$  printf '[alias]\nbadalias = nosuchcmd --foo\n' >$$.conf; hledger --conf $$.conf -f /dev/null badalias; s=$?; rm -f $$.conf; exit $s
+>2 /command nosuchcmd \(expanded from the badalias command alias\) is not recognised/
+>= 1
+
+# ** 11. An [alias] section line without an equals sign gives a helpful error,
+# showing the file position and problem line.
+$  printf '[alias]\nbadline\n' >$$.conf; hledger --conf $$.conf -f /dev/null files; s=$?; rm -f $$.conf; exit $s
+>2 /\.conf:2:
+2 \| badline
+an \[alias\] section line should look like/
+>= 1
+
+# ** 12. Command aliases are shown in the commands list.
+$  printf '[alias]\nnetworth = bse -H --tree\n' >$$.conf; hledger --conf $$.conf help commands | grep -A1 '^ALIASES'; rm -f $$.conf
+ALIASES
+ networth = bse -H --tree
+
+# ** 13. help commands --aliases shows just the command aliases.
+$  printf '[alias]\nnetworth = bse -H --tree\n' >$$.conf; hledger --conf $$.conf help commands --aliases; rm -f $$.conf
+HLEDGER COMMANDS
+ALIASES
+ networth = bse -H --tree
+
+# ** 14. --no-conf disables command aliases.
+$  printf '[alias]\nlist = files\n' >$$.conf; hledger --conf $$.conf -n -f /dev/null list; s=$?; rm -f $$.conf; exit $s
+>2 /command list is not recognised/
+>= 1
+
+# ** 15. A --no-conf flag inside the config file (which is ignored, see cli.test)
+# does not hide the file's aliases from the commands list.
+$  printf -- '--no-conf\n\n[alias]\nlist = files\n' >$$.conf; hledger --conf $$.conf help commands | grep -c '^ALIASES'; rm -f $$.conf
+1
+
+# ** 16. Command aliases can be used in run's command line arguments.
+<
+2026-01-01
+  a:x  1
+  a:y  1
+  b   -2
+$  printf '[alias]\nmybal = balance --tree -N\n' >$$.conf; hledger --conf $$.conf run -f- -- mybal; rm -f $$.conf
+                   2  a
+                   1    x
+                   1    y
+                  -2  b
+
+# ** 17. Command aliases can be used in a run command script,
+# and extra arguments written after the alias name are added at the end.
+<
+2026-01-01
+  a:x  1
+  a:y  1
+  b   -2
+$  printf '[alias]\nmybal = balance --tree -N\n' >$$.conf; printf 'mybal --flat\n' >$$.script; hledger --conf $$.conf run -f- $$.script; rm -f $$.conf $$.script
+                   1  a:x
+                   1  a:y
+                  -2  b
+
+# ** 18. Command aliases can be used in run/repl commands read from stdin.
+<
+mybal
+$  printf '[alias]\nmybal = balance --tree -N\n' >$$.conf; printf '2026-01-01\n  a:x  1\n  a:y  1\n  b   -2\n' >$$.j; hledger --conf $$.conf run -f $$.j; rm -f $$.conf $$.j
+                   2  a
+                   1    x
+                   1    y
+                  -2  b
+
+# ** 19. In run, an alias whose command is unrecognised gives a helpful error.
+$  printf '[alias]\nbadalias = nosuchcmd\n' >$$.conf; hledger --conf $$.conf run -f /dev/null -- badalias; s=$?; rm -f $$.conf; exit $s
+>2 /Unrecognized command \(expanded from the badalias command alias\): nosuchcmd/
+>= 1
+
+# ** 20. An alias running "run" with inline commands needs only a single --
+# separator (the extra -- that cmdargs consumes is added automatically).
+# LEDGER_FILE points run (and its inline commands) at our test journal, so the
+# result doesn't depend on the environment's default journal.
+$  printf '[alias]\nr3 = run\n  -- echo ran: -- stats\n' >$$.conf; printf '2026-01-01\n  a  1\n  b\n' >$$.j; LEDGER_FILE=$$.j hledger --conf $$.conf r3 | grep -E 'ran:|Txns span'; rm -f $$.conf $$.j
+ran:
+Txns span           : 2026-01-01 to 2026-01-02 (1 days)
+
+# ** 21. An alias whose command line begins with ! runs a shell command.
+# (--conf makes this config file trusted, so the shell alias is allowed.)
+$  printf '[alias]\nhi = !echo hello\n' >$$.conf; hledger --conf $$.conf hi; rm -f $$.conf
+hello
+
+# ** 22. Arguments written after the alias name are appended to the shell command.
+$  printf '[alias]\nhi = !echo hello\n' >$$.conf; hledger --conf $$.conf hi there; rm -f $$.conf
+hello there
+
+# ** 23. A shell alias's command can also span multiple more-indented lines.
+$  printf '[alias]\nhi = !echo hello\n  there\n' >$$.conf; hledger --conf $$.conf hi; rm -f $$.conf
+hello there
+
+# ** 24. The shell command's exit code is propagated.
+$  printf '[alias]\nbad = !false\n' >$$.conf; hledger --conf $$.conf bad; s=$?; rm -f $$.conf; exit $s
+>= 1
+
+# ** 25. Shell aliases are shown in the commands list, with their ! definition.
+$  printf '[alias]\nhi = !echo hello\n' >$$.conf; hledger --conf $$.conf help commands | grep -A1 '^ALIASES'; rm -f $$.conf
+ALIASES
+ hi = !echo hello
+
+# ** 26. Shell aliases work in run command scripts too.
+$  printf '[alias]\nhi = !echo hello\n' >$$.conf; hledger --conf $$.conf run -f /dev/null -- hi; rm -f $$.conf
+hello
+
+# ** 27. Trust gate: a shell alias in your user config file (~/.hledger.conf) is allowed.
+# HOME/XDG are set so config discovery is contained and the dev's real config is not used.
+# We run from a subdirectory (cwd != HOME) so the user config isn't also seen as a local one.
+$  d=$(mktemp -d); mkdir $d/work; printf '[alias]\nhi = !echo hello\n' >$d/.hledger.conf; (cd $d/work && HOME=$d XDG_CONFIG_HOME=$d/.config hledger hi); rm -rf $d
+hello
+
+# ** 28. Trust gate: a shell alias in an automatically-found local hledger.conf is refused.
+# The config is in cwd, which is a subdirectory of HOME so it is treated as a local
+# (non-user) config. (If cwd == HOME, the file would be looked up as ~/.hledger.conf.)
+$  d=$(mktemp -d); mkdir $d/work; printf '[alias]\nevil = !echo pwned\n' >$d/work/hledger.conf; (cd $d/work && HOME=$d XDG_CONFIG_HOME=$d/.config hledger evil); s=$?; rm -rf $d; exit $s
+>2 /only allowed from your user config file/
+>= 1
+
+# ** 29. Leading whitespace is ignored, so an indented [alias] section header and its
+# (also indented) NAME = ... lines still work.
+$  printf '  [alias]\n  hi = files\n' >$$.conf; hledger --conf $$.conf -f /dev/null hi; rm -f $$.conf
+/dev/null
+
+# ** 30. A # inside quotes in a config line is literal, not a comment, so an alias's
+# command line can contain a quoted #. (The regex ignores the general options that an
+# aliased "run --" echoes back after the text.)
+$  printf "[alias]\nhashfoo = run -- echo '# foo'\n" >$$.conf; hledger --conf $$.conf -f /dev/null hashfoo; rm -f $$.conf
+> /# foo/
+
+# ** 31. A multi-line alias value ends at the next (dedented) NAME = line, so a following
+# alias is its own alias, not absorbed into the previous one. Here m spans two lines; n
+# still works as a separate command.
+$  printf '[alias]\nm = balance\n  --tree\nn = accounts\n' >$$.conf; printf '2026-01-01\n  a:x  1\n  b\n' >$$.j; LEDGER_FILE=$$.j hledger --conf $$.conf n; rm -f $$.conf $$.j
+a:x
+b
+
+# ** 32. The old [alias NAME] section form (removed) defines no alias; like any
+# unrecognised section, it is ignored.
+$  printf '[alias foo] run\n-- echo hi\n' >$$.conf; hledger --conf $$.conf foo; s=$?; rm -f $$.conf; exit $s
+>2 /command foo is not recognised/
+>= 1
+
+# ** 33. A successful shell alias does not end a run sequence; later commands still run.
+$  printf '[alias]\nhi = !echo hello\n' >$$.conf; hledger --conf $$.conf run -f /dev/null -- hi -- echo after; rm -f $$.conf
+hello
+after
+
+# ** 34. A failing shell alias ends the run sequence, propagating its exit code.
+$  printf '[alias]\nbad = !exit 3\n' >$$.conf; hledger --conf $$.conf run -f /dev/null -- echo one -- bad -- echo two; s=$?; rm -f $$.conf; exit $s
+one
+>= 3

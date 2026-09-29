@@ -1,0 +1,254 @@
+# * balance reports with multiple periods
+
+# ** 1. Here are the postings used in most tests below:
+$ hledger -f balance-multicol.journal register
+2012-12-31                      (assets:checking)               10            10
+2013-01-01                      (assets:checking)                1            11
+2013-01-15                      (assets:checking)               -1            10
+2013-02-01                      (assets:cash)                    1            11
+2013-02-02                      (assets)                         1            12
+2013-03-01                      (assets:checking)                1            13
+
+# ** 2. A period balance (flow) report. --no-total also works but isn't pretty.
+# Includes leading/trailing empty periods.
+$ hledger -f balance-multicol.journal balance -p 'monthly in 2013' --no-total
+Balance changes in 2013:
+
+                 || Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec 
+=================++============================================================
+ assets          ||   0    1    0    0    0    0    0    0    0    0    0    0 
+ assets:cash     ||   0    1    0    0    0    0    0    0    0    0    0    0 
+ assets:checking ||   0    0    1    0    0    0    0    0    0    0    0    0 
+
+# ** 3. With --empty, includes leading/trailing empty periods
+#hledger -f balance-multicol.journal balance -p 'quarterly in 2013' --empty
+<
+2012/12/31
+  (a)  10
+2013/1/1
+  (a)  1
+2013/3/1
+  (a)  1
+$ hledger -f - balance -p 'quarterly in 2013' --empty
+Balance changes in 2013:
+
+   || 2013Q1  2013Q2  2013Q3  2013Q4 
+===++================================
+ a ||      2       0       0       0 
+---++--------------------------------
+   ||      2       0       0       0 
+
+# ** 4. A cumulative ending balance report. Column totals are the sum of
+# the highest-level displayed accounts (here, assets).
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' --cumulative
+Ending balances (cumulative) in 2013Q1:
+
+                 || 2013-01-31  2013-02-28  2013-03-31 
+=================++====================================
+ assets          ||          0           1           1 
+ assets:cash     ||          0           1           1 
+ assets:checking ||          0           0           1 
+-----------------++------------------------------------
+                 ||          0           2           3 
+
+# ** 5. With the assets:cash account excluded.  As with a single-column
+# balance --flat report, or ledger's balance --flat, assets' balance
+# includes the displayed subaccount and not the excluded one.
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' --cumulative not:cash
+Ending balances (cumulative) in 2013Q1:
+
+                 || 2013-01-31  2013-02-28  2013-03-31 
+=================++====================================
+ assets          ||          0           1           1 
+ assets:checking ||          0           0           1 
+-----------------++------------------------------------
+                 ||          0           1           2 
+
+# ** 6. A historical ending balance report.
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' --historical
+Ending balances (historical) in 2013Q1:
+
+                 || 2013-01-31  2013-02-28  2013-03-31 
+=================++====================================
+ assets          ||          0           1           1 
+ assets:cash     ||          0           1           1 
+ assets:checking ||         10          10          11 
+-----------------++------------------------------------
+                 ||         10          12          13 
+
+# ** 7. With top-level accounts excluded. As always, column totals are the sum of
+# the highest-level displayed accounts, now assets:cash and assets:checking.
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' not:assets$
+Balance changes in 2013Q1:
+
+                 || Jan  Feb  Mar 
+=================++===============
+ assets:cash     ||   0    1    0 
+ assets:checking ||   0    0    1 
+-----------------++---------------
+                 ||   0    1    1 
+
+# ** 8. cumulative:
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' not:assets$ --cumulative
+Ending balances (cumulative) in 2013Q1:
+
+                 || 2013-01-31  2013-02-28  2013-03-31 
+=================++====================================
+ assets:cash     ||          0           1           1 
+ assets:checking ||          0           0           1 
+-----------------++------------------------------------
+                 ||          0           1           2 
+
+# ** 9. historical
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' --historical
+Ending balances (historical) in 2013Q1:
+
+                 || 2013-01-31  2013-02-28  2013-03-31 
+=================++====================================
+ assets          ||          0           1           1 
+ assets:cash     ||          0           1           1 
+ assets:checking ||         10          10          11 
+-----------------++------------------------------------
+                 ||         10          12          13 
+
+# --depth
+
+# ** 10. A flow report with depth limiting. The depth limit aggregates the three accounts as "assets".
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' --depth 1
+Balance changes in 2013Q1:
+
+        || Jan  Feb  Mar 
+========++===============
+ assets ||   0    2    1 
+--------++---------------
+        ||   0    2    1 
+
+# ** 11. As above, but postings in the top-level assets account have been excluded.
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' --depth 1 assets:
+Balance changes in 2013Q1:
+
+        || Jan  Feb  Mar 
+========++===============
+ assets ||   0    1    1 
+--------++---------------
+        ||   0    1    1 
+
+# ** 12. A cumulative balance report with depth limiting.
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' --depth 1 --cumulative
+Ending balances (cumulative) in 2013Q1:
+
+        || 2013-01-31  2013-02-28  2013-03-31 
+========++====================================
+ assets ||          0           2           3 
+--------++------------------------------------
+        ||          0           2           3 
+
+# ** 13. A historical balance report with depth limiting.
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' --depth 1 --historical
+Ending balances (historical) in 2013Q1:
+
+        || 2013-01-31  2013-02-28  2013-03-31 
+========++====================================
+ assets ||         10          12          13 
+--------++------------------------------------
+        ||         10          12          13 
+
+# ** 14. The three multicol balance report types again, this time with --tree
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' --tree
+Balance changes in 2013Q1:
+
+            || Jan  Feb  Mar 
+============++===============
+ assets     ||   0    2    1 
+   cash     ||   0    1    0 
+   checking ||   0    0    1 
+------------++---------------
+            ||   0    2    1 
+
+# ** 15.
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' --cumulative --tree
+Ending balances (cumulative) in 2013Q1:
+
+            || 2013-01-31  2013-02-28  2013-03-31 
+============++====================================
+ assets     ||          0           2           3 
+   cash     ||          0           1           1 
+   checking ||          0           0           1 
+------------++------------------------------------
+            ||          0           2           3 
+
+# ** 16.
+$ hledger -f balance-multicol.journal balance -p 'monthly from 2013' --historical --tree
+Ending balances (historical) in 2013Q1:
+
+            || 2013-01-31  2013-02-28  2013-03-31 
+============++====================================
+ assets     ||         10          12          13 
+   cash     ||          0           1           1 
+   checking ||         10          10          11 
+------------++------------------------------------
+            ||         10          12          13 
+
+# ** 17. --date2 should work
+<
+2014/1/1
+ (a)  1
+
+2014/2/1=2014/1/31
+ (b)  1
+
+$ hledger -f- balance --monthly --date2
+Balance changes in 2014-01:
+
+   || Jan 
+===++=====
+ a ||   1 
+ b ||   1 
+---++-----
+   ||   2 
+
+# ** 18. Here, the report interval is monthly (interval size is one month)
+# but the explicitly-specified start date causes report periods to start there.
+# And the end date is expanded to make a whole last period.
+<
+2014/1/5
+ (before report period)  1ew
+
+2014/2/1
+ (explicit report period)  10
+
+2014/2/25
+ (expanded report period)  100
+
+2014/3/10
+ (after report period)  1000
+
+$ hledger -f- balance -p 'monthly 2014/1/10-2014/2/20'
+Balance changes in 2014-01-10..2014-03-09:
+
+                        || 2014-01-10..2014-02-09  2014-02-10..2014-03-09 
+========================++================================================
+ expanded report period ||                      0                     100 
+ explicit report period ||                     10                       0 
+------------------------++------------------------------------------------
+                        ||                     10                     100 
+
+# ** 19. The historical balances are shown here even though the report period contains no postings. (#2403)
+<
+2024-01-01
+  (a)     1000
+
+$ hledger -f - bal -NHY -b 2025
+Ending balances (historical) in 2025:
+
+   || 2025-12-31 
+===++============
+ a ||       1000 
+
+# ** 20. Without -H, no balance changes are shown here, even with -E.
+# Should it show zero for each of the pre-report-period accounts ?
+$ hledger -f - bal -NY -b 2025
+Balance changes in 2025:
+
+  || 2025 
+==++======

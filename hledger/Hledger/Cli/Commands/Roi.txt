@@ -1,6 +1,6 @@
 roi
 
-Shows the time-weighted (TWR) and money-weighted (IRR) rate of return on
+Show the money-weighted (IRR) and time-weighted (TWR) rate of return on
 your investments.
 
 Flags:
@@ -8,23 +8,22 @@ Flags:
                                 returns
      --investment=QUERY         query to select your investment transactions
      --profit-loss=QUERY --pnl  query to select profit-and-loss or
-                                appreciation/valuation transactions
+                                appreciation/valuation transactions (optional)
 
 At a minimum, you need to supply a query (which could be just an account
-name) to select your investment(s) with --inv, and another query to
-identify your profit and loss transactions with --pnl.
+name) to select your investment(s) with --inv.
 
-If you do not record changes in the value of your investment manually,
-or do not require computation of time-weighted return (TWR), --pnl could
-be an empty query (--pnl "" or --pnl STR where STR does not match any of
-your accounts).
+An optional second query to identify your profit and loss transactions
+could be given with --pnl. If your investment's value changes are
+captured solely through price directives (rather than manual P&L journal
+entries), or if you do not need TWR, you can simply omit --pnl, and no
+transactions will be classed as profit and loss in this case.
 
-This command will compute and display the internalized rate of return
-(IRR, also known as money-weighted rate of return) and time-weighted
-rate of return (TWR) for your investments for the time period requested.
-IRR is always annualized due to the way it is computed, but TWR is
-reported both as a rate over the chosen reporting period and as an
-annual rate.
+This command will compute and display the internal rate of return (IRR,
+also known as money-weighted rate of return) and time-weighted rate of
+return (TWR) for your investments for the time period requested. IRR is
+always annualized due to the way it is computed, but TWR is reported
+both as a rate over the chosen reporting period and as an annual rate.
 
 Price directives will be taken into account if you supply appropriate
 --cost or --value flags (see VALUATION).
@@ -37,11 +36,14 @@ Note, in some cases this report can fail, for these reasons:
 - Error (SearchFailed): Failed to find solution for Internal Rate of
   Return (IRR). Either search does not converge to a solution, or
   converges too slowly.
+- Error (NotBracketed): Cannot compute window IRR. Possible cause:
+  investment balance becomes negative within that window.
+- Error (SearchFailed): Window IRR search did not converge.
 
 Examples:
 
 - Using roi to compute total return of investment in stocks:
-  https://github.com/simonmichael/hledger/blob/master/examples/investing/roi-unrealised.ledger
+  https://github.com/hledgerorg/hledger/blob/main/examples/investing/roi-unrealised.ledger
 
 - Cookbook > Return on Investment: https://hledger.org/roi.html
 
@@ -58,14 +60,14 @@ $ hledger roi --inv 'term1 term2 term3 ...'
 If any query terms contain spaces themselves, you will need an extra
 level of nested quoting, eg:
 
-$ hledger roi --inv="'Assets:Test 1'" --pnl="'Equity:Unrealized Profit and Loss'"
+$ hledger roi --inv="'Assets:Test 1' cur:USD" --pnl="'Equity:Unrealized Profit and Loss'"
 
 Semantics of --inv and --pnl
 
 Query supplied to --inv has to match all transactions that are related
 to your investment. Transactions not matching --inv will be ignored.
 
-In these transactions, ROI will conside postings that match --inv to be
+In these transactions, ROI will consider postings that match --inv to be
 "investment postings" and other postings (not matching --inv) will be
 sorted into two categories: "cash flow" and "profit and loss", as ROI
 needs to know which part of the investment value is your contributions
@@ -109,61 +111,79 @@ in the example below would be classifed as:
   cash          -$100          ; cash flow posting
   snake oil     $50            ; investment posting
 
+Using roi with lots
+
+If your journal records lots, each disposal transaction has a realised
+gain posting, by default to revenues:gain. Make sure --pnl matches that
+account, eg --pnl revenues:gain, so realised gains are counted as profit
+rather than as cash flows out of the investment.
+
 IRR and TWR explained
 
 "ROI" stands for "return on investment". Traditionally this was computed
 as a difference between current value of investment and its initial
 value, expressed in percentage of the initial value.
 
-However, this approach is only practical in simple cases, where
-investments receives no in-flows or out-flows of money, and where rate
-of growth is fixed over time. For more complex scenarios you need
-different ways to compute rate of return, and this command implements
-two of them: IRR and TWR.
+However, this approach is only practical in simple cases, where the
+investment receives no in-flows or out-flows of money and the rate of
+growth is fixed over time. For more complex scenarios you need different
+ways to compute rate of return, and this command implements two of them:
+IRR and TWR.
 
-Internal rate of return, or "IRR" (also called "money-weighted rate of
-return") takes into account effects of in-flows and out-flows, and the
-time between them. Investment at a particular fixed interest rate is
-going to give you more interest than the same amount invested at the
-same interest rate, but made later in time. If you are withdrawing from
-your investment, your future gains would be smaller (in absolute
-numbers), and will be a smaller percentage of your initial investment,
-so your IRR will be smaller. And if you are adding to your investment,
-you will receive bigger absolute gains, which will be a bigger
-percentage of your initial investment, so your IRR will be larger.
+Internal rate of return (IRR), also called money-weighted rate of
+return, answers the question: what single constant annual interest rate,
+applied to your actual sequence of deposits and withdrawals, would
+produce exactly the ending balance you have?
 
-As mentioned before, in-flows and out-flows would be any cash that you
-personally put in or withdraw, and for the "roi" command, these are the
-postings that match the query in the--inv argument and NOT match the
-query in the--pnl argument.
-
-If you manually record changes in the value of your investment as
-transactions that balance them against "profit and loss" (or "unrealized
-gains") account or use price directives, then in order for IRR to
-compute the precise effect of your in-flows and out-flows on the rate of
-return, you will need to record the value of your investement on or
-close to the days when in- or out-flows occur.
+IRR is inherently personal. If you deposited a large sum right before a
+bad period, your IRR is dragged down - not because the investment was
+poorly managed, but because your timing was bad. Conversely, investing
+heavily just before a rally makes your IRR look great. This is what
+makes IRR "money-weighted": periods when more of your money is at stake
+contribute more to the result.
 
 In technical terms, IRR uses the same approach as computation of net
-present value, and tries to find a discount rate that makes net present
-value of all the cash flows of your investment to add up to zero. This
-could be hard to wrap your head around, especially if you haven't done
-discounted cash flow analysis before. Implementation of IRR in hledger
-should produce results that match the =XIRR formula in Excel.
+present value, and tries to find a discount rate that makes the net
+present value of all the cash flows of your investment add up to zero.
+The implementation in hledger produces results that match the =XIRR
+formula in Excel.
 
-Second way to compute rate of return that roi command implements is
-called "time-weighted rate of return" or "TWR". Like IRR, it will
-account for the effect of your in-flows and out-flows, but unlike IRR it
-will try to compute the true rate of return of the underlying asset,
-compensating for the effect that deposits and withdrawas have on the
-apparent rate of growth of your investment.
+Time-weighted rate of return (TWR) strips out the effect of your deposit
+and withdrawal timing, measuring the investment's own performance rather
+than your experience of it.
 
-TWR represents your investment as an imaginary "unit fund" where
-in-flows/ out-flows lead to buying or selling "units" of your investment
-and changes in its value change the value of "investment unit". Change
-in "unit price" over the reporting period gives you rate of return of
-your investment, and make TWR less sensitive than IRR to the effects of
-cash in-flows and out-flows.
+hledger computes TWR using the BAI (Bank Administration Institute)
+Linked IRR method. The reporting period is divided into windows at each
+date where the portfolio has a known, externally-established valuation -
+these are dates of price directives or of manual balance updates
+recorded via --pnl transactions. Within each window, if no cash flows
+occurred, the return is simply the ratio of ending to starting value. If
+cash flows occurred within a window, the window's return is found by
+solving for the rate that reconciles the starting value, the ending
+value, and the timing of those flows. All window returns are then
+multiplied together (geometrically chained) to give the TWR for the full
+period.
+
+The accuracy of TWR depends on how many valuation dates you have
+recorded. More valuation dates mean finer windows and more precise
+results.
+
+In short: TWR tells you how good the investment was; IRR tells you how
+good your experience of the investment was.
+
+When each matters
+
+Use IRR when you want to know your actual personal return - what you
+earned on your money, accounting for when you chose to move it. It is
+the right measure when evaluating your own deposit and withdrawal timing
+decisions.
+
+Use TWR when you want to evaluate the investment vehicle itself,
+independent of your deposit timing. It is the right measure when
+comparing two funds or strategies, or when asking whether you would have
+been better off elsewhere. TWR is the standard that professional
+investment managers use to report fund performance, precisely because it
+removes the distortion caused by investor cash flows.
 
 References:
 

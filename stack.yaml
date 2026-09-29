@@ -1,8 +1,5 @@
-# stack build plan using GHC 9.10.1
-# https://gitlab.haskell.org/ghc/ghc/-/wikis/migration/9.10
-# https://downloads.haskell.org/ghc/9.10.1/docs/users_guide/9.10.1-notes.html
-
-resolver: nightly-2025-05-01
+# stack build plan using GHC 9.14
+# https://gitlab.haskell.org/ghc/ghc/-/wikis/migration/9.14
 
 packages:
 - hledger-lib
@@ -10,47 +7,9 @@ packages:
 - hledger-ui
 - hledger-web
 
-# To minimise problems, use the versions shipped with GHC 9.10.1 when possible.
-# See https://github.com/haskell/unix/issues/329.
+compiler: ghc-9.14
+resolver: nightly-2026-09-01
+
 extra-deps:
-# for hledger-lib
-# - Cabal-3.12.0.0
-# - Cabal-syntax-3.12.0.0
-# #- directory-1.3.8.3
-# #- filepath-1.5.2.0
-# - directory-1.3.9.0
-# - filepath-1.4.301.0
-# - ghc-boot-9.10.1@rev:1
-# - process-1.6.19.0
-# - time-1.12.2
-# - unix-2.8.5.1
-# # for windows
-# - Win32-2.14.0.0
-
-# # for hledger
-# - haskeline-0.8.2.1
-# # to silence a warning
-# - wizards-1.0.3@rev:3
-
-nix:
-  pure: false
-  packages: [perl gmp ncurses zlib]
-
-# ghc-options:
-#   "$locals": -Wno-x-partial
-#   "$locals": -fplugin Debug.Breakpoint
-
-# # for precise profiling, per https://www.tweag.io/posts/2020-01-30-haskell-profiling.html:
-# # apply-ghc-options: everything
-# # rebuild-ghc-options: true
-# # stack build --profile --ghc-options="-fno-prof-auto"
-
-# # tell GHC to write hie files, eg for weeder. Rumoured to be slow.
-# # ghc-options:
-# #   "$locals": -fwrite-ide-info
-
-# # ghc-options:
-# #   "$locals": -ddump-timings
-# #  "$targets": -Werror
-# #  "$everything": -O2
-# #  some-package: -DSOME_CPP_FLAG
+# megaparsec 9.8.3 parses about 10% faster than earlier versions (megaparsec#612)
+- megaparsec-9.8.3

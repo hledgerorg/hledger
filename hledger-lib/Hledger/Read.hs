@@ -87,12 +87,14 @@ This is used by the import command.
 module Hledger.Read (
 
   -- * Journal files
-  PrefixedFilePath,
   defaultJournal,
-  defaultJournalWith,
   defaultJournalSafely,
-  defaultJournalSafelyWith,
+  defaultJournalWith,
+  defaultJournalWithSafely,
   defaultJournalPath,
+  defaultJournalPathSafely,
+  defaultExistingJournalPath,
+  defaultExistingJournalPathSafely,
   requireJournalFileExists,
   ensureJournalFileExists,
   journalEnvVar,
@@ -103,6 +105,8 @@ module Hledger.Read (
   runExceptT,
   readJournal,
   readJournalFile,
+  readPossibleJournalFile,
+  readPossibleJournalFiles,
   readJournalFiles,
   readJournalFilesAndLatestDates,
 
@@ -114,8 +118,6 @@ module Hledger.Read (
   orDieTrying,
 
   -- * Misc
-  saveLatestDates,
-  saveLatestDatesForFiles,
   isWindowsUnsafeDotPath,
 
   -- * Re-exported
@@ -125,6 +127,7 @@ module Hledger.Read (
   runJournalParser,
   module Hledger.Read.Common,
   module Hledger.Read.InputOptions,
+  module Hledger.Read.LatestDates,
 
   -- * Tests
   tests_Read,
@@ -132,41 +135,35 @@ module Hledger.Read (
 ) where
 
 --- ** imports
-import qualified Control.Exception as C
-import Control.Monad (unless, when, forM, (<=<))
+import Control.Exception qualified as C
+import Control.Monad (unless, when, (>=>))
 import "mtl" Control.Monad.Except (ExceptT(..), runExceptT, liftEither)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Default (def)
 import Data.Foldable (asum)
-import Data.List (group, sort, sortBy)
-import Data.List.NonEmpty (nonEmpty)
+import Data.List.NonEmpty (nonEmpty, NonEmpty((:|)))
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.Ord (comparing)
 import Data.Semigroup (sconcat)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import Data.Time (Day)
-import Safe (headDef, headMay)
-import System.Directory (doesFileExist)
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
+import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.Environment (getEnv)
-import System.FilePath ((<.>), (</>), splitDirectories, splitFileName, takeFileName)
+import System.FilePath ((</>), splitDirectories, takeDirectory, takeFileName)
 import System.Info (os)
 import System.IO (Handle, hPutStrLn, stderr)
 
-import Hledger.Data.Dates (getCurrentDay, parsedate, showDate)
+import Hledger.Data.Dates (getCurrentDay)
+import Hledger.Data.Journal (journalNumberAndTieTransactions, nulljournal)
+import Hledger.Data.JournalChecks (journalStrictChecks)
 import Hledger.Data.Types
 import Hledger.Read.Common
 import Hledger.Read.InputOptions
 import Hledger.Read.JournalReader as JournalReader
+import Hledger.Read.LatestDates
 import Hledger.Read.CsvReader (tests_CsvReader)
 import Hledger.Read.RulesReader (tests_RulesReader)
--- import Hledger.Read.TimedotReader (tests_TimedotReader)
--- import Hledger.Read.TimeclockReader (tests_TimeclockReader)
 import Hledger.Utils
-import Prelude hiding (getContents, writeFile)
-import Hledger.Data.JournalChecks (journalStrictChecks)
-import Text.Printf (printf)
 
 --- ** doctest setup
 -- $setup
@@ -175,7 +172,6 @@ import Text.Printf (printf)
 --- ** journal reading
 
 journalEnvVar           = "LEDGER_FILE"
-journalEnvVar2          = "LEDGER"
 journalDefaultFilename  = ".hledger.journal"
 
 -- | Read the default journal file specified by the environment, 
@@ -183,53 +179,77 @@ journalDefaultFilename  = ".hledger.journal"
 defaultJournal :: IO Journal
 defaultJournal = defaultJournalSafely >>= either error' return -- PARTIAL:
 
--- | Read the default journal file specified by the environment,
--- with the given input options, or raise an error.
-defaultJournalWith :: InputOpts -> IO Journal
-defaultJournalWith iopts = defaultJournalSafelyWith iopts >>= either error' return -- PARTIAL:
-
--- | Read the default journal file specified by the environment,
--- with default input options, or return an error message.
+-- | Like defaultJournal, but return an error message instead of raising an error.
 defaultJournalSafely :: IO (Either String Journal)
-defaultJournalSafely = defaultJournalSafelyWith definputopts
+defaultJournalSafely = defaultJournalWithSafely definputopts
 
--- | Read the default journal file specified by the environment,
--- with the given input options, or return an error message.
-defaultJournalSafelyWith :: InputOpts -> IO (Either String Journal)
-defaultJournalSafelyWith iopts = (do
+-- | Like defaultJournal, but use the given input options.
+defaultJournalWith :: InputOpts -> IO Journal
+defaultJournalWith iopts = defaultJournalWithSafely iopts >>= either error' return -- PARTIAL:
+
+-- | Like defaultJournalWith, but return an error message instead of raising an error.
+defaultJournalWithSafely :: InputOpts -> IO (Either String Journal)
+defaultJournalWithSafely iopts = (do
   f <- defaultJournalPath
   runExceptT $ readJournalFile iopts f
-  ) `C.catches` [  -- XXX
+  )
+  `C.catches` [  -- XXX
      C.Handler (\(e :: C.ErrorCall)   -> return $ Left $ show e)
     ,C.Handler (\(e :: C.IOException) -> return $ Left $ show e)
     ]
--- | Get the default journal file path specified by the environment.
--- Like ledger, we look first for the LEDGER_FILE environment
--- variable, and if that does not exist, for the legacy LEDGER
--- environment variable. If neither is set, or the value is blank,
--- return the hard-coded default, which is @.hledger.journal@ in the
--- users's home directory (or in the current directory, if we cannot
--- determine a home directory).
+
+-- | Get the default journal file path - either $LEDGER_FILE or $HOME/.hledger.journal file.
+--
+-- This looks for the LEDGER_FILE environment variable, like Ledger.
+-- The value should be a file path, possibly with ~ at the start meaning the current user's home directory.
+-- Or the value can be a glob pattern (containing *, ?, [ or {) ), in which case the first matching file path is used.
+-- When it's a glob pattern that matches no existing files, an error is raised.
+--
+-- If LEDGER_FILE is unset or set to the empty string, this returns a default file path:
+-- @.hledger.journal@ in the user's home directory,
+-- or if we can't find the user's home directory, in the current directory.
+--
+-- The referenced file can be nonexistent.
+--
 defaultJournalPath :: IO String
 defaultJournalPath = do
-  p <- envJournalPath
+  p <- getEnv journalEnvVar `C.catch` (\(_::C.IOException) -> return "")
   if null p
-  then defpath
-  else do
-    ps <- expandGlob "." p `C.catch` (\(_::C.IOException) -> return [])
-    maybe defpath return $ headMay ps
-    where
-      envJournalPath =
-        getEnv journalEnvVar
-         `C.catch` (\(_::C.IOException) -> getEnv journalEnvVar2
-                                            `C.catch` (\(_::C.IOException) -> return ""))
-      defpath = do
-        home <- fromMaybe "" <$> getHomeSafe
-        return $ home </> journalDefaultFilename
+  then do
+    homedir <- fromMaybe "" <$> getHomeSafe
+    let defaultfile = homedir </> journalDefaultFilename
+    return defaultfile
+  else
+    expandPathOrGlob "." p
 
--- | A file path optionally prefixed by a reader name and colon
--- (journal:, csv:, timedot:, etc.).
-type PrefixedFilePath = FilePath
+-- | Like defaultJournalPath, but return an error message instead of raising an error.
+defaultJournalPathSafely :: IO (Either String String)
+defaultJournalPathSafely = (do
+  f <- defaultJournalPath
+  return $ Right f
+  )
+  `C.catches` [
+     C.Handler (\(e :: C.ErrorCall)   -> return $ Left $ show e)
+    ,C.Handler (\(e :: C.IOException) -> return $ Left $ show e)
+    ]
+
+-- | Like defaultJournalPath, but also checks that the file exists, and raises an error if it doesn't.
+defaultExistingJournalPath :: IO String
+defaultExistingJournalPath = do
+  f <- defaultJournalPath
+  requireJournalFileExists f
+  return f
+
+-- | Like defaultExistingJournalPath, but returns an error message instead of raising an error.
+defaultExistingJournalPathSafely :: IO (Either String String)
+defaultExistingJournalPathSafely = (do
+  f <- defaultExistingJournalPath
+  return $ Right f
+  )
+  `C.catches` [
+     C.Handler (\(e :: C.ErrorCall)   -> return $ Left $ show e)
+    ,C.Handler (\(e :: C.IOException) -> return $ Left $ show e)
+    ]
 
 -- | @readJournal iopts mfile txt@
 --
@@ -311,7 +331,36 @@ readJournalFileAndLatestDates iopts prefixedfile = do
     else
       return (j, Nothing)
 
--- | Read a Journal from each specified file path (using @readJournalFile@) 
+-- | Like readJournalFile, but if the file does not exist, returns an empty journal
+-- with the file path set. This is useful for commands like add and import that
+-- need to work with a potentially non-existent journal file.
+readPossibleJournalFile :: InputOpts -> PrefixedFilePath -> ExceptT String IO Journal
+readPossibleJournalFile iopts prefixedfile = do
+  let (_, f) = splitReaderPrefix prefixedfile
+  if f == "-"
+    then readJournalFile iopts prefixedfile
+    else do
+      exists <- liftIO $ doesFileExist f
+      if exists
+        then readJournalFile iopts prefixedfile
+        else return $ nulljournal{jfiles = [(f, "")]}
+
+-- | Like readJournalFiles, but if the first file does not exist, provides an empty
+-- journal with that file path set. Other files must exist as normal.
+-- This is useful for commands like add and import that write to the first file,
+-- which might not exist yet, while also reading other files for completions etc.
+readPossibleJournalFiles :: InputOpts -> [PrefixedFilePath] -> ExceptT String IO Journal
+readPossibleJournalFiles iopts pfs = case pfs of
+  []     -> return nulljournal
+  (f:fs) -> do
+    let iopts' = iopts{_defer=True}
+    j1 <- readPossibleJournalFile iopts' f
+    js <- mapM (readJournalFile iopts') fs
+    let combined = journalNumberAndTieTransactions $ sconcat (j1 :| js)
+    when (strict_ iopts) $ liftEither $ journalStrictChecks combined
+    return combined
+
+-- | Read a Journal from each specified file path (using @readJournalFile@)
 -- and combine them into one; or return the first error message.
 --
 -- Combining Journals means concatenating them, basically.
@@ -337,13 +386,15 @@ readJournalFiles iopts@InputOpts{strict_, new_, new_save_} prefixedfiles = do
   when (new_ && new_save_) $ liftIO $ saveLatestDatesForFiles latestdatesforfiles
   return j
 
--- The implementation of readJournalFiles, but with --new, 
--- also returns the latest transaction date(s) read in each file.
--- Used by the import command, to save those at the end.
+-- The implementation of readJournalFiles.
+-- With --new, it also returns the latest transaction date(s) read in each file
+-- (used by the import command).
+-- This also renumbers the transactions if needed, ensuring their tindex values are unique;
+-- that's also done elsewhere, but some code (accountTransactionsReport) needs it done sooner.
 readJournalFilesAndLatestDates :: InputOpts -> [PrefixedFilePath] -> ExceptT String IO (Journal, [LatestDatesForFile])
 readJournalFilesAndLatestDates iopts pfs = do
   (js, lastdates) <- unzip <$> mapM (readJournalFileAndLatestDates iopts) pfs
-  return (maybe def sconcat $ nonEmpty js, catMaybes lastdates)
+  return (journalNumberAndTieTransactions $ maybe def sconcat $ nonEmpty js, catMaybes lastdates)
 
 -- | An easy version of 'readJournal' which assumes default options, and fails in the IO monad.
 readJournal' :: Handle -> IO Journal
@@ -351,7 +402,7 @@ readJournal' = orDieTrying . readJournal definputopts Nothing
 
 -- | An even easier version of readJournal' which takes a 'Text' instead of a 'Handle'.
 readJournal'' :: Text -> IO Journal
-readJournal'' = readJournal' <=< inputToHandle
+readJournal'' = textToHandle >=> readJournal'
 
 -- | An easy version of 'readJournalFile' which assumes default options, and fails
 -- in the IO monad.
@@ -391,6 +442,10 @@ ensureJournalFileExists f = do
   exists <- doesFileExist f
   unless exists $ do
     hPutStrLn stderr $ "Creating hledger journal file " <> show f
+    -- Create parent directories if they don't exist
+    let dir = takeDirectory f
+    unless (null dir || dir == ".") $
+      createDirectoryIfMissing True dir
     -- note Hledger.Utils.UTF8.* do no line ending conversion on windows,
     -- we currently require unix line endings on all platforms.
     newJournalContent >>= T.writeFile f
@@ -405,71 +460,6 @@ newJournalContent :: IO Text
 newJournalContent = do
   d <- getCurrentDay
   return $ "; journal created " <> T.pack (show d) <> " by hledger\n"
-
--- A "LatestDates" is zero or more copies of the same date,
--- representing the latest transaction date read from a file,
--- and how many transactions there were on that date.
-type LatestDates = [Day]
-
--- The path of an input file, and its current "LatestDates".
-data LatestDatesForFile = LatestDatesForFile FilePath LatestDates
-
--- | Get all instances of the latest date in an unsorted list of dates.
--- Ie, if the latest date appears once, return it in a one-element list,
--- if it appears three times (anywhere), return three of it.
-latestDates :: [Day] -> LatestDates
-latestDates = {-# HLINT ignore "Avoid reverse" #-}
-  headDef [] . take 1 . group . reverse . sort
-
--- | Save the given latest date(s) seen in the given data FILE,
--- in a hidden file named .latest.FILE, creating it if needed.
-saveLatestDates :: LatestDates -> FilePath -> IO ()
-saveLatestDates dates f = T.writeFile (latestDatesFileFor f) $ T.unlines $ map showDate dates
-
--- | Save each file's latest dates.
-saveLatestDatesForFiles :: [LatestDatesForFile] -> IO ()
-saveLatestDatesForFiles = mapM_ (\(LatestDatesForFile f ds) -> saveLatestDates ds f)
-
--- | What were the latest transaction dates seen the last time this
--- journal file was read ? If there were multiple transactions on the
--- latest date, that number of dates is returned, otherwise just one.
--- Or none if no transactions were read, or if latest dates info is not
--- available for this file.
-previousLatestDates :: FilePath -> IO LatestDates
-previousLatestDates f = do
-  let latestfile = latestDatesFileFor f
-  exists <- doesFileExist latestfile
-  t <- if exists then readFileStrictly latestfile else return T.empty
-  let nls = zip [1::Int ..] $ T.lines t
-  fmap catMaybes $ forM nls $ \(n,l) -> do
-    let s = T.unpack $ T.strip l
-    case (s, parsedate s) of
-      ("", _)       -> return Nothing
-      (_,  Nothing) -> error' (printf "%s:%d: invalid date: \"%s\"" latestfile n s)
-      (_,  Just d)  -> return $ Just d
-
--- | Where to save latest transaction dates for the given file path.
--- (.latest.FILE)
-latestDatesFileFor :: FilePath -> FilePath
-latestDatesFileFor f = dir </> ".latest" <.> fname
-  where
-    (dir, fname) = splitFileName f
-
--- | Given zero or more latest dates (all the same, representing the
--- latest previously seen transaction date, and how many transactions
--- were seen on that date), remove transactions with earlier dates
--- from the journal, and the same number of transactions on the
--- latest date, if any, leaving only transactions that we can assume
--- are newer. Also returns the new latest dates of the new journal.
-journalFilterSinceLatestDates :: LatestDates -> Journal -> (Journal, LatestDates)
-journalFilterSinceLatestDates [] j       = (j,  latestDates $ map tdate $ jtxns j)
-journalFilterSinceLatestDates ds@(d:_) j = (j', ds')
-  where
-    samedateorlaterts     = filter ((>= d).tdate) $ jtxns j
-    (samedatets, laterts) = span ((== d).tdate) $ sortBy (comparing tdate) samedateorlaterts
-    newsamedatets         = drop (length ds) samedatets
-    j'                    = j{jtxns=newsamedatets++laterts}
-    ds'                   = latestDates $ map tdate $ samedatets++laterts
 
 --- ** tests
 

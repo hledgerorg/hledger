@@ -1,0 +1,3 @@
+# A rules file which locates its data file with a source rule.
+source ./b.csv
+include b.csv.rules

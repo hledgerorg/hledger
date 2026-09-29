@@ -33,13 +33,15 @@ endPosition = Just (-1, Nothing)
 -- and return the exit code; or raise an error.
 -- hledger-iadd is an alternative to the built-in add command.
 runIadd :: FilePath -> IO ExitCode
-runIadd f = runCommand ("hledger-iadd -f " ++ f) >>= waitForProcess
+runIadd "-" = return ExitSuccess  -- journal was read from stdin; there is no file to add to
+runIadd f = runCommand ("hledger-iadd -f " ++ shellQuoteIfNeeded f) >>= waitForProcess
 
 -- | Run the user's preferred text editor (or try a default editor),
 -- on the given file, blocking until it exits, and return the exit
 -- code; or raise an error. If a text position is provided, the editor
 -- will be focussed at that position in the file, if we know how.
 runEditor :: Maybe TextPosition -> FilePath -> IO ExitCode
+runEditor _ "-" = return ExitSuccess  -- journal was read from stdin; there is no file to edit
 runEditor mpos f = editFileAtPositionCommand mpos f >>= runCommand >>= waitForProcess
 
 -- | Get a shell command line to open the user's preferred text editor
@@ -81,6 +83,11 @@ runEditor mpos f = editFileAtPositionCommand mpos f >>= runCommand >>= waitForPr
 -- vi & variants    Just (line, _)        vi +LINE FILE
 --                  Just ('-' : _, _)     vi +     FILE
 --                  Nothing               vi       FILE
+-- 
+-- zed & sublime    Just (line, Just col) zed FILE:LINE:COL
+--                  Just (line, Nothing)  zed FILE:LINE
+--                  Just ('-' : _, _)     zed FILE
+--                  Nothing               zed FILE
 --
 -- (other PROG)     _                     PROG FILE
 --
@@ -94,7 +101,7 @@ editFileAtPositionCommand :: Maybe TextPosition -> FilePath -> IO String
 editFileAtPositionCommand mpos f = do
   cmd <- getEditCommand
   let editor = lowercase $ takeBaseName $ headDef "" $ words' cmd
-      f' = singleQuoteIfNeeded f
+      f' = shellQuoteIfNeeded f
       mpos' = Just . bimap show (fmap show) =<< mpos
       join sep = intercalate sep . catMaybes
       args = case editor of
@@ -125,6 +132,10 @@ editFileAtPositionCommand mpos f = do
           Nothing -> [f']
           Just ('-' : _, _) -> [f']
           Just (l, _) -> ['+' : l, f']
+        e | e `elem` ["zed", "subl"] -> case mpos' of
+          Nothing -> [f']
+          Just ('-' : _, _) -> [f']
+          Just (l, mc) -> [join ":" [Just f', Just l, mc]]
         _ -> [f']
   return $ unwords $ cmd:args
 
@@ -142,4 +153,3 @@ getEditCommand = do
   let defaultEditor = Just $ if os == "mingw32" then "notepad.exe" else "emacsclient -a '' -nw"
   let Just cmd = hledger_ui_editor_env <|> editor_env <|> defaultEditor
   return cmd
-

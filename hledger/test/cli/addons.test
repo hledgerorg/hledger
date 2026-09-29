@@ -1,6 +1,6 @@
 # * addon command subsystem tests
 # See also cli.test. These need:
-# - "just mktestaddons" to be run first to set up dummy addon scripts
+# - the dummy addon scripts in addons/ (committed in the repo)
 # - shelltest --execdir
 #
 # Because of the PATH setting, these don't obey shelltest -w
@@ -10,12 +10,12 @@
 $  PATH=$PATH:addons hledger addon --help
 > /hledger-addon/
 
-# ** 2. addon-specific flags which are not also defined in the main executable are not accepted
+# ** 2. addon-specific flags are recognised and won't cause an error. (#458)
 $  PATH=$PATH:addons hledger addon --addonflag
->2 /Unknown flag: --addonflag/
->=1
+add-on: addons/hledger-addon
+args: --addonflag
 
-# ** 3. hledger main executable ignores anything after --, and hides the -- from the addon.
+# ** 3. If an old-style -- argument is used before addon flags, the addon won't see it.
 $  PATH=$PATH:addons hledger addon --help -- --addonflag
 > /args: --help --addonflag/
 
@@ -27,6 +27,54 @@ $  PATH=$PATH:addons hledger --no-conf addon
 $  PATH=$PATH:addons hledger --conf /dev/null addon
 > /args:$/
 
+# ** 6. A flag of some other command is passed to the addon, not validated by hledger.
+$  PATH=$PATH:addons hledger argvdump --sort
+argv: [--sort]
+
+# ** 7. Likewise when hidden behind a --.
+$  PATH=$PATH:addons hledger argvdump -- --sort
+argv: [--sort]
+
+# ** 8. Unknown addon flags with a joined value still reach the addon.
+$  PATH=$PATH:addons hledger argvdump --someunknownflag=x
+argv: [--someunknownflag=x]
+
+# ** 9. Only the first -- is consumed; later ones are the addon's.
+$  PATH=$PATH:addons hledger argvdump -- foo -- bar
+argv: [foo] [--] [bar]
+
+# ** 10. After a --, hledger's own cli-specific options are passed to the addon.
+$  PATH=$PATH:addons hledger argvdump -- -n
+argv: [-n]
+
+# ** 11. Before a --, they are still hledger's.
+$  PATH=$PATH:addons hledger argvdump -n
+argv:
+
+# ** 12. Empty arguments are preserved.
+$  PATH=$PATH:addons hledger argvdump --sort ""
+argv: [--sort] []
+
+# ** 13. Arguments needing shell quoting are preserved.
+$  PATH=$PATH:addons hledger argvdump 'a b' '$x'
+argv: [a b] [$x]
+
+# ** 14. A "--" written in a config file section is hledger's separator too, and is not passed on.
+$  printf '[argvdump]\n  alpha -- beta\n' >$$.conf; PATH=$PATH:addons hledger --conf $$.conf argvdump gamma; rm -f $$.conf
+argv: [alpha] [beta] [gamma]
+
+# ** 15. A "--" written in a command alias is likewise consumed.
+$  printf '[alias]\n  ad = argvdump -- --x\n' >$$.conf; PATH=$PATH:addons hledger --conf $$.conf ad y; rm -f $$.conf
+argv: [--x] [y]
+
+# ** 16. After that separator, hledger's own cli options reach the addon from a config file too.
+$  printf '[argvdump]\n  -- -n\n' >$$.conf; PATH=$PATH:addons hledger --conf $$.conf argvdump; rm -f $$.conf
+argv: [-n]
+
+# ** 17. An argument containing an apostrophe is preserved.
+$  PATH=$PATH:addons hledger argvdump "Sam's Diner"
+argv: [Sam's Diner]
+
 
 
 #  ** 0. having no addons shouldn't break the commands list (how to test ?)
@@ -34,27 +82,27 @@ $  PATH=$PATH:addons hledger --conf /dev/null addon
 
 
 # These tests are commented out, as they are not working properly. See:
-#  https://github.com/simonmichael/hledger/issues/457
-#  https://github.com/simonmichael/hledger/pull/1140#issuecomment-562793255
+#  https://github.com/hledgerorg/hledger/issues/457
+#  https://github.com/hledgerorg/hledger/pull/1140#issuecomment-562793255
 #
-# # 0. test for `>` in https://github.com/simonmichael/hledger/issues/457
+# # 0. test for `>` in https://github.com/hledgerorg/hledger/issues/457
 # # note a shelltest already provides one level of quoting, so amt:>0 not 'amt:>0'
 # #
 # $ hledger -f - ui amt:>0
 # >2 !/could not parse/
 # >=1
 #
-# # 0. test for `<` in https://github.com/simonmichael/hledger/issues/457
+# # 0. test for `<` in https://github.com/hledgerorg/hledger/issues/457
 # $ hledger -f - ui amt:<0
 # >2 !/could not parse/
 # >=1
 #
-# # 0. test for `>=` in https://github.com/simonmichael/hledger/issues/457
+# # 0. test for `>=` in https://github.com/hledgerorg/hledger/issues/457
 # $ hledger -f - ui amt:>=0
 # >2 !/could not parse/
 # >=1
 #
-# # 0. test for `<=` in https://github.com/simonmichael/hledger/issues/457
+# # 0. test for `<=` in https://github.com/hledgerorg/hledger/issues/457
 # $ hledger -f - ui amt:<=0
 # >2 !/could not parse/
 # >=1

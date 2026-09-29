@@ -2,8 +2,9 @@
 
 (bal)
 
-A flexible, general purpose "summing" report that shows accounts with some kind of numeric data.
-This can be balance changes per period, end balances, budget performance, unrealised capital gains, etc.
+Show accounts with some kind of summed numeric data:
+balance changes per period, end balances on period end dates, simple capital gains,
+budget goal performance, etc.
 
 ```flags
 Flags:
@@ -12,9 +13,9 @@ Flags:
      --valuechange          calculation mode: show total change of value of
                             period-end historical balances (caused by deposits,
                             withdrawals, market price fluctuations)
-     --gain                 calculation mode: show unrealised capital
-                            gain/loss (historical balance value minus cost
-                            basis)
+     --gain                 calculation mode: show capital gain/loss
+                            (historical balance value minus cost basis, or
+                            transacted cost where there is none)
      --budget[=DESCPAT]     calculation mode: show sum of posting amounts
                             together with budget goals defined by periodic
                             transactions. With a DESCPAT argument (must be
@@ -45,7 +46,11 @@ Flags:
      --summary-only         display only row summaries (e.g. row total,
                             average) (in multicolumn reports)
   -N --no-total             omit the final total row
-     --no-elide             in tree mode, don't squash boring parent accounts
+     --no-elide             in tree mode, don't squash boring parent
+                            accounts; in list mode, also show parent accounts
+                            (usually zero, hidden without -E)
+     --full-names           in tree mode, show full account names instead of
+                            indented leaf names
      --format=FORMATSTR     use this custom line format (in simple reports)
   -S --sort-amount          sort by amount instead of account code/name (in
                             flat mode). With multiple columns, sorts by the row
@@ -54,7 +59,8 @@ Flags:
                             total
   -r --related              show the other accounts transacted with, instead
      --invert               display all amounts with reversed sign
-     --transpose            switch rows and columns (use vertical time axis)
+     --transpose            switch rows and columns (use vertical time axis);
+                            repeat to cancel
      --layout=ARG           how to lay out multi-commodity amounts and the
                             overall table:
                             'wide[,W]': commodities on same line, up to W wide
@@ -101,7 +107,7 @@ Many of these work with the other balance-like commands as well (`bs`, `cf`, `is
 - or actual and planned balance changes ([`--budget`](#budget-report))
 - or value of balance changes ([`-V`](#valuation-mode))
 - or change of balance values ([`--valuechange`](#balance-report-modes))
-- or unrealised capital gain/loss ([`--gain`](#balance-report-modes))
+- or capital gain/loss ([`--gain`](#balance-report-modes))
 - or balance changes from sibling postings (`--related`/`-r`)
 - or postings count ([`--count`](#balance-report-modes))
 
@@ -138,7 +144,7 @@ Many of these work with the other balance-like commands as well (`bs`, `cf`, `is
 This command supports the
 [output destination](#output-destination) and
 [output format](#output-format) options,
-with output formats `txt`, `csv`, `tsv` (*Added in 1.32*), `json`, and (multi-period reports only:) `html`, `fods` (*Added in 1.40*).
+with output formats `txt`, `csv`, `tsv`, `json`, `html`, and `fods`.
 In `txt` output in a colour-supporting terminal, negative amounts are shown in red.
 
 ### Simple balance report
@@ -152,10 +158,10 @@ You can also have multi-period reports, described later.)
 For real-world accounts, these numbers will normally be their end balance 
 at the end of the journal period; more on this below.
 
-Accounts are sorted by [declaration order](#account)
+Accounts are sorted by [declaration order](#account-directive)
 if any, and then alphabetically by account name.
 For instance 
-(using [examples/sample.journal](https://github.com/simonmichael/hledger/blob/master/examples/sample.journal)):
+(using [examples/sample.journal](https://github.com/hledgerorg/hledger/blob/main/examples/sample.journal)):
 
 ```cli
 $ hledger -f examples/sample.journal bal
@@ -245,7 +251,7 @@ Some example formats:
 - `%(total)`         - the account's total
 - `%-20.20(account)` - the account's name, left justified, padded to 20 characters and clipped at 20 characters
 - `%,%-50(account)  %25(total)` - account name padded to 50 characters, total padded to 20 characters, with multiple commodities rendered on one line
-- `%20(total)  %2(depth_spacer)%-(account)` - the default format for the single-column balance report
+- `%20(total)  %2(depth_spacer)%-(account)` - the default format for the single-column balance report. The total field keeps this 20-character width as a minimum, but widens automatically when displayed amounts need more room.
 
 [valuation]: #valuation
 [valuation date(s)]: #valuation-date
@@ -304,6 +310,61 @@ sum of the top-level balances shown, not of all the balances shown.
 
 - Each group of sibling accounts (ie, under a common parent) is sorted separately.
 
+In list mode, `--no-elide` shows parent accounts as well, with their
+exclusive balances. These are zero unless the parent has postings of
+its own, so `-E/--empty` is usually also needed to make them visible.
+Together, these flags guarantee a complete table of all posted-to
+accounts and their parents, with full names:
+
+```cli
+$ hledger -f examples/sample.journal balance --no-elide -E
+                   0  assets
+                   0  assets:bank
+                   0  assets:bank:checking
+                  $1  assets:bank:saving
+                 $-2  assets:cash
+                   0  expenses
+                  $1  expenses:food
+                  $1  expenses:supplies
+                   0  income
+                 $-1  income:gifts
+                 $-1  income:salary
+                   0  liabilities
+                  $1  liabilities:debts
+--------------------
+                   0
+```
+
+This can be useful eg when exporting to a spreadsheet which will look
+up balances by account name.
+
+In tree mode, `--full-names` writes each account's full name instead of
+indenting leaf names, while keeping tree mode's inclusive balances.
+So `--tree --no-elide --full-names -E` shows the same complete table as
+above, but with inclusive balances:
+
+```cli
+$ hledger -f examples/sample.journal balance --tree --no-elide --full-names -E
+                 $-1  assets
+                  $1  assets:bank
+                   0  assets:bank:checking
+                  $1  assets:bank:saving
+                 $-2  assets:cash
+                  $2  expenses
+                  $1  expenses:food
+                  $1  expenses:supplies
+                 $-2  income
+                 $-1  income:gifts
+                 $-1  income:salary
+                  $1  liabilities
+                  $1  liabilities:debts
+--------------------
+                   0
+```
+
+Note that in this variant, parent and subaccount balances overlap, so
+(as in any tree mode report) the rows sum to more than the final total.
+
 ### Depth limiting
 
 With a `depth:NUM` query, or `--depth NUM` option, or just `-NUM` (eg: `-3`)
@@ -343,7 +404,7 @@ $ hledger -f examples/sample.journal bal expenses --drop 1
 ### Showing declared accounts
 
 With `--declared`, 
-accounts which have been declared with an [account directive](#account)
+accounts which have been declared with an [account directive](#account-directive)
 will be included in the balance report, even if they have no transactions.
 (Since they will have a zero balance, you will also need `-E/--empty` to see them.)
 
@@ -427,6 +488,7 @@ shown, unless `-E/--empty` is used.
 - Average and/or total columns can be added with the `-A/--average` and
 `-T/--row-total` flags.
 - The `--transpose` flag can be used to exchange rows and columns.
+  Repeating it reverses its effect (an even number of `--transpose` flags has no effect).
 - The `--pivot FIELD` option causes a different transaction field to be used as
   "account name". See [PIVOTING](#pivoting).
 - The `--summary-only` flag (`--summary` also works) hides all but the Total and Average columns
@@ -479,7 +541,7 @@ To see accurate historical end balances:
    unless the journal covers the account's full lifetime.
 
 2. Include all of of the account's prior postings in the report,
-   by not specifying a [report start date](#report-start-end-date),
+   by not specifying a [report start date](#report-start--end-date),
    or by using the `-H/--historical` flag.
    (`-H` causes report start date to be ignored when summing postings.)
 
@@ -502,8 +564,17 @@ It is one of:
 - `--budget` : sum the amounts, but also show the budget goal amount (for each account/period)
 - `--valuechange` : show the change in period-end historical balance values
   (caused by deposits, withdrawals, and/or market price fluctuations)
-- `--gain` : show the unrealised capital gain/loss, (the current valued balance
-  minus each amount's original cost)
+- `--gain` : show capital gain/loss for each account: the current valued balance
+  minus its cost. For [lot-tracked](#lots-and-capital-gains) commodities the cost is
+  the cost basis of the units still held, so this is the unrealised gain.
+  For other commodities it is the net of postings' transacted costs
+  (acquisition costs minus disposal proceeds): where nothing has been sold
+  this too is the unrealised gain, but once disposals exist the figure also
+  includes the realised gain on the disposed units, so it is best read as
+  "total gain since inception" (to separate realised and unrealised gains, track lots).
+  Compare `--valuechange`, which shows how much the value moved in a period,
+  from price changes and from buying and selling.
+  See [Unrealised gains](#unrealised-gains) for examples.
 - `--count` : show the count of postings
 
 #### Accumulation mode
@@ -551,8 +622,7 @@ but actually --cost and --value are independent options, and could be used toget
 
 #### Combining balance report modes
 
-Most combinations of these modes should produce reasonable reports,
-but if you find any that seem wrong or misleading, let us know.
+Most combinations of these modes produce reasonable reports.
 The following restrictions are applied:
 
 - `--valuechange` implies `--value=end`
@@ -569,7 +639,7 @@ For reference, here is what the combinations of accumulation and valuation show:
 
 ### Budget report
 
-The `--budget` report is like a regular balance report, but with two main differences:
+The `balance --budget` report is like a regular balance report, but with two main differences:
 
 - Budget goals and performance percentages are also shown, in brackets
 - Accounts which don't have budget goals are hidden by default.
@@ -664,6 +734,12 @@ Here are more notes to help with learning and troubleshooting.
   It's common to restrict them to just expenses.
   (The `<unbudgeted>` account is occasionally hard to exclude; this is because of date surprises, discussed below.)
 
+- Only the account, account type, depth, date and commodity parts of the query
+  are applied to the budget goals; the other parts
+  (`status:`/`-U`/`-P`/`-C`, `code:`, `desc:`, `payee:`, `note:`, `tag:`, `real:`, `amt:`)
+  select actual transactions and postings only.
+  So eg `--budget --cleared` compares your cleared spending against the full budget goals.
+
 - When you have multiple currencies, you may want to convert them to
   one (`-X COMM --infer-market-prices`) and/or show just one at a time
   (`cur:COMM`).  If you do need to show multiple currencies at once,
@@ -749,25 +825,37 @@ It has four possible values:
 - `--layout=wide[,WIDTH]`: commodities are shown on a single line, optionally elided to WIDTH
 - `--layout=tall`: each commodity is shown on a separate line
 - `--layout=bare`: commodity symbols are in their own column, amounts are bare numbers
+- `--layout=barewide`: commodities are shown on a single line, all in separate columns, amounts are bare numbers
 - `--layout=tidy`: data is normalised to easily-consumed "tidy" form, with one row per data value.
   (This one is currently supported only by the `balance` command.)
 
 Here are the `--layout` modes supported by each [output format](#output-format)
 Only CSV output supports all of them:
 
-| -    | txt | csv | html | json | sql |
-|------|-----|-----|------|------|-----|
-| wide | Y   | Y   | Y    |      |     |
-| tall | Y   | Y   | Y    |      |     |
-| bare | Y   | Y   | Y    |      |     |
-| tidy |     | Y   |      |      |     |
+| -        | txt | csv | html | json | sql |
+|----------|-----|-----|------|------|-----|
+| wide     | Y   | Y   | Y    |      |     |
+| tall     | Y   | Y   | Y    |      |     |
+| bare     | Y   | Y   | Y    |      |     |
+| barewide | Y   | Y   | Y    |      |     |
+| tidy     |     | Y   |      |      |     |
+
+Choice of layouts for budget reports is more restricted:
+
+| -        | txt | csv | html | json | sql |
+|----------|-----|-----|------|------|-----|
+| wide     | Y   | Y   | Y    |      |     |
+| tall     | Y   |     |      |      |     |
+| bare     | Y   | Y   | Y    |      |     |
+| barewide |     | Y   | Y    |      |     |
+| tidy     |     |     |      |      |     |
 
 Examples:
 
 #### Wide layout
 With many commodities, reports can be very wide:
 ```cli
-$ hledger -f examples/bcexample.hledger bal assets:us:etrade -3 -T -Y --layout=wide
+$ hledger -f examples/bcexample.journal bal assets:us:etrade -3 -T -Y --layout=wide
 Balance changes in 2012-01-01..2014-12-31:
 
                   ||                                          2012                                                     2013                                             2014                                                      Total 
@@ -779,7 +867,7 @@ Balance changes in 2012-01-01..2014-12-31:
 
 A width limit reduces the width, but some commodities will be hidden:
 ```cli  
-$ hledger -f examples/bcexample.hledger bal assets:us:etrade -3 -T -Y --layout=wide,32
+$ hledger -f examples/bcexample.journal bal assets:us:etrade -3 -T -Y --layout=wide,32
 Balance changes in 2012-01-01..2014-12-31:
 
                   ||                             2012                             2013                   2014                            Total 
@@ -792,7 +880,7 @@ Balance changes in 2012-01-01..2014-12-31:
 #### Tall layout
 Each commodity gets a new line (may be different in each column), and account names are repeated:
 ```cli
-$ hledger -f examples/bcexample.hledger bal assets:us:etrade -3 -T -Y --layout=tall
+$ hledger -f examples/bcexample.journal bal assets:us:etrade -3 -T -Y --layout=tall
 Balance changes in 2012-01-01..2014-12-31:
 
                   ||       2012        2013         2014        Total 
@@ -814,7 +902,7 @@ Balance changes in 2012-01-01..2014-12-31:
 Commodity symbols are kept in one column, each commodity has its own row,
 amounts are bare numbers, account names are repeated:
 ```cli
-$ hledger -f examples/bcexample.hledger bal assets:us:etrade -3 -T -Y --layout=bare
+$ hledger -f examples/bcexample.journal bal assets:us:etrade -3 -T -Y --layout=bare
 Balance changes in 2012-01-01..2014-12-31:
 
                   || Commodity    2012    2013     2014    Total 
@@ -835,7 +923,7 @@ Balance changes in 2012-01-01..2014-12-31:
 Bare layout also affects [CSV output](#output-format),
 which is useful for producing data that is easier to consume, eg for making charts:
 ```cli
-$ hledger -f examples/bcexample.hledger bal assets:us:etrade -3 -O csv --layout=bare
+$ hledger -f examples/bcexample.journal bal assets:us:etrade -3 -O csv --layout=bare
 "account","commodity","balance"
 "Assets:US:ETrade","GLD","70.00"
 "Assets:US:ETrade","ITOT","17.00"
@@ -854,13 +942,34 @@ because of zero amounts (hledger treats zeroes as commodity-less, usually).
 This can break `hledger-bar` confusingly (workaround: add a `cur:` query to exclude
 the no-symbol row).
 
+#### Barewide layout
+Commodity symbols are spread in the table headers,
+each commodity has its own column,
+all column groups share the same set of commodities
+even if in one commodity column all values are zero.
+For consistency you may think of layout `bare` as `baretall`.
+```cli
+$ hledger -f examples/bcexample.journal bal assets:us:etrade -3 -T -Y --layout=barewide
+Balance changes in 2012-01-01..2014-12-31:
+
+                  || 2012 (GLD)  2012 (ITOT)  2012 (USD)  2012 (VEA)  2012 (VHT)  2013 (GLD)  2013 (ITOT)  2013 (USD)  2013 (VEA)  2013 (VHT)  2014 (GLD)  2014 (ITOT)  2014 (USD)  2014 (VEA)  2014 (VHT)    Total (GLD)    Total (ITOT)    Total (USD)    Total (VEA)    Total (VHT) 
+==================++===================================================================================================================================================================================================================================================================
+ Assets:US:ETrade ||          0        10.00      337.18       12.00      106.00       70.00        18.00      -98.12       10.00       18.00           0       -11.00     4881.44       14.00      170.00          70.00           17.00        5120.50          36.00         294.00 
+------------------++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                  ||          0        10.00      337.18       12.00      106.00       70.00        18.00      -98.12       10.00       18.00           0       -11.00     4881.44       14.00      170.00          70.00           17.00        5120.50          36.00         294.00 
+```
+
+Barewide layout is very useful for [FODS and CSV output](#output-format),
+since you can easily use LibreOffice's `VLOOKUP` function
+for accessing numbers in a table with mixed commodities.
+
 #### Tidy layout
 This produces normalised "tidy data" (see <https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html>)
 where every variable has its own column and each row represents a single data point.
 This is the easiest kind of data for other software to consume:
 
 ```cli
-$ hledger -f examples/bcexample.hledger bal assets:us:etrade -3 -Y -O csv --layout=tidy
+$ hledger -f examples/bcexample.journal bal assets:us:etrade -3 -Y -O csv --layout=tidy
 "account","period","start_date","end_date","commodity","value"
 "Assets:US:ETrade","2012","2012-01-01","2012-12-31","GLD","0"
 "Assets:US:ETrade","2012","2012-01-01","2012-12-31","ITOT","10.00"
@@ -925,6 +1034,9 @@ Also:
 
 - `bal -M --valuechange investments`\
   Show monthly change in market value of investment assets.
+
+- `bal -M -H --gain investments`\
+  Show unrealised gain on investment assets (market value minus cost) at each month end.
 
 - `bal investments --valuechange -D date:lastweek amt:'>1000' -STA [--invert]`\
   Show top gainers [or losers] last week

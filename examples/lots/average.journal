@@ -1,0 +1,41 @@
+# An example of cost averaging.
+
+commodity USD  ; lots:AVERAGE
+
+2024-09-09 * Buy USD, with multiple costs
+    assets:bank:JPY
+    assets:bank:USD                100 USD @ 150 JPY
+    assets:bank:USD                100 USD @ 160 JPY
+
+2024-09-10 * transfer USD
+    assets:bank:USD               -200 USD
+    assets:broker:USD
+
+2024-09-11 * Buy USD, with multiple costs
+    assets:bank:JPY
+    assets:bank:USD                100 USD @ 170 JPY
+    assets:bank:USD                100 USD @ 180 JPY
+
+comment
+
+With AVERAGE:
+
+Holdings on 2026-09-10
+
+                   ||       Date   Age    Units  Avg cost  Price       Cost  Value  Weight  UGain  UGain%  RGain  XIRR 
+===================++==================================================================================================
+ assets:bank:USD   || 2024-09-11  2.0y  200 USD   175 JPY         35000 JPY                                            
+ assets:broker:USD || 2024-09-09  2.0y  200 USD   155 JPY         31000 JPY                                            
+-------------------++--------------------------------------------------------------------------------------------------
+                   ||                                             66000 JPY                                            
+
+With AVERAGEALL:
+
+Holdings on 2026-09-10
+
+                   ||       Date   Age    Units  Avg cost  Price       Cost  Value  Weight  UGain  UGain%  RGain  XIRR 
+===================++==================================================================================================
+ assets:bank:USD   || 2024-09-11  2.0y  200 USD   165 JPY         33000 JPY                                            
+ assets:broker:USD || 2024-09-09  2.0y  200 USD   165 JPY         33000 JPY                                            
+-------------------++--------------------------------------------------------------------------------------------------
+                   ||                                             66000 JPY                                            

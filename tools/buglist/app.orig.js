@@ -80,4 +80,4 @@ const showLabel = (label) => {
     return ` <span class="${cls}" style="background-color:#${label.color};">` + label.name + '</span>';
 }
 
-getIssues('simonmichael/hledger');
+getIssues('hledgerorg/hledger');

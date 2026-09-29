@@ -27,7 +27,7 @@ $ hledger -f- print
    b
 $ hledger -f- print
 2000-02-29 x
-    a               1
+    a                                              1
     b
 
 >= 0

@@ -1,0 +1,22 @@
+# https://www.monefy.com
+
+skip 1
+fields date, account, category, amount_, currency_, converted_amount, converted_currency, description
+date-format %d/%m/%Y
+amount %amount_ %currency_
+decimal-mark .
+
+account1 assets:%account
+if %account Payment card
+ account1 assets:Checking
+
+account2 revenues:%category
+if %amount_ -
+ account2 expenses:%category
+if %category (To|From).*Payment card
+ account2 assets:Checking
+if %category (To|From).*Cash
+ account2 assets:Cash
+if %category Savings
+ account2 assets:Savings
+

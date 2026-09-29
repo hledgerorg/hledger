@@ -1,8 +1,10 @@
-$$$ hledger check -f  csvdateparse.csv
->>>2 /Error: could not parse "baddate" as a date using date format "%Y-%m-%d"
+$ hledger check -f csvdateparse.csv
+>2 /hledger: Error: .*csvdateparse\.csv:4:
+4 \| baddate,b
+
+could not parse "baddate" as a date using date format "%Y-%m-%d"
 record: baddate,b
-the date rule is:   %1
-the date-format is: %Y-%m-%d
-you may need to change your date rule, change your date-format rule, or change your skip rule
-for m\/d\/y or d\/m\/y dates, use date-f/
->>>= 1
+(.*
+)*the date rule is:   %1 +\(.*rules:2\)
+/
+>= 1

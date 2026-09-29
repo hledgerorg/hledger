@@ -1,10 +1,9 @@
-$$$ hledger check -f parseable-regexps.j
->>>2 /Error: .*parseable-regexps.j:3:8:
+$ hledger check -f parseable-regexps.j
+>2 /hledger: Error: .*parseable-regexps.j:3:8:
   \|
 3 \| alias \/\(\/ = a
   \|        \^
 
-This regular expression is invalid or unsupported, please correct it:
-\(
+This regular expression is invalid or unsupported, please correct it: \(
 /
->>>= 1
+>= 1

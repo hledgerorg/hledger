@@ -1,13 +1,13 @@
 name:          hledger-ui
-version: 1.43.99
+version: 1.99
 license:       GPL-3.0-or-later
 maintainer:    Simon Michael <simon@joyful.com>
 author:        Simon Michael <simon@joyful.com>
 stability:     stable
-tested-with:   ghc==8.10.7, ghc==9.0.2, ghc==9.2.8, ghc==9.4.8, ghc==9.6.7, ghc==9.8.4, ghc==9.10.2, ghc==9.12.1
+tested-with:   ghc==9.6.7, ghc==9.8.4, ghc==9.10.3, ghc==9.12.4, ghc==9.14.1
 homepage:      http://hledger.org
 bug-reports:   http://bugs.hledger.org
-github:        simonmichael/hledger
+github:        hledgerorg/hledger
 category:      Finance, Console
 synopsis:      Terminal interface for the hledger accounting system
 description: |
@@ -22,41 +22,28 @@ description: |
   <https://hledger.org>
 
 extra-source-files:
-  - CHANGES.md
-  - README.md
-  - hledger-ui.1
-  - hledger-ui.txt
-  - hledger-ui.info
+- CHANGES.md
+- README.md
+- hledger-ui.1
+- hledger-ui.txt
+- hledger-ui.info
 
 flags:
   debug:
-    description: Build with GHC 9.10+'s stack traces enabled
+    description: Build with GHC 9.10+ stack traces enabled
     default: false
     manual:  true
-  threaded:
-    description: Build with support for multithreaded execution
-    default: true
-    manual:  false
 #  ghcdebug:
 #    description: Build with support for attaching a ghc-debug client
 #    default: false
 #    manual:  true
 
- # curses is required to build terminfo for vty for hledger-ui.
- # On POSIX systems it might be not present.
- # On windows it's very likely not present, but possibly it could be.
- # Ideally we'd like to
- # on POSIX: give a clear error ("install your system libcurses-dev package") if not present
- # on windows: quietly skip building if not present, build if it is present
- #  curses
- #    default: True
- #    description:
- #
- # note on windows: the vty-windows (and hence hledger-ui) will reliably work only on the newer backends
- # like Windows Terminal.
- # mintty-based backends (default for cygwin/gitbash/msys2) are not supported (yet)
+dependencies:
+- base >=4.18 && <4.23
 
-cpp-options: -DVERSION="1.43.99"
+cpp-options: -DVERSION="1.99"
+
+language: GHC2021
 
 ghc-options:
 - -Wall
@@ -67,67 +54,88 @@ ghc-options:
 - -Wno-unused-do-bind
 
 when:
+
 - condition: (flag(debug))
   cpp-options: -DDEBUG
+
 # - condition: (flag(ghcdebug))
 #   cpp-options: -DGHCDEBUG
 #   dependencies:
 #   - ghc-debug-stub >=0.6.0.0 && <0.7
 
-dependencies:
-- base >=4.14 && <4.22
-
 library:
   source-dirs: .
-  cpp-options: -DVERSION="1.43.99"
-  exposed-modules:
-  - Hledger.UI
-  - Hledger.UI.Main
-  - Hledger.UI.Theme
-  - Hledger.UI.UIOptions
+  # default: All modules in source-dirs less other-modules less modules mentioned in when
+  # exposed-modules:
   dependencies:
-  - hledger-lib >=1.43.99 && <1.44
-  - hledger >=1.43.99 && <1.44
+  - hledger-lib >=1.99 && <1.100
+  - hledger >=1.99 && <1.100
   - ansi-terminal >=0.9
   - async
   - cmdargs >=0.8
   - containers >=0.5.9
   - data-default
   - directory
-  - doclayout >=0.3 && <0.6
+  - doclayout >=0.3 && <0.7
   - extra >=1.7.11
   - filepath
   - fsnotify >=0.4.2.0 && <0.5
   - githash >=0.1.6.2
   - microlens >=0.4
   - microlens-platform >=0.2.3.1
-  - megaparsec >=7.0.0 && <9.8
+  - megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9   # avoid https://github.com/mrkkrp/megaparsec/issues/572; 9.8.3+ is ~10% faster (#612)
   - mtl >=2.2.1
   - process >=1.2
   - safe >=0.3.20
   - split >=0.1
+  - stm
   - text >=1.2.4.1
   - text-zipper >=0.4
   - time >=1.5
   - transformers
   - vector
-  - brick >=2.1.1 && <2.3.2 || >2.3.2 && < 2.10
-  - vty >=6.1 && <6.5
-  - vty-crossplatform >= 0.4.0.0 && < 0.5.0.0
+  - brick >=2.1.1 && <2.3.2 || >=2.4 && <3.1   # avoid 2.3.2 for something or other
+  - vty >=6.1
+  - vty-crossplatform >= 0.4.0.0
   when:
     - condition: os(windows)
       then:
-        dependencies: vty-windows >= 0.2.0.1 && < 0.3.0.0
+        dependencies: vty-windows >= 0.2.0.1
       else:
-        dependencies: unix
+        dependencies:
+        - unix
+        - vty-unix >= 0.2.0.0
 
 executables:
   hledger-ui:
     source-dirs: app
     main: hledger-ui.hs
+    # -threaded is needed for runPager, at least
+    # -rtsopts lets users set GHC runtime options, eg +RTS -M2G -RTS to limit memory
+    ghc-options: -threaded -rtsopts
     dependencies:
     - hledger-ui
-    ghc-options: -with-rtsopts=-T  # for stats command
-    when:
-    - condition: flag(threaded)
-      ghc-options: -threaded
+
+tests:
+  unittest:
+    source-dirs: test
+    main: UITest.hs
+    # -threaded is required to drive the brick/vty event loop in the headless harness
+    ghc-options: -threaded
+    dependencies:
+    - hledger-ui
+    - hledger-lib >=1.99 && <1.100
+    - hledger >=1.99 && <1.100
+    - brick >=2.1.1 && <2.3.2 || >=2.4 && <3.1   # avoid 2.3.2 for something or other
+    - vty >=6.1
+    - vty-crossplatform >= 0.4.0.0
+    - tasty >=1.2.3
+    - tasty-hunit >=0.10
+    - cmdargs >=0.8
+    - mtl >=2.2.1
+    - text >=1.2.4.1
+    - stm
+    - vector
+    - directory
+    - filepath
+    - time >=1.5

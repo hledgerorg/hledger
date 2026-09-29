@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# hledger check-buynothing [-p PERIOD] [OTHERHLEDGERARGS]
+# Check for no activity in Expense accounts on Buy Nothing Day (November 28th).
+#
+# You can specify a different date or period with -p.
+# You can add other options/arguments to refine the query.
+
+txns=$(hledger reg type:x -p 11/28 "$@")
+if [[ ! "$txns" == "" ]]
+then
+    echo "Buy Nothing failure!"
+    echo "$txns"
+    exit 1
+fi

@@ -1,0 +1,18 @@
+#!/usr/bin/env hledger -n print --forecast=today..30days -f
+# Like a crontab for maintainers. Note recurring/planned project tasks/events here.
+# Run it, or run "just schedule [PERIOD]", to see upcoming items.
+
+
+~ every feb 21st           begin release prep
+~ every mar 1st            Q1 release
+
+~ every may 24th           begin release prep
+~ every jun 1st            Q2 release
+
+~ every aug 24th           begin release prep
+~ every sep 1st            Q3 release
+
+~ every aug 24th           begin release prep
+~ every dec 1st            Q4 release
+
+~ every 3rd day of month   finance update

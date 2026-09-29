@@ -1,0 +1,59 @@
+diff --git a/budget/commodities.inc b/budget/commodities.inc
+index 023894b..41dbcce 100644
+--- a/budget/commodities.inc
++++ b/budget/commodities.inc
+@@ -14 +14,6 @@ commodity CHF
+    nomarket
++
++commodity CNY
++   note Chinese yuan
++   format CNY 1,000.00
++   nomarket
+diff --git a/budget/expenses.ledger b/budget/expenses.ledger
+index dc887c6..90cb494 100644
+--- a/budget/expenses.ledger
++++ b/budget/expenses.ledger
+@@ -243,3 +243,3 @@
+     expenses:food:refreshments
+-    expenses:venue:hygiene             (13.50 EUR + 51 EUR + 15.30 EUR)
++    expenses:venue:hygiene             79.80 EUR
+     assets:FLOSSK                                          -177.78 EUR
+@@ -249,3 +249,3 @@
+     ; FIXME Needs better translation / breakdown
+-    expenses:venue:hygiene  (0.97 EUR + 2.73 EUR + 2.05 EUR + 6.14 EUR)
++    expenses:venue:hygiene  11.89 EUR
+     expenses:incidentals
+@@ -536,3 +536,3 @@
+     ; invoices/daytrip/20220721-busses.pdf
+-    expenses:party:conference dinner:bus            (1.18 * 200.00 EUR)
++    expenses:party:conference dinner:bus            236.00 EUR
+     expenses:day trip:bus
+@@ -562,7 +562,7 @@
+     ; pad.dc22.debconf.org
+-    expenses:video:computers  (0.2568 EUR + 0.0008 EUR + 2.28 EUR)
++    expenses:video:computers  2.5376 EUR
+     ; backend.live.debconf.org
+-    expenses:video:computers  (4 EUR + 0.50 EUR + 6.4 EUR)
++    expenses:video:computers  10.90 EUR
+     ; onsite.live.debconf.org
+-    expenses:video:computers  (1.99 EUR + 0.5 EUR)
++    expenses:video:computers  2.49 EUR
+     assets:debian-ch
+@@ -650,6 +650,6 @@
+     ; DebConf 227 single, 500 double
+-    expenses:accommodation:debcamp       (127/(127+500) * 5,626.54 EUR)
+-    expenses:accommodation:debconf       (500/(127+500) * 5,626.54 EUR)
+-    expenses:accommodation:debcamp       (124/(124+227) * 4,373.46 EUR)
+-    expenses:accommodation:debconf       (227/(124+227) * 4,373.46 EUR)
++    expenses:accommodation:debcamp       1,139.67 EUR
++    expenses:accommodation:debconf       4,486.87 EUR
++    expenses:accommodation:debcamp       1,545.04 EUR
++    expenses:accommodation:debconf       2,828.42 EUR
+     assets:FLOSSK                                       -10,000.00 EUR
+@@ -658,4 +658,4 @@
+     ; invoices/venue/20220729-accommodation-services-itp.pdf
+-    expenses:accommodation:debcamp       (127/(127+500) * 3,895.94 EUR)
+-    expenses:accommodation:debconf       (500/(127+500) * 3,895.94 EUR)
++    expenses:accommodation:debcamp       789.13 EUR
++    expenses:accommodation:debconf       3,106.81 EUR
+     expenses:accommodation:debconf                          421.26 EUR

@@ -5,21 +5,285 @@
 | |_| | |
  \__,_|_|
 
+Item order: security fixes first, then breaking changes, then the rest.
+Section headings: "Security" first if any, then "Breaking changes"
+if any; then topic headings,
+or a suitable generic heading (eg Fixes, Improvements), as needed.
+
+-->
+
+User-visible changes in hledger-ui.
+See also the hledger changelog.
+
+
+# 1.99.4 2026-09-10
+
+Fixes
+
+- Fixed a long-standing memory leak (and background CPU use) when reloading with --watch [#1825].
+  Now --watch mode has no extra memory/CPU cost, and can be used freely with large journals.
+  It's safe (and recommended!) to enable by default, eg in your `~/.hledger.conf` file
+  add `[ui] --watch`.
+
+- hledger-ui gracefully handles more reloading failures,
+  such as failure caused by a changed CSV file or rules file,
+  or by a file momentarily removed when your editor saves it.
+  Instead of quitting, it now shows the error screen, allowing recovery.
+
+- Pressing DOWN at the last list item, or pressing C-l (recenter) when
+  near the end of a list, no longer scrolls into blank padding space;
+  hledger-ui now keeps as many items as possible on screen.
+  ([#2278], [#2593], Juan Wajnerman)
+
+Improvements
+
+- The L key now toggles showing lot subaccounts and per-lot detail
+  (ie, it toggles the CLI's --lots flag). It resets to the startup
+  state if ESC is pressed.
+
+- Changes to CSV rules files now trigger a reload, like changes to data
+  files (see hledger changelog).
+
+- Warnings (eg the CSV data warnings, which could appear on every
+  --watch reload) no longer scroll and disrupt the display; instead
+  they are shown on the bottom line, until the next key press.
+  Also the screen is now fully repainted after a reload,
+  repairing any other stray terminal output.
+
+- The transaction screen now refreshes in place, when there's a reload
+  [#1825]. Previously you had to exit and re-enter it.
+
+- Error screen reloading is less flickery and more robust.
+
+- Add the -? and --webman flags; rename --tldr to --examples (see hledger changelog).
+
+- Exclude megaparsec 9.8.0, to avoid a position marker bug in error messages ([megaparsec#572](https://github.com/mrkkrp/megaparsec/issues/572)).
+
+[#1825]: https://github.com/hledgerorg/hledger/issues/1825
+[#2278]: https://github.com/hledgerorg/hledger/issues/2278
+[#2593]: https://github.com/hledgerorg/hledger/issues/2593
+
+
+
+
+# 1.52.4 2026-09-10
+
+Improvements
+
+- Allow megaparsec 9.8.1+ (but not 9.8.0, because of [megaparsec#572](https://github.com/mrkkrp/megaparsec/issues/572)).
+
+- Allow vty 6.6+, and drop the upper bounds on vty, vty-crossplatform and vty-windows.
+
+
+# 1.52.3 2026-08-27
+
+
+
+# 1.52.2 2026-08-24
+
+
+
+# 1.99.3 2026-06-24
+
 Breaking changes
 
 Fixes
 
+- On Windows, the `A` key (running `hledger-iadd`), the `E` key
+  (running `$EDITOR`), and the running of info/man/tldr/pager helpers
+  now correctly quote file paths containing spaces. [#2646]
+
 Features
 
+- `cur:COMM` queries now match COMM or any of its commodity aliases (see hledger changelog).
+  To match only a specific symbol without considering aliases, use `sym:SYM`.
+  Aliases are recomputed on each journal reload, so a mid-session
+  change to alias definitions takes effect next time.
+
 Improvements
+
+- The `E` key now jumps to the error position with the Zed and Sublime Text editors, also.
+  (Rostislav Raykov)
+- allow megaparsec >9.8
+- allow vty 6.6+
 
 Docs
 
 API
 
--->
-User-visible changes in hledger-ui.
-See also the hledger changelog.
+
+[#2646]: https://github.com/hledgerorg/hledger/issues/2646
+
+# 1.99.2 2026-04-28
+
+Fixes
+
+- Navigating to lot subaccounts (with names like `{2026-01-01, $50}`) no longer
+  fails with "invalid regular expression" — regex metacharacters in account
+  names are now properly escaped.
+
+Improvements
+
+- Allow brick 3.x.
+
+- Uses hledger 1.99.2.
+
+
+# 1.52.1 2026-04-28
+
+Improvements
+
+- Uses hledger 1.52.1.
+
+- Allow vty-crossplatform 0.5.
+
+
+# 1.99.1 2026-03-28
+
+(2.0 preview 1)
+
+- Uses hledger 1.99.1
+
+
+# 1.52 2026-03-20
+
+Fixes
+
+- List screens with no items now correctly appear empty on all platforms.
+  (An unguarded division by zero was disrupting the display on non-ARM machines.)
+  (Tuong Nguyen Manh, Simon Michael) [#2476], [#2550]
+
+- The less pager (used for displaying help, eg) is now invoked more robustly; we catch and report more kinds of failure clearly.
+  [#2544]
+
+Improvements
+
+- New capital `J`/`K` keybindings move down/up 10 rows at a time.
+  (Rahul Shankar V, Simon Michael) [#1911], [#2551]
+
+- The `default` theme has been renamed to `light`.
+  (Rahul Shankar V, Simon Michael) [#2168], [#2551]
+
+- The selection colour has been changed to cyan, for better visibility in typical terminals.
+  (Rahul Shankar V, Simon Michael) [#2175], [#2551]
+
+- Allow brick 2.11
+
+[#1911]: https://github.com/hledgerorg/hledger/issues/1911
+[#2168]: https://github.com/hledgerorg/hledger/issues/2168
+[#2175]: https://github.com/hledgerorg/hledger/issues/2175
+[#2476]: https://github.com/hledgerorg/hledger/issues/2476
+[#2544]: https://github.com/hledgerorg/hledger/issues/2544
+[#2550]: https://github.com/hledgerorg/hledger/issues/2550
+[#2551]: https://github.com/hledgerorg/hledger/issues/2551
+
+
+# 1.51.2 2026-01-08
+
+- hledger add invoked via the `a` key now shows output properly,
+  fixing a regression in 1.50. [#2512]
+
+- Allow vty-crossplatform 0.5. (Jens Petersen)
+
+- Allow base 4.22 / ghc 9.14.
+
+[#2512]: https://github.com/hledgerorg/hledger/issues/2512
+
+
+# 1.51.1 2025-12-08
+
+- Uses hledger 1.51.1.
+
+
+# 1.50.5 2025-12-08
+
+- Uses hledger 1.50.5.
+
+
+# 1.51 2025-12-05
+
+Improvements
+
+- Allow brick 2.10, vty 6.5.
+
+- Uses hledger 1.51.
+
+
+# 1.50.4 2025-12-04
+
+- Uses hledger 1.50.4.
+
+
+# 1.50.3 2025-11-18
+
+- `--watch` mode now also detects changes from apps which overwrite the file, such as VS Code.
+  (Caleb Maclennan)
+
+- When hledger-ui is started with --pivot, re-enabling balance assertions
+  with the I key now does a full journal reload, to check assertions more accurately.
+  [#2451]
+
+- The old "threaded" build flag, which cabal could turn off, has been dropped.
+  [#2495]
+
+- Allow brick 2.10, vty 6.5.
+
+- Uses hledger 1.50.3.
+
+
+# 1.50.2 2025-09-26
+
+- Uses hledger 1.50.2
+
+
+# 1.50.1 2025-09-16
+
+Fixes
+
+- The transaction screen and error screen now update on data changes like other screens,
+  eg when using the `E` or `g` keys or `--watch`.
+  [#2014], [#2288]
+
+- When the journal is reloaded by the `g` key or `--watch`, the
+  `--pivot` (and `--obfuscate`) options are now preserved,
+  and spurious errors are avoided.
+  [#2451]
+
+- The `Z` key (and the `-E` command line flag) toggle zero-balance accounts again.
+  (Stephen Morgan, [#2454])
+
+Improvements
+
+- Debug output has improved, eg it's easier to see changes to the screen stack.
+
+API
+
+- Hledger.UI.ErrorScreen:
+  uiReloadJournal -> uiReload,
+  uiReloadJournalIfChanged -> uiReloadIfFileChanged
+- Hledger.UI.UIState:
+  enableForecastPreservingPeriod -> enableForecast
+
+[#2014]: https://github.com/hledgerorg/hledger/issues/2014
+[#2288]: https://github.com/hledgerorg/hledger/issues/2288
+[#2451]: https://github.com/hledgerorg/hledger/issues/2451
+[#2454]: https://github.com/hledgerorg/hledger/issues/2454
+
+
+# 1.50 2025-09-03
+
+Breaking changes
+
+- hledger now requires at least GHC 9.6 (and base 4.18), to ease maintenance.
+
+Improvements
+
+- Use hledger 1.50
+
+
+# 1.43.2 2025-06-13
+
+- Use hledger-1.43.2
 
 
 # 1.43.1 2025-06-04
@@ -173,7 +437,7 @@ Improvements
   and seems not strictly needed.
   [#2149]
 
-[#2149]: https://github.com/simonmichael/hledger/issues/2149
+[#2149]: https://github.com/hledgerorg/hledger/issues/2149
 
 
 # 1.33 2024-04-18

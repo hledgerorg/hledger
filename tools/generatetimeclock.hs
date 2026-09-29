@@ -1,4 +1,5 @@
-#!/usr/bin/env runhaskell
+#!/usr/bin/env stack
+-- stack script --resolver nightly-2026-06-01
 {-
 generatetimeclock.hs NUMENTRIES
 

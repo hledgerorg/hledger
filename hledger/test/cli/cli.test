@@ -61,106 +61,238 @@ $ hledger --version
 $ hledger balance --version
 > /^hledger [0-9]/
 
-# ** 3. with no command, show commands list
+# ** 3. with no command, show the quick reference card
 $ hledger
-> /^Commands/
+> /HLEDGER QUICK REFERENCE/
 
-# ** 4. commands list still works if there are flags, at least the common ones
+# ** 4. this still works if there are flags, at least the common ones
 $ hledger -fsomefile
-> /^Commands/
+> /HLEDGER QUICK REFERENCE/
 
 # ** 5. and also with a space between flag and value
 $ hledger -f somefile
-> /^Commands/
+> /HLEDGER QUICK REFERENCE/
 
 # ** 6. with -h/--help, and possibly other common flags present, show general cli help
 $ hledger -h --version -f/dev/null
 > /^hledger \[COMMAND\]/
 
-# ** 6b. XXX our moveFlagsAfterCommand plus the way cmdargs' argument-requiring flags
-# consume a following flag rather than failing, means things like this go wrong
-# (args are rearranged to -f -h --version /dev/null, shows version when it should show help):
-#$ hledger -h --version -f /dev/null
-#> /^hledger \[COMMAND\]/
+# ** 7. Likewise with a space between the flag and value, instead of joined.
+# (This used to be rearranged to "-f -h --version /dev/null", showing version
+# instead of help; that no longer happens.)
+$ hledger -h --version -f /dev/null
+> /^hledger \[COMMAND\]/
 
-# ** 7. with -h before a COMMAND, show command usage
+# ** 8. with -h before a COMMAND, show command usage
 $ hledger -h balance --cost
 > /balance \[OPTIONS\]/
 
-# ** 8. with -h after a command, show command usage
+# ** 9. with -h after a command, show command usage
 $ hledger balance -h
 > /balance \[OPTIONS\]/
 
-# ** 9. with an unrecognised command, give an error and non-zero exit status
+# ** 10. with an unrecognised command, give an error and non-zero exit status
 $ hledger nosuchcommand
->2 /not recognized.*to see a list/
+>2 /not recognised.*to see a list/
 >= 1
 
-# ** 10. general flags can go before command
+# ** 11. general flags can go before command
 $ hledger -f /dev/null --alias foo --daily register
 
-# ** 11. or after it. And flags & values joined by = or nothing also work.
+# ** 12. or after it. And flags & values joined by = or nothing also work.
 $ hledger register -f/dev/null --alias=foo --daily
 
-# ** 12. command-specific flags (for builtin commands) can go after command
+# ** 13. command-specific flags (for builtin commands) can go after command
 $ hledger -f /dev/null print --explicit
 
-# ** 13. or before it
+# ** 14. or before it
 $ hledger -f /dev/null --explicit print
 
-# ** 14. --no-conf works with builtin commands.
+# ** 15. --no-conf works with builtin commands.
 $ hledger --no-conf check -f/dev/null
 
-# ** 15. --conf CONFFILE works with builtin commands.
+# ** 16. --conf CONFFILE works with builtin commands.
 $ hledger --conf /dev/null check -f/dev/null
 
-# ** 16. --conf works with no command.
+# ** 17. --conf works with no command.
 $ hledger --conf /dev/null
-> /Commands/
+> /HLEDGER QUICK REFERENCE/
 
-# ** 17. When moving options written before the command name:
+# ** 18. When moving options written before the command name:
 # if the flag name is used in general options and also one or more commands,
 # the general option's arity determines whether a value is expected.
 # Here -p is a help command flag taking no value, but also a general option requiring a value,
 # so the value ("today") is detected.
 $ hledger -p today check -f/dev/null
 
-# ** 18. The specially-handled --debug option is also moved properly, with no value:
+# ** 19. The specially-handled --debug option is also moved properly, with no value:
 $ hledger --debug check -f/dev/null
 >2 //
 
-# ** 19. a joined value:
+# ** 20. a joined value:
 $ hledger --debug=1 check -f/dev/null
 >2 //
 
-# ** 20. or a separate value:
+# ** 21. or a separate value:
 $ hledger --debug 1 check -f/dev/null
 >2 //
 
-# ** 21. A short flag with joined value, or multiple valueless short flags joined together, are moved properly.
+# ** 22. A short flag with joined value, or multiple valueless short flags joined together, are moved properly.
 $ hledger -f/dev/null -BI check
 >2 //
 
-# ** 22. The rightmost --conf/--no-conf option wins.
+# ** 23. The rightmost --conf/--no-conf option wins.
 $ hledger -f /dev/null --conf nosuchfile --no-conf check
 
-# ** 23. The rightmost --conf/--no-conf option wins, 2.
+# ** 24. The rightmost --conf/--no-conf option wins, 2.
 $ hledger -f /dev/null --no-conf --conf nosuchfile check
 >2 /nosuchfile does not exist/
 >=1
 
-# ** 24. --debug doesn't disturb the order of --conf and --no-conf.
+# ** 25. --debug doesn't disturb the order of --conf and --no-conf.
 # This is a hard one to reproduce in GHCI.
 $ hledger --debug -f /dev/null --conf /dev/null --no-conf >/dev/null
 >2 /ignoring config files/
 
-# ** 25. Having general options in a conf file doesn't break cli command parsing.
+# ** 26. Having general options in a conf file doesn't break cli command parsing.
 $  echo '--pretty' >$$.conf; hledger -f /dev/null --conf $$.conf files; rm -f $$.conf
 /dev/null
 
-# ** 26. An initial non-flag general argument in a conf file is used as the command.
-$  echo 'files' >$$.conf; hledger stats -f /dev/null --conf $$.conf; rm -f $$.conf
-
-# ** 27. A non-flag general argument that's not first in the conf file is note used as the command.
-$  echo '--pretty files' >$$.conf; hledger stats -f /dev/null --conf $$.conf; rm -f $$.conf
+# ** 27. A non-flag argument in a config file's general section is NOT treated as the command
+# (that feature was removed); it is just passed to the command as an argument.
+# Here the command run is the one on the command line (stats), not the config's "balance".
+$  printf 'balance\n' >$$.conf; printf '2026-01-01\n  a  1\n  b\n' | hledger stats -f- --conf $$.conf; rm -f $$.conf
 > /Runtime stats/
+
+# ** 28. A required-value flag followed by another flag is rejected with a clear error.
+$ hledger import -f --dry-run
+>2 /-f needs a value, but the next argument is another flag: --dry-run/
+>= 1
+
+# ** 29. Same check for a required-value flag at the end of the args.
+$ hledger -f
+>2 /-f needs a value, none provided/
+>= 1
+
+# ** 30. The check is not -f-specific: --alias followed by another known flag also errors.
+$ hledger --alias --pretty balance
+>2 /--alias needs a value, but the next argument is another flag: --pretty/
+>= 1
+
+# ** 31. The check only fires for known flags, so dash-prefixed values like
+# register's --sort key "-date" (sort descending) keep working.
+$ printf '2024-01-01\n  a  1\n  b\n' | hledger -f - register --sort -date
+> //
+
+# ** 32. A bare "-" (stdin) is a valid value for -f, not treated as a flag.
+$ printf '' | hledger -f - balance
+> //
+
+# ** 33. A prefixed value like "csv:-" (read stdin as CSV) is allowed too;
+# we get past the validator and into the CSV reader.
+$ printf '' | hledger -f csv:- balance
+>2 /please use --rules when reading CSV from stdin/
+>= 1
+
+# ** 34. Joined forms like --file=--weird.csv are single tokens and bypass the check.
+$ hledger --file=--weird.csv balance
+>2 /--weird.csv/
+>= 1
+
+# ** 35. Ambiguous flags are required-value in some commands (eg -m is --match for print/register)
+# but valueless in others (eg -m selects man for help), so the required-value pre-check can't judge
+# them before the command is known and skips them. A command lacking the flag then reports "Unknown
+# flag" consistently, with or without a following value (the no-value form previously wrongly said
+# "-m needs a value").
+$ hledger balance -m
+>2 /Unknown flag: -m/
+>= 1
+
+# ** 36.
+$ hledger balance -m foo
+>2 /Unknown flag: -m/
+>= 1
+
+# ** 37. help with no argument shows the quick reference card (like plain hledger).
+$ hledger help
+> /HLEDGER QUICK REFERENCE/
+
+# help accepts -p, -m and -i as valueless flags selecting a viewer. Appending -h makes
+# hledger print the command's help and exit before launching any (possibly interactive)
+# viewer, so these tests check only that the flags parse - ie that the required-value
+# pre-check does not wrongly reject them as "needs a value" (the bug these guard against).
+# The pre-check runs before -h takes effect, so a regression would still be caught here.
+
+# ** 38.
+$ hledger help -p -h
+> /hledger's documentation/
+
+# ** 39.
+$ hledger help -m -h
+> /hledger's documentation/
+
+# ** 40.
+$ hledger help -i -h
+> /hledger's documentation/
+
+# ** 41. --conf/--no-conf flags inside a config file are ignored: which config file to use
+# was decided before reading it, so they are dropped from the config's general arguments.
+$  printf -- '--no-conf\n' >$$.conf; hledger --debug=1 files -f /dev/null --conf $$.conf 2>&1 >/dev/null | grep -o 'ignored conf-selecting flags from config file'; rm -f $$.conf
+ignored conf-selecting flags from config file
+
+# ** 42. Leading whitespace (indentation) on a config file line is ignored,
+# whether before a general argument or before a [section] header and its arguments.
+$  printf '  --pretty\n  [files]\n\t--pretty\n' >$$.conf; hledger -f /dev/null --conf $$.conf files; rm -f $$.conf
+/dev/null
+
+# ** 43. A blank last line with trailing whitespace and no final newline is tolerated.
+$  printf '  --pretty\n  ' >$$.conf; hledger -f /dev/null --conf $$.conf files; rm -f $$.conf
+/dev/null
+
+# ** 44. -? shows the quick reference card (quote it to avoid shell globbing).
+$ hledger '-?'
+> /HLEDGER QUICK REFERENCE/
+
+# ** 45. -? also works after a command.
+$ hledger balance '-?'
+> /HLEDGER QUICK REFERENCE/
+
+# ** 46. A config file syntax error is reported with a pretty error message
+# showing the position and problem line.
+$  printf '[cmd\n' >$$.conf; hledger --conf $$.conf -f /dev/null files; s=$?; rm -f $$.conf; exit $s
+>2 /\.conf:1:5:
+  \|
+1 \| \[cmd
+  \|     \^
+unexpected newline
+expecting '\]'/
+>= 1
+
+# ** 47. A config file line which can't be parsed as command line arguments
+# (eg because of an unclosed quote) is reported with a pretty error message
+# showing the position and problem line.
+$  echo '--alias "unclosed' >$$.conf; hledger --conf $$.conf -f /dev/null files; s=$?; rm -f $$.conf; exit $s
+>2 /\.conf:1:
+1 \| --alias "unclosed
+this config file line could not be parsed as command line arguments/
+>= 1
+
+# ** 48. The required-value pre-check only considers flags the identified command supports,
+# so another command's flag is left for cmdargs to report.
+$ hledger help --sort
+>2 /Unknown flag: --sort/
+>= 1
+
+# ** 49. The command's own required-value flags are still checked.
+$ hledger register --sort
+>2 /--sort needs a value, none provided/
+>= 1
+
+# ** 50. The pre-check stops at "--", since cmdargs treats what follows as positional args.
+$ printf '' | hledger -f - register -- --sort
+> //
+
+# ** 51. -o - writes to stdout, not to a file named "-".
+$ d=$(mktemp -d); cd $d; printf '2026-01-01\n  a  1\n  b\n' | hledger -f - bal -N -o -; s=$?; ls; cd /; rm -rf $d; exit $s
+                   1  a
+                  -1  b

@@ -14,3 +14,11 @@ $ hledger -f- register -O tsv
 txnidx	date	code	description	account	amount	total
 1	2019-01-01			(a)	10000000.0	10000000.0
 >=
+
+# ** 3. With multiple files, transaction indexes continue across the files.
+$ sh -c 'D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-regcsv.XXXXXX"); printf "2024-01-01 a\n  x  1\n  y  -1\n" > "$D/1.j"; printf "2024-02-01 b\n  x  2\n  y  -2\n" > "$D/2.j"; hledger -f "$D/1.j" -f "$D/2.j" register -O csv; rm -rf "$D"'
+"txnidx","date","code","description","account","amount","total"
+"1","2024-01-01","","a","x","1","1"
+"1","2024-01-01","","a","y","-1","0"
+"2","2024-02-01","","b","x","2","2"
+"2","2024-02-01","","b","y","-2","0"

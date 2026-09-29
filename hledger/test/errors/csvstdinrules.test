@@ -1,4 +1,5 @@
-$$$  sh csvstdinrules.sh
->>>2 /Error: please use --rules when reading CSV from stdin
+# The command is indented so that shelltest -w (make test) leaves it alone.
+$  sh csvstdinrules.sh
+>2 /hledger: Error: please use --rules when reading CSV from stdin
 /
->>>= 1
+>= 1

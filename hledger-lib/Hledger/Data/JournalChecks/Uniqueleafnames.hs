@@ -8,7 +8,7 @@ where
 import Data.Function (on)
 import Data.List (groupBy, sortBy)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Safe (headErr)
 import Text.Printf (printf)
 
@@ -41,8 +41,8 @@ journalCheckUniqueleafnames j = do
             -- t = fromMaybe nulltransaction ptransaction  -- XXX sloppy
             (_,_,_,ex1) = makePostingErrorExcerpt p (\_ _ _ -> Nothing)
             (f,l,_,ex2) = makePostingErrorExcerpt p2 finderrcols
-            -- separate the two excerpts by a space-beginning line to help flycheck-hledger parse them
-            ex = T.unlines [textChomp ex1, T.pack " ...", textChomp ex2]
+            -- separate the two excerpts by an empty line, which flycheck-hledger accepts between excerpts
+            ex = T.unlines [textChomp ex1, T.pack "", textChomp ex2]
             finderrcols p' _ _ = Just (col, Just col2)
               where
                 a = paccount p'

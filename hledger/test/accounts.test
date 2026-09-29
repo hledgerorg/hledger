@@ -38,7 +38,7 @@ account asset
 
 $ hledger -f - accounts --types
 asset      ; type: A
-unknown    ; type: 
+unknown
 
 # ** 7. equity:conversion, and several other names, are detected as V/Conversion type by default.
 <
@@ -92,3 +92,44 @@ trade:A-B:A
 trade:A-B:B
 a
 b
+
+# ** 11. When matching accounts found in postings, tag: only matches the account's tags,
+# not posting tags.
+<
+account a    ; a:, this account has tag a
+account a:b  ; b:, this account has tag b and inherited tag a
+
+2025-01-01
+    a     1
+    a:b   2
+    c    -3  ; p:, this posting has tag p
+
+$ hledger -f- accounts tag:b
+a:b
+
+# ** 12. tag: also matches tags inherited from parent accounts, currently.
+$ hledger -f- accounts tag:a
+a
+a:b
+
+# ** 13. A date: query limits to accounts used in matched postings;
+# declared accounts have no date, so are excluded.
+<
+account assets
+account unused:acct
+
+2026-01-01
+  assets   1
+  income  -1
+
+$ hledger -f- accounts date:2026
+assets
+income
+
+# ** 14. An acct: query matches accounts declared or used.
+$ hledger -f- accounts unused
+unused:acct
+
+# ** 15. A declared account is not misreported as undeclared when a date: query is added.
+$ hledger -f- accounts --undeclared date:2026
+income

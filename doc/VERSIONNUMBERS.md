@@ -12,18 +12,6 @@ Some places version numbers appear:
 - cabal tarball filenames
 - platform-specific packages
 
-Some old version numbering goals:
-
-1. automation, robustness, simplicity, platform independence
-2. cabal versions must be all-numeric
-3. release versions can be concise (without extra .0's)
-4. releases should have a corresponding VCS tag
-5. development builds should have a precise version appearing in --version
-6. development builds should generate cabal packages with non-confusing versions
-7. there should be a way to mark builds/releases as alpha or beta
-8. avoid unnecessary compiling and linking
-9. minimise VCS noise and syncing issues (commits, unrecorded changes)
-
 Current version numbering policy:
 
 - We (should) follow <https://haskell.org/haskellwiki/Package_versioning_policy>
@@ -66,17 +54,5 @@ Current process:
 
   - `PKG/.date.m4` contains the _monthyear_ macro used in  man pages. It is updated by `./Shake manuals`.
 
-- At release time:
-
-  - `./Shake PKG/CHANGES.md-finalise` converts the topmost heading, if
-    it is an interim heading (just a commit hash), to a permanent
-    heading containing the version and today's date.
-
-  - for each package being released, a PKG-VERSION git tag is created.
-
-- At major release time:
-
-  - A new snapshot of the reference docs is added to the website, by
-    `./Shake site/doc/VERSION/.snapshot`, and added to the links in
-    `site/js/site.js`.
-
+- At release time, see [RELEASING](RELEASING.md): changelogs are finalised
+  (`just changelogs-finalise`), and a PKG-VERSION git tag is created for each package released.

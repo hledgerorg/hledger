@@ -1,18 +1,44 @@
 ## help
 
-Show the hledger user manual with `info`, `man`, or a pager.
-With a (case insensitive) TOPIC argument, try to open it at that section heading.
+(h)
+
+Show some part of hledger's documentation.
 
 ```flags
 Flags:
-  -i                       show the manual with info
-  -m                       show the manual with man
-  -p                       show the manual with $PAGER or less
-                           (less is always used if TOPIC is specified)
+  -i                       use info when showing the manual
+  -m                       use man when showing the manual
+  -p                       use less (or $PAGER) when showing the manual
+  -w                       use a web browser when showing the manual
+  -l                       just list the manual topics matching TOPIC
+     --builtins            with commands: show only builtin commands
+     --addons              with commands: show only addon commands
+     --aliases             with commands: show only command aliases
 ```
 
-This command shows the hledger manual built in to your hledger executable.
-It can be useful when offline, or when you prefer the terminal to a web browser,
+The part shown is selected by arguments:
+
+- `quickref` (or no args): a quick reference / overview
+- `commands`:              all commands, including addons and aliases
+                           (or just one category, with --builtins/--addons/--aliases)
+- `usage [CMD]`:           command line options help (like -h/--help)
+- `examples [CMD]`:        command line examples
+- `manual [TOPIC]`:        view a topic in the manual, or list them all
+- `TOPIC`:                 (like `manual TOPIC`)
+- `home|install|relnotes|docs|support|sponsor`: browse hledger.org pages
+
+TOPIC is a section heading in the hledger, hledger-ui or hledger-web manual,
+or part of one, matched case insensitively.
+Enclose it in quotes if it contains spaces.
+With no TOPIC (`hledger help manual`), all manual topics are listed,
+indented to show (most of) their hierarchy.
+
+The manual will be shown in a default viewer (info, man, pager, web browser),
+or you can choose with -i/-m/-p/-w.
+
+
+The manual is built in to your hledger executable, so it can be useful when offline,
+or when you prefer the terminal to a web browser,
 or when the appropriate hledger manual or viewers are not installed properly on your system.
 
 By default it chooses the best viewer found in $PATH, trying in this order:
@@ -21,16 +47,15 @@ By default it chooses the best viewer found in $PATH, trying in this order:
 You can force the use of info, man, or a pager with the `-i`, `-m`, or `-p` flags.
 If no viewer can be found, or if running non-interactively, it just prints the manual to stdout.
 
-When using `info`, TOPIC can match either the full heading or a prefix.
-If your `info --version` is < 6, you'll need to upgrade it, eg with '`brew install texinfo`' on mac.
-
-When using `man` or `less`, TOPIC must match the full heading.
-For a prefix match, you can write '`TOPIC.*`'.
-
-Examples
+Examples:
 ```cli
-$ hledger help -h                 # show the help command's usage
-$ hledger help                    # show the manual with info, man or $PAGER
-$ hledger help 'time periods'     # show the manual's "Time periods" topic
-$ hledger help 'time periods' -m  # use man, even if info is installed
+$ hledger help                    # show the quick reference
+$ hledger help -h                 # show the help command's options
+$ hledger help commands           # list all commands
+$ hledger help commands --aliases # list just the command aliases
+$ hledger help 'time periods'     # show the "Time periods" section in the manual
+$ hledger help keys               # show the "KEYS" section in the hledger-ui manual
+$ hledger help -l                 # list the manual's topics
+$ hledger help -l journal         # list the manual topics matching "journal"
+$ hledger help examples add       # show examples for the add command
 ```

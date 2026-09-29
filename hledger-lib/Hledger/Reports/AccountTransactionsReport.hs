@@ -27,12 +27,12 @@ import Data.List (mapAccumR, nub, partition, sortBy)
 import Data.List.Extra (nubSort)
 import Data.Maybe (catMaybes)
 import Data.Ord (Down(..), comparing)
-import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Time.Calendar (Day)
 
 import Hledger.Data
 import Hledger.Query
+import Hledger.Reports.PostingsReport (registerRunningCalculationFn)
 import Hledger.Reports.ReportOptions
 import Hledger.Utils
 
@@ -63,7 +63,9 @@ import Hledger.Utils
 -- - the total increase/decrease to the current account
 --
 -- - the report transactions' running total after this transaction;
---   or if historical balance is requested (-H), the historical running total.
+--   or if historical balance is requested (-H), the historical running total;
+--   or if average is requested (-A), the running average change per transaction
+--   (also including transactions before the report start date, with -H).
 --   The historical running total includes transactions from before the
 --   report start date if one is specified, filtered by the report query.
 --   The historical running total may or may not be the account's historical
@@ -80,9 +82,9 @@ type AccountTransactionsReportItem =
    Transaction -- the transaction, unmodified
   ,Transaction -- the transaction, as seen from the current account
   ,Bool        -- is this a split (more than one posting to other accounts) ?
-  ,Text        -- a display string describing the other account(s), if any
+  ,[AccountName] -- the other account(s), if any
   ,MixedAmount -- the amount posted to the current account(s) (or total amount posted)
-  ,MixedAmount -- the register's running total or the current account(s)'s historical balance, after this transaction
+  ,MixedAmount -- the register's running total or the current account(s)'s historical balance (or running average), after this transaction
   )
 
 instance HasAmounts AccountTransactionsReportItem where
@@ -106,7 +108,7 @@ accountTransactionsReport rspec@ReportSpec{_rsReportOpts=ropts} j thisacctq = it
         aregisterq = filterQuery (not . queryIsCurOrAmt) . filterQuery (not . queryIsDepth) $ _rsQuery rspec
         periodq = Date . periodAsDateSpan $ period_ ropts
     amtq = filterQuery queryIsCurOrAmt $ _rsQuery rspec
-    queryIsCurOrAmt q = queryIsSym q || queryIsAmt q
+    queryIsCurOrAmt q = queryIsCurOrSym q || queryIsAmt q
     wd = whichDate ropts
 
     -- Note that within this function, we are only allowed limited
@@ -143,11 +145,17 @@ accountTransactionsReport rspec@ReportSpec{_rsReportOpts=ropts} j thisacctq = it
         realq   = filterQuery queryIsReal reportq
         statusq = filterQuery queryIsStatus reportq
 
-    startbal
-      | balanceaccum_ ropts == Historical = sumPostings priorps
-      | otherwise                         = nullmixedamt
+    -- The number of the first report item, and the running total or average before it.
+    -- In historical mode, these include the transactions before the report start date.
+    (startnum, startbal)
+      | balanceaccum_ ropts /= Historical = (1, nullmixedamt)
+      | average_ ropts = (numpriorts + 1, divideMixedAmount (fromIntegral numpriorts) priorsum)
+      | otherwise      = (numpriorts + 1, priorsum)
       where
-        priorps = dbg5 "priorps" . journalPostings $ filterJournalPostings priorq acctJournal
+        priorpss = dbg5 "priorpss" . filter (not . null) . map (filter hasAmount . tpostings) . jtxns $
+                   filterJournalPostings priorq acctJournal
+        numpriorts = length priorpss
+        priorsum = sumPostings $ concat priorpss
         priorq = dbg5 "priorq" $ And [thisacctq, tostartdateq, datelessreportq]
         tostartdateq =
           case mstartdate of
@@ -157,7 +165,7 @@ accountTransactionsReport rspec@ReportSpec{_rsReportOpts=ropts} j thisacctq = it
         datelessreportq = filterQuery (not . queryIsDateOrDate2) reportq
 
     items =
-        accountTransactionsReportItems reportq thisacctq startbal maNegate (journalAccountType j)
+        accountTransactionsReportItems reportq thisacctq (registerRunningCalculationFn ropts) startnum startbal maNegate (journalAccountType j)
       -- sort by the transaction's register date, then index, for accurate starting balance
       . dbg5With (("ts4:\n"++).pshowTransactions.map snd)
       . sortBy (comparing (Down . fst) <> comparing (Down . tindex . snd))
@@ -170,32 +178,35 @@ pshowTransactions = pshow . map (\t -> unwords [show $ tdate t, T.unpack $ tdesc
 
 -- | Generate transactions report items from a list of transactions,
 -- using the provided user-specified report query, a query specifying
--- which account to use as the focus, a starting balance, and a sign-setting
--- function.
+-- which account to use as the focus, a running calculation function
+-- (see registerRunningCalculationFn), the starting item number and
+-- running total/average, and a sign-setting function.
 -- Each transaction is accompanied by the date that should be shown for it
 -- in the report. This is not necessarily the transaction date - see
 -- transactionRegisterDate.
-accountTransactionsReportItems :: Query -> Query -> MixedAmount -> (MixedAmount -> MixedAmount)
+accountTransactionsReportItems :: Query -> Query -> (Int -> MixedAmount -> MixedAmount -> MixedAmount)
+                               -> Int -> MixedAmount -> (MixedAmount -> MixedAmount)
                                -> (AccountName -> Maybe AccountType) -> [(Day, Transaction)]
                                -> [AccountTransactionsReportItem]
-accountTransactionsReportItems reportq thisacctq bal signfn accttypefn =
-    catMaybes . snd . mapAccumR (accountTransactionsReportItem reportq thisacctq signfn accttypefn) bal
+accountTransactionsReportItems reportq thisacctq runningcalc i bal signfn accttypefn =
+    catMaybes . snd . mapAccumR (accountTransactionsReportItem reportq thisacctq runningcalc signfn accttypefn) (i, bal)
 
-accountTransactionsReportItem :: Query -> Query -> (MixedAmount -> MixedAmount)
-                              -> (AccountName -> Maybe AccountType) -> MixedAmount -> (Day, Transaction)
-                              -> (MixedAmount, Maybe AccountTransactionsReportItem)
-accountTransactionsReportItem reportq thisacctq signfn accttypefn bal (d, t)
+accountTransactionsReportItem :: Query -> Query -> (Int -> MixedAmount -> MixedAmount -> MixedAmount)
+                              -> (MixedAmount -> MixedAmount)
+                              -> (AccountName -> Maybe AccountType) -> (Int, MixedAmount) -> (Day, Transaction)
+                              -> ((Int, MixedAmount), Maybe AccountTransactionsReportItem)
+accountTransactionsReportItem reportq thisacctq runningcalc signfn accttypefn (i, bal) (d, t)
     -- 201407: I've lost my grip on this, let's just hope for the best
     -- 201606: we now calculate change and balance from filtered postings, check this still works well for all callers XXX
-    | null reportps = (bal, Nothing)  -- no matched postings in this transaction, skip it
-    | otherwise     = (bal', Just (t, tacct{tdate=d}, numotheraccts > 1, otheracctstr, amt, bal'))
+    | null reportps = ((i, bal), Nothing)  -- no matched postings in this transaction, skip it
+    | otherwise     = ((i + 1, bal'), Just (t, tacct{tdate=d}, numotheraccts > 1, otheraccts, amt, bal'))
     where
       tacct@Transaction{tpostings=reportps} = filterTransactionPostingsExtra accttypefn reportq t  -- TODO needs to consider --date2, #1731
       (thisacctps, otheracctps) = partition (matchesPosting thisacctq) reportps
       numotheraccts = length $ nub $ map paccount otheracctps
-      otheracctstr | thisacctq == None  = summarisePostingAccounts reportps     -- no current account ? summarise all matched postings
-                   | numotheraccts == 0 = summarisePostingAccounts thisacctps   -- only postings to current account ? summarise those
-                   | otherwise          = summarisePostingAccounts otheracctps  -- summarise matched postings to other account(s)
+      otheraccts | thisacctq == None  = summarisePostingAccounts reportps     -- no current account ? summarise all matched postings
+                 | numotheraccts == 0 = summarisePostingAccounts thisacctps   -- only postings to current account ? summarise those
+                 | otherwise          = summarisePostingAccounts otheracctps  -- summarise matched postings to other account(s)
       -- 202302: Impact of t on thisacct - normally the sum of thisacctps,
       -- but if they are null it probably means reportq is an account filter
       -- and we should sum otheracctps instead.
@@ -203,7 +214,7 @@ accountTransactionsReportItem reportq thisacctq signfn accttypefn bal (d, t)
       amt
         | null thisacctps = signfn $ sumPostings otheracctps
         | otherwise       = signfn . maNegate $ sumPostings thisacctps
-      bal' = bal `maPlus` amt
+      bal' = runningcalc i bal amt
 
 -- TODO needs checking, cf #1731
 -- | What date should be shown for a transaction in an account register report ?
@@ -236,9 +247,8 @@ transactionRegisterDate wd reportq thisacctq t
 
 -- | Generate a simplified summary of some postings' accounts.
 -- To reduce noise, if there are both real and virtual postings, show only the real ones.
-summarisePostingAccounts :: [Posting] -> Text
-summarisePostingAccounts ps =
-    T.intercalate ", " . map accountSummarisedName . nub $ map paccount displayps
+summarisePostingAccounts :: [Posting] -> [AccountName]
+summarisePostingAccounts ps = map paccount displayps
   where
     realps = filter isReal ps
     displayps | null realps = ps

@@ -61,6 +61,14 @@ $ hledger -f - check tags
   ; _generated-posting:
   ; _cost-posting:
   ; _conversion-posting:
+  ; ptype:
+  ; feesplit-posting:
+  ; lotsplit-posting:
+  ; lot-parent-assertion:
+  ; _ptype:
+  ; _feesplit-posting:
+  ; _lotsplit-posting:
+  ; _lot-parent-assertion:
 $ hledger -f - check tags
 
 # ** 7. Declaring the built-in special tags is harmless.
@@ -83,4 +91,29 @@ tag _modified-transaction   ; always exists on txns which have had auto postings
 tag _generated-posting      ; always exists on generated auto postings
 tag _cost-posting           ; exists on postings which have been matched with a nearby @/@@ cost notation
 tag _conversion-posting     ; exists on postings which have been matched with a nearby @/@@ cost notation
+tag ptype                   ; with --verbose-tags, appears on lot postings
+tag feesplit-posting        ; with --verbose-tags, appears on fee parts split off lot transfers
+tag lotsplit-posting        ; with --verbose-tags, appears on extra parts of postings split across lots
+tag lot-parent-assertion    ; with --verbose-tags, appears on postings carrying a relocated balance assertion
+tag _ptype                  ; always exists on lot postings
+tag _feesplit-posting       ; always exists on fee parts split off lot transfers
+tag _lotsplit-posting       ; always exists on extra parts of postings split across lots
+tag _lot-parent-assertion   ; always exists on postings carrying a relocated balance assertion
 $ hledger -f - check tags
+
+# ** 8. So print --verbose-tags output, which shows some of them, passes check tags.
+<
+commodity AAPL ; lots:
+
+2026-01-01 buy
+    assets:a    10 AAPL {$50}
+    assets:checking
+
+2026-01-02 buy
+    assets:a    10 AAPL {$60}
+    assets:checking
+
+2026-01-03 sell across two lots
+    assets:a   -15 AAPL @ $70
+    assets:checking   $1050
+$ hledger -f- print --verbose-tags | hledger -f- check tags

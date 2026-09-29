@@ -1,10 +1,11 @@
 # hledger
+
 ## Robust, intuitive plain text accounting
 [![license](https://img.shields.io/badge/license-GPLv3+-brightgreen.svg)](https://www.gnu.org/licenses/gpl.html)
 [![on hackage](https://img.shields.io/hackage/v/hledger.svg?label=hackage&colorB=green)](https://hackage.haskell.org/package/hledger)
 [![](https://repology.org/badge/version-for-repo/stackage_nighly/hledger.svg)](https://repology.org/metapackage/hledger)
 [![](https://repology.org/badge/version-for-repo/stackage_lts/hledger.svg)](https://repology.org/metapackage/hledger)
-[![github issues](https://img.shields.io/github/issues/simonmichael/hledger.svg)](http://bugs.hledger.org)
+[![Open issues, all kinds](https://img.shields.io/github/issues/hledgerorg/hledger.svg "Open issues, all kinds.")](https://github.com/hledgerorg/hledger/issues?q=is:issue+state:open)
 
 Welcome! This is a brief intro to hledger. For a more detailed version, see the home page: **<https://hledger.org>**
 
@@ -33,7 +34,7 @@ More features:
 - Supports your preferred account names, currencies, number formats
 - Inspired by and partly compatible with Ledger CLI; interconvertible with Beancount
 - Scriptable by CLI, HTTP or API, with plenty of examples
-- Clean Haskell codebase, continually improved since 2007, with $100 regression bounties
+- Clean Haskell codebase, continually improved since 2007
 - Free software licensed under GNU General Public License v3.0 or later.
 
 ## Examples
@@ -109,6 +110,34 @@ Income Statement 2022-01-01..2022-02-28
 
 More examples and screenshots: <https://hledger.org/#how-to-get-started>
 
+## hledger 1.x and 2.x
+
+In 2026, the `master` branch was renamed to `hledger1`,
+and work began on hledger 2.x, now in the `main` branch.
+
+Some goals for 2.x:
+
+- continue and improve 1.x's reliability
+- provide excellent lot tracking and capital gains calculation
+- explore ethical use of AI as a dev tool
+- more cleanup and simplification of code, docs, process, finance
+- more speed
+- more interoperability
+- more use of jj for version management
+- easier contribution
+
+and for 1.x:
+
+- continued stability, installability
+- bugfix releases to fix newly discovered regressions, if any
+- preserve the non-AI-assisted codebase, and try to keep it that way
+
+Related:
+
+- [Thoughts on hledger 2 #2547](https://github.com/hledgerorg/hledger/issues/2547)
+- <https://hledger.org/AI.html>
+- <https://hledger.org/relnotes.html#2026-03-28-hledger-1991>
+
 ## Funding
 
 hledger is brought to you by
@@ -120,94 +149,24 @@ After enjoying some personal or organisational success with hledger,
 you might want to become one of them, to help support this work.
 It's easy! Please see <https://hledger.org/sponsor.html> for details.
 
-<!-- keep synced with sponsor.md: -->
-
-### Organisational sponsors
-
-<a href="https://opencollective.com/hledger/organization/0/website"><img src="https://opencollective.com/hledger/organization/0/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/1/website"><img src="https://opencollective.com/hledger/organization/1/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/2/website"><img src="https://opencollective.com/hledger/organization/2/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/3/website"><img src="https://opencollective.com/hledger/organization/3/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/4/website"><img src="https://opencollective.com/hledger/organization/4/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/5/website"><img src="https://opencollective.com/hledger/organization/5/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/6/website"><img src="https://opencollective.com/hledger/organization/6/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/7/website"><img src="https://opencollective.com/hledger/organization/7/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/8/website"><img src="https://opencollective.com/hledger/organization/8/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/9/website"><img src="https://opencollective.com/hledger/organization/9/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/10/website"><img src="https://opencollective.com/hledger/organization/10/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/11/website"><img src="https://opencollective.com/hledger/organization/11/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/12/website"><img src="https://opencollective.com/hledger/organization/12/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/13/website"><img src="https://opencollective.com/hledger/organization/13/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/14/website"><img src="https://opencollective.com/hledger/organization/14/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/15/website"><img src="https://opencollective.com/hledger/organization/15/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/16/website"><img src="https://opencollective.com/hledger/organization/16/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/17/website"><img src="https://opencollective.com/hledger/organization/17/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/18/website"><img src="https://opencollective.com/hledger/organization/18/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/19/website"><img src="https://opencollective.com/hledger/organization/19/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/20/website"><img src="https://opencollective.com/hledger/organization/20/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/21/website"><img src="https://opencollective.com/hledger/organization/21/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/22/website"><img src="https://opencollective.com/hledger/organization/22/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/23/website"><img src="https://opencollective.com/hledger/organization/23/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/24/website"><img src="https://opencollective.com/hledger/organization/24/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/25/website"><img src="https://opencollective.com/hledger/organization/25/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/26/website"><img src="https://opencollective.com/hledger/organization/26/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/27/website"><img src="https://opencollective.com/hledger/organization/27/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/28/website"><img src="https://opencollective.com/hledger/organization/28/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/29/website"><img src="https://opencollective.com/hledger/organization/29/avatar.svg?avatarHeight=200"></a>
-<a href="https://opencollective.com/hledger/organization/30/website"><img src="https://opencollective.com/hledger/organization/30/avatar.svg?avatarHeight=200"></a>
-
-### Individual sponsors
-
-<a href="https://opencollective.com/hledger/individual/0/website"><img src="https://opencollective.com/hledger/individual/0/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/1/website"><img src="https://opencollective.com/hledger/individual/1/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/2/website"><img src="https://opencollective.com/hledger/individual/2/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/3/website"><img src="https://opencollective.com/hledger/individual/3/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/4/website"><img src="https://opencollective.com/hledger/individual/4/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/5/website"><img src="https://opencollective.com/hledger/individual/5/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/6/website"><img src="https://opencollective.com/hledger/individual/6/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/7/website"><img src="https://opencollective.com/hledger/individual/7/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/8/website"><img src="https://opencollective.com/hledger/individual/8/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/9/website"><img src="https://opencollective.com/hledger/individual/9/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/10/website"><img src="https://opencollective.com/hledger/individual/10/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/11/website"><img src="https://opencollective.com/hledger/individual/11/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/12/website"><img src="https://opencollective.com/hledger/individual/12/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/13/website"><img src="https://opencollective.com/hledger/individual/13/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/14/website"><img src="https://opencollective.com/hledger/individual/14/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/15/website"><img src="https://opencollective.com/hledger/individual/15/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/16/website"><img src="https://opencollective.com/hledger/individual/16/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/17/website"><img src="https://opencollective.com/hledger/individual/17/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/18/website"><img src="https://opencollective.com/hledger/individual/18/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/19/website"><img src="https://opencollective.com/hledger/individual/19/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/20/website"><img src="https://opencollective.com/hledger/individual/20/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/21/website"><img src="https://opencollective.com/hledger/individual/21/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/22/website"><img src="https://opencollective.com/hledger/individual/22/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/23/website"><img src="https://opencollective.com/hledger/individual/23/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/24/website"><img src="https://opencollective.com/hledger/individual/24/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/25/website"><img src="https://opencollective.com/hledger/individual/25/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/26/website"><img src="https://opencollective.com/hledger/individual/26/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/27/website"><img src="https://opencollective.com/hledger/individual/27/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/28/website"><img src="https://opencollective.com/hledger/individual/28/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/29/website"><img src="https://opencollective.com/hledger/individual/29/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/30/website"><img src="https://opencollective.com/hledger/individual/30/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/31/website"><img src="https://opencollective.com/hledger/individual/31/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/32/website"><img src="https://opencollective.com/hledger/individual/32/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/33/website"><img src="https://opencollective.com/hledger/individual/33/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/34/website"><img src="https://opencollective.com/hledger/individual/34/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/35/website"><img src="https://opencollective.com/hledger/individual/35/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/36/website"><img src="https://opencollective.com/hledger/individual/36/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/37/website"><img src="https://opencollective.com/hledger/individual/37/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/38/website"><img src="https://opencollective.com/hledger/individual/38/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/39/website"><img src="https://opencollective.com/hledger/individual/39/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/40/website"><img src="https://opencollective.com/hledger/individual/40/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/41/website"><img src="https://opencollective.com/hledger/individual/41/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/42/website"><img src="https://opencollective.com/hledger/individual/42/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/43/website"><img src="https://opencollective.com/hledger/individual/43/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/44/website"><img src="https://opencollective.com/hledger/individual/44/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/45/website"><img src="https://opencollective.com/hledger/individual/45/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/46/website"><img src="https://opencollective.com/hledger/individual/46/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/47/website"><img src="https://opencollective.com/hledger/individual/47/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/48/website"><img src="https://opencollective.com/hledger/individual/48/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/49/website"><img src="https://opencollective.com/hledger/individual/49/avatar.svg?avatarHeight=100"></a>
-<a href="https://opencollective.com/hledger/individual/50/website"><img src="https://opencollective.com/hledger/individual/50/avatar.svg?avatarHeight=100"></a>
+<!-- SPONSOR AVATARS BEGIN (generated by update-sponsors.sh, do not edit) -->
+<a href="https://www.octoberswimmer.com" title="October Swimmer"><img src="https://images.opencollective.com/october-swimmer/487d631/logo/400.png" alt="October Swimmer" height="200"></a>
+<a href="https://writersperhour.com" title="Writers Per Hour"><img src="https://images.opencollective.com/writersperhour/033b80a/logo/400.png" alt="Writers Per Hour" height="135"></a>
+<a href="https://www.apmhelp.com" title="APM Help"><img src="https://images.opencollective.com/apmhelp/6d865c8/logo/400.png" alt="APM Help" height="117"></a>
+<a href="https://finmasters.com" title="FinMasters"><img src="https://images.opencollective.com/finmasters/22f821d/logo/400.png" alt="FinMasters" height="102"></a>
+<a href="https://opencollective.com/diasparsoft" title="Diaspar Software Services"><img src="https://images.opencollective.com/diasparsoft/logo/400.png" alt="Diaspar Software Services" height="88"></a>
+<a href="https://joyful.com" title="Joyful Systems"><img src="https://images.opencollective.com/joyfulsystems/d7ce8c3/logo/400.png" alt="Joyful Systems" height="79"></a>
+<br>
+<a href="https://www.olsensrevision.dk" title="Olsens Revision ApS"><img src="https://images.opencollective.com/olsensrevision/c629690/avatar/400.png" alt="Olsens Revision ApS" height="120"></a>
+<a href="https://opencollective.com/tony-xiao1" title="Tony Xiao"><img src="https://images.opencollective.com/tony-xiao1/a7aacdd/avatar/400.png" alt="Tony Xiao" height="75"></a>
+<a href="https://joyful.com/" title="Simon Michael"><img src="https://images.opencollective.com/simon/f44851a/avatar/400.png" alt="Simon Michael" height="74"></a>
+<a href="https://github.com/rhyanki" title="Rishi Hyanki"><img src="https://images.opencollective.com/rhyanki/avatar/400.png" alt="Rishi Hyanki" height="68"></a>
+<a href="https://twitter.com/b_barker" title="Brandon Barker"><img src="https://images.opencollective.com/brandonbarker/595022d/avatar/400.png" alt="Brandon Barker" height="66"></a>
+<a href="https://opencollective.com/jack-todaro" title="Jack Todaro"><img src="https://images.opencollective.com/jack-todaro/avatar/400.png" alt="Jack Todaro" height="66"></a>
+<a href="https://opencollective.com/richard-kelly" title="Richard Kelly"><img src="https://images.opencollective.com/richard-kelly/1b2c64c/avatar/400.png" alt="Richard Kelly" height="64"></a>
+<a href="https://opencollective.com/james-blachly" title="James Blachly"><img src="https://images.opencollective.com/james-blachly/ffc8288/avatar/400.png" alt="James Blachly" height="63"></a>
+<a href="https://opencollective.com/ken-ewing" title="Ken Ewing"><img src="https://images.opencollective.com/ken-ewing/b5ace9b/avatar/400.png" alt="Ken Ewing" height="62"></a>
+<a href="https://opencollective.com/marc11" title="Marc"><img src="https://images.opencollective.com/marc11/avatar/400.png" alt="Marc" height="60"></a>
+<!-- SPONSOR AVATARS END -->
 
 <!-- (If your logo/avatar isn't appearing here, eg because you didn't use Open Collective, please [let me know](mailto:webmaster@hledger.org).) -->

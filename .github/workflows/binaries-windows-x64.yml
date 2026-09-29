@@ -1,96 +1,104 @@
 # TRIGGER: Runs on any push to binaries-windows-x64 or binaries branches.
-# ACTION: Builds, unit-tests and saves windows x64 binaries with stack and the default ghc.
+# ACTION: Builds, unit-tests and saves windows x64 binaries with stack and the runner's default ghc.
+# (When that ghc is updated, the stack.yaml and ghcid below must be as well.)
 
 name: binaries-windows-x64
 on:
   push:
     branches: [ binaries-windows-x64, binaries ]
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: windows-latest
+      # arch:  x64
+      # image: 
+
     defaults:
       run:
         shell: bash
+
     env:
-      # use preinstalled ghc 9.12.2
-      stack: stack --system-ghc --no-install-ghc --stack-yaml stack912.yaml
+      # use preinstalled ghc. Keep these synced with whatever version that is:
+      ghcid: 9.14.1
+      stack: stack --system-ghc --no-install-ghc --stack-yaml stack.yaml
+
     steps:
 
     - name: Check out
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       # have to fetch everything for git describe for --version
       with: 
         fetch-depth: 0
 
-    # caching
+    # CACHES
 
     # Warning: Path Validation Error: Path(s) specified in the action for caching do(es) not exist, hence no cache is being saved.
     # - name: Cache - stack programs dir   # ghc, ghc-included packages and their haddocks, mingw, msys2
     #   id:   stack-programs-dir
-    #   uses: actions/cache@v4
+    #   uses: actions/cache@v6
     #   with:
     #     path: C:\Users\runneradmin\AppData\Local\Programs\stack\
     #     # which files signal a change in stack's global db ?
     #     # **.yaml includes */package.yaml and stack.yaml* (too many), and hopefully no other changing yamls
-    #     key: ${{ runner.os }}-appdata-local-programs-stack-${{ hashFiles('**.yaml') }}
+    #     key: ${{ runner.os }}-x64-appdata-local-programs-stack-${{ hashFiles('**.yaml') }}
     #     restore-keys: |
-    #          ${{ runner.os }}-appdata-local-programs-stack
+    #          ${{ runner.os }}-x64-appdata-local-programs-stack
 
     - name: Cache - stack global dir
       id:   stack-global-package-db
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: C:\Users\runneradmin\AppData\Roaming\stack\
-        key: ${{ runner.os }}-appdata-roaming-stack-${{ hashFiles('**.yaml') }}
+        key: ${{ runner.os }}-x64-appdata-roaming-stack-${{ env.ghcid }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-appdata-roaming-stack
+             ${{ runner.os }}-x64-appdata-roaming-stack-${{ env.ghcid }}
 
     - name: Cache - ./.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: .stack-work
-        key: ${{ runner.os }}-stack-work-${{ hashFiles('**.yaml') }}
+        key: ${{ runner.os }}-x64-stack-work-${{ env.ghcid }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-stack-work
+             ${{ runner.os }}-x64-stack-work-${{ env.ghcid }}
 
     - name: Cache - hledger-lib/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-lib/.stack-work
-        key: ${{ runner.os }}-hledger-lib-stack-work-${{ hashFiles('hledger-lib/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-lib-stack-work-${{ env.ghcid }}-${{ hashFiles('hledger-lib/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-hledger-lib-stack-work
+             ${{ runner.os }}-x64-hledger-lib-stack-work-${{ env.ghcid }}
 
     - name: Cache - hledger/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger/.stack-work
-        key: ${{ runner.os }}-hledger-stack-work-${{ hashFiles('hledger/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-stack-work-${{ env.ghcid }}-${{ hashFiles('hledger/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-hledger-stack-work
+             ${{ runner.os }}-x64-hledger-stack-work-${{ env.ghcid }}
 
     - name: Cache - hledger-ui/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-ui/.stack-work
-        key: ${{ runner.os }}-hledger-ui-stack-work-${{ hashFiles('hledger-ui/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-ui-stack-work-${{ env.ghcid }}-${{ hashFiles('hledger-ui/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-hledger-ui-stack-work
+             ${{ runner.os }}-x64-hledger-ui-stack-work-${{ env.ghcid }}
 
     - name: Cache - hledger-web/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-web/.stack-work
-        key: ${{ runner.os }}-hledger-web-stack-work-${{ hashFiles('hledger-web/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-web-stack-work-${{ env.ghcid }}-${{ hashFiles('hledger-web/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-hledger-web-stack-work
+             ${{ runner.os }}-x64-hledger-web-stack-work-${{ env.ghcid }}
 
     # actions
 
     - name: Install haskell deps
       run: |
-        $stack build --test --only-dependencies --verbosity=error
+        $stack build --test --only-dependencies
 
     - name: List dep versions
       run: |
@@ -121,7 +129,7 @@ jobs:
       # cp hledger/shell-completion/hledger-completion.bash tmp
              
     - name: Create binaries artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: hledger-windows-x64
         path: |

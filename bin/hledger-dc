@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# hledger-dc JOURNALFILE CMD [ARGS]
+#  run a hledger command on a journal file which also supports Dr/Cr before the account name,
+#  instead of/in addition to amount signs.
+
+# If a posting begins with Dr<WHITESPACE>, remove that.
+# If it begins with Cr<WHITESPACE> and contains no number, remove that.
+# If it begins with Cr<WHITESPACE>, remove that and add a minus sign before the next number, and if that leaves a double minus, cancel those out.
+dc2sign() { sed -E -e 's/^(\s+)Dr\s+/\1/i' -e 's/^(\s+)Cr\s+([^0-9]+)$/\1\2/i' -e 's/^(\s+)Cr\s+([^0-9]+)([0-9])/\1\2-\3/i' -e 's/--([0-9])/\1/'; }
+# Or with a two space delimiter after Dr/Cr, allowing account names like "Dr Michael:checkup":
+#dc2sign() { sed -E -e 's/^(\s+)Dr\s\s+/\1/i' -e 's/^(\s+)Cr\s\s+([^0-9]+)$/\1\2/i' -e 's/^(\s+)Cr\s\s+([^0-9]+)([0-9])/\1\2-\3/i' -e 's/--([0-9])/\1/'; }
+
+dc2sign <"$1" | hledger -f- "${@:2}"
+
+
+# Example:
+#
+# $ cat sample.journaldc 
+# 2025-01-01 salary
+#     Cr revenues            800 USD
+#     Dr assets
+#
+# $ hledger -f sample.journaldc print
+# 2025-01-01 salary
+#     Cr revenues         800 USD
+#     Dr assets
+#
+# $ hledger dc sample.journaldc print
+# 2025-01-01 salary
+#     revenues        -800 USD
+#     assets
+
+# Dev notes:
+# This is syntactic sugar. 
+# If useful, it should be possible to add this to journal format without too much breakage.
+#
+# Showing debits/credits separately in output, with a --dc flag, is more work.
+# It could be prototyped as a single new report, eg an addon script providing variant of the simple balance report. 
+# I think both the report calculation and display code would need to change, to sum and show the positive amounts and negative amounts separately.
+# It would be a nice feature: offering a more traditional view of things, and reducing sign vs dc doubts.
+# "In France, you have to use a debit and a credit column, and can't use the positive/negative notation."
+# Would it provide any real new error checking power ? I'm not sure.
+# See also https://github.com/hledgerorg/hledger/issues/71.

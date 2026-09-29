@@ -1,13 +1,13 @@
 name:          hledger-lib
-version: 1.43.99
+version: 1.99
 license:       GPL-3.0-or-later
 maintainer:    Simon Michael <simon@joyful.com>
 author:        Simon Michael <simon@joyful.com>
 stability:     stable
-tested-with:   ghc==8.10.7, ghc==9.0.2, ghc==9.2.8, ghc==9.4.8, ghc==9.6.7, ghc==9.8.4, ghc==9.10.2, ghc==9.12.1
+tested-with:   ghc==9.6.7, ghc==9.8.4, ghc==9.10.3, ghc==9.12.4, ghc==9.14.1
 homepage:      http://hledger.org
 bug-reports:   http://bugs.hledger.org
-github:        simonmichael/hledger
+github:        hledgerorg/hledger
 category:      Finance
 synopsis:      A library providing the core functionality of hledger
 description: |
@@ -32,12 +32,13 @@ description: |
 extra-source-files:
 - CHANGES.md
 - README.md
+- locale/de.po
 - test/unittest.hs
 - test/doctests.hs
 
 flags:
   debug:
-    description: Build with GHC 9.10+'s stack traces enabled
+    description: Build with GHC 9.10+ stack traces enabled
     default: false
     manual:  true
 #  ghcdebug:
@@ -46,8 +47,8 @@ flags:
 #    manual:  true
 
 dependencies:
-- base >=4.14 && <4.22
-- aeson >=1 && <2.3
+- base >=4.18 && <4.23
+- aeson >=2.2.5.1 && <2.4  # avoid https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html
 - aeson-pretty
 - ansi-terminal >=0.9
 - array
@@ -64,27 +65,29 @@ dependencies:
 - deepseq
 - Decimal >=0.5.1
 - directory >=1.2.6.1
-- doclayout >=0.3 && <0.6
+- doclayout >=0.3 && <0.7
 - encoding >=0.10
 - file-embed >=0.0.10
 - filepath
-- hashtables >=1.2.3.1
-- lucid
-- megaparsec >=7.0.0 && <9.8
+- hashtables >=1.2.3.1 && <1.3 || >=1.4.0
+- megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9   # avoid https://github.com/mrkkrp/megaparsec/issues/572; 9.8.3+ is ~10% faster (#612)
 - microlens >=0.4
 - microlens-th >=0.4
 - mtl >=2.2.1
 - parser-combinators >=0.4.0
-- pretty-simple >4 && <5
+- pretty-simple >=4 && <5
 - process
 - regex-tdfa
 - safe >=0.3.20
+- safe-exceptions
 - tabular >=0.2
 - tasty >=1.2.3
 - tasty-hunit >=0.10.0.2
 - template-haskell
+- temporary
 - terminal-size >=0.3.3
 - text >=1.2.4.1
+- these >=1.0.0
 - time >=1.5
 - timeit
 - transformers >=0.2
@@ -93,6 +96,10 @@ dependencies:
 - utf8-string >=0.3.5
 - extra >=1.7.11
 - Glob >= 0.9
+
+cpp-options: -DVERSION="1.99"
+
+language: GHC2021
 
 ghc-options:
 - -Wall
@@ -103,83 +110,84 @@ ghc-options:
 - -Wno-unused-do-bind
 
 when:
+
 - condition: (flag(debug))
   cpp-options: -DDEBUG
+
 # - condition: (flag(ghcdebug))
 #   cpp-options: -DGHCDEBUG
 #   dependencies:
 #   - ghc-debug-stub >=0.6.0.0 && <0.7
 
 library:
-  exposed-modules:
-  - Hledger
-  - Hledger.Data
-  - Hledger.Data.Account
-  - Hledger.Data.AccountName
-  - Hledger.Data.Amount
-  - Hledger.Data.Balancing
-  - Hledger.Data.Currency
-  - Hledger.Data.Dates
-  - Hledger.Data.Errors
-  - Hledger.Data.Journal
-  - Hledger.Data.JournalChecks
-  - Hledger.Data.JournalChecks.Ordereddates
-  - Hledger.Data.JournalChecks.Uniqueleafnames
-  - Hledger.Data.Json
-  - Hledger.Data.Ledger
-  - Hledger.Data.Period
-  - Hledger.Data.PeriodicTransaction
-  - Hledger.Data.StringFormat
-  - Hledger.Data.Posting
-  - Hledger.Data.RawOptions
-  - Hledger.Data.Timeclock
-  - Hledger.Data.Transaction
-  - Hledger.Data.TransactionModifier
-  - Hledger.Data.Types
-  - Hledger.Data.Valuation
-  - Hledger.Query
-  - Hledger.Read
-  - Hledger.Read.Common
-  - Hledger.Read.CsvReader
-  - Hledger.Read.InputOptions
-  - Hledger.Read.JournalReader
-  - Hledger.Read.RulesReader
-#  - Hledger.Read.LedgerReader
-  - Hledger.Read.TimedotReader
-  - Hledger.Read.TimeclockReader
-  - Hledger.Write.Beancount
-  - Hledger.Write.Csv
-  - Hledger.Write.Ods
-  - Hledger.Write.Html
-  - Hledger.Write.Html.Attribute
-  - Hledger.Write.Html.Blaze
-  - Hledger.Write.Html.Lucid
-  - Hledger.Write.Html.HtmlCommon
-  - Hledger.Write.Spreadsheet
-  - Hledger.Reports
-  - Hledger.Reports.ReportOptions
-  - Hledger.Reports.ReportTypes
-  - Hledger.Reports.AccountTransactionsReport
-  - Hledger.Reports.BalanceReport
-  - Hledger.Reports.BudgetReport
-  - Hledger.Reports.EntriesReport
-  - Hledger.Reports.MultiBalanceReport
-  - Hledger.Reports.PostingsReport
-  - Hledger.Utils
-  - Hledger.Utils.Debug
-  - Hledger.Utils.IO
-  - Hledger.Utils.Parse
-  - Hledger.Utils.Regex
-  - Hledger.Utils.String
-  - Hledger.Utils.Test
-  - Hledger.Utils.Text
-  - Text.Tabular.AsciiWide
-  - Text.WideString
-#  other-modules:
-#  - Ledger.Parser.Text
-  source-dirs: 
-  #- other/ledger-parse
-  - .
+  source-dirs: .
+  # default: All modules in source-dirs less other-modules less modules mentioned in when
+  # exposed-modules:
+  # - Hledger
+  # - Hledger.Data
+  # - Hledger.Data.Account
+  # - Hledger.Data.AccountName
+  # - Hledger.Data.AccountType
+  # - Hledger.Data.Amount
+  # - Hledger.Data.BalanceData
+  # - Hledger.Data.Balancing
+  # - Hledger.Data.Currency
+  # - Hledger.Data.Dates
+  # - Hledger.Data.Errors
+  # - Hledger.Data.Journal
+  # - Hledger.Data.JournalChecks
+  # - Hledger.Data.JournalChecks.Ordereddates
+  # - Hledger.Data.JournalChecks.Uniqueleafnames
+  # - Hledger.Data.Json
+  # - Hledger.Data.Ledger
+  # - Hledger.Data.Lots
+  # - Hledger.Data.Period
+  # - Hledger.Data.PeriodData
+  # - Hledger.Data.PeriodicTransaction
+  # - Hledger.Data.Posting
+  # - Hledger.Data.RawOptions
+  # - Hledger.Data.StringFormat
+  # - Hledger.Data.Timeclock
+  # - Hledger.Data.Transaction
+  # - Hledger.Data.TransactionModifier
+  # - Hledger.Data.Types
+  # - Hledger.Data.Valuation
+  # - Hledger.Query
+  # - Hledger.Read
+  # - Hledger.Read.Common
+  # - Hledger.Read.CsvReader
+  # - Hledger.Read.InputOptions
+  # - Hledger.Read.JournalReader
+  # - Hledger.Read.RulesReader
+  # - Hledger.Read.TimedotReader
+  # - Hledger.Read.TimeclockReader
+  # - Hledger.Write.Beancount
+  # - Hledger.Write.Csv
+  # - Hledger.Write.Journal
+  # - Hledger.Write.Ledger
+  # - Hledger.Write.Ods
+  # - Hledger.Write.Html
+  # - Hledger.Write.Html.Attribute
+  # - Hledger.Write.Spreadsheet
+  # - Hledger.Reports
+  # - Hledger.Reports.ReportOptions
+  # - Hledger.Reports.ReportTypes
+  # - Hledger.Reports.AccountTransactionsReport
+  # - Hledger.Reports.BalanceReport
+  # - Hledger.Reports.BudgetReport
+  # - Hledger.Reports.EntriesReport
+  # - Hledger.Reports.MultiBalanceReport
+  # - Hledger.Reports.PostingsReport
+  # - Hledger.Utils
+  # - Hledger.Utils.Debug
+  # - Hledger.Utils.IO
+  # - Hledger.Utils.Parse
+  # - Hledger.Utils.Regex
+  # - Hledger.Utils.String
+  # - Hledger.Utils.Test
+  # - Hledger.Utils.Text
+  # - Text.Tabular.AsciiWide
+  # - Text.WideString
 
 
 # "cabal test hledger-lib" currently fails, see doctest suite below
@@ -193,30 +201,12 @@ tests:
     dependencies:
     - hledger-lib
 
-  # Note when run by cabal, doctest requires a ghc environment file,
-  # so we ensure this is generated, see cabal.project.
-  # https://github.com/simonmichael/hledger/issues/1139
+  # cabal users: when run by cabal, doctest requires a ghc environment file, so cabal.project ensures that
+  # https://github.com/hledgerorg/hledger/issues/1139
   doctest:
     source-dirs: test
     main: doctests.hs  # can't call it doctest.hs ("File name does not match module name")
     other-modules: []  # prevent double compilation, https://github.com/sol/hpack/issues/188
     dependencies:
-    # prefer the latest doctest
     - doctest >=0.18.1
     - Glob >=0.7
-
-    when:
-    # disable doctest with GHC 9.0, https://github.com/sol/doctest/issues/301
-    - condition: impl(ghc >= 9.0) && impl(ghc < 9.2)
-      buildable: false
-
-    # ghc 8.4+ on mac needs this workaround. See
-    # https://github.com/sol/doctest/issues/199
-    # https://ghc.haskell.org/trac/ghc/ticket/15105#comment:10 :
-    #  ~$ locate HSinteger-gmp-1.0.2.0.o
-    #  /Users/simon/.stack/programs/x86_64-osx/ghc-8.4.3/lib/ghc-8.4.2/integer-gmp-1.0.2.0/HSinteger-gmp-1.0.2.0.o
-    #  ~$ mv /Users/simon/.stack/programs/x86_64-osx/ghc-8.4.3/lib/ghc-8.4.2/integer-gmp-1.0.2.0/HSinteger-gmp-1.0.2.0.o{,_DISABLE_GHC_ISSUE_15105}
-    # Should probably disable it by default:
-    #when:
-    # - condition: os(darwin) && impl(ghc >= 8.4)
-    #   buildable: false

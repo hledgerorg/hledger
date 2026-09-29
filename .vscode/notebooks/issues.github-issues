@@ -12,7 +12,7 @@
   {
     "kind": 2,
     "language": "github-issues",
-    "value": "$repo=repo:simonmichael/hledger\n$repo is:open sort:created-desc"
+    "value": "$repo=repo:hledgerorg/hledger\n$repo is:open sort:created-desc"
   },
   {
     "kind": 1,
@@ -22,7 +22,7 @@
   {
     "kind": 2,
     "language": "github-issues",
-    "value": "repo:simonmichael/hledger_site is:open sort:created-desc"
+    "value": "repo:hledgerorg/hledger_site is:open sort:created-desc"
   },
   {
     "kind": 1,
@@ -32,7 +32,7 @@
   {
     "kind": 2,
     "language": "github-issues",
-    "value": "repo:simonmichael/hledger_finance is:open sort:created-desc"
+    "value": "repo:hledgerorg/hledger_finance is:open sort:created-desc"
   },
   {
     "kind": 1,
@@ -42,7 +42,7 @@
   {
     "kind": 2,
     "language": "github-issues",
-    "value": "-repo:simonmichael/hledger -repo:simonmichael/hledger_site -repo:simonmichael/hledger_finance hledger is:open sort:created-desc"
+    "value": "-repo:hledgerorg/hledger -repo:hledgerorg/hledger_site -repo:hledgerorg/hledger_finance hledger is:open sort:created-desc"
   },
   {
     "kind": 1,
@@ -52,6 +52,6 @@
   {
     "kind": 2,
     "language": "github-issues",
-    "value": "-repo:simonmichael/hledger -repo:simonmichael/hledger_site -repo:simonmichael/hledger_finance plaintextaccounting -hledger -repo:commercialhaskell/stack is:open sort:created-desc"
+    "value": "-repo:hledgerorg/hledger -repo:hledgerorg/hledger_site -repo:hledgerorg/hledger_finance plaintextaccounting -hledger -repo:commercialhaskell/stack is:open sort:created-desc"
   }
 ]

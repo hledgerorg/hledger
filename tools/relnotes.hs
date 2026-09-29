@@ -1,5 +1,5 @@
 #!/usr/bin/env stack
-{- stack script --resolver nightly-2025-04-01 --compile
+{- stack script --resolver nightly-2026-06-01 --compile
 --package process
 --package split
 -}
@@ -32,10 +32,12 @@ merge md-issue-refs
 
 {-# OPTIONS_GHC -Wno-x-partial #-}
 
+import Control.Exception.Backtrace (setBacktraceMechanismState, BacktraceMechanism(..))
 import Control.Monad
 import Data.Char
 import Data.List
 import Data.List.Split
+import Debug.Trace
 import System.Exit
 import System.IO
 import System.Process
@@ -45,15 +47,18 @@ strToVer = splitOn "."
 verToStr = intercalate "."
 
 main = do
+  setBacktraceMechanismState HasCallStackBacktrace False
   -- gather latest release changes & info
-  (projectChangesHeading, projectChanges)       <- changelogFirstSection <$> readFile "CHANGES.md"
+  (projectChangesHeading, projectChanges)       <- changelogFirstSection <$> readFile "doc/CHANGES.md"
   (hledgerChangesHeading, hledgerChanges)       <- changelogFirstSection <$> readFile "hledger/CHANGES.md"
   (hledgerUiChangesHeading, hledgerUiChanges)   <- changelogFirstSection <$> readFile "hledger-ui/CHANGES.md"
   (hledgerWebChangesHeading, hledgerWebChanges) <- changelogFirstSection <$> readFile "hledger-web/CHANGES.md"
   reltags <- lines <$> readProcess "git" ["tag", "--sort=-creatordate", "-l", "[0-9]*"] ""
   printf $ "previous release tags: " <> unwords (take 5 reltags) <> " ...\n"
   let
-    [_, ver, date] = words projectChangesHeading
+    (ver, date) = case words projectChangesHeading of
+      [_,v,d] -> (v,d)
+      _ -> errorWithoutStackTrace $ "error: expected a release heading, found: " <> projectChangesHeading
     verexists = ver `elem` reltags
   printf $ "project CHANGES.md's top heading: " <> projectChangesHeading
   printf $ "inferred latest release version and date: " <> intercalate ", " [ver, date] <> "\n"
@@ -61,9 +66,8 @@ main = do
   let prevvers =
         map verToStr $ dropWhile (>=strToVer ver) $ map strToVer $ reltags
   printf $ "releases before this one: " <> unwords (take 5 prevvers) <> " ...\n"
-  when (null prevvers) $ do
-    printf $ "error: no previous releases found. This expects to run before new release headings are added to changelogs\n"
-    exitFailure
+  when (null prevvers) $
+    errorWithoutStackTrace "error: no previous releases found. This expects to run before new release headings are added to changelogs\n"
   let prevver = head prevvers
   printf $ "previous release: " <> prevver <> "\n"
   relauthors <- map (unwords . drop 1 . words) . lines <$> readProcess "git" ["shortlog", "-sn", prevver<>".."<>if verexists then ver else ""] ""
@@ -71,12 +75,14 @@ main = do
 
   -- convert to release notes format
   let
+    -- if there are markdown sub-headings in the changelog, demote them by two levels to fit in the usual relnots structure
+    demote = demoteHeadings 2
     newrelnotesheading = printf "## %s hledger-%s\n" date ver
     newrelnotesbody = intercalate "\n\n" [
-      changelogHeadingToRelnotesHeading "hledger" hledgerChangesHeading,        hledgerChanges,
-      changelogHeadingToRelnotesHeading "hledger-ui" hledgerUiChangesHeading,   hledgerUiChanges,
-      changelogHeadingToRelnotesHeading "hledger-web" hledgerWebChangesHeading, hledgerWebChanges,
-      "### project changes " <> ver <> "\n",                                    projectChanges,
+      changelogHeadingToRelnotesHeading "hledger" hledgerChangesHeading,        demote hledgerChanges,
+      changelogHeadingToRelnotesHeading "hledger-ui" hledgerUiChangesHeading,   demote hledgerUiChanges,
+      changelogHeadingToRelnotesHeading "hledger-web" hledgerWebChangesHeading, demote hledgerWebChanges,
+      "### project changes " <> ver <> "\n",                                    demote projectChanges,
       "### credits " <> ver <> "\n",                                            intercalate ",\n" relauthors <> ".\n"
       ] <> "\n\n"
 
@@ -119,6 +125,15 @@ relnotesSections alltext = (unlines preamble, firstsectionver, firstsectionhighl
     (firstsectionls, restls) = span (not.isReleaseHeading) ls3
     firstsectionbody = unlines $ firstsectionheading : firstsectionls
     rest = unlines restls
+
+-- Prepend n '#'s to every ATX-style markdown heading line (one or more
+-- leading '#'s followed by a space). Demotes # -> #+n, ## -> ##+n, etc.
+demoteHeadings :: Int -> String -> String
+demoteHeadings n = unlines . map demote . lines
+  where
+    demote s = case span (=='#') s of
+      (hs@(_:_), ' ':_) -> replicate n '#' <> s
+      _                 -> s
 
 unlines' = intercalate "\n"
 

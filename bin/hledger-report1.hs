@@ -1,14 +1,15 @@
 #!/usr/bin/env stack
 -- stack runghc --verbosity error --package hledger --package hledger-lib --package text --package safe 
 -- (use the local hledger source)
--- -- stack script --compile --resolver nightly-2025-04-01 --verbosity info --package hledger --package text
+-- -- stack script --compile --resolver nightly-2026-06-01 --verbosity info --package hledger --package text
 -- -- (use a released hledger from stackage)
 
 -- A custom compound report - like incomestatement but with different,
 -- customisable subheadings/subreports. More verbose and haskelly than
 -- hledger-report1.sh but also more robust and powerful.
 
-{-# LANGUAGE OverloadedStrings, PackageImports #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 
 import Hledger.Cli.Script
 import qualified "text" Data.Text as T
@@ -23,7 +24,7 @@ cmdmode = hledgerCommandMode (unlines
 
 main = do
   opts@CliOpts{reportspec_=rspec} <- getHledgerCliOpts cmdmode
-  withJournalDo opts $ flip compoundBalanceCommand opts $
+  withJournal opts $ flip compoundBalanceCommand opts $
 
     -- see https://hackage.haskell.org/package/hledger/docs/Hledger-Cli-CompoundBalanceCommand.html
     -- and https://hackage.haskell.org/package/hledger-lib-1.31/docs/Hledger-Query.html

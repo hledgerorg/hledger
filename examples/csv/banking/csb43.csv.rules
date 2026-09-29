@@ -1,0 +1,16 @@
+# csb43.csv.rules
+# Rules for csb2format -f csv "${CSV_FILE}" - from https://pypi.org/project/csb43/
+# (Herramientas para leer y validar datos almacenados siguiendo la norma 43 del Consejo Superior Bancario (CSB) / Asociación Española de Banca (CSB),
+# Spanish standard norm 43 by the 'Consejo Superior Bancario' (CSB) / 'Asociación Española de Banca' (AEB) for storing bank account transactions.)
+
+# Skip header
+skip 1
+
+# Change to your taste
+account1 assets:bank:csb43
+
+# These appear to be the useful columns for hledger
+fields _,_,_,_,_,_,currency,_,_,_,_,_,_,_,_,_,_,_,_,item1,item2,reference1,reference2,date,_,amount,_,_
+
+# Merge items for the description
+description %item1 %item2 %reference1 %reference2

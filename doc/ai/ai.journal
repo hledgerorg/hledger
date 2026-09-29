@@ -1,0 +1,133 @@
+# Rough monthly estimates of AI usage by the hledger project.
+# See ../AI.md and `just h ai-`.
+# YYYY-MM-01 is an estimate for usage in YYYY-MM.
+
+include commodities.journal
+account ai
+
+2026-01-01 sm
+    (ai)                                         771 t
+
+2026-02-01 sm
+    (ai)                                          53 kt
+
+2026-03-01 sm
+    (ai)                                         112 kt
+
+2026-04-01 sm
+    (ai)                                         687 kt
+
+2026-04-01 adamsardo | #2582
+    (ai)                                          20 kt  ; provider:openai, model:codex, time:2-3h interactive
+
+2026-05-01 sm
+    (ai)                                           2.2 Mt
+
+2026-06-01 sm
+    (ai)                                           1.3 Mt
+
+2026-07-01 sm
+    (ai)                                           2.8 Mt
+
+2026-08-03 sm | research (core dev stats, github organisation, hledger username)
+    (ai)                                         105 kt
+
+2026-08-24 sm | 2697 review
+    (ai)                                          35 kt
+
+2026-08-24 sm | 2698 CVE review, research, testing, planning
+    (ai)                                         200 kt
+
+2026-08-24 sm | 1.52.2 release
+    (ai)                                         120 kt
+
+2026-08-27 sm | review, research, build issues, 1.52.3 release, disclosure, gh releases cleanup, branch syncing
+    (ai)                                         320 kt
+
+2026-08-28 sm | branch syncing, deps repair
+    (ai)                                         35 kt
+
+2026-09-04 sm | doc updates, misc
+    (ai)                                         25 kt
+
+2026-09-05 sm | doc updates, changelogs process
+    (ai)                                         20 kt
+
+2026-09-06 sm | 2720 review
+    (ai)                                         30 kt
+
+2026-09-08 sm | repl testing
+    (ai)                                         10 kt
+
+2026-09-09 sm | research, changelogs
+    (ai)                                         20 kt
+
+2026-09-10 sm | docs
+    (ai)                                         10 kt
+
+2026-09-10 sm | 2691 review
+    (ai)                                         45 kt
+
+2026-09-10 sm | tools support
+    (ai)                                         2 kt
+
+2026-09-10 sm | 1.52.4 release, process
+    (ai)                                         100 kt
+
+2026-09-10 sm | 1.99.4 release, process
+    (ai)                                         60 kt
+
+2026-09-12 sm | tools research
+    (ai)                                          10 kt
+
+2026-09-12 sm | lots testing
+    (ai)                                          40 kt
+
+2026-09-16 sm | research
+    (ai)                                          90 kt
+
+2026-09-17 sm | issue analysis
+    (ai)                                          10 kt
+
+2026-09-19 sm | tools troubleshooting, docs analysis
+    (ai)                                         100 kt
+
+2026-09-19 sm | insights report, pr review, tool support
+    (ai)                                         65 kt
+
+2026-09-21 sm | research
+    (ai)                                         42 kt
+
+2026-09-22 sm | git cleanup
+    (ai)                                         40 kt
+
+2026-09-23 sm | megaparsec regression investigation, upstream issue 612
+    (ai)                                         102 kt
+
+
+2026-09-24 sm | commit message rewording, jj and ssh signing setup, stats timing checks
+    (ai)                                         82 kt
+
+2026-09-24 sm | research
+    (ai)                                         80 kt
+
+2026-09-25 sm | debugging
+    (ai)                                         9 kt
+
+2026-09-25 sm | megaparsec PR #613, speedup measurement
+    (ai)                                         25 kt
+
+2026-09-25 sm | real-world journal performance analysis
+    (ai)                                         44 kt
+
+2026-09-25 sm | fast path hit-rate report design
+    (ai)                                         9 kt
+
+2026-09-25 sm | misc (setup and cli fixes, discussion)
+    (ai)                                         20 kt
+
+2026-09-26 sm | ghci vs compiled stats speed check
+    (ai)                                         9 kt
+
+2026-09-26 sm | jjui#751 vscode repro
+    (ai)                                         14 kt

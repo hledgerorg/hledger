@@ -1,4 +1,4 @@
-This is hledger-web.info, produced by makeinfo version 7.2 from stdin.
+This is hledger-web.info, produced by makeinfo version 7.3 from stdin.
 
 INFO-DIR-SECTION User Applications
 START-INFO-DIR-ENTRY
@@ -16,10 +16,10 @@ plain text accounting app.
 
    'hledger-web [OPTS] [QUERY]'
 or
-'hledger web -- [OPTS] [QUERY]'
+'hledger web [OPTS] [QUERY]'
 
-   This manual is for hledger's web interface, version 1.43.99.  See
-also the hledger manual for common concepts and file formats.
+   This manual is for hledger's web interface, version 1.99.  See also
+the hledger manual for common concepts and file formats.
 
    hledger is a robust, user-friendly, cross-platform set of programs
 for tracking money, time, or any other commodity, using double-entry
@@ -34,10 +34,10 @@ register, balance charts) and allowing history-aware data entry,
 interactive searching, and bookmarking.
 
    hledger-web also lets you share a journal with multiple users, or
-even the public web.  There is no access control, so if you need that
-you should put it behind a suitable web proxy.  As a small protection
-against data loss when running an unprotected instance, it writes a
-numbered backup of the main journal file (only) on every edit.
+even the public web.  There is no user authentication, so if you need
+that you should put it behind a suitable web proxy.  As a small
+protection against data loss when running an unprotected instance, it
+writes a numbered backup of the main journal file (only) on every edit.
 
    Like hledger, it reads from (and appends to) a journal file specified
 by the 'LEDGER_FILE' environment variable (defaulting to
@@ -49,8 +49,8 @@ with a date field.  (See hledger(1) -> Input for details.)
 
    * '--serve-browse' mode (the default): the app serves the web UI and
      JSON API, and opens your default web browser to show the app if
-     possible, and exits automatically after two minutes of inactivity
-     (with no requests received and no open browser windows viewing it).
+     possible, and exits automatically once no browser window has shown
+     it for two minutes.
 
    * '--serve': the app just serves the web UI and JSON API.
 
@@ -62,8 +62,10 @@ requests to stdout.
 * Menu:
 
 * OPTIONS::
+* WEB UI::
 * PERMISSIONS::
 * EDITING UPLOADING DOWNLOADING::
+* BALANCE REPORTS::
 * RELOADING::
 * JSON API::
 * DEBUG OUTPUT::
@@ -71,7 +73,7 @@ requests to stdout.
 * BUGS::
 
 
-File: hledger-web.info,  Node: OPTIONS,  Next: PERMISSIONS,  Prev: Top,  Up: Top
+File: hledger-web.info,  Node: OPTIONS,  Next: WEB UI,  Prev: Top,  Up: Top
 
 1 OPTIONS
 *********
@@ -83,31 +85,36 @@ Flags:
      --serve-api            like --serve, but serve only the JSON web API,
                             not the web UI
      --allow=view|add|edit  set the user's access level for changing data
-                            (default: `add`). It also accepts `sandstorm` for
-                            use on that platform (reads permissions from the
-                            `X-Sandstorm-Permissions` request header).
+                            (default: `add` on a local-only address, `view`
+                            otherwise). It also accepts `sandstorm` for that
+                            platform (reads from the `X-Sandstorm-Permissions`
+                            request header).
      --cors=ORIGIN          allow cross-origin requests from the specified
                             origin; setting ORIGIN to "*" allows requests from
                             any origin
      --host=IPADDR          listen on this IP address (default: 127.0.0.1)
-     --port=PORT            listen on this TCP port (default: 5000)
+     --port=PORT            listen on this TCP port (default: 5000); 0 means
+                            a free port chosen by the OS
      --socket=SOCKET        listen on the given unix socket instead of an IP
                             address and port (unix only; implies --serve)
      --base-url=BASEURL     set the base url (default: http://IPADDR:PORT)
      --test                 run hledger-web's tests and exit. hspec test
                             runner args may follow a --, eg: hledger-web --test
-                            -- --help
+                            --help
 
    By default hledger-web listens only on IP address '127.0.0.1', which
-be accessed only from the local machine.
+can be accessed only from the local machine.
 
    To allow access from elsewhere, use '--host' to specify an externally
-accessible address configured on this machine, The special address
+accessible address configured on this machine.  The special address
 '0.0.0.0' causes it to listen on all of this machine's addresses.
 
    Similarly, you can use '--port' to listen on a TCP port other than
 5000.  This is useful if you want to run multiple hledger-web instances
-on a machine.
+on a machine.  '--port 0' makes the operating system choose a free port,
+which is reported in the startup message and in the default base url,
+and is where the browser is opened in '--serve-browse' mode.  This can
+be useful eg when scripting.
 
    When '--socket' is used, hledger-web creates and communicates via a
 socket file instead of a TCP port.  This can be more secure, respects
@@ -124,11 +131,15 @@ but not route parsing.
 
    hledger-web also supports many of hledger's general options:
 
-General input/data transformation flags:
-  -f --file=[FMT:]FILE      Read data from FILE, or from stdin if FILE is -,
-                            inferring format from extension or a FMT: prefix.
-                            Can be specified more than once. If not specified,
-                            reads from $LEDGER_FILE or $HOME/.hledger.journal.
+General input flags:
+  -f --file=[FMT:]FILE      Use this as the journal file (- means stdin). If
+                            not specified, $LEDGER_FILE or ~/.hledger.journal
+                            will be used. If specified more than once, the
+                            files will be read in order. Each file's format
+                            (journal, csv, timeclock, timedot, rules..) is
+                            inferred from the file extension or a FMT: prefix.
+                            Some commands (add, import) write to the (first)
+                            file, and expect it to be in journal format.
      --rules=RULESFILE      Use rules defined in this rules file for
                             converting subsequent CSV/SSV/TSV files. If not
                             specified, uses FILE.csv.rules for each FILE.csv.
@@ -143,24 +154,28 @@ General input/data transformation flags:
                             will also be applied to these transactions. In
                             hledger-ui, also make future-dated transactions
                             visible at startup.
-  -I --ignore-assertions    don't check balance assertions by default
-     --infer-costs          infer conversion equity postings from costs
-     --infer-equity         infer costs from conversion equity postings
+     --ignore-assertions    don't check balance assertions by default
+     --ignore-lots          don't do lot tracking or checking by default
+  -I                        shortcut for --ignore-assertions --ignore-lots
+     --txn-balancing=...    how to check that transactions are balanced:
+                            'old':   - use global display precision
+                            'exact': - use transaction precision (default)
+     --infer-costs          infer costs from conversion equity postings
+     --infer-equity         infer conversion equity postings from costs
      --infer-market-prices  infer market prices from costs
      --pivot=TAGNAME        use a different field or tag as account names
   -s --strict               do extra error checks (and override -I)
-     --verbose-tags         add tags indicating generated/modified data
 
-General output/reporting flags (supported by some commands):
+General output flags (affecting some commands):
   -b --begin=DATE           include postings/transactions on/after this date
   -e --end=DATE             include postings/transactions before this date
                             (with a report interval, will be adjusted to
                             following subperiod end)
-  -D --daily                multiperiod report with 1 day interval
-  -W --weekly               multiperiod report with 1 week interval
-  -M --monthly              multiperiod report with 1 month interval
-  -Q --quarterly            multiperiod report with 1 quarter interval
-  -Y --yearly               multiperiod report with 1 year interval
+  -D --daily                set report interval: 1 day
+  -W --weekly               set report interval: 1 week
+  -M --monthly              set report interval: 1 month
+  -Q --quarterly            set report interval: 1 quarter
+  -Y --yearly               set report interval: 1 year
   -p --period=PERIODEXP     set begin date, end date, and/or report interval,
                             with more flexibility
      --today=DATE           override today's date (affects relative dates)
@@ -175,31 +190,40 @@ General output/reporting flags (supported by some commands):
      --depth=DEPTHEXP       if a number (or -NUM): show only top NUM levels
                             of accounts. If REGEXP=NUM, only apply limiting to
                             accounts matching the regular expression.
-  -B --cost                 show amounts converted to their cost/sale amount
-  -V --market               Show amounts converted to their value at period
-                            end(s) in their default valuation commodity.
-                            Equivalent to --value=end.
-  -X --exchange=COMM        Show amounts converted to their value at period
-                            end(s) in the specified commodity.
-                            Equivalent to --value=end,COMM.
-     --value=WHEN[,COMM]    show amounts converted to their value on the
-                            specified date(s) in their default valuation
-                            commodity or a specified commodity. WHEN can be:
+  -B --cost                 convert amounts to their cost/sale amount (@/@@)
+  -V --market               valuation mode: show amounts converted to market
+                            value at period end(s) in their default valuation
+                            commodity. Short for --value=end.
+  -X --exchange=COMM        valuation mode: show amounts converted to market
+                            value at period end(s) in the specified commodity.
+                            Short for --value=end,COMM.
+     --value=WHEN[,COMM]    valuation mode: show amounts converted to market
+                            value on the specified date(s) in their default
+                            valuation commodity or a specified commodity. WHEN
+                            can be:
                             'then':     value on transaction dates
                             'end':      value at period end(s)
                             'now':      value today
                             YYYY-MM-DD: value on given date
+     --lots                 show lot subaccounts and other lot details
   -c --commodity-style=S    Override a commodity's display style.
                             Eg: -c '.' or -c '1.000,00 EUR'
-     --pretty[=YN]          Use box-drawing characters in text output? Can be
-                            'y'/'yes' or 'n'/'no'.
-                            If YN is specified, the equals is required.
+     --pretty[=YN]          Use box-drawing characters in text output? The
+                            optional 'y'/'yes' or 'n'/'no' arg requires =.
+     --title=T              set or customise a report title
+     --subreport-titles=TS  customise subreport headings in compound reports
+                            (|-separated)
+     --period-titles=OPT    customise headings in periodic reports:
+                            'compact': readable period names when possible
+                            'dates':   exact dates/date ranges always
 
 General help flags:
-  -h --help                 show command line help
-     --tldr                 show command examples with tldr
-     --info                 show the manual with info
-     --man                  show the manual with man
+  -?                        show the hledger quick reference
+  -h --help                 show this command's usage help
+     --info                 show this command's manual with info
+     --man                  show this command's manual with man
+     --webman               show this command's manual on the web
+     --examples             show examples for this command
      --version              show version information
      --debug=[1-9]          show this much debug output (default: 1)
      --pager=YN             use a pager when needed ? y/yes (default) or n/no
@@ -221,21 +245,60 @@ TAB in the command line.  If this is not working see Install > Shell
 completions.
 
 
-File: hledger-web.info,  Node: PERMISSIONS,  Next: EDITING UPLOADING DOWNLOADING,  Prev: OPTIONS,  Up: Top
+File: hledger-web.info,  Node: WEB UI,  Next: PERMISSIONS,  Prev: OPTIONS,  Up: Top
 
-2 PERMISSIONS
+2 WEB UI
+********
+
+hledger-web's main views are:
+
+   * the *journal view* (the home page), showing journal entries, newest
+     first, with their postings; and
+   * the *register view*, showing the transactions affecting one account
+     (and its subaccounts), with a running balance and a balance chart.
+
+   The *sidebar* lists accounts and their balances (parent balances
+include subaccounts, and multiple commodities are shown one above the
+other).  Click an account name to see its register, or a date to see
+that day's journal entries.
+
+   The *search form* filters both views with hledger's query syntax, eg
+'expenses date:thismonth'; the help dialog summarises the query types.
+The current view and search are reflected in the URL, so views can be
+bookmarked and shared.
+
+   The *add form* (press 'a', or click "Add a transaction" in the
+journal view) adds a transaction to the main journal file, if the access
+level allows it.  It autocompletes account names and descriptions from
+your existing entries.
+
+   The *help dialog* (press '?', or click the question mark button)
+lists these keyboard shortcuts, which work when you are not typing in a
+field:
+
+   * 'h' or '?' - show or hide the help dialog
+   * 'j' - go to the journal view
+   * 'a' or 'n' - add a transaction (escape to cancel)
+   * 's' - show or hide the sidebar
+   * 'e' - show or hide empty accounts in the sidebar
+   * 'f' - focus the search form
+
+   Editing, uploading and downloading journal files is described below.
+
+
+File: hledger-web.info,  Node: PERMISSIONS,  Next: EDITING UPLOADING DOWNLOADING,  Prev: WEB UI,  Up: Top
+
+3 PERMISSIONS
 *************
 
-By default, hledger-web allows anyone who can reach it to view the
-journal and to add new transactions, but not to change existing data.
-
-   You can restrict who can reach it, by
+You can restrict who can access hledger-web by
 
    * setting the IP address it listens on (see '--host' above).  By
      default it listens on 127.0.0.1, accessible to users on the local
      machine only.
-   * putting it behind an authenticating proxy, such as caddy or apache
-   * putting it behind a firewall
+   * or by putting it behind an authenticating proxy, such as caddy or
+     apache
+   * or by putting it behind a firewall.
 
    And you can restrict what the users reaching it can do, by specifying
 the '--allow=ACCESSLEVEL' option at startup.  ACCESSLEVEL is one of:
@@ -249,36 +312,54 @@ the '--allow=ACCESSLEVEL' option at startup.  ACCESSLEVEL is one of:
      of 'view', 'add', or 'edit' are specified in the
      'X-Sandstorm-Permissions' HTTP header
 
-   The default access level is 'add'.
+   The default access level is 'add' when listening on a local-only
+address ('127.0.0.1', '::1', 'localhost', or a unix socket), and 'view'
+otherwise.  To allow more than the default access, start it with an
+explicit '--allow=add' or '--allow=edit' option.
 
 
-File: hledger-web.info,  Node: EDITING UPLOADING DOWNLOADING,  Next: RELOADING,  Prev: PERMISSIONS,  Up: Top
+File: hledger-web.info,  Node: EDITING UPLOADING DOWNLOADING,  Next: BALANCE REPORTS,  Prev: PERMISSIONS,  Up: Top
 
-3 EDITING, UPLOADING, DOWNLOADING
+4 EDITING, UPLOADING, DOWNLOADING
 *********************************
 
-If you enable the 'manage' capability mentioned above, you'll see a new
-"spanner" button to the right of the search form.  Clicking this will
-let you edit, upload, or download the journal file or any files it
-includes.
+If you start hledger-web with '--allow=edit', you'll see a new "spanner"
+button to the right of the search form.  Clicking this will let you
+edit, upload, or download the journal file or any files it includes.
 
    Note, unlike any other hledger command, in this mode you (or any
-visitor) can alter or wipe the data files.
+visitor) can alter or wipe the data files.  Normally when hledger-web
+changes any data, it will save a numbered backup of the file (assuming
+file permissions allow it, the disk is not full, etc.)  hledger-web is
+not aware of version control systems, currently; if you use one, you'll
+have to arrange to commit the changes yourself.
 
-   Normally whenever a file is changed in this way, hledger-web saves a
-numbered backup (assuming file permissions allow it, the disk is not
-full, etc.)  hledger-web is not aware of version control systems,
-currently; if you use one, you'll have to arrange to commit the changes
-yourself (eg with a cron job or a file watcher like entr).
-
-   Changes which would leave the journal file(s) unparseable or
-non-valid (eg with failing balance assertions) are prevented.
-(Probably.  This needs re-testing.)
+   Changes which would leave the journal file(s) unparseable or invalid
+(eg with failing balance assertions) are prevented.
 
 
-File: hledger-web.info,  Node: RELOADING,  Next: JSON API,  Prev: EDITING UPLOADING DOWNLOADING,  Up: Top
+File: hledger-web.info,  Node: BALANCE REPORTS,  Next: RELOADING,  Prev: EDITING UPLOADING DOWNLOADING,  Up: Top
 
-4 RELOADING
+5 BALANCE REPORTS
+*****************
+
+Besides the journal and account registers, hledger-web can show the
+balance report at '/balance', with each account linked to its register.
+No page links to it yet: it is reachable by entering the url, until
+there are more such reports and a navigation scheme to hold them.  A
+'period' parameter, like the command line's '-p/--period', selects the
+interval and/or the period, eg '/balance?period=monthly' or
+'/balance?period=quarterly in 2025'; column headings link to the
+register for that period.  The search box filters the report like the
+other pages, including 'depth:' terms, and the general report options
+given at startup, such as '--depth', '-B', or '-V', apply.  A 'date:'
+term can set the interval too, as on the command line ('date:monthly',
+or '"date:quarterly in 2025"'), and wins over the 'period' parameter.
+
+
+File: hledger-web.info,  Node: RELOADING,  Next: JSON API,  Prev: BALANCE REPORTS,  Up: Top
+
+6 RELOADING
 ***********
 
 hledger-web detects changes made to the files by other means (eg if you
@@ -287,13 +368,13 @@ when you reload the page or navigate to a new page.  If a change makes a
 file unparseable, hledger-web will display an error message until the
 file has been fixed.
 
-   (Note: if you are viewing files mounted from another machine, make
-sure that both machine clocks are roughly in step.)
+   (If you are viewing files mounted from another machine, make sure
+that both machines have roughly the same idea of what time it is.)
 
 
 File: hledger-web.info,  Node: JSON API,  Next: DEBUG OUTPUT,  Prev: RELOADING,  Up: Top
 
-5 JSON API
+7 JSON API
 **********
 
 In addition to the web UI, hledger-web also serves a JSON API that can
@@ -312,12 +393,13 @@ $ hledger-web -f examples/sample.journal --serve-api
 /commodities
 /accounts
 /accounttransactions/ACCOUNTNAME
+/openapi.json
 
    Eg, all account names in the journal (similar to the accounts
 command).  (hledger-web's JSON does not include newlines, here we use
 python to prettify it):
 
-$ curl -s http://127.0.0.1:5000/accountnames | python -m json.tool
+$ curl -s http://127.0.0.1:5000/accountnames | python3 -m json.tool
 [
     "assets",
     "assets:bank",
@@ -336,7 +418,7 @@ $ curl -s http://127.0.0.1:5000/accountnames | python -m json.tool
 
    Or all transactions:
 
-$ curl -s http://127.0.0.1:5000/transactions | python -m json.tool
+$ curl -s http://127.0.0.1:5000/transactions | python3 -m json.tool
 [
     {
         "tcode": "",
@@ -359,137 +441,126 @@ $ curl -s http://127.0.0.1:5000/transactions | python -m json.tool
 what the fields mean, see the Hledger.Data.Json haddock docs and click
 on the various data types, eg Transaction.  And for a higher level
 understanding, see the journal docs.  There is also a basic OpenAPI
-specification.
+specification, also served at '/openapi.json'.
 
-   In some cases there is outer JSON corresponding to a "Report" type.
-To understand that, go to the Hledger.Web.Handler.MiscR haddock and look
-at the source for the appropriate handler to see what it returns.  Eg
-for '/accounttransactions' it's getAccounttransactionsR, returning a
-"'accountTransactionsReport ...'".  Looking up the haddock for that we
-can see that /accounttransactions returns an AccountTransactionsReport,
-which consists of a report title and a list of
-AccountTransactionsReportItem (etc).
+   Some routes return a report type wrapping the data; eg
+'/accounttransactions' returns an AccountTransactionsReport, a report
+title and a list of items.  The handlers in Hledger.Web.Handler.MiscR
+show what each route returns.
 
    You can add a new transaction to the journal with a PUT request to
-'/add', if hledger-web was started with the 'add' capability (enabled by
-default).  The payload must be the full, exact JSON representation of a
-hledger transaction (partial data won't do).  You can get sample JSON
-from hledger-web's '/transactions' or '/accounttransactions', or you can
-export it with hledger-lib, eg like so:
+'/add', if hledger-web was started with '--allow=add' (the default when
+listening on a local-only address).  The payload must be the full, exact
+JSON representation of a hledger transaction (partial data won't do).
+You can get sample JSON from hledger-web's '/transactions' or
+'/accounttransactions', or from hledger's print command.  Eg, this saves
+the first transaction of the sample journal to 'txn.json':
 
-.../hledger$ stack ghci hledger-lib
->>> writeJsonFile "txn.json" (head $ jtxns samplejournal)
->>> :q
+$ hledger -f examples/sample.journal print -O json | python3 -c 'import json,sys; json.dump(json.load(sys.stdin)[0], sys.stdout, indent=4)' > txn.json
 
-   Here's how it looks as of hledger-1.17 (remember, this JSON
-corresponds to hledger's Transaction and related data types):
+   Here's how it looks (remember, this JSON corresponds to hledger's
+Transaction and related data types):
 
 {
-    "tcomment": "",
-    "tpostings": [
-        {
-            "pbalanceassertion": null,
-            "pstatus": "Unmarked",
-            "pamount": [
-                {
-                    "aprice": null,
-                    "acommodity": "$",
-                    "aquantity": {
-                        "floatingPoint": 1,
-                        "decimalPlaces": 10,
-                        "decimalMantissa": 10000000000
-                    },
-                    "aismultiplier": false,
-                    "astyle": {
-                        "ascommodityside": "L",
-                        "asdigitgroups": null,
-                        "ascommodityspaced": false,
-                        "asprecision": 2,
-                        "asdecimalpoint": "."
-                    }
-                }
-            ],
-            "ptransaction_": "1",
-            "paccount": "assets:bank:checking",
-            "pdate": null,
-            "ptype": "RegularPosting",
-            "pcomment": "",
-            "pdate2": null,
-            "ptags": [],
-            "poriginal": null
-        },
-        {
-            "pbalanceassertion": null,
-            "pstatus": "Unmarked",
-            "pamount": [
-                {
-                    "aprice": null,
-                    "acommodity": "$",
-                    "aquantity": {
-                        "floatingPoint": -1,
-                        "decimalPlaces": 10,
-                        "decimalMantissa": -10000000000
-                    },
-                    "aismultiplier": false,
-                    "astyle": {
-                        "ascommodityside": "L",
-                        "asdigitgroups": null,
-                        "ascommodityspaced": false,
-                        "asprecision": 2,
-                        "asdecimalpoint": "."
-                    }
-                }
-            ],
-            "ptransaction_": "1",
-            "paccount": "income:salary",
-            "pdate": null,
-            "ptype": "RegularPosting",
-            "pcomment": "",
-            "pdate2": null,
-            "ptags": [],
-            "poriginal": null
-        }
-    ],
-    "ttags": [],
-    "tsourcepos": {
-        "tag": "JournalSourcePos",
-        "contents": [
-            "",
-            [
-                1,
-                1
-            ]
-        ]
-    },
-    "tdate": "2008-01-01",
     "tcode": "",
-    "tindex": 1,
-    "tprecedingcomment": "",
+    "tcomment": "",
+    "tdate": "2008-01-01",
     "tdate2": null,
     "tdescription": "income",
-    "tstatus": "Unmarked"
+    "tindex": 1,
+    "tpostings": [
+        {
+            "paccount": "assets:bank:checking",
+            "pamount": [
+                {
+                    "acommodity": "$",
+                    "acost": null,
+                    "acostbasis": null,
+                    "aquantity": {
+                        "decimalMantissa": 1,
+                        "decimalPlaces": 0,
+                        "floatingPoint": 1
+                    },
+                    "astyle": {
+                        "ascommodityside": "L",
+                        "ascommodityspaced": false,
+                        "asdecimalmark": ".",
+                        "asdigitgroups": null,
+                        "asprecision": 0,
+                        "asrounding": "NoRounding"
+                    }
+                }
+            ],
+            "pbalanceassertion": null,
+            "pcomment": "",
+            "pdate": null,
+            "pdate2": null,
+            "poriginal": null,
+            "preal": "RealPosting",
+            "pstatus": "Unmarked",
+            "ptags": [],
+            "ptransaction_": "1"
+        },
+        {
+            "paccount": "income:salary",
+            "pamount": [
+                {
+                    "acommodity": "$",
+                    "acost": null,
+                    "acostbasis": null,
+                    "aquantity": {
+                        "decimalMantissa": -1,
+                        "decimalPlaces": 0,
+                        "floatingPoint": -1
+                    },
+                    "astyle": {
+                        "ascommodityside": "L",
+                        "ascommodityspaced": false,
+                        "asdecimalmark": ".",
+                        "asdigitgroups": null,
+                        "asprecision": 0,
+                        "asrounding": "NoRounding"
+                    }
+                }
+            ],
+            "pbalanceassertion": null,
+            "pcomment": "",
+            "pdate": null,
+            "pdate2": null,
+            "poriginal": null,
+            "preal": "RealPosting",
+            "pstatus": "Unmarked",
+            "ptags": [],
+            "ptransaction_": "1"
+        }
+    ],
+    "tprecedingcomment": "",
+    "tsourcepos": [
+        {
+            "sourceColumn": 1,
+            "sourceLine": 31,
+            "sourceName": "/home/user/hledger/examples/sample.journal"
+        },
+        {
+            "sourceColumn": 1,
+            "sourceLine": 34,
+            "sourceName": "/home/user/hledger/examples/sample.journal"
+        }
+    ],
+    "tstatus": "Unmarked",
+    "ttags": []
 }
 
-   And here's how to test adding it with curl.  This should add a new
-entry to your journal:
+   And here's how to add it with curl.  This should append a new entry
+to your journal file:
 
 $ curl http://127.0.0.1:5000/add -X PUT -H 'Content-Type: application/json' --data-binary @txn.json
 
 
 File: hledger-web.info,  Node: DEBUG OUTPUT,  Next: ENVIRONMENT,  Prev: JSON API,  Up: Top
 
-6 DEBUG OUTPUT
+8 DEBUG OUTPUT
 **************
-
-* Menu:
-
-* Debug output::
-
-
-File: hledger-web.info,  Node: Debug output,  Up: DEBUG OUTPUT
-
-6.1 Debug output
-================
 
 You can add '--debug[=N]' to the command line to log debug output.  N
 ranges from 1 (least output, the default) to 9 (maximum output).
@@ -502,7 +573,7 @@ can usually redirect stderr, eg:
 
 File: hledger-web.info,  Node: ENVIRONMENT,  Next: BUGS,  Prev: DEBUG OUTPUT,  Up: Top
 
-7 ENVIRONMENT
+9 ENVIRONMENT
 *************
 
 *LEDGER_FILE* The main journal file to use when not specified with
@@ -511,8 +582,8 @@ File: hledger-web.info,  Node: ENVIRONMENT,  Next: BUGS,  Prev: DEBUG OUTPUT,  U
 
 File: hledger-web.info,  Node: BUGS,  Prev: ENVIRONMENT,  Up: Top
 
-8 BUGS
-******
+10 BUGS
+*******
 
 We welcome bug reports in the hledger issue tracker
 (https://bugs.hledger.org), or on the hledger chat or mail list
@@ -525,15 +596,16 @@ We welcome bug reports in the hledger issue tracker
 
 Tag Table:
 Node: Top223
-Node: OPTIONS2581
-Node: PERMISSIONS11270
-Node: EDITING UPLOADING DOWNLOADING12420
-Node: RELOADING13435
-Node: JSON API14002
-Node: DEBUG OUTPUT19651
-Node: Debug output19803
-Node: ENVIRONMENT20321
-Node: BUGS20557
+Node: OPTIONS2564
+Node: WEB UI12731
+Node: PERMISSIONS14312
+Node: EDITING UPLOADING DOWNLOADING15566
+Node: BALANCE REPORTS16490
+Node: RELOADING17468
+Node: JSON API18035
+Node: DEBUG OUTPUT23783
+Node: ENVIRONMENT24325
+Node: BUGS24561
 
 End Tag Table
 

@@ -31,6 +31,7 @@ import           Hledger.Read    as X
 import           Hledger.Reports as X
 import           Hledger.Query   as X
 import           Hledger.Utils   as X
+import           Hledger.Write.Html (tests_Hledger_Write_Html)
 
 tests_Hledger = testGroup "Hledger" [
    tests_Data
@@ -38,6 +39,7 @@ tests_Hledger = testGroup "Hledger" [
   ,tests_Read
   ,tests_Reports
   ,tests_Utils
+  ,tests_Hledger_Write_Html
   ]
 
 

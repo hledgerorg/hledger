@@ -1,5 +1,4 @@
 $ hledger -f sample.journal balance --tree --format="%30(account) %-.20(total)"
->
                         assets $-1
                    bank:saving $1
                           cash $-2
@@ -21,14 +20,12 @@ $ hledger -f sample.journal balance --tree --format="%30(account) %-.20(total)"
 
 # Test too-small maximum balance widths
 $ hledger -f - balance -N --format="%7.7(total) %(account)"
->
 1 mor.. a
 500 AAA b
 >= 0
 
 # Check that maximum balance widths works with colour
 $ hledger -f - balance -N --format="%8.8(total) %(account)" --color=yes
->
 [31m-500 AAA[m a
  500 AAA b
 >= 0

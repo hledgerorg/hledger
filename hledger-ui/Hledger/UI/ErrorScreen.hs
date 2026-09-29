@@ -11,14 +11,15 @@ module Hledger.UI.ErrorScreen
  ,esDraw
  ,esHandle
  ,uiCheckBalanceAssertions
- ,uiReloadJournal
- ,uiReloadJournalIfChanged
+ ,uiReload
+ ,uiReloadIfFileChanged
+ ,uiToggleBalanceAssertions
  )
 where
 
 import Brick
 -- import Brick.Widgets.Border ("border")
-import Control.Monad
+import Control.Exception (ErrorCall, IOException, catch)
 import Control.Monad.IO.Class (liftIO)
 import Data.Time.Calendar (Day)
 import Data.Void (Void)
@@ -35,10 +36,8 @@ import Hledger.UI.UIUtils
 import Hledger.UI.UIScreens
 import Hledger.UI.Editor
 
-esDraw :: UIState -> [Widget Name]
-esDraw UIState{aScreen=ES ESS{..}
-              ,aMode=mode
-              } =
+esDraw :: ErrorScreenState -> UIState -> [Widget Name]
+esDraw ESS{..} UIState{aMode=mode} =
   case mode of
     Help       -> [helpDialog, maincontent]
     _          -> [maincontent]
@@ -63,14 +62,12 @@ esDraw UIState{aScreen=ES ESS{..}
               ,("q", "quit")
               ]
 
-esDraw _ = error' "draw function called with wrong screen type, should not happen"  -- PARTIAL:
 
-esHandle :: BrickEvent Name AppEvent -> EventM Name UIState ()
-esHandle ev = do
+esHandle :: ErrorScreenState -> BrickEvent Name AppEvent -> EventM Name UIState ()
+esHandle ESS{..} ev = do
   ui0 <- get'
   case ui0 of
-    ui@UIState{aScreen=ES ESS{..}
-              ,aopts=UIOpts{uoCliOpts=copts}
+    ui@UIState{aopts=UIOpts{uoCliOpts=copts}
               ,ajournal=j
               ,aMode=mode
               } ->
@@ -88,30 +85,42 @@ esHandle ev = do
             VtyEvent (EvKey (KChar 'q') []) -> halt
             VtyEvent (EvKey KEsc        []) -> put' $ uiCheckBalanceAssertions d $ resetScreens d ui
             VtyEvent (EvKey (KChar c)   []) | c `elem` ['h','?'] -> put' $ setMode Help ui
-            VtyEvent (EvKey (KChar 'E') []) -> suspendAndResume $ void (runEditor pos f) >> uiReloadJournalIfChanged copts d j (popScreen ui)
-              where
-                (pos,f) = case parsewithString hledgerparseerrorpositionp _essError of
-                            Right (f',l,c) -> (Just (l, Just c),f')
-                            Left  _       -> (endPosition, journalFilePath j)
-            e | e `elem` [VtyEvent (EvKey (KChar 'g') []), AppEvent FileChange] ->
-              liftIO (uiReloadJournal copts d (popScreen ui)) >>= put' . uiCheckBalanceAssertions d
-              -- (ej, _) <- liftIO $ journalReloadIfChanged copts d j
-              -- case ej of
-              --   Left err -> continue ui{aScreen=s{esError=err}} -- show latest parse error
-              --   Right j' -> continue $ regenerateScreens j' d $ popScreen ui  -- return to previous screen, and reload it
-            VtyEvent (EvKey (KChar 'I') []) -> put' $ uiCheckBalanceAssertions d (popScreen $ toggleIgnoreBalanceAssertions ui)
+
+            -- g or file change: reload the journal and rebuild app state.
+            e | e `elem` [VtyEvent (EvKey (KChar 'g') []), AppEvent FileChange] -> esReload copts d ui
+
+            -- E: run editor, reload the journal.
+            VtyEvent (EvKey (KChar 'E') []) -> do
+              suspendAndResume' $ do
+                let
+                  (pos,f) = case parsewithString hledgerparseerrorpositionp _essError of
+                              Right (f',l,c) -> (Just (l, Just c),f')
+                              Left  _       -> (endPosition, journalFilePath j)
+                runEditor pos f
+              esReloadIfFileChanged copts d j ui
+
+            VtyEvent (EvKey (KChar 'I') []) -> uiToggleBalanceAssertions d (popScreen ui)
             VtyEvent (EvKey (KChar 'l') [MCtrl]) -> redraw
             VtyEvent (EvKey (KChar 'z') [MCtrl]) -> suspend ui
             _ -> return ()
 
-    _ -> errorWrongScreenType "event handler"
+
+    where
+      -- Reload from the error screen: drop the error screen, then reload and regenerate the
+      -- revealed parent (uiReload re-pushes an error screen if it still fails), and recheck
+      -- balance assertions. This works for any parent, since every screen now regenerates from
+      -- its own stored parameters.
+      esReload copts d ui =
+        uiReload copts d (popScreen ui) >>= put' . uiCheckBalanceAssertions d
+      esReloadIfFileChanged copts d j ui =
+        liftIO (uiReloadIfFileChanged copts d j (popScreen ui)) >>= put' . uiCheckBalanceAssertions d
 
 -- | Parse the file name, line and column number from a hledger parse error message, if possible.
 -- Temporary, we should keep the original parse error location. XXX
 -- Keep in sync with 'Hledger.Data.Transaction.showGenericSourcePos'
 hledgerparseerrorpositionp :: ParsecT Void String t (String, Int, Int)
 hledgerparseerrorpositionp = do
-  anySingle `manyTill` char '"'
+  anySingle `manyTill` single '"'
   f <- anySingle `manyTill` (oneOf ['"','\n'])
   choice [
       do
@@ -123,37 +132,59 @@ hledgerparseerrorpositionp = do
       do
           string " (lines "
           l <- read <$> some digitChar
-          char '-'
+          single '-'
           some digitChar
-          char ')'
+          single ')'
           return (f, l, 1)
       ]
 
 
--- | Unconditionally reload the journal, regenerating the current screen
--- and all previous screens in the history as of the provided today-date.
--- If reloading fails, enter the error screen, or if we're already
--- on the error screen, update the error displayed.
--- Defined here so it can reference the error screen.
+-- Defined here so it can reference the error screen:
+
+-- | Modify some input options for hledger-ui (enable --forecast).
+uiAdjustOpts :: UIOpts -> CliOpts -> CliOpts
+uiAdjustOpts uopts = enableForecast uopts
+
+-- | Run a journal-loading action, converting exceptions to Left so callers can
+-- show them on the error screen instead of crashing the app. Journal reader
+-- parse errors are returned as Left already, but some load errors are thrown
+-- as exceptions: ErrorCall (from error', eg for CSV conversion problems) or
+-- possibly IO errors (eg a watched file missing momentarily during an editor's save).
+catchLoadErrors :: IO (Either String a) -> IO (Either String a)
+catchLoadErrors act =
+  act
+  `catch` (\e -> return $ Left $ show (e :: ErrorCall))
+  `catch` (\e -> return $ Left $ show (e :: IOException))
+
+-- | Reload the journal from its input files, then update the ui app state accordingly.
+-- This means regenerate the entire screen stack from top level down to the current screen, using the provided today-date.
+-- As a convenience (usually), if journal reloading fails, this enters the error screen, or if already there, updates its message.
 --
--- The provided CliOpts are used for reloading, and then saved in the
--- UIState if reloading is successful (otherwise the UIState keeps its old
--- CliOpts.) (XXX needed for.. ?)
+-- The provided cli options can influence reloading; then if reloading succeeds they are saved in the ui state,
+-- otherwise the UIState keeps its old options. (XXX needed for.. ?)
 --
--- Forecasted transactions are always generated, as at hledger-ui startup.
--- If a forecast period is specified in the provided opts, or was specified
--- at startup, it is preserved.
+-- Like at hledger-ui startup, --forecast is always enabled.
+-- A forecast period specified in the provided opts, or at startup, is preserved.
 --
-uiReloadJournal :: CliOpts -> Day -> UIState -> IO UIState
-uiReloadJournal copts d ui = do
-  ej <-
-    let copts' = enableForecastPreservingPeriod ui copts
-    in runExceptT $ journalReload copts'
-  -- dbg1IO "uiReloadJournal before reload" (map tdescription $ jtxns $ ajournal ui)
+uiReload :: CliOpts -> Day -> UIState -> EventM Name UIState UIState
+uiReload copts d ui0 = do
+  ej <- liftIO $
+    let copts1   = uiAdjustOpts (astartupopts ui0) copts
+        loadopts = copts1{rawopts_ = setboolopt "lots" (rawopts_ copts1)}  -- keep lot detail; the UI collapses it for display
+    in if journalIsFromStdin (ajournal ui0)
+       then return $ Right $ auncollapsedjournal ui0  -- stdin can't be re-read; keep the journal as loaded
+       else catchLoadErrors $ runExceptT $ journalTransform loadopts <$> journalReload loadopts
+  -- dbg1IO "uiReload before reload" (map tdescription $ jtxns $ ajournal ui0)
+  -- show any warnings collected during the reload (until the next keypress)
+  ui <- liftIO $ (\ws -> ui0{aWarnings=ws}) <$> uiTakeWarnings
+  -- The reload may have written to the terminal, eg output from third-party code
+  -- not using our warning handler; repaint the whole screen to repair any disruption.
+  redraw
   return $ case ej of
-    Right j  ->
-      -- dbg1 "uiReloadJournal after reload" (map tdescription $ jtxns j) $
-      regenerateScreens j d ui
+    Right jraw ->
+      -- dbg1 "uiReload after reload" (map tdescription $ jtxns jraw) $
+      -- save the uncollapsed journal; regenerateScreens derives the display journal from it
+      regenerateScreens d ui{auncollapsedjournal = jraw}
     Left err ->
       case ui of
         UIState{aScreen=ES _} -> ui{aScreen=esNew err}
@@ -167,25 +198,35 @@ uiReloadJournal copts d ui = do
       --             RegisterScreen _ _ _ _ _ _
       --             TransactionScreen _ _ _ _ _ _
 
--- | Like uiReloadJournal, but does not re-parse the journal if the file(s)
--- have not changed since last loaded. Always regenerates the screens though,
--- since the provided options or today-date may have changed.
-uiReloadJournalIfChanged :: CliOpts -> Day -> Journal -> UIState -> IO UIState
-uiReloadJournalIfChanged copts d j ui = do
-  let copts' = enableForecastPreservingPeriod ui copts
-  ej <- runExceptT $ journalReloadIfChanged copts' d j
+-- | Like uiReload, except it skips re-reading the journal if its file(s) have not changed
+-- since it was last loaded. The up app state is always updated, since the options or today-date may have changed.
+-- Also, this one runs in IO, suitable for suspendAndResume.
+uiReloadIfFileChanged :: CliOpts -> Day -> Journal -> UIState -> IO UIState
+uiReloadIfFileChanged copts d j ui0 = do
+  ej <-
+    let copts1   = uiAdjustOpts (astartupopts ui0) copts
+        loadopts = copts1{rawopts_ = setboolopt "lots" (rawopts_ copts1)}  -- keep lot detail; the UI collapses it for display
+    in catchLoadErrors $ runExceptT $ journalReloadIfChanged loadopts d j
+  -- show any warnings collected during the reload (until the next keypress)
+  ui <- (\ws -> ui0{aWarnings=ws}) <$> uiTakeWarnings
   return $ case ej of
-    Right (j', _) -> regenerateScreens j' d ui
+    -- changed: save the uncollapsed journal; regenerateScreens derives the display journal from it
+    Right (jraw, True)  -> regenerateScreens d ui{auncollapsedjournal = jraw}
+    -- unchanged: nothing reloaded, refresh in place (opts/date may have changed), keep the journal
+    Right (_,    False) -> regenerateScreens d ui
     Left err -> case aScreen ui of
         ES _ -> ui{aScreen=esNew err}
         _    -> pushScreen (esNew err) ui
 
--- Re-check any balance assertions in the current journal, and if any
--- fail, enter (or update) the error screen. Or if balance assertions
--- are disabled, do nothing.
+-- Re-check any balance assertions in the current journal,
+-- and if any fail, enter (or update) the error screen.
+-- Or if balance assertions are disabled or pivot is active, do nothing.
+-- (When pivot is active, assertions have already been checked on the pre-pivot journal,
+-- and the current post-pivot journal's account names don't match the original assertions.)
 uiCheckBalanceAssertions :: Day -> UIState -> UIState
-uiCheckBalanceAssertions _d ui@UIState{ajournal=j}
-  | ui^.ignore_assertions = ui
+uiCheckBalanceAssertions _d ui@UIState{ajournal=j, aopts=UIOpts{uoCliOpts=CliOpts{inputopts_=InputOpts{pivot_=pval}}}}
+  | ui^.ignore_assertions = ui        -- user disabled checks
+  | not (null pval) = ui              -- post-pivot journal, assertions already checked pre-pivot
   | otherwise =
     case journalCheckBalanceAssertions j of
       Right () -> ui
@@ -193,3 +234,16 @@ uiCheckBalanceAssertions _d ui@UIState{ajournal=j}
         case ui of
           UIState{aScreen=ES sst} -> ui{aScreen=ES sst{_essError=err}}
           _                        -> pushScreen (esNew err) ui
+
+-- | Toggle ignoring balance assertions (when user presses I), and if no longer ignoring, recheck them.
+-- Normally the recheck is done quickly on the in-memory journal.
+-- But if --pivot is active, a full journal reload is done instead
+-- (because we can't check balance assertions after pivoting has occurred).
+-- In that case, this operation could be slower and could reveal other data changes (not just balance assertion failures).
+uiToggleBalanceAssertions :: Day -> UIState -> EventM Name UIState ()
+uiToggleBalanceAssertions d ui@UIState{aopts=UIOpts{uoCliOpts=copts@CliOpts{inputopts_=InputOpts{pivot_=pivotval}}}} =
+  let ui' = toggleIgnoreBalanceAssertions ui
+  in case (ui'^.ignore_assertions, null pivotval) of
+    (True, _)      -> put' ui'                                -- ignoring enabled, no check needed
+    (False, True)  -> put' $ uiCheckBalanceAssertions d ui'   -- unpivoted journal, can check in memory
+    (False, False) -> uiReload copts d ui' >>= put'           -- pivoted journal, must reload to check it

@@ -50,7 +50,6 @@ Budget performance in 2016-12-01..2016-12-03:
                   ||          2016-12-01          2016-12-02           2016-12-03 
 ==================++==============================================================
  assets:cash      || $-10 [ 40% of $-25]  $-14 [56% of $-25]  $-51 [204% of $-25] 
- expenses         ||  $10 [ 40% of  $25]   $14 [56% of  $25]   $51 [204% of  $25] 
  expenses:cab     ||    0                    0                 $15                
  expenses:food    ||  $10 [100% of  $10]    $9 [90% of  $10]   $11 [110% of  $10] 
  expenses:leisure ||    0 [  0% of  $15]    $5 [33% of  $15]     0 [  0% of  $15] 
@@ -59,8 +58,6 @@ Budget performance in 2016-12-01..2016-12-03:
                   ||    0 [           0]     0 [          0]     0 [           0] 
 
 # ** 3. Test that budget works with mix of commodities
-# XXX Here $'s precision is increased to 1 by the third transaction's
-# $11.0 balancing amount. Is that ok ? What if it was $11.1 ?
 <
 2016/12/01
     expenses:food  £10 @@ $15
@@ -98,14 +95,14 @@ Budget performance in 2016-12-01..2016-12-03:
 $ hledger -f- bal -D -b 2016-12-01 -e 2016-12-04 --budget
 Budget performance in 2016-12-01..2016-12-03:
 
-                  ||                  2016-12-01                       2016-12-02               2016-12-03 
-==================++=======================================================================================
- assets:cash      ||      $-15.0 [60% of $-25.0]          $-26.0 [104% of $-25.0]  $-51.0 [204% of $-25.0] 
- expenses         ||         £10 [        $25.0]    $5.0, 20 CAD [         $25.0]   $51.0 [204% of  $25.0] 
- expenses:food    ||         £10 [        $10.0]          20 CAD [         $10.0]   $11.0 [110% of  $10.0] 
- expenses:leisure ||           0 [ 0% of  $15.0]            $5.0 [ 33% of  $15.0]       0 [  0% of  $15.0] 
-------------------++---------------------------------------------------------------------------------------
-                  || $-15.0, £10 [            0]  $-21.0, 20 CAD [             0]       0 [             0] 
+                  ||              2016-12-01                   2016-12-02           2016-12-03 
+==================++===========================================================================
+ assets:cash      ||      $-15 [60% of $-25]          $-26 [104% of $-25]  $-51 [204% of $-25] 
+ expenses         ||       £10 [        $25]    $5, 20 CAD [         $25]   $51 [204% of  $25] 
+ expenses:food    ||       £10 [        $10]        20 CAD [         $10]   $11 [110% of  $10] 
+ expenses:leisure ||         0 [ 0% of  $15]            $5 [ 33% of  $15]     0 [  0% of  $15] 
+------------------++---------------------------------------------------------------------------
+                  || $-15, £10 [          0]  $-21, 20 CAD [           0]     0 [           0] 
 
 # ** 4. --budget with no interval shows total budget for the journal period
 # (in tabular format). 
@@ -340,7 +337,6 @@ Budget performance in 2018-05-01..2018-06-30, valued at period ends:
                 || 2018-05-31           2018-06-30 
 ================++=================================
  <unbudgeted>   ||       €-10  €-10                
- assets         ||        €10   €10 [           0] 
  assets:bank    ||          0   €-1 [ 100% of €-1] 
  assets:pension ||        €10   €11 [1100% of  €1] 
 ----------------++---------------------------------
@@ -641,11 +637,23 @@ Budget performance in 2020Q1:
   (bbb)   10
 
 $ hledger -f- bal --budget=weekly -p 2021-01
-> /aaa/
+Budget performance in 2021-01:
+
+     ||         Jan 
+=====++=============
+ aaa || 0 [0% of 4] 
+-----++-------------
+     || 0 [0% of 4] 
 >=
 
 $ hledger -f- bal --budget=monthly -p 2021-01
-> !/aaa/
+Budget performance in 2021-01:
+
+     ||          Jan 
+=====++==============
+ bbb || 0 [0% of 10] 
+-----++--------------
+     || 0 [0% of 10] 
 >=
 
 # ** 35. Cumulative budget report.
@@ -736,7 +744,7 @@ Budget performance in 2020-01-01..2020-02-29:
     expenses:rent                  $100
     income:gifts:cash
 
-~ monthly 2023-08
+~ monthly
     (income:employment)           $-100
     (income:gifts:cash)           $-100
 
@@ -747,8 +755,7 @@ Budget performance in 2023-08:
 ==============++=================
  income       || 0 [0% of $-200] 
    employment || 0 [0% of $-100] 
-   gifts      || 0               
-     cash     || 0 [0% of $-100] 
+   gifts:cash || 0 [0% of $-100] 
 --------------++-----------------
               || 0 [0% of $-200] 
 
@@ -764,3 +771,64 @@ Budget performance in 2023-08:
      cash     || 0 [0% of $-100] 
 --------------++-----------------
               || 0 [0% of $-200] 
+
+# ** 42. Multicolumn budget report with --row-total and --average
+$ hledger -f- bal --budget -M -e 2023-10 --row-total --average -N
+Budget performance in 2023Q3:
+
+                   ||                   Jul              Aug              Sep                 Total              Average 
+===================++====================================================================================================
+ <unbudgeted>      ||  $100                  0                0                 $100 [           0]   $33 [           0] 
+ income:employment ||     0 [  0% of $-100]  0 [0% of $-100]  0 [0% of $-100]      0 [ 0% of $-300]     0 [ 0% of $-100] 
+ income:gifts:cash || $-100 [100% of $-100]  0 [0% of $-100]  0 [0% of $-100]  $-100 [33% of $-300]  $-33 [33% of $-100] 
+
+# ** 43. Multicolumn budget report with --row-total, --average, and --summary-only
+$ hledger -f- bal --budget -M -e 2023-10 --row-total --average -N --summary-only
+Budget performance in 2023Q3:
+
+                   ||                Total              Average 
+===================++===========================================
+ <unbudgeted>      ||  $100 [           0]   $33 [           0] 
+ income:employment ||     0 [ 0% of $-300]     0 [ 0% of $-100] 
+ income:gifts:cash || $-100 [33% of $-300]  $-33 [33% of $-100] 
+
+# ** 44. Multicolumn csv report with --row-total, --average, and --summary-only
+$ hledger -f- bal --budget -M -e 2023-10 --row-total --average -N --summary-only -O csv
+"Account","Total","budget","Average","budget"
+"<unbudgeted>","$100","0","$33","0"
+"income:employment","0","$-300","0","$-100"
+"income:gifts:cash","$-100","$-300","$-33","$-100"
+
+# ** 45. A status query filters the actual amounts but not the budget goals. (#2545)
+<
+~ monthly
+    (expenses:food)   $500
+
+2024-01-05 * grocery
+    expenses:food      $100
+    assets:bank
+
+2024-01-15 grocery
+    expenses:food       $50
+    assets:bank
+
+$ hledger -f- bal --budget -M -b 2024-01 -e 2024-02 --cleared
+Budget performance in 2024-01:
+
+               ||                 Jan 
+===============++=====================
+ <unbudgeted>  || $-100               
+ expenses:food ||  $100 [20% of $500] 
+---------------++---------------------
+               ||     0 [ 0% of $500] 
+
+# ** 46. Likewise a description query. (#2545)
+$ hledger -f- bal --budget -M -b 2024-01 -e 2024-02 desc:grocery
+Budget performance in 2024-01:
+
+               ||                 Jan 
+===============++=====================
+ <unbudgeted>  || $-150               
+ expenses:food ||  $150 [30% of $500] 
+---------------++---------------------
+               ||     0 [ 0% of $500] 

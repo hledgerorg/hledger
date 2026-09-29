@@ -1,0 +1,191 @@
+# * Tests for close --clopen with --lots (clopening workflow).
+
+# ** 1. Equity transfers with --lots: in a closing balances transaction,
+# lot postings transferring to equity are classified as transfers, not disposals.
+# Without this, --lots would error because dispose postings require a selling price.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 starting balance
+    assets:cash     $1000
+    equity:start
+
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:cash
+
+2026-07-01 buy more
+    assets:stocks     5 AAPL {$70}
+    assets:cash
+
+2026-12-31 closing balances
+    assets:cash                               $-150 = $0
+    assets:stocks:{2026-01-15, $50}        -10 AAPL
+    assets:stocks:{2026-07-01, $70}         -5 AAPL
+    equity:start
+
+$ hledger -f- check --lots
+
+# ** 2. Opening equity transfers with --lots: in an opening balances transaction,
+# positive lot postings from equity are classified as transfer-to, not acquire.
+# This is the second half of a close --clopen --lots workflow.
+<
+commodity AAPL  ; lots:
+
+2027-01-01 opening balances
+    assets:cash                                $150
+    assets:stocks:{2026-01-15, $50}          10 AAPL
+    assets:stocks:{2026-07-01, $70}           5 AAPL
+    equity:start
+
+$ hledger -f- check --lots
+
+# ** 3. Full clopen round-trip: closing followed by opening, check --lots succeeds.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 starting balance
+    assets:cash     $1000
+    equity:start
+
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:cash
+
+2026-07-01 buy more
+    assets:stocks     5 AAPL {$70}
+    assets:cash
+
+2026-12-31 closing balances
+    assets:cash                               $-150 = $0
+    assets:stocks:{2026-01-15, $50}        -10 AAPL
+    assets:stocks:{2026-07-01, $70}         -5 AAPL
+    equity:start
+
+2027-01-01 opening balances
+    assets:cash                                $150
+    assets:stocks:{2026-01-15, $50}          10 AAPL
+    assets:stocks:{2026-07-01, $70}           5 AAPL
+    equity:start
+
+$ hledger -f- check --lots
+
+# ** 4. Opening equity transfer postings get ptype:transfer-to (visible with --verbose-tags).
+<
+commodity AAPL  ; lots:
+
+2027-01-01 opening balances
+    assets:cash                                $150
+    assets:stocks:{2026-01-15, $50}          10 AAPL
+    assets:stocks:{2026-07-01, $70}           5 AAPL
+    equity:start
+
+$ hledger -f- print --lots --verbose-tags
+2027-01-01 opening balances
+    assets:cash                                 $150
+    assets:stocks:{2026-01-15, $50}               10 AAPL {2026-01-15, $50}  ; ptype: transfer-to
+    assets:stocks:{2026-07-01, $70}                5 AAPL {2026-07-01, $70}  ; ptype: transfer-to
+    equity:start
+
+>=
+
+# ** 5. `close --clopen --lots` output round-trips: no per-lot-subaccount
+# balance assertions are emitted on opening or closing postings, since
+# assertions run before lot calculation. Non-lot postings still get their
+# usual = 0 / = X assertion. #2659
+<
+commodity avocados  ; lots:
+
+2026-07-12 Buy avocados
+    assets:fruit        100.00 avocados @@ 250 €
+    assets:cash
+
+$ hledger -f- close --clopen --lots -e 2026-07-13
+2026-07-12 closing balances  ; clopen:
+    assets:cash                                  250 €           = 0 €
+    assets:fruit:{2026-07-12, 2.5 €}            -100.00 avocados
+    equity:opening/closing balances
+
+2026-07-13 opening balances  ; clopen:
+    assets:cash                                 -250 €           = -250 €
+    assets:fruit:{2026-07-12, 2.5 €}             100.00 avocados
+    equity:opening/closing balances
+
+>=
+
+# ** 6. Lot subaccounts emptied by transfers are excluded from close's output.
+# Without this, close --open --lots would emit spurious 0-amount postings for
+# the emptied source accounts, whose lot names duplicate the ids of the lots
+# now living at the destination, making the output unparseable. #2689
+<
+commodity ABC ; lots:
+
+2021-03-08 buy
+     equity:open-close   -$10
+     assets:broker1      2 ABC
+
+2021-03-08 buy
+     equity:open-close   -$10
+     assets:broker1      3 ABC
+
+2021-03-09 move
+     assets:broker1      -5 ABC
+     assets:broker2      5 ABC
+
+2021-03-10 move
+     assets:broker2      -5 ABC
+     assets:broker3      5 ABC
+
+$ hledger -f- close --open --lots -e 2022
+2022-01-01 opening balances  ; clopen:
+    assets:broker3:{2021-03-08, "0001", $5}           2 ABC
+    assets:broker3:{2021-03-08, "0002", $3.33333333}  3 ABC
+    equity:opening/closing balances
+
+>=
+
+# ** 7. close --clopen --lots output round-trips even when the lot names
+# contain generated labels and display-rounded inferred costs (eg $10/3
+# shown as $3.33333333): the displayed cost still matches the stored lot,
+# and re-acquiring the consumed lot ids is not a duplicate. #2689
+<
+commodity ABC ; lots:
+
+2021-03-08 buy
+     equity:open-close   -$10
+     assets:broker1      2 ABC
+
+2021-03-08 buy
+     equity:open-close   -$10
+     assets:broker1      3 ABC
+
+2026-08-10 closing balances  ; clopen:
+    assets:broker1:{2021-03-08, "0001", $5}           -2 ABC
+    assets:broker1:{2021-03-08, "0002", $3.33333333}  -3 ABC
+    equity:opening/closing balances
+
+2026-08-11 opening balances  ; clopen:
+    assets:broker1:{2021-03-08, "0001", $5}           2 ABC
+    assets:broker1:{2021-03-08, "0002", $3.33333333}  3 ABC
+    equity:opening/closing balances
+
+$ hledger -f- check --lots
+
+# ** 8. close --lots with --show-costs: lot subaccount balances are still
+# shown without costs (their cost info is in the lot name; transacted costs
+# on lot postings would make the output unreadable); non-lot balances keep
+# --show-costs behaviour. #2689
+<
+commodity ABC ; lots:
+
+2021-03-08 buy
+     assets:cash    -$10
+     assets:broker1   3 ABC
+
+$ hledger -f- close --open --lots --show-costs -e 2022
+2022-01-01 opening balances  ; clopen:
+    assets:broker1:{2021-03-08, $3.33333333}       3 ABC
+    assets:cash                                 $-10     = $-10
+    equity:opening/closing balances
+
+>=

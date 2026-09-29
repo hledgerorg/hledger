@@ -1,0 +1,13 @@
+# unify financial credit union checking
+
+#source AccountHistory*.csv
+#include _unify.rules
+
+source | simplefincsv ../data/simplefin.json 'unify.*checking'
+include _simplefin.rules
+
+account1 assets:bank:unify:checking
+include _common.rules
+
+if (To|From) Share 0001
+ account2 assets:bank:unify:savings

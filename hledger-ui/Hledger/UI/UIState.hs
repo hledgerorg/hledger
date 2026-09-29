@@ -14,6 +14,8 @@ module Hledger.UI.UIState
 ,toggleEmpty
 ,toggleForecast
 ,toggleHistorical
+,toggleLots
+,uiDisplayJournal
 ,togglePending
 ,toggleUnmarked
 ,toggleReal
@@ -35,7 +37,7 @@ module Hledger.UI.UIState
 ,resetDepth
 ,popScreen
 ,pushScreen
-,enableForecastPreservingPeriod
+,enableForecast
 ,resetFilter
 ,resetScreens
 ,regenerateScreens
@@ -49,7 +51,7 @@ import Data.Either (fromRight)
 import Data.List ((\\), sort)
 import Data.Maybe (fromMaybe)
 import Data.Semigroup (Max(..))
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Text.Zipper (gotoEOL)
 import Data.Time.Calendar (Day)
 import Lens.Micro ((^.), over, set)
@@ -60,18 +62,44 @@ import Hledger.Cli.CliOptions
 import Hledger.UI.UITypes
 import Hledger.UI.UIOptions (UIOpts(uoCliOpts))
 import Hledger.UI.UIScreens (screenUpdate)
+import Hledger.UI.UIUtils (showScreenId, showScreenStack)
 
 -- | Make an initial UI state with the given options, journal,
 -- parent screen stack if any, and starting screen.
+-- The provided journal should be the uncollapsed journal (with full lot detail);
+-- the display journal (ajournal) is derived from it according to the lots toggle.
 uiState :: UIOpts -> Journal -> [Screen] -> Screen -> UIState
 uiState uopts j prevscrs scr = UIState {
-   astartupopts  = uopts
-  ,aopts         = uopts
-  ,ajournal      = j
-  ,aMode         = Normal
-  ,aScreen      = scr
-  ,aPrevScreens = prevscrs
+   astartupopts        = uopts
+  ,aopts               = uopts
+  ,auncollapsedjournal = j
+  ,ajournal            = uiDisplayJournal uopts j
+  ,aMode               = Normal
+  ,aScreen             = scr
+  ,aPrevScreens        = prevscrs
+  ,aWarnings           = []
   }
+
+-- | Derive the display journal (what screens show) from the uncollapsed journal:
+-- collapse lot detail unless the lots toggle (--lots) is on. Mirrors the CLI's
+-- maybeCollapseLotDetail, so UI and CLI agree (and --ignore-lots is honored).
+uiDisplayJournal :: UIOpts -> Journal -> Journal
+uiDisplayJournal uopts
+  | boolopt "lots" ro        = id
+  | boolopt "ignore-lots" ro = id
+  | otherwise                = journalCollapseLotDetail
+  where ro = rawopts_ $ uoCliOpts uopts
+
+-- | Toggle display of lot detail (lot subaccounts and synthetic lot postings), like the
+-- CLI's --lots flag. This only flips the option; 'regenerateScreens' then re-derives the
+-- display journal from the stored uncollapsed journal, in memory, without reloading from disk.
+toggleLots :: UIState -> UIState
+toggleLots ui = ui{aopts = uopts'}
+  where
+    copts  = uoCliOpts $ aopts ui
+    ro     = rawopts_ copts
+    ro'    = (if boolopt "lots" ro then unsetboolopt "lots" else setboolopt "lots") ro
+    uopts' = (aopts ui){uoCliOpts = copts{rawopts_ = ro'}}
 
 -- | Toggle between showing only unmarked items or all items.
 toggleUnmarked :: UIState -> UIState
@@ -151,9 +179,10 @@ toggleEmpty = over empty__ not
 toggleConversionOp :: UIState -> UIState
 toggleConversionOp ui = (over value valOff) (over conversionop toggleCostMode ui)
   where
-    toggleCostMode Nothing               = Just ToCost
-    toggleCostMode (Just NoConversionOp) = Just ToCost
-    toggleCostMode (Just ToCost)         = Just NoConversionOp
+    toggleCostMode Nothing                     = Just ToCost
+    toggleCostMode (Just NoConversionOp)       = Just ToCost
+    toggleCostMode (Just ToCost)               = Just NoConversionOp
+    toggleCostMode (Just ToTransactedCost)     = Just NoConversionOp
     valOff _                             = Nothing
 
 -- | Toggle between showing primary amounts or values (using valuation specified at startup, or a default).
@@ -170,19 +199,20 @@ toggleValue ui = (over conversionop costOff) (over value (valuationToggleValue m
     costOff _ = Just NoConversionOp
 
 -- | Set hierarchic account tree mode.
+-- Also sets no_elide, which hledger-ui wants in tree mode only (see uiInitialState).
 setTree :: UIState -> UIState
-setTree = set accountlistmode ALTree
+setTree = set no_elide True . set accountlistmode ALTree
 
 -- | Set flat account list mode.
+-- Also unsets no_elide, which hledger-ui wants in tree mode only (see uiInitialState).
 setList :: UIState -> UIState
-setList = set accountlistmode ALFlat
+setList = set no_elide False . set accountlistmode ALFlat
 
 -- | Toggle between flat and tree mode. If current mode is unspecified/default, assume it's flat.
 toggleTree :: UIState -> UIState
-toggleTree = over accountlistmode toggleTreeMode
-  where
-    toggleTreeMode ALTree = ALFlat
-    toggleTreeMode ALFlat = ALTree
+toggleTree ui = case ui ^. accountlistmode of
+    ALTree -> setList ui
+    ALFlat -> setTree ui
 
 -- | Toggle between historical balances and period balances.
 toggleHistorical :: UIState -> UIState
@@ -201,20 +231,19 @@ toggleForecast _d ui = set forecast newForecast ui
   where
     newForecast = case ui^.forecast of
       Just _  -> Nothing
-      Nothing -> enableForecastPreservingPeriod ui (ui^.cliOpts) ^. forecast
+      Nothing -> enableForecast (astartupopts ui) (ui^.cliOpts) ^. forecast
 
--- | Ensure this CliOpts enables forecasted transactions.
--- If a forecast period was specified in the old CliOpts,
--- or in the provided UIState's startup options,
--- it is preserved.
-enableForecastPreservingPeriod :: UIState -> CliOpts -> CliOpts
-enableForecastPreservingPeriod ui copts = set forecast mforecast copts
+-- | Enable forecasting in this CliOpts.
+-- If it previously specified a forecast period, or else if the given ui startup options did,
+-- preserve that as the forecast period.
+enableForecast :: UIOpts -> CliOpts -> CliOpts
+enableForecast startopts currentopts = set forecast mforecast currentopts
   where
-    mforecast = asum [mprovidedforecastperiod, mstartupforecastperiod, mdefaultforecastperiod]
+    mforecast = asum [mcurrentforecastperiod, mstartupforecastperiod, mdefaultforecastperiod]
       where
-        mprovidedforecastperiod = copts ^. forecast
-        mstartupforecastperiod  = astartupopts ui ^. forecast
-        mdefaultforecastperiod  = Just nulldatespan
+        mcurrentforecastperiod = currentopts ^. forecast
+        mstartupforecastperiod = startopts ^. forecast
+        mdefaultforecastperiod = Just nulldatespan
 
 -- | Toggle between showing all and showing only real (non-virtual) items.
 toggleReal :: UIState -> UIState
@@ -266,8 +295,17 @@ updateReportPeriod updatePeriod = fromRight err . overEither period updatePeriod
   where err = error' "updateReportPeriod: updating period should not result in an error"
 
 -- | Apply a new filter query, or return the failing query.
+-- Also re-expands cur: terms against the journal's commodity aliases,
+-- so a freshly typed @cur:@ query is alias-aware even when the journal
+-- has been reloaded since startup.
 setFilter :: String -> UIState -> Either String UIState
-setFilter s = first (const s) . setEither querystring (words'' queryprefixes $ T.pack s)
+setFilter s ui = do
+  ui' <- first (const s) $ setEither querystring (words'' queryprefixes $ T.pack s) ui
+  let copts  = uoCliOpts (aopts ui')
+      rspec  = reportspec_ copts
+      rspec' = rspec{_rsQuery = queryExpandCurAliases (ajournal ui') (_rsQuery rspec)}
+      opts'  = (aopts ui'){uoCliOpts = copts{reportspec_ = rspec'}}
+  Right ui'{aopts = opts'}
 
 -- | Reset some filters & toggles.
 resetFilter :: UIState -> UIState
@@ -339,29 +377,68 @@ closeMinibuffer = setMode Normal
 setMode :: Mode -> UIState -> UIState
 setMode m ui = ui{aMode=m}
 
+-- | Descend into a new screen, making it active and suspending the current one
+-- onto the navigation stack. The canonical way to push the zipper.
 pushScreen :: Screen -> UIState -> UIState
-pushScreen scr ui = ui{aPrevScreens=(aScreen ui:aPrevScreens ui)
-                      ,aScreen=scr
-                      }
+pushScreen scr ui =
+  dbg1Msg ("pushing screen " <> showScreenId scr <> ". " <> showScreenStack "" showScreenId ui1)
+  ui1
+  where ui1 = ui{aPrevScreens=aScreen ui:aPrevScreens ui, aScreen=scr }
 
+-- | Return to the parent screen, discarding the active one. At the root screen this
+-- is a no-op, since the stack always keeps at least one screen. The canonical way to
+-- pop the zipper.
 popScreen :: UIState -> UIState
-popScreen ui@UIState{aPrevScreens=s:ss} = ui{aScreen=s, aPrevScreens=ss}
+popScreen ui@UIState{aPrevScreens = s : ss} =
+  dbg1Msg ("popping screen " <> showScreenId (aScreen ui) <> ". " <> showScreenStack "" showScreenId ui1)
+  ui1
+  where ui1 = ui{aPrevScreens = ss ,aScreen = s }
 popScreen ui = ui
 
 -- | Reset options to their startup values, discard screen navigation history,
 -- and return to the top screen, regenerating it with the startup options 
 -- and the provided reporting date.
 resetScreens :: Day -> UIState -> UIState
-resetScreens d ui@UIState{astartupopts=origopts, ajournal=j, aScreen=s,aPrevScreens=ss} =
-  ui{aopts=origopts, aPrevScreens=[], aScreen=topscreen', aMode=Normal}
+resetScreens d ui@UIState{astartupopts=origopts, auncollapsedjournal=jraw, aScreen=s,aPrevScreens=ss} =
+  ui{aopts=origopts, ajournal=jdisplay, aPrevScreens=[], aScreen=topscreen', aMode=Normal}
   where
-    topscreen' = screenUpdate origopts d j $ lastDef s ss
+    -- restore the startup lots state too, re-deriving the display journal from the uncollapsed one
+    jdisplay   = uiDisplayJournal origopts jraw
+    topscreen' = screenUpdate origopts d jdisplay $ lastDef s ss
 
--- | Given a new journal and reporting date, save the new journal in the ui state,
--- then regenerate the content of all screens in the stack
--- (using the ui state's current options), preserving the screen navigation history.
+-- | Regenerate the content of all screens in the stack from the ui state's current
+-- options and stored journal, preserving the screen navigation history.
 -- Note, does not save the reporting date.
-regenerateScreens :: Journal -> Day -> UIState -> UIState
-regenerateScreens j d ui@UIState{aopts=opts, aScreen=s,aPrevScreens=ss} =
-  ui{ajournal=j, aScreen=screenUpdate opts d j s, aPrevScreens=map (screenUpdate opts d j) ss}
+--
+-- This is the single place that establishes the display journal (ajournal) from the
+-- stored uncollapsed journal and the current options, so the two journals can never
+-- drift out of sync. To change the journal (eg on reload), set auncollapsedjournal and
+-- then call this. To change the lots toggle, flip the option (toggleLots) and call this.
+--
+-- Every screen regenerates from its own stored parameters (plus the options, date and journal),
+-- not from any other screen, so the whole stack refreshes uniformly here.
+regenerateScreens :: Day -> UIState -> UIState
+regenerateScreens d ui@UIState{aopts=opts, auncollapsedjournal=jraw, aScreen=s,aPrevScreens=ss} =
+  -- Re-derive _rsQuery from the user's querystring_ and re-expand cur:
+  -- terms against the (possibly reloaded) journal's commodity aliases.
+  -- If re-derivation fails, fall back to the existing query.
+  let copts    = uoCliOpts opts
+      rspec    = reportspec_ copts
+      rspec'   = case reportSpecExpandCurQueries jraw rspec of
+                   Right rs -> rs
+                   Left _   -> rspec
+      opts'    = opts{uoCliOpts = copts{reportspec_ = rspec'}}
+      -- the display journal, derived here so it always matches the stored journal and options
+      jdisplay = uiDisplayJournal opts' jraw
+      -- Regenerate the active screen and the whole hidden stack strictly, so no
+      -- previous-generation screen/list/journal is retained after a reload (#1825).
+      s'  = screenUpdate opts' d jdisplay s
+      ss' = strictMapScreens (screenUpdate opts' d jdisplay) ss
+  in s' `seq` ss' `seq` ui{aopts=opts', ajournal=jdisplay, aScreen=s', aPrevScreens=ss'}
 
+-- | Like @map@ over a screen stack, but strict in the list spine and in each regenerated
+-- screen (forced to WHNF), so the lazy-map accumulation of previous-generation screens is
+-- collapsed on each reload rather than chaining up over time (#1825).
+strictMapScreens :: (Screen -> Screen) -> [Screen] -> [Screen]
+strictMapScreens _ []     = []
+strictMapScreens f (s:ss) = let s' = f s; ss' = strictMapScreens f ss in s' `seq` ss' `seq` (s' : ss')

@@ -46,6 +46,7 @@ Transactions in assets:checking and subaccounts (matching query):
 # matching postings) then by parse order. (#1642)
 # Also, make sure to use the posting date of matching transactions, if it
 # differs from the transaction date.
+# Also, parse order respects the order of -f options on command line (not tested here).
 <
 ~ 2021-01-03  sixth, because forecast transactions come after normal transactions
     (a)           6
@@ -121,3 +122,117 @@ Transactions in a and subaccounts:
 # # 10. should show the transaction, with the january date (?)
 # $ hledger -f- areg a date2:202102
 # 2021-01-01                      a                                1             1
+# ** 8. aregister rounds amounts to display precision (#2407)
+<
+commodity $1.00
+2025-06-12
+  (a)   $1.000
+
+$ hledger -f - areg a
+Transactions in a and subaccounts:
+2025-06-12                      a                            $1.00         $1.00
+
+# ** 9. aregister should respect the drop flag including when combining a list of accounts
+<
+2025-06-12
+  a:b   $1
+  a:c   $1
+  d
+
+$ hledger -f - areg d --drop 1
+Transactions in d and subaccounts:
+2025-06-12                      b, c                           $-2           $-2
+
+# ** 10. --title replaces the default heading.
+<
+2025-06-12
+  (a)   $1
+
+$ hledger -f - areg a --title 'My Title'
+My Title
+2025-06-12                      a                               $1            $1
+
+# ** 11. An empty --title suppresses the heading.
+<
+2025-06-12
+  (a)   $1
+
+$ hledger -f - areg a --title=
+2025-06-12                      a                               $1            $1
+
+# By default the account column shows the other accounts in each transaction.
+# With --matched, it shows the matched accounts instead: this account, or the
+# subaccounts of it that were posted to. Useful for a parent account. (#2540)
+<
+2020-01-01 Vendor A
+  expenses:foo      $1000
+  expenses:bankfee     $5
+  assets:bank
+
+2020-01-01 Vendor B
+  expenses:bar      $1000
+  expenses:bankfee     $5
+  assets:bank
+
+# ** 12. --matched shows the matched subaccounts; amounts are unchanged.
+$ hledger -f- areg expenses --matched
+Transactions in expenses and subaccounts:
+2020-01-01 Vendor A             ex:foo, ex:bankfee           $1005         $1005
+2020-01-01 Vendor B             ex:bar, ex:bankfee           $1005         $2010
+
+# ** 13. Additional query arguments also narrow the matched accounts shown.
+$ hledger -f- areg expenses --matched fee
+Transactions in expenses and subaccounts (matching query):
+2020-01-01 Vendor A             ex:bankfee                      $5            $5
+2020-01-01 Vendor B             ex:bankfee                      $5           $10
+
+# ** 14. -r/--related selects the default; the last of these flags wins.
+$ hledger -f- areg expenses --matched -r
+Transactions in expenses and subaccounts:
+2020-01-01 Vendor A             as:bank                      $1005         $1005
+2020-01-01 Vendor B             as:bank                      $1005         $2010
+
+# ** 15. For an account with no subaccounts, --matched just shows that account.
+$ hledger -f- areg bank --matched
+Transactions in assets:bank and subaccounts:
+2020-01-01 Vendor A             as:bank                     $-1005        $-1005
+2020-01-01 Vendor B             as:bank                     $-1005        $-2010
+
+# ** 16. -A/--average shows the running average change per transaction, including
+# zero-change transactions (it implies --empty).
+<
+2026-01-01
+  expenses:food   10
+  assets:cash
+
+2026-01-15
+  expenses:food    0
+  assets:cash
+
+2026-02-01
+  expenses:food   20
+  expenses:rent   30
+  assets:cash
+
+2026-03-01
+  expenses:food   60
+  assets:cash
+
+$ hledger -f- areg expenses -A
+Transactions in expenses and subaccounts:
+2026-01-01                      as:cash                         10            10
+2026-01-15                      as:cash                          0             5
+2026-02-01                      as:cash                         50            20
+2026-03-01                      as:cash                         60            30
+
+# ** 17. By default, -A averages over the report period only (it implies --cumulative).
+$ hledger -f- areg expenses -A date:2026-02-
+Transactions in expenses and subaccounts:
+2026-02-01                      as:cash                         50            50
+2026-03-01                      as:cash                         60            55
+
+# ** 18. With -H, -A also includes the transactions before the report start date.
+$ hledger -f- areg expenses -A -H date:2026-02-
+Transactions in expenses and subaccounts:
+2026-02-01                      as:cash                         50            20
+2026-03-01                      as:cash                         60            30

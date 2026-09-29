@@ -1,30 +1,32 @@
 # Files
 
-<div class=pagetoc>
+Some views and explanations of files in the hledger project.
 
-<!-- toc -->
-</div>
+## Repos
 
-Some views and explanations of files in the hledger project, as of 2022-12.
-(Needs update..)
+The official hledger repos are:
 
-<br clear=all>
+- the main repo, <https://github.com/hledgerorg/hledger> (shortcut: <https://code.hledger.org>):
+  hledger, hledger-ui and hledger-web code, user manuals, developer docs
+- the site repo, <https://github.com/hledgerorg/hledger_site> (<https://site.hledger.org>):
+  the hledger.org website and additional docs
+- the finance repo, <https://github.com/hledgerorg/hledger_finance> (<https://finance.hledger.org>):
+  the project's financial journals and reports
 
-## hledger working copy
+Third-party hledger tools and add-ons (hledger-iadd, hledger-flow, etc.) have their own repos;
+see [Scripts and add-ons](scripts.md).
 
-A full working copy of the official hledger [repos](REPOS.md)
+A full working copy of the official repos
 is best laid out like this (manually; we currently don't use git submodules):
 <pre>
-src/hledger/ - git clone https://github.com/simonmichael/hledger; cd hledger
-  site/      - git clone https://github.com/simonmichael/hledger_site site
-  finance/   - git clone https://github.com/simonmichael/hledger_finance finance
+src/hledger/ - git clone https://github.com/hledgerorg/hledger; cd hledger
+  site/      - git clone https://github.com/hledgerorg/hledger_site site
+  finance/   - git clone https://github.com/hledgerorg/hledger_finance finance
 </pre>
 
 You don't need to clone all of these repos unless you are working in all of those areas.
 
-The next two listings show the directories in the main and site repos:
-
-## main repo directories
+## main repo
 
 The main repo contains
 the hledger-lib, hledger, hledger-ui, and hledger-web haskell packages,
@@ -32,299 +34,43 @@ the hledger-install script,
 a collection of example data,
 some documentation
 and other support files.
+Some notable locations:
 
-<!-- commands are starting points, manual fixups applied -->
-<!-- $ (cd ~/src/hledger; tools/gtree -d) -->
-<pre>
-src/hledger/
-  .github/
-    ISSUE_TEMPLATE/
-    workflows/
-      old/
-  .sandstorm/
-  bin/
-  checks/
-  doc/
-    haskellerz/
-    hcar/
-    mockups/
-    profs/
-  docker-static-arm32v7/
-  docker/
-  examples/
-    budgeting/
-    csv/
-    investing/
-    invoicing/
-      invoice-script/
-      makefile/
-    reports/
-    systemd/
-    templates/
-      basic/
-  hledger-install/
-  hledger-lib/
-    Hledger/
-      Data/
-        JournalChecks/
-      Read/
-      Reports/
-      Utils/
-    Text/
-      Megaparsec/
-      Tabular/
-    other/
-      ledger-parse/
-        Ledger/
-          Parser/
-    test/
-  hledger-ui/
-    Hledger/
-      UI/
-    test/
-  hledger-web/
-    Hledger/
-      Web/
-        Handler/
-        Settings/
-        Widget/
-    app/
-    config/
-    deploy/
-    static/
-      css/
-      fonts/
-      js/
-    templates/
-    test/
-  hledger/
-    Hledger/
-      Cli/
-        Commands/
-    app/
-    bench/
-    embeddedfiles/
-    shell-completion/
-    test/
-      addons/
-      balance/
-      cli/
-      errors/
-      i18n/
-      import/
-      journal/
-        account-display-order/
-          1/
-      print/
-      register/
-  tools/
-</pre>
+- `hledger-lib/`, `hledger/`, `hledger-ui/`, `hledger-web/` - the haskell packages; each has a `package.yaml`, `README.md`, `CHANGES.md` and `test/`
+- `hledger/Hledger/Cli/Commands/` - one module and one doc file per command
+- `hledger/test/` - functional tests (shelltestrunner files), grouped by feature
+- `hledger/embeddedfiles/` - generated docs embedded in the hledger executable
+- `examples/` - sample journals, CSV rules, scripts and other examples (see its README, and [Sample journals](#sample-journals) below)
+- `bin/` - add-on scripts for users (see [Scripts](scripts.md))
+- `tools/` - scripts for developers and maintainers
+- `doc/` - developer docs, notes, specs and other project docs
+- `Justfile`, `Shake.hs` - project automation (see [DEVWORKFLOWS](DEVWORKFLOWS.md))
+- `.github/workflows/` - CI and release workflows
 
-## site repo directories
+To see the current directory tree, run `tools/gtree -d` in the repo
+(or `tools/gtree REGEX` to list matching files).
 
-The site repo contains the website infrastructure, 
-versioned snapshots of the user manuals,
-home page, cookbook and other docs.
+### Sample journals
 
-<!-- $ (cd ~/src/hledger/site; ../tools/gtree -d) -->
-<pre>
-src/hledger/site/
-  css/
-  js/
-  src/
-    1.0/
-    1.1/
-    1.10/
-    1.11/
-    1.12/
-    1.13/
-    1.14/
-    1.15/
-    1.16/
-    1.17/
-    1.18/
-    1.19/
-    1.2/
-    1.20/
-    1.21/
-    1.22/
-    1.23/
-    1.24/
-    1.25/
-    1.26/
-    1.27/
-    1.28/
-    1.3/
-    1.4/
-    1.5/
-    1.9/
-    dev/
-    fonts/
-    highslide/
-      graphics/
-        outlines/
-    images/
-      hledger-ui/
-      hledger-web/
-        normal/
-        small/
-  theme/
-    css/
-</pre>
+Synthetic journals like `examples/10ktxns-1kaccts.journal` are useful for benchmarks and testing.
+The name gives the number of transactions and the number of accounts (each 10 levels deep).
+They are generated by [tools/generatejournal.hs](https://github.com/hledgerorg/hledger/blob/main/tools/generatejournal.hs),
+and are not committed; `just samplejournals` (re)generates the standard set.
+
+## site repo
+
+The site repo contains the website infrastructure (`book.toml`, `theme/`, `css/`, `js/`, `Makefile`),
+the content source in `src/` (including versioned snapshots of the user manuals in `src/1.*/`),
+and symlinks to the dev docs and other files kept in the main repo.
+
+- [book.toml](https://github.com/hledgerorg/hledger_site/blob/main/book.toml) is the main config file for mdbook.
+- [src/SUMMARY.md](https://github.com/hledgerorg/hledger_site/blob/main/src/SUMMARY.md)
+  defines the site's pages and which ones appear in the sidebar
+  (except for old manual versions; those are rendered separately).
 
 ## finance repo
 
-The finance repo contains transaction journals and financial reports.
-
-<!-- $ (cd ~/src/hledger/finance; ../tools/gtree) -->
-<pre>
-src/hledger/finance/
-  Makefile
-  README.md
-  oc.accounts
-  oc.csv
-  oc.csv.rules
-  oc.journal
-</pre>
-
-## hledger user scripts
-
-[Scripts](scripts.md) for users are in bin/:
-
-<!-- $ gtree ^bin -->
-<pre>
-src/hledger/bin/
-  README.md
-  _hledger-chart.hs
-  bashrc
-  compile.sh
-  csv.mk
-  hledger-addon-example.hs
-  hledger-balance-as-budget.hs
-  hledger-check-fancyassertions.hs
-  hledger-check-postable.hs
-  hledger-check-tagfiles.cabal.hs
-  hledger-check-tagfiles.hs
-  hledger-combine-balances.hs
-  hledger-git
-  hledger-move.hs
-  hledger-pijul
-  hledger-print-location.hs
-  hledger-simplebal
-  hledger-smooth.hs
-  hledger-swap-dates.hs
-  paypaljson
-  paypaljson2csv
-  scripts.test
-  watchaccounts
-</pre>
-
-## hledger developer tools
-
-Scripts used by developers and maintainers tend to be in tools/:
-
-<!-- $ gtree ^tools -->
-<pre>
-src/hledger/tools/
-  README
-  changelog.hs
-  commitlint
-  criterionbench.hs
-  dayssincetag.hs
-  docshelltest.hs
-  generatejournal.hs
-  generatetimeclock.hs
-  gtree
-  hackageupload
-  listbydeps.hs
-  pandoc-dedent-code-blocks.lua
-  pandoc-demote-headers.lua
-  pandoc-drop-html-blocks.lua
-  pandoc-drop-html-inlines.lua
-  pandoc-drop-links.lua
-  pandoc-drop-toc.lua
-  pandoc-toc.lua
-  pandoc-wiki-links.lua
-  progressionbench.hs
-  regressiontest.py
-  release
-  runhledgercov
-  simplifyprof.hs
-  trhsx
-</pre>
-
-## Sh/makefiles
-
-Many developer tasks are automated via `Justfile` or `Shake.hs` also.
-Run `just` or `./Shake.hs` to see help.
-
-<pre>
-$ gtree '(^|/)((bsd)?m|sh)ake|justfile'
-src/hledger/
-  Justfile
-  Makefile
-  Makefile.helpsys
-  Shake.hs
-  bin/
-    justfile
-  doc/
-    haskellerz/
-      Makefile
-  examples/
-    csv/
-      Makefile
-    invoicing/
-      pandoc-make-invoice/
-        Makefile
-    reports/
-      Makefile
-  hledger/
-    shell-completion/
-      BSDmakefile
-      Makefile
-    test/
-      errors/
-        Makefile
-</pre>
-
-## YAML files
-
-Developer configuration often happens in .yaml or .yml files.
-
-<!-- $ gtree ya?ml -->
-<pre>
-src/hledger/
-  .hlint.yaml
-  azure-pipelines.yml
-  hie-other.yaml
-  stack.yaml
-  stack8.10.yaml
-  stack9.0.yaml
-  stack9.4.yaml
-  .github/
-    FUNDING.yml
-    ISSUE_TEMPLATE/
-      config.yml
-    workflows/
-      binaries-linux-arm32v7-static.yml
-      binaries-linux-x64-static.yml
-      binaries-mac-x64.yml
-      binaries-windows-x64.yml
-      test-linux-x64.yml
-      old/
-        release.yml
-  hledger-lib/
-    package.yaml
-  hledger-ui/
-    package.yaml
-  hledger-web/
-    package.yaml
-    config/
-      keter.yaml
-      settings.yml
-  hledger/
-    package.yaml
-</pre>
+The finance repo contains the project's transaction journals and financial reports.
 
 ## Core docs
 
@@ -332,182 +78,9 @@ Core documentation which should stay closely synced with hledger's implementatio
 (changelogs, user manuals, developer docs) is kept in the main repo.
 
 - Many directories have a README.md explaining their purpose and content.
-
 - Each hledger package, and the project itself, has a CHANGES.md changelog file.
-
 - hledger/hledger.m4.md, hledger-ui/hledger-ui.m4.md, hledger-web/hledger-web.m4.md
   are the user manuals, which get rendered as html, info, man and plain text.
   They are processed first with m4 for extra flexibility.
-
 - The hledger manual imports the subcommand docs from hledger/Hledger/Cli/Commands/*.md.
-
-- doc/ contains other developer docs.
-
-<!-- $ gtree md -->
-<pre>
-src/hledger/
-  CHANGES.md
-  README.md
-  .github/
-    pull_request_template.md
-    ISSUE_TEMPLATE/
-      a-bug.md
-      a-wish.md
-  .sandstorm/
-    README.md
-    changelog.md
-    description.md
-  bin/
-    README.md
-  doc/
-    ACHIEVEMENTS.md
-    BENCHMARKS.md
-    CHANGELOGS.md
-    CODE.md
-    COMMITS.md
-    CONTRIBUTING.md
-    CREDITS.md
-    DOCS.md
-    EXAMPLES.md
-    FILES.md
-    FINANCE.md
-    ISSUES.md
-    LINKS.md
-    MAKE.md
-    PULLREQUESTS.md
-    RELEASING.md
-    REPOS.md
-    SHAKE.md
-    TESTS.md
-    VERSIONNUMBERS.md
-    DEVWORKFLOWS.md
-    github-release-doc.tmpl.md
-    haskellerz/
-      haskellerz.md
-    hcar/
-      HCAR-hledger-201611.md
-  docker/
-    README.md
-  examples/
-    invoicing/
-      README.md
-      invoice-script/
-        README.md
-        abinvoice.tmpl.md
-      makefile/
-        202001ab.md
-        README.md
-    systemd/
-      hledger-web.service
-      hledger.nginx
-      readme.md
-    templates/
-      README.md
-  hledger-install/
-    README.md
-  hledger-lib/
-    CHANGES.md
-    README.md
-  hledger-ui/
-    CHANGES.md
-    README.md
-    hledger-ui.m4.md
-    test/
-      uitest.md
-  hledger-web/
-    CHANGES.md
-    README.md
-    hledger-web.m4.md
-  hledger/
-    CHANGES.md
-    README.md
-    hledger.m4.md
-    Hledger/
-      Cli/
-        Commands/
-          Accounts.md
-          Activity.md
-          Add.md
-          Aregister.md
-          Balance.md
-          Balancesheet.md
-          Balancesheetequity.md
-          Cashflow.md
-          Check.md
-          Close.md
-          Codes.md
-          Commodities.md
-          Descriptions.md
-          Diff.md
-          Files.md
-          Help.md
-          Import.md
-          Incomestatement.md
-          Notes.md
-          Payees.md
-          Prices.md
-          Print.md
-          README.md
-          Register.md
-          Rewrite.md
-          Repl.md
-          Roi.md
-          Run.md
-          Stats.md
-          Tags.md
-          Test.md
-    shell-completion/
-      README.md
-    test/
-      README.md
-      errors/
-        README.md
-</pre>
-
-## Site config files
-
-These help configure the website.
-
-- [book.toml](https://github.com/simonmichael/hledger_site/blob/master/book.toml) is the main config file for mdbook.
-
-- [src/SUMMARY.md](https://github.com/simonmichael/hledger_site/blob/master/src/SUMMARY.md)
-  defines the site's pages and which ones appear in the sidebar
-  (except for old manual versions; those are rendered separately).
-
-<!-- $ gtree 'Makefile|toml|css|js|theme|SUMMARY' -->
-<pre>
-src/hledger/site/
-  Makefile
-  book.toml
-  css/
-    site.css
-  js/
-    bootstrap.min.js
-    jquery-1.11.0.min.js
-    site.js
-  src/
-    SUMMARY.md
-    highslide/
-      highslide-ie6.css
-      highslide.css
-      highslide.js
-  theme/
-    book.js
-    favicon.png
-    favicon.svg
-    highlight.css
-    highlight.js
-    index.hbs
-    css/
-      chrome.css
-      general.css
-      print.css
-      variables.css
-</pre>
-
-<!-- template: -->
-<!-- ## title -->
-<!-- <\!-- $ gtree ... -\-> -->
-<!-- <pre> -->
-<!-- </pre> -->
-<!--  -->
+- doc/ contains other developer docs. See [DOCS](DOCS.md) for more.

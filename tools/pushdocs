@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pushdocs [MSG] - commit manuals with ";doc: MSG" prefix, then push to CI & master
+# pushdocs [MSG] - commit manuals with ";doc: MSG" prefix, then push to CI & main
 
 set -e
 

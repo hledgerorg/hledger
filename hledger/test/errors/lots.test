@@ -1,0 +1,10 @@
+$ hledger check lots -f lots.j
+>2 /hledger: Error: .*lots\.j:8:
+  \| 2022-02-01 sell
+8 \|     assets:stocks +-15 AAPL \{\$50\} @ \$55
+(.*
+)*Insufficient lots for commodity AAPL in account assets:stocks: need 15 but only 10 available
+Lots matching \{\$50\}:
+  \{2022-01-01, \$50\}  10
+/
+>= 1

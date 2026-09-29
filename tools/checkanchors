@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""
+Check that internal links (#anchor) in the manuals' source files point to
+existing section headings or explicit <a name=...> anchors.
+
+Checks the hledger manual (hledger/hledger.m4.md, with the command docs
+from hledger/Hledger/Cli/Commands/*.md inlined in the order given by
+commands.m4), and the hledger-ui and hledger-web manuals.
+Heading ids are computed with mdbook's rules, which the website uses.
+Exit status is 1 if any unresolved anchors are found.
+"""
+
+import collections
+import glob
+import os
+import re
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+COMMANDS_DIR = os.path.join(REPO, 'hledger/Hledger/Cli/Commands')
+
+
+def read_lines(path):
+    with open(path, encoding='utf-8') as f:
+        return f.read().split('\n')
+
+
+def hledger_manual_lines():
+    """The hledger manual's source lines, with command docs inlined and
+    each line tagged with (file, lineno)."""
+    out = []
+    for i, line in enumerate(read_lines(os.path.join(REPO, 'hledger/hledger.m4.md')), 1):
+        if line.strip() == '_commands_':
+            out.extend(commands_lines())
+        else:
+            out.append(('hledger/hledger.m4.md', i, line))
+    return out
+
+
+def commands_lines():
+    out = []
+    for i, line in enumerate(read_lines(os.path.join(COMMANDS_DIR, 'commands.m4')), 1):
+        m = re.match(r'_command_\(\{\{(\w+)\}\}\)', line.strip())
+        if m:
+            rel = f'hledger/Hledger/Cli/Commands/{m.group(1)}.md'
+            out.extend((rel, j, l) for j, l in enumerate(read_lines(os.path.join(REPO, rel)), 1))
+        elif not line.startswith('m4_'):
+            out.append(('hledger/Hledger/Cli/Commands/commands.m4', i, line))
+    return out
+
+
+def single_manual_lines(rel):
+    return [(rel, i, l) for i, l in enumerate(read_lines(os.path.join(REPO, rel)), 1)]
+
+
+def mdbook_id(heading):
+    """mdbook's heading id: strip code/link markup, lowercase, keep
+    alphanumerics, '-' and '_', map each space to '-'."""
+    t = heading.replace('`', '')
+    t = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', t)
+    t = t.replace('\\', '').lower()
+    return ''.join('-' if c == ' ' else c for c in t if c.isalnum() or c in '-_ ')
+
+
+def anchors_in(lines):
+    ids = set()
+    counts = collections.Counter()
+    in_fence = False
+    for _, _, line in lines:
+        if re.match(r'^ {0,3}```', line):
+            in_fence = not in_fence
+            continue
+        ids.update(re.findall(r'<a name="([^"]+)"', line))
+        if in_fence:
+            continue
+        m = re.match(r'^#{1,6}\s+(.*?)\s*$', line)
+        if m:
+            i = mdbook_id(m.group(1))
+            n = counts[i]
+            counts[i] += 1
+            ids.add(i if n == 0 else f'{i}-{n}')
+    return ids
+
+
+def unresolved_refs(lines):
+    ids = anchors_in(lines)
+    bad = []
+    for path, lineno, line in lines:
+        for m in re.finditer(r'\]\(#([^)\s]+)\)|^\[[^\]]+\]:\s*#(\S+)', line):
+            a = m.group(1) or m.group(2)
+            if a not in ids:
+                bad.append(f'{path}:{lineno}: #{a}')
+    return bad
+
+
+def main():
+    manuals = [
+        ('hledger manual', hledger_manual_lines()),
+        ('hledger-ui manual', single_manual_lines('hledger-ui/hledger-ui.m4.md')),
+        ('hledger-web manual', single_manual_lines('hledger-web/hledger-web.m4.md')),
+    ]
+    status = 0
+    for name, lines in manuals:
+        bad = unresolved_refs(lines)
+        if bad:
+            status = 1
+            print(f'{name}: {len(bad)} unresolved anchor(s):')
+            print('\n'.join('  ' + b for b in bad))
+        else:
+            print(f'{name}: all internal anchors resolve')
+    sys.exit(status)
+
+
+if __name__ == '__main__':
+    main()

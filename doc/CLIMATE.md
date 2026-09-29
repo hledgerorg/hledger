@@ -1,15 +1,9 @@
 # Climate impact
 
-
 > Most human endeavours should maintain and publish an environmental cost/benefit report. 
 "Cost" means some environmental impact such as resources used (energy, water, land..)  
 or undesirable waste generated (carbon dioxide, toxins, heat, noise, harm..)
 <!-- --<https://ecoaccounting.org> -->
-
-<div class=pagetoc>
-
-<!-- toc -->
-</div>
 
 Here is the beginnings of one for the hledger project, with a catchier name.
 
@@ -64,3 +58,6 @@ Some useful statistics to guestimate:
 - Predicted lifetime cost
 - Comparison with alternate solutions
   
+## Related
+
+- https://andymasley.com/visuals/carbon-footprint

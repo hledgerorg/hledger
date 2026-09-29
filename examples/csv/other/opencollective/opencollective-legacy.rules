@@ -1,0 +1,76 @@
+# hledger 1.51 conversion rules for Open Collective's "Legacy Platform Default (Pre-2024)" CSV format.
+# See README.md for more details.
+#
+# Examples:
+#
+# A contribution transaction before 2021-06: (host fee is missing but can be inferred)
+# "datetime","shortId","shortGroup","description","type","kind","isRefund","isRefunded","shortRefundId","displayAmount","amount","paymentProcessorFee","netAmount","balance","currency","accountSlug","accountName","oppositeAccountSlug","oppositeAccountName","paymentMethodService","paymentMethodType","expenseType","expenseTags","payoutMethodType","merchantId","orderMemo","taxAmount"
+# "2017-01-20T19:21:45","f50dc2b7","8b272eb0","Monthly contribution from Simon Michael (Bronze)","CREDIT","CONTRIBUTION","","","","$10.00 USD",10,-0.59,8.41,8.41,"USD","hledger","hledger","simon","Simon Michael","STRIPE","CREDITCARD",,"",,,,0
+#
+# A contribution transaction after 2021-06:
+# "2025-12-23T10:59:20","e34843a9","d40ea8c3","Monthly contribution from Guest (Bronze)","CREDIT","CONTRIBUTION","","","","$2.00 USD",2,-0.59,1.41,7128.76,"USD","hledger","hledger","guest-d120c27f","Guest","PAYPAL","SUBSCRIPTION",,"",,,,0
+# "2025-12-23T10:59:20","94960bd6","d40ea8c3","Host Fee to Open Source Collective","DEBIT","HOST_FEE","","","","-$0.20 USD",-0.2,0,-0.2,7127.97,"USD","hledger","hledger","opensource","Open Source Collective",,,,"",,,,0
+
+source hledger-transactions.csv
+# archive
+fields date, shortId, shortGroup, description, type, kind, isRefund, isRefunded, shortRefundId, displayAmount, amount_, paymentProcessorFee, netAmount, balance_, currency_, accountSlug, accountName, oppositeAccountSlug, oppositeAccountName, paymentMethodService, paymentMethodType, expenseType, expenseTags, payoutMethodType, merchantId, orderMemo, taxAmount
+skip 1
+newest-first
+date-format %Y-%m-%dT%H:%M:%S
+comment \nid:%shortId, group:%shortGroup, dc:%type, payment-service:%paymentMethodService, payment-type:%paymentMethodType
+if %isRefund .
+ comment \nid:%shortId, refunding:%shortRefundId, group:%shortGroup, dc:%type, payment-service:%paymentMethodService, payment-type:%paymentMethodType
+
+# We will generate postings in FROM,TO order most of the time:
+# posting1 is the source, if any
+# posting2 is the incoming payment processor fee, if any
+# posting3 is the incoming host fee, if any
+# posting4 is this open collective account
+# posting5 is the outgoing payment processor fee, if any
+# posting6 is the outgoing host fee, if any
+# posting7 is another destination, if any
+
+account4 assets:opencollective:%accountName
+amount4  %amount_ %currency_
+
+# if %date < 2021-06
+if %date ^(20[01]|2020|2021-0[1-5]) && %kind CONTRIBUTION
+ account1 revenues:contributions:%oppositeAccountName
+ amount1  -%amount_ %currency_
+ account2 expenses:fees:processor:%paymentMethodService
+ amount2  -%paymentProcessorFee %currency_
+ account3 expenses:fees:host:Open Source Collective
+ account4 assets:opencollective:%accountName
+ amount4  %netAmount %currency_
+ balance4 %balance_ %currency_
+# the fiscal host name is hard-coded here
+
+# if %date >= 2021-06
+if %date ^(2021-(0[6-9]|1)|202[2-9]|20[3-9]|2[1-9]|[3-9]) && %kind CONTRIBUTION
+ account1 revenues:contributions:%oppositeAccountName
+ amount1  -%amount_ %currency_
+ account2 expenses:fees:processor:%paymentMethodService
+ amount2  -%paymentProcessorFee %currency_
+ account4 assets:opencollective:%accountName
+ amount4  %netAmount %currency_
+# some records have wrong balance values which can't be used
+# balance4 %balance_ %currency_  # wrong
+
+if %date ^(2021-(0[6-9]|1)|202[2-9]|20[3-9]|2[1-9]|[3-9]) && %kind CONTRIBUTION && %type DEBIT
+ account1 expenses:disbursed:%oppositeAccountName
+
+if %date ^(2021-(0[6-9]|1)|202[2-9]|20[3-9]|2[1-9]|[3-9]) && %kind CONTRIBUTION && %isRefund REFUND
+ account1 revenues:contributions:%oppositeAccountName
+
+if %kind EXPENSE
+ amount4  %netAmount %currency_
+ account5 expenses:fees:processor:%payoutMethodType
+ amount5  -%paymentProcessorFee %currency_
+ account7 expenses:disbursed:%oppositeAccountName
+ amount7  -%amount_ %currency_
+# balance4 %balance_ %currency_  # wrong
+
+if %kind HOST_FEE|PAYMENT_PROCESSOR_COVER
+ balance4 %balance_ %currency_
+ account6 expenses:fees:host:%oppositeAccountName
+ amount6  -%amount_ %currency_

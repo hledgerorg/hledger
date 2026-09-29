@@ -1,6 +1,6 @@
-# stack build plan using GHC 9.6.6
+# stack build plan using GHC 9.6.7
 
-resolver: lts-22.43
+resolver: lts-22.44
 
 packages:
 - hledger-lib
@@ -9,10 +9,23 @@ packages:
 - hledger-web
 
 extra-deps:
+# megaparsec 9.8.3 parses about 10% faster than earlier versions (megaparsec#612)
+- megaparsec-9.8.3
+# for the rewrite command's --diff (Data.Algorithm.DiffContext):
+- Diff-1.0.2
 - encoding-0.10
-- fsnotify-0.4.2.0
-- hfsevents-0.1.8
+- hashtables-1.4.2
+# #2410, #2512:
+- haskeline-0.8.4.1
 - vty-windows-0.2.0.1
+# for hledger-web and https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html
+- aeson-2.2.5.1
+- text-iso8601-0.1.1.2
+- character-ps-0.1
+- hashable-1.4.6.0
+# for hledger's openBrowserOn (Windows launch through the Win32 API)
+- open-browser-0.5.1.0
+- attoparsec-aeson-2.2.2.0
 
 nix:
   pure: false

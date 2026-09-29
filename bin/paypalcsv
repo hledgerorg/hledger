@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+
+__version__ = "1.1"
+__author__ = "Simon Michael"
+
+VERSION = f"%prog {__version__}, by {__author__} 2021; part of the hledger project."
+USAGE = """%prog [options] [JSONFILE|-] [CSVFILE|-]
+
+Reads Paypal API's transaction history JSON from the first file or
+stdin, writes Paypal-ish CSV (similar to manually downloaded CSV) to
+the second file or stdout.
+
+The goal is that you can use the same hledger CSV rules file to
+process either CSV. So if you get tired of downloading CSV manually,
+you can set up Paypal API access, download transactions as JSON,
+convert that to CSV with this script, and keep importing it with
+hledger without having to redo your paypal CSV rules.
+
+Limitations:
+
+- the Type column will have the short T-Codes rather than the long Descriptions
+  from https://developer.paypal.com/docs/reports/reference/tcodes
+
+- the Status column will have the single-letter codes from 
+  https://developer.paypal.com/docs/api/transaction-search/v1/#transactions
+  rather than the human-friendly values from 
+  https://developer.paypal.com/docs/reports/online-reports/activity-download
+
+Requirements: python 3, paypaljson for downloading JSON.
+
+Expects paypal transactions JSON, as from 
+https://developer.paypal.com/docs/api/transaction-search/v1/#transactions,
+containing most of the following items:
+
+transaction_details[].transaction_info.paypal_account_id
+transaction_details[].transaction_info.transaction_id
+transaction_details[].transaction_info.paypal_reference_id
+transaction_details[].transaction_info.paypal_reference_id_type
+transaction_details[].transaction_info.transaction_event_code
+transaction_details[].transaction_info.transaction_initiation_date
+transaction_details[].transaction_info.transaction_updated_date
+transaction_details[].transaction_info.transaction_amount.currency_code
+transaction_details[].transaction_info.transaction_amount.value
+transaction_details[].transaction_info.transaction_status
+transaction_details[].transaction_info.ending_balance.currency_code
+transaction_details[].transaction_info.ending_balance.value
+transaction_details[].transaction_info.available_balance.currency_code
+transaction_details[].transaction_info.available_balance.value
+transaction_details[].transaction_info.invoice_id
+transaction_details[].transaction_info.protection_eligibility
+transaction_details[].payer_info.account_id
+transaction_details[].payer_info.email_address
+transaction_details[].payer_info.address_status
+transaction_details[].payer_info.payer_status
+transaction_details[].payer_info.payer_name.alternate_full_name
+transaction_details[].payer_info.country_code
+transaction_details[].shipping_info.name
+transaction_details[].cart_info.item_details[].item_name
+transaction_details[].cart_info.item_details[].item_description
+transaction_details[].cart_info.item_details[].item_quantity
+transaction_details[].cart_info.item_details[].item_unit_price.currency_code
+transaction_details[].cart_info.item_details[].item_unit_price.value
+transaction_details[].cart_info.item_details[].item_amount.currency_code
+transaction_details[].cart_info.item_details[].item_amount.value
+transaction_details[].cart_info.item_details[].total_item_amount.currency_code
+transaction_details[].cart_info.item_details[].total_item_amount.value
+transaction_details[].cart_info.item_details[].invoice_number
+transaction_details[].store_info
+transaction_details[].auction_info
+transaction_details[].incentive_info 
+
+These are also in paypal transactions JSON, but ignored by this script:
+
+account_number
+start_date
+end_date
+last_refreshed_datetime
+page
+total_items
+total_pages
+links[].href
+links[].rel
+links[].method
+
+Examples: 
+paypaljson | paypalcsv | hledger -f csv:- --rules-file paypal.csv.rules print
+paypaljson | paypalcsv | hledger -f csv:- --rules-file paypal.csv.rules activity --daily
+paypaljson | paypalcsv paypal.csv && hledger import paypal.csv [--dry-run]  # save as a file to remember transactions seen
+
+Sample output:
+
+"Date","Time","TimeZone","Name","Type","Status","Currency","Gross","Fee","Net","From Email Address","To Email Address","Transaction ID","Item Title","Item ID","Reference Txn ID","Receipt ID","Balance","Note"
+"05/21/2021","00:25:50","HST","JetBrains Americas, Inc.","T0003","S","USD","-53.00","0.00","-53.00","","paypal.us@jetbrains.com","6XG491707Y653863W","1xPhpStorm","","B-63G006809C718195T","","-53.00",""
+"05/21/2021","00:25:50","HST","","T0300","S","USD","53.00","0.00","53.00","","","724308646Y347530R","1xPhpStorm","","6XG491707Y653863W","","0.00",""\
+"""
+
+from pprint import pprint as pp
+import csv
+import datetime
+import decimal
+import json
+import optparse
+import re
+# import subprocess
+import sys
+# import tempfile
+# import warnings
+
+def parse_options():
+    parser = optparse.OptionParser(usage=USAGE, version=VERSION)
+    opts, args = parser.parse_args()
+    if len(args) > 2:
+        parser.print_help()
+        sys.exit()
+    return opts, args
+
+def main():
+    opts, args = parse_options()
+    out = open(args[1],'w') if len(args) > 1 and not args[1]=='-' else sys.stdout
+    csvwriter = csv.writer(out, quoting=csv.QUOTE_ALL)
+    with open(args[0],'r') if len(args) > 0 and not args[0]=='-' else sys.stdin as inp:
+
+        j = json.load(inp)
+        txns = j['transaction_details']
+
+        csvwriter.writerow([
+            "Date",
+            "Time",
+            "TimeZone",
+            "Name",
+            "Type",
+            "Status",
+            "Currency",
+            "Gross",
+            "Fee",
+            "Net",
+            "From Email Address",
+            "To Email Address",
+            "Transaction ID",
+            "Item Title",
+            "Item ID",
+            "Reference Txn ID",
+            "Receipt ID",
+            "Balance",
+            "Note"
+            ])
+
+        for t in txns:
+            txninfo       = t['transaction_info']
+            payerinfo     = t['payer_info']
+            shippinginfo  = t['shipping_info']
+            cartinfo      = t['cart_info']
+            storeinfo     = t['store_info']
+            auctioninfo   = t['auction_info']
+            incentiveinfo = t['incentive_info']
+
+            localdt  = datetime.datetime.strptime(txninfo['transaction_initiation_date'], "%Y-%m-%dT%H:%M:%S%z").astimezone()
+
+            grossamt = decimal.Decimal(txninfo.get('transaction_amount',{}).get('value','0.00'))
+            feeamt   = decimal.Decimal(txninfo.get('fee_amount',{}).get('value','0.00'))
+            netamt   = grossamt + feeamt
+
+            # for type, csv shows the long Description from
+            # https://developer.paypal.com/docs/reports/reference/tcodes,
+            # json shows the short T-Code. There are too many, keep the T-Code for now.
+            # csv rules files will have to be aware.
+            ttype = txninfo.get('transaction_event_code','')
+
+            # for status, csv shows the human-friendly values from 
+            # https://developer.paypal.com/docs/reports/online-reports/activity-download/#download-data-fields -> Status:
+            #  Possible values for all activity:
+            #   Completed
+            #   Denied
+            #   Reversed
+            #   Pending
+            #   Active
+            #   Expired
+            #   Removed
+            #   Unverified
+            #   Voided
+            #   Processing
+            #   Created
+            #   Canceled
+            #  Possible additional values are supported for invoice activity:
+            #   Error
+            #   Draft
+            #   Unpaid
+            #   Paid
+            #   Unpaid (sent)
+            #   Marked as paid
+            #   Marked as refunded
+            #   Refunded
+            #   Partially refunded
+            #   Scheduled
+            #   Partially paid
+            #   Payment pending
+            # json shows the single-letter codes from 
+            # https://developer.paypal.com/docs/api/transaction-search/v1/#transactions -> transaction_status:
+            #  D	- PayPal or merchant rules denied the transaction.
+            #  P	- The transaction is pending. The transaction was created but waits for another payment process to complete, such as an ACH transaction, before the status changes to S.
+            #  S	- The transaction successfully completed without a denial and after any pending statuses.
+            #  V	- A successful transaction was reversed and funds were refunded to the original sender.
+            # Keep the short codes for now, csv rules files will have to be aware.
+            tstatus = txninfo.get('transaction_status','')
+            
+            # for Item Title, use transaction_subject if any, otherwise first item title if any
+            if 'transaction_subject' in txninfo:
+                item_title = txninfo.get('transaction_subject','')
+                item_id    = ''
+            else:
+                items = cartinfo.get('item_details',[])
+                if len(items)>0:
+                    item_title = items[0].get('item_name','')
+                    item_id    = items[0].get('item_id','')
+                else:
+                    item_title = ''
+                    item_id    = ''
+
+            # in the notes below, "csv" refers to CSV downloaded manually, "json" refers to JSON downloaded from the API
+            csvwriter.writerow([
+                # Date
+                localdt.strftime('%m/%d/%Y'),
+                # Time
+                localdt.strftime('%H:%M:%S'),
+                # TimeZone (should be downloader's local timezone)
+                localdt.strftime('%Z'),
+                # Name
+                payerinfo.get('payer_name',{}).get('alternate_full_name',''),
+                # Type
+                ttype,
+                # Status
+                tstatus,
+                # Currency
+                txninfo.get('transaction_amount',{}).get('currency_code',''),
+                # Gross
+                str(grossamt),
+                # Fee
+                str(feeamt),
+                # Net
+                str(netamt),
+                # From Email Address
+                # csv often mentions account owner's email here, json does not
+                payerinfo.get('email_address','') if grossamt > 0 else '',
+                # To Email Address
+                # csv often mentions account owner's email here, json does not
+                payerinfo.get('email_address','') if grossamt <= 0 else '',
+                # Transaction ID
+                txninfo.get('transaction_id',''),
+                # Item Title (of first item)
+                item_title,
+                # Item ID (if any)
+                item_id,
+                # Reference Txn ID
+                txninfo.get('paypal_reference_id',''),
+                # Receipt ID
+                txninfo.get('receipt_id',''),
+                # Balance
+                txninfo.get('ending_balance',{}).get('value',''),
+                # Note
+                txninfo.get('transaction_note','')
+            ])
+
+if __name__ == "__main__": main()

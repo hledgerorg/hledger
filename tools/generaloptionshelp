@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# generaloptionshelp - regenerate the _generaloptions_ macro in doc/common.m4
+# from the current hledger build's --help output.
+# Run from the top of the hledger repo, usually via `just generaloptionshelp`
+# (which builds hledger first). Review the result with git diff.
+set -euo pipefail
+
+f=doc/common.m4
+
+help=$(stack exec -- hledger -h | awk '/^General input flags:/,0')
+[[ -n $help ]] || { echo "error: could not find general flags help in 'hledger -h' output" >&2; exit 1; }
+
+start=$(grep -n -F 'm4_define({{_generaloptions_}}, {{' "$f" | head -1 | cut -d: -f1)
+[[ -n $start ]] || { echo "error: _generaloptions_ macro not found in $f" >&2; exit 1; }
+rest=$(tail -n +"$((start + 1))" "$f" | grep -n '^}}' | head -1 | cut -d: -f1)
+[[ -n $rest ]] || { echo "error: end of _generaloptions_ macro not found in $f" >&2; exit 1; }
+end=$((start + rest))
+
+{
+  head -n "$start" "$f"
+  echo '```'
+  printf '%s\n' "$help"
+  echo '```'
+  tail -n +"$end" "$f"
+} > "$f.new"
+mv "$f.new" "$f"
+echo "$f: _generaloptions_ macro updated from hledger -h"

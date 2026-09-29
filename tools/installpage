@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# installpage [NEWVER] - update the release version on the hledger.org Install page.
+# Updates the mechanical version references in site/src/install.md:
+# the "current stable hledger release" line, the release binaries badge and link,
+# and the git checkout examples; and marks any packaged-version badges still showing
+# the old version as outdated (red). Also updates the --version example in
+# site/src/get-hledger-installed.md. NEWVER defaults to ./.version (run on the release branch).
+# Some things must still be updated by hand after release binaries are built:
+# the --version output examples, and test counts. Remaining old-version occurrences
+# are listed at the end for review. Run from the top of the hledger repo.
+set -euo pipefail
+
+f=site/src/install.md
+NEW=${1:-$(cat .version)}
+
+case $NEW in
+  *.99|*.99.*) echo "error: $NEW is a dev/preview version, not for the install page" >&2; exit 1;;
+esac
+
+OLD=$(sed -nE 's/^The current stable hledger release is \*\*([0-9.]+)\*\*\..*/\1/p' "$f")
+[[ -n $OLD ]] || { echo "error: could not detect the current version in $f" >&2; exit 1; }
+if [[ $OLD == "$NEW" ]]; then echo "$f is already at $NEW"; exit 0; fi
+
+OLDRE=${OLD//./\\.}
+sed -i -E "
+  s/release is \*\*$OLDRE\*\*/release is **$NEW**/
+  s/(hledger_release_binaries-)$OLDRE(-brightgreen)/\1$NEW\2/
+  s|(releases/tag/)$OLDRE|\1$NEW|
+  s/(git checkout )$OLDRE/\1$NEW/
+  s/-$OLDRE-brightgreen\.svg/-$OLD-e05d44.svg/g
+" "$f"
+
+g=site/src/get-hledger-installed.md
+sed -i -E "s/^hledger $OLDRE \.\.\.$/hledger $NEW .../" "$g"
+
+echo "$f, $g: updated $OLD -> $NEW; review with git -C site diff"
+echo "Remaining $OLD occurrences (update --version examples by hand after binaries are built):"
+grep -n "$OLD" "$f" || echo "(none)"

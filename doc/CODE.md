@@ -1,14 +1,11 @@
 # Code
 
-<div class=pagetoc>
-
-<!-- toc -->
-</div>
+Last updated: 2026
 
 hledger is a suite of applications, tools and libraries.
-The main hledger code repository is [github.com/simonmichael/hledger](https://github.com/simonmichael/hledger)
+The main hledger code repository is [github.com/hledgerorg/hledger](https://github.com/hledgerorg/hledger)
 (shortcut url `code.hledger.org`).
-There are also various hledger add-ons maintained as separate projects with their own repos.
+There are also various hledger [scripts and add-ons](scripts.md) maintained as separate projects with their own repos.
 
 ## hledger packages
 
@@ -19,12 +16,12 @@ They are:
 ### hledger-lib
 
 [package](https://hackage.haskell.org/package/hledger-lib),
-[code](https://github.com/simonmichael/hledger/tree/master/hledger-lib)
+[code](https://github.com/hledgerorg/hledger/tree/main/hledger-lib)
 
 Core data models, parsing, standard reports, and utilities.
 Most data types are defined in [Hledger.Data.Types](https://hackage.haskell.org/package/hledger-lib/docs/Hledger-Data-Types.html),
 while functions that operate on them are defined in Hledger.Data.TYPENAME.
-Under [Hledger.Read](https://github.com/simonmichael/hledger/tree/master/hledger-lib/Hledger/Read.hs)
+Under [Hledger.Read](https://github.com/hledgerorg/hledger/blob/main/hledger-lib/Hledger/Read.hs)
 are parsers for the supported input formats.
 Data files are parsed into a
 [Journal](https://hackage.haskell.org/package/hledger-lib/docs/Hledger-Data-Types.html#t:Journal),
@@ -87,178 +84,181 @@ Amount -- AmountStyle
 </uml>
 -->
 
+The main modules:
+
+- [Hledger.Data](https://github.com/hledgerorg/hledger/tree/main/hledger-lib/Hledger/Data):
+  Types, Amount, Posting, Transaction, Journal, Account, Balancing, Lots, Valuation, Dates, Period, Errors..
+- [Hledger.Read](https://github.com/hledgerorg/hledger/tree/main/hledger-lib/Hledger/Read):
+  JournalReader, CsvReader (with RulesReader), TimeclockReader, TimedotReader
+- [Hledger.Query](https://github.com/hledgerorg/hledger/blob/main/hledger-lib/Hledger/Query.hs):
+  the query language, used for filtering in reports and UIs
+- [Hledger.Reports](https://github.com/hledgerorg/hledger/tree/main/hledger-lib/Hledger/Reports):
+  ReportOptions, BalanceReport, MultiBalanceReport, PostingsReport, BudgetReport, EntriesReport..
+- [Hledger.Write](https://github.com/hledgerorg/hledger/tree/main/hledger-lib/Hledger/Write):
+  output formats: Csv, Html, Ods/Spreadsheet, Beancount, Ledger
+- [Hledger.Utils](https://github.com/hledgerorg/hledger/tree/main/hledger-lib/Hledger/Utils):
+  Debug, Parse, Regex, String, Text, IO, Test helpers
+- [Hledger](https://github.com/hledgerorg/hledger/blob/main/hledger-lib/Hledger.hs)
+  re-exports all of the above, so most modules just `import Hledger`.
+
 ### hledger
 
 [package](https://hackage.haskell.org/package/hledger),
-[code](https://github.com/simonmichael/hledger/tree/master/hledger),
+[code](https://github.com/hledgerorg/hledger/tree/main/hledger),
 [manual](https://hledger.org/hledger.html)
 
 hledger's command line interface, and command line options and utilities for other hledger tools.
 
+The main modules:
+
+- [Hledger.Cli.CliOptions](https://github.com/hledgerorg/hledger/blob/main/hledger/Hledger/Cli/CliOptions.hs):
+  command line options and their parsing (using cmdargs)
+- [Hledger.Cli.Commands](https://github.com/hledgerorg/hledger/tree/main/hledger/Hledger/Cli/Commands):
+  one module per command, listed in [Commands.hs](https://github.com/hledgerorg/hledger/blob/main/hledger/Hledger/Cli/Commands.hs);
+  the balancesheet/incomestatement/cashflow commands share
+  [CompoundBalanceCommand](https://github.com/hledgerorg/hledger/blob/main/hledger/Hledger/Cli/CompoundBalanceCommand.hs)
+- [Hledger.Cli.Utils](https://github.com/hledgerorg/hledger/blob/main/hledger/Hledger/Cli/Utils.hs):
+  reading the journal and other helpers for commands
+- [Hledger.Cli.Conf](https://github.com/hledgerorg/hledger/blob/main/hledger/Hledger/Cli/Conf.hs): config files
+- [Hledger.Cli.Script](https://github.com/hledgerorg/hledger/blob/main/hledger/Hledger/Cli/Script.hs):
+  a convenience module to import in hledger scripts
+
+Each command is a module `Somecommand.hs` and a doc `Somecommand.md` in Commands/.
+The doc is converted to `Somecommand.txt`, which is embedded in the module to provide `hledger somecommand --help`,
+and also included in the hledger manual.
+See [Commands/README.md](https://github.com/hledgerorg/hledger/blob/main/hledger/Hledger/Cli/Commands/README.md).
+
 Try tracing the execution of a hledger command:
 
-1. [Hledger.Cli.Main:main](https://github.com/simonmichael/hledger/blob/master/hledger/Hledger/Cli/Main.hs#L302)
+1. [Hledger.Cli:main](https://github.com/hledgerorg/hledger/blob/main/hledger/Hledger/Cli.hs)
 parses the command line to select a command, then
 2. gives it to
-[Hledger.Cli.Utils:withJournalDo](https://github.com/simonmichael/hledger/blob/master/hledger/Hledger/Cli/Utils.hs#L73),
+[Hledger.Cli.Utils:withJournal](https://github.com/hledgerorg/hledger/blob/main/hledger/Hledger/Cli/Utils.hs),
 which runs it after doing all the initial parsing.
 3. Parsing code is under
-[hledger-lib:Hledger.Read](https://github.com/simonmichael/hledger/tree/master/hledger-lib/Hledger/Read.hs),
-eg [Hledger.Read.JournalReader](https://github.com/simonmichael/hledger/tree/master/hledger-lib/Hledger/Read/JournalReader.hs).
+[hledger-lib:Hledger.Read](https://github.com/hledgerorg/hledger/blob/main/hledger-lib/Hledger/Read.hs),
+eg [Hledger.Read.JournalReader](https://github.com/hledgerorg/hledger/blob/main/hledger-lib/Hledger/Read/JournalReader.hs).
 4. Commands extract useful information from the parsed data model using
-[hledger-lib:Hledger.Reports](https://github.com/simonmichael/hledger/tree/master/hledger-lib/Hledger/Reports),
+[hledger-lib:Hledger.Reports](https://github.com/hledgerorg/hledger/tree/main/hledger-lib/Hledger/Reports),
 and
 5. render in plain text for console output (or another output format, like CSV).
 6. Everything uses the data types and utilities from
-[hledger-lib:Hledger.Data](https://github.com/simonmichael/hledger/tree/master/hledger-lib/Hledger/Data)
-and [hledger-lib:Hledger.Utils](https://github.com/simonmichael/hledger/blob/master/hledger-lib/Hledger/Utils.hs).
+[hledger-lib:Hledger.Data](https://github.com/hledgerorg/hledger/tree/main/hledger-lib/Hledger/Data)
+and [hledger-lib:Hledger.Utils](https://github.com/hledgerorg/hledger/blob/main/hledger-lib/Hledger/Utils.hs).
+
+A suggested reading order for newcomers:
+[Hledger.Data.Types](https://github.com/hledgerorg/hledger/blob/main/hledger-lib/Hledger/Data/Types.hs) for the data model,
+[Hledger.Read.JournalReader](https://github.com/hledgerorg/hledger/blob/main/hledger-lib/Hledger/Read/JournalReader.hs) for how journals are parsed,
+a simple command like [Commands/Accounts.hs](https://github.com/hledgerorg/hledger/blob/main/hledger/Hledger/Cli/Commands/Accounts.hs)
+or [Commands/Balance.hs](https://github.com/hledgerorg/hledger/blob/main/hledger/Hledger/Cli/Commands/Balance.hs),
+and then the report it calls in Hledger.Reports.
 
 ### hledger-ui
 
 [package](https://hackage.haskell.org/package/hledger-ui),
-[code](https://github.com/simonmichael/hledger/tree/master/hledger-ui),
+[code](https://github.com/hledgerorg/hledger/tree/main/hledger-ui),
 [manual](https://hledger.org/hledger-ui.html)
 
-A terminal interface.
+A terminal interface, built with [brick](https://hackage.haskell.org/package/brick) and vty.
+It reads the journal file(s) at startup and, with `--watch`, again whenever they change.
+Screens are kept on a stack, so that going into an account register or a transaction and back out restores the previous view.
+
+The main modules, all under [Hledger/UI](https://github.com/hledgerorg/hledger/tree/main/hledger-ui/Hledger/UI):
+
+- [Main](https://github.com/hledgerorg/hledger/blob/main/hledger-ui/Hledger/UI/Main.hs):
+  startup, the brick app definition, file watching and date change detection
+- [UIOptions](https://github.com/hledgerorg/hledger/blob/main/hledger-ui/Hledger/UI/UIOptions.hs): command line options
+- [UITypes](https://github.com/hledgerorg/hledger/blob/main/hledger-ui/Hledger/UI/UITypes.hs):
+  the app state (`UIState`), the `Screen` type and each screen's state type, widget names
+- [UIState](https://github.com/hledgerorg/hledger/blob/main/hledger-ui/Hledger/UI/UIState.hs):
+  app state updates: toggling filters, depth, tree mode, lot detail, etc.
+- [UIScreens](https://github.com/hledgerorg/hledger/blob/main/hledger-ui/Hledger/UI/UIScreens.hs):
+  constructors and updaters for all screens, gathered here so any screen can (re)generate the others
+- MenuScreen, AccountsScreen, RegisterScreen, TransactionScreen, ErrorScreen:
+  each screen's drawing and event handling.
+  AccountsScreen serves the all accounts, cash, balance sheet and income statement screens.
+- [UIUtils](https://github.com/hledgerorg/hledger/blob/main/hledger-ui/Hledger/UI/UIUtils.hs):
+  shared drawing and key handling helpers, the help dialog, suspend/resume, warning collection
+- [Editor](https://github.com/hledgerorg/hledger/blob/main/hledger-ui/Hledger/UI/Editor.hs): launching an external editor at a file position
+- [Theme](https://github.com/hledgerorg/hledger/blob/main/hledger-ui/Hledger/UI/Theme.hs): the colour themes
+
+Manual test procedures are in [test/uitest.md](https://github.com/hledgerorg/hledger/blob/main/hledger-ui/test/uitest.md).
 
 ### hledger-web
 
 [package](https://hackage.haskell.org/package/hledger-web),
-[code](https://github.com/simonmichael/hledger/tree/master/hledger-web),
+[code](https://github.com/hledgerorg/hledger/tree/main/hledger-web),
 [manual](https://hledger.org/hledger-web.html)
 
 A web interface.
-hledger-web starts a web server built with the yesod framework,
+hledger-web starts a web server built with the [yesod](https://www.yesodweb.com) framework,
 and (by default) opens a web browser view on it.
 It reads the journal file(s) at startup and again whenever they change.
 It can also write (append) new transactions to the journal file.
-
-There are two main views, which can be filtered with
-[queries](https://hledger.org/hledger.html#queries):
-
-- [/journal](https://demo.hledger.org/journal), showing general journal entries (like `hledger print`)
-
-- [/register](https://demo.hledger.org/register?q=inacct:Expenses:Food),
-  showing transactions affecting an account (slightly different from
-  hledger's [register](https://hledger.org/hledger.html#register) command, which shows postings).
-
-There is also:
-
-- a sidebar (toggled by pressing `s`) showing the chart of accounts (like `hledger balance`)
-- an [add form](https://demo.hledger.org/journal?add=1) for adding new transactions (press `a`)
-- a help dialog showing quick help and keybindings (press `h` or click ?)
+The views, sidebar, add form and keyboard shortcuts are described in the manual's
+[WEB UI](https://hledger.org/hledger-web.html#web-ui) section.
 
 Most of the action is in
 
-- [config/routes](https://github.com/simonmichael/hledger/tree/master/hledger-web/config/routes)
-- [templates/default-layout-wrapper.hamlet](https://github.com/simonmichael/hledger/tree/master/hledger-web/templates/default-layout-wrapper.hamlet)
-- [Foundation](https://github.com/simonmichael/hledger/tree/master/hledger-web/Foundation.hs)
-- [Handler.*](https://github.com/simonmichael/hledger/tree/master/hledger-web/Handler)
-- [static/hledger.js](https://github.com/simonmichael/hledger/tree/master/hledger-web/static/hledger.js)
-- [static/hledger.css](https://github.com/simonmichael/hledger/tree/master/hledger-web/static/hledger.css)
+- [config/routes](https://github.com/hledgerorg/hledger/blob/main/hledger-web/config/routes)
+- [templates/default-layout-wrapper.hamlet](https://github.com/hledgerorg/hledger/blob/main/hledger-web/templates/default-layout-wrapper.hamlet)
+- [Hledger/Web/App.hs](https://github.com/hledgerorg/hledger/blob/main/hledger-web/Hledger/Web/App.hs) (the yesod foundation type)
+- [Hledger/Web/Handler/*](https://github.com/hledgerorg/hledger/tree/main/hledger-web/Hledger/Web/Handler)
+- [Hledger/Web/Widget/*](https://github.com/hledgerorg/hledger/tree/main/hledger-web/Hledger/Web/Widget)
+- [static/hledger.js](https://github.com/hledgerorg/hledger/blob/main/hledger-web/static/hledger.js)
+- [static/hledger.css](https://github.com/hledgerorg/hledger/blob/main/hledger-web/static/hledger.css)
 
 Handler module and function names end with R, like the yesod-generated route type they deal with.
 
 Dynamically generated page content is mostly inline hamlet.
 Lucius/Julius files and widgets generally are not used, except for the default layout.
 
-Here are some ways to run it during development:
+For ways to run it during development, see
+[Run hledger-web in development](DEVWORKFLOWS.md#run-hledger-web-in-development).
 
-- `yesod devel`: runs in developer mode, rebuilds automatically when config, template, static or haskell files change
-(but only files in the hledger-web package):
-```cli
-$ (cd hledger-web; yesod devel)
-```
+## Conventions
 
-- [yesod-fast-devel](https://hackage.haskell.org/package/yesod-fast-devel)
-  may be a good alternative, also reloads the browser page
+- Functions for a type in Hledger.Data.Types live in Hledger.Data.TYPENAME (Amount, Posting, Journal, ..).
+- Module name suffixes: `*Reader` parses an input format, `*Report` computes a report,
+  `*Options` declares command line options; in hledger-web, `*R` is a route handler.
+- Most modules `import Hledger`, which re-exports the hledger-lib API.
+- Tags whose names begin with `_` are hidden tags for internal use; `print` shows them only with `--verbose-tags`.
+- Code style: post-qualified imports (`import Data.Map qualified as M`),
+  and the -Wall variant shown in [DEVWORKFLOWS](DEVWORKFLOWS.md#type-check-quickly).
+- Keep imports compatible with the oldest supported GHC (see `tested-with:` in hledger-lib/package.yaml).
+- User-visible errors should follow the standard error format (see [ERRORS](ERRORS.md)),
+  using the excerpt helpers in Hledger.Data.Errors where possible.
+  A new kind of error message, or a changed layout, needs an example in hledger/test/errors/.
 
-- `stack ghci`: runs the server in developer mode from GHCI.
-Changes to static files like hledger.js will be visible on page reload;
-to see other changes, restart it as shown.
-```cli
-$ (cd hledger-web; stack ghci hledger-web)
-hledger-web> :main --serve   # restart: ctrl-c, :r, enter, ctrl-p, ctrl-p, enter
-```
+## Debug output
 
-- `just ghci-web`: runs the server in developer mode from GHCI, also
-interprets the hledger-lib and hledger packages so that :reload picks
-up changes in those packages too:
-```cli
-$ just ghci-web
-ghci> :main --serve
-```
-(This rule also creates symbolic links to hledger-web's `config`, `messages`, `static` and `templates`
-directories, needed in developer mode, so it can run from the top directory. This may not work on Windows.)
+The main hledger programs accept `--debug[=N]` (N from 1 to 9), which prints debug output on stderr
+(hledger-ui logs it to `hledger-ui.log` instead, since it is redrawing the screen).
+In code, use the `dbg0`..`dbg9` helpers from
+[Hledger.Utils.Debug](https://github.com/hledgerorg/hledger/blob/main/hledger-lib/Hledger/Utils/Debug.hs),
+eg `dbg4 "report" x` prints a label and the pretty-printed value when the debug level is 4 or more.
+Levels are used roughly as: 0 for unconditional logging during development, 1 warnings, common troubleshooting info and phase timings,
+3-5 report options and generation, 6-7 input file reading, 8 command line parsing, 9 anything else; see the module's haddock.
 
-## Quality
+## Tests
 
-Relevant tools include:
+hledger has unit tests, functional tests, doctests, performance tests, installation tests,
+and browser tests for hledger-web
+([README](https://github.com/hledgerorg/hledger/blob/main/hledger-web/test/browser/README.md)).
+See [TESTS](TESTS.md) for the kinds of tests and their coverage,
+and [DEVWORKFLOWS](DEVWORKFLOWS.md#run-package-tests) for how to run them.
 
-- unit tests
-- functional tests
-- performance tests
-- documentation tests
-- ui tests (manual)
-- installation tests
-- code reviews
+## Haddock comments
 
-## Code review
+hledger is a documentation-driven project, and this is one reason it has held together and kept improving for so long.
+(More discussion in [#2222](https://github.com/hledgerorg/hledger/pull/2222).)
 
-- Code review party 2014/7/21-25:
-  [discussion](https://thread.gmane.org/gmane.comp.finance.ledger.hledger/1070)<!-- missing ,
-  [log](https://hledger.org/static/irc-20140725-code-review.html) -->
-- Dev sprint/party 2015/10/10:
-  [discussion](https://thread.gmane.org/gmane.comp.finance.ledger.hledger/1254)<!-- ircbrowse down ,
-  [pre-chat](https://ircbrowse.net/day/hledger/2015/10/10),
-  [log](https://ircbrowse.net/day/hledger/2015/10/11) -->
+Haddock comments are used pervasively in the hledger codebase, and they are considered when reviewing code.
+There is no hard requirement, but most definitions should have at least a line of english description.
+The bar can be lower in single-purpose, rarely-changed modules like FODS.hs,
+and obviously redundant haddocks that add no value should be avoided.
 
-
-## Code docs
-
-Haddock comments are the standard way of attaching docs (and sometimes small tests)
-to a haskell definition. They are used pervasively in the hledger codebase.
-
-From [#2222](https://github.com/simonmichael/hledger/pull/2222):
-
-I tend to add a line of english description to most things.
-They can be a big help to someone else debugging/improving code later.
-
-> *I use Haddock but I do not like to tell obvious things in Haddock comments.
-> (And if there are surprising things I try to eliminate the surprises instead.)*
-
-I hear you! This is of course a recurring debate among programmers.
-
-I agree that obviously redundant haddocks that add no value are to be avoided.
-
-In the hledger codebase, there's no hard requirement for haddocks.
-And sometimes the bar can be lower, eg in single-purpose less-frequently-developed modules like FODS.hs.
-
-But I believe it's always worth at least considering them when adding code, and it's something I consider when reviewing code.
-I'll give some reasons why I think so, for the record (and maybe they'll persuade you just a little).
-
-Haddocks help guide and anchor the developer while writing or changing code.
-They are the cheapest kind of doc, spec and test suite.
-They also create a place to add actual doctests, now or later.
-
-Haddocks can be helpful to contributors who are not expert haskellers, which happens quite often in the hledger project.
-The human language descriptions can complement the code, reducing cognitive effort and helping with mental chunking.
-I think people find the hledger's code, with its pervasive haddocks, above average in readability.
-(And I think we've had more successful contributions as a result.)
-
-Haddocks can also help experienced developers move faster.
-Code which seems quite clear and obvious when you are writing it is often less obvious to oneself a few weeks or years later.
-And certainly it can be less obvious to others than we might think.
-When debugging or coding we are often mentally stretched and we would prefer to conserve brainpower for the main task.
-
-In my experience debugging/writing/changing hledger code,
-
-- Number of times I've regretted seeing a haddock comment attached to some code: almost zero.
-- Effort to remove an excessive haddock: almost zero.
-- Number of times I've been trying to understand some contributed code and haddocks would have saved my time: quite a few.
-- Number of times I've appreciated code haddocks and found them helpful: many.
-- Number of times I've found errors or staleness in haddocks: not often.
-- Effort to fix wrong haddocks, or to write new ones: usually very low. And if it's high, it's usually very worthwhile because it alerts me to a confusion in the code or clarifies my thinking.
-
-hledger is a documentation-driven project, with docs in general being a top priority.
-I think this is one reason it has held together and kept improving over a long period.
+Why: haddocks anchor the developer while writing or changing code;
+they are the cheapest kind of doc, spec and test suite, and a place to add doctests later;
+they help contributors who are not expert haskellers, and experienced developers returning to code months or years later.
+They also help AI tools work effectively on the hledger codebase.

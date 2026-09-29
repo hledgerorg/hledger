@@ -1,0 +1,6 @@
+; A journal variant, read by hledger-dc.
+
+2025-01-01 salary
+    cr revenues            800 USD
+    CR revenues            200 USD
+    dR assets

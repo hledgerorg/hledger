@@ -1,24 +1,24 @@
 # The main hledger continuous integration tests.
-# Code must pass this successfully before it can be merged or pushed to master.
-# https://github.com/simonmichael/hledger/settings/branch_protection_rules/17386787
-# TRIGGER: Runs on any push to ci branch or any pull request against master.
+# Code must pass this successfully before it can be merged or pushed to main.
+# https://github.com/hledgerorg/hledger/settings/branch_protection_rules/17386787
+# TRIGGER: Runs on any push to ci branch or any pull request against main.
 # ACTION: Builds, tests and saves linux x64 dynamic binaries with stack and the default ghc.
 
 name: ci
 
 on:
-  # When manually triggered in github ui, it runs in master.
+  # When manually triggered in github ui, it runs in main.
   workflow_dispatch:
   # When there's a push to the ci branch, it runs in that branch.
-  # After it passes, those commits can be merged/pushed to master.
+  # After it passes, those commits can be merged/pushed to main.
   # (Don't use these branches for pull requests, or it will run twice,
   # https://github.community/t/how-to-trigger-an-action-on-push-or-pull-request-but-not-both/16662/2)
   push:
     branches: [ ci ]
-  # When there's a pull request against master, it runs in the pull request's branch.
-  # After it passes, that branch can be merged/pushed to master.
+  # When there's a pull request against main, it runs in the pull request's branch.
+  # After it passes, that branch can be merged/pushed to main.
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
     # Uncomment to run it only for changes to these paths: (but that could prevent merging)
     # paths:
     #   - '.github/workflows/pushpull.yml'
@@ -46,16 +46,17 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-24.04
+      # arch:  x64
+      # image: https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md
+
+    # so the web-e2e job below can tell whether this job actually built anything
+    outputs:
+      do-all: ${{ steps.skipcheck.outputs.do-all }}
+
     env:
-      # This workflow uses github's preinstalled ghc & stack on ubuntu.
-      # Keep these synced with the latest ghc version at https://github.com/actions/runner-images/blob/ubuntu22/20240514.2/images/ubuntu/Ubuntu2404-Readme.md#haskell-tools
-      #
-      # caching id for this ghc's build artifacts:
-      # XXX ideally should match the default ghc in stack.yaml, though it's not critical
-      # XXX supposed to be interpolated by $ghc below, but this is not working
-      ghc: 910
-      # stack config for this ghc:
-      stack: stack --system-ghc
+      stack:     stack
+      ghcid:       9.10.1
+      cachedate: 20250615   # bump this when new caches are needed
 
       # flag for skipping later steps, declared here to prevent "Context access might be invalid" warnings
       do-all:
@@ -63,7 +64,7 @@ jobs:
     steps:
 
     - name: Check out
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       # have to fetch everything for git describe for hledger's --version
       with:
         fetch-depth: 0
@@ -85,7 +86,7 @@ jobs:
 
     - name: Check commit messages
       # keep this step synced in all workflows which do it
-      # For a PR, the range will be: master..origin/$GITHUB_HEAD_REF
+      # For a PR, the range will be: main..origin/$GITHUB_HEAD_REF
       # For a push it will be: $BEFORE..
       # For a force push, BEFORE is the previous HEAD, and on github (though not locally) this is an "invalid revision range".
       # 202310: we skip this check when we can't detect the commits, which happens in certain cases
@@ -96,12 +97,12 @@ jobs:
         # NUM:    5
       shell: bash
       run: |
-        RANGE=${BEFORE:-origin/master}..${GITHUB_HEAD_REF:-}
+        RANGE=${BEFORE:-origin/main}..${GITHUB_HEAD_REF:-}
 
         echo "debug: last 10 commits:"
         echo "$(git log --format='%h -%d %s (%an, %ci)' -10)"
-        echo "debug: origin/master:"
-        echo "$(git log --format='%h -%d %s (%an, %ci)' -1 origin/master)"
+        echo "debug: origin/main:"
+        echo "$(git log --format='%h -%d %s (%an, %ci)' -1 origin/main)"
         echo "debug: BEFORE=$BEFORE"
         echo "$(git log --format='%h -%d %s (%an, %ci)' -1 $BEFORE)"
         echo "debug: GITHUB_HEAD_REF=$GITHUB_HEAD_REF"
@@ -119,111 +120,177 @@ jobs:
         fi
 
     - name: Skip remaining steps if the last commit message begins with ;
+      id: skipcheck
       shell: bash
       run: |
-        echo "git log -1 --pretty='%s' ${GITHUB_HEAD_REF:+origin/$GITHUB_HEAD_REF} >> $$.gitlog"
-        (git log -1 --pretty='%s' ${GITHUB_HEAD_REF:+origin/$GITHUB_HEAD_REF} >> $$.gitlog \
-          && (grep -qE '^ *;' $$.gitlog || echo "do-all=true" >> $GITHUB_ENV)) \
-          || ( echo "could not identify commit range, continuing CI steps"; echo "do-all=true" >> $GITHUB_ENV )
+        DOALL=true
+        if git log -1 --pretty='%s' ${GITHUB_HEAD_REF:+origin/$GITHUB_HEAD_REF} > $$.gitlog
+        then
+          if grep -qE '^ *;' $$.gitlog; then DOALL=; fi
+        else
+          echo "could not identify commit range, continuing CI steps"
+        fi
+        # as an env var for this job's steps, and as an output for the web-e2e job below
+        if [ -n "$DOALL" ]; then echo "do-all=true" >> $GITHUB_ENV; fi
+        echo "do-all=$DOALL" >> $GITHUB_OUTPUT
 
-
-    # Can't uncache to /usr/bin:
-    #  /usr/bin/tar -xf /home/runner/work/_temp/5cef703c-9831-41db-adb3-470b839f8a0e/cache.tzst -P -C /home/runner/work/hledger/hledger --use-compress-program unzstd
-    #  /usr/bin/tar: ../../../../../usr/bin/rg: Cannot open: Permission denied
-    # - name: Cache - extra tools (ripgrep) in /usr/bin
-    #   id:   extratools
-    #   uses: actions/cache@v4
-    #   with:
-    #     path: /usr/bin/rg
-    #     key: ${{ runner.os }}-extratools   # should have image version in there too
-    #   if: env.do-all
 
     - name: Check embedded files
       run: |
-        if [[ ! -x /usr/bin/rg ]]; then sudo apt install -y ripgrep; fi
         tools/checkembeddedfiles
       if: env.do-all
 
 
     # CACHES
 
+    # Remember, caches are immutable - created once and never updated.
+    # If a cache is used, a new version of it won't be created.
+    # It's probably right to use them for things which don't/needn't change between runs,
+    # including:
+    # - the package db containing the versions of our deps specified by the stackage snapshot
+    #   (or by the build plan found by the first cabal run, if using cabal)
+    # - the local bin directory ? what's in there anyway ?
+    # - the per-project and per-package .stack-work directories ? these probably change a little on each run.
+    #   presumably it's worthwhile to cache their first-run content, even if with every following run
+    #   we end up having to rebuild more of that. The alternative is to always rebuild all of it.
+
     - name: Cache - stack global package db
       id:   stack-global
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.stack
         # XXX if stack.yaml is a symlink, this fails with
         #  Error: The template is not valid. .github/workflows/push.yml (Line: 103, Col: 14): hashFiles('**.yaml') failed.
         #  Fail to hash files under directory '/home/runner/work/hledger/hledger'
-        key: ${{ runner.os }}-stack-global-$ghc-${{ hashFiles('**.yaml') }}
+        key: ${{ runner.os }}-x64-stack-global-${{ env.ghcid }}-${{ env.cachedate }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-stack-global-$ghc
+             ${{ runner.os }}-x64-stack-global-${{ env.ghcid }}-${{ env.cachedate }}
       if: env.do-all
 
     - name: Cache - stack-installed programs in ~/.local/bin
       id:   stack-programs
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.local/bin
-        key: ${{ runner.os }}-stack-programs-$ghc-${{ hashFiles('**.yaml') }}
+        key: ${{ runner.os }}-x64-stack-programs-${{ env.ghcid }}-${{ env.cachedate }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-stack-programs-$ghc
+             ${{ runner.os }}-x64-stack-programs-${{ env.ghcid }}-${{ env.cachedate }}
       if: env.do-all
 
     - name: Cache - .stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: .stack-work
-        key: ${{ runner.os }}-stack-work-$ghc-${{ hashFiles('**.yaml') }}
+        key: ${{ runner.os }}-x64-stack-work-${{ env.ghcid }}-${{ env.cachedate }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-stack-work-$ghc
+             ${{ runner.os }}-x64-stack-work-${{ env.ghcid }}-${{ env.cachedate }}
       if: env.do-all
 
     - name: Cache - hledger-lib/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-lib/.stack-work
-        key: ${{ runner.os }}-hledger-lib-stack-work-$ghc-${{ hashFiles('hledger-lib/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-lib-stack-work-${{ env.ghcid }}-${{ env.cachedate }}-${{ hashFiles('hledger-lib/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-hledger-lib-stack-work-$ghc
+             ${{ runner.os }}-x64-hledger-lib-stack-work-${{ env.ghcid }}-${{ env.cachedate }}
       if: env.do-all
 
     - name: Cache - hledger/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger/.stack-work
-        key: ${{ runner.os }}-hledger-stack-work-$ghc-${{ hashFiles('hledger/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-stack-work-${{ env.ghcid }}-${{ env.cachedate }}-${{ hashFiles('hledger/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-hledger-stack-work-$ghc
+             ${{ runner.os }}-x64-hledger-stack-work-${{ env.ghcid }}-${{ env.cachedate }}
       if: env.do-all
 
     - name: Cache - hledger-ui/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-ui/.stack-work
-        key: ${{ runner.os }}-hledger-ui-stack-work-$ghc-${{ hashFiles('hledger-ui/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-ui-stack-work-${{ env.ghcid }}-${{ env.cachedate }}-${{ hashFiles('hledger-ui/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-hledger-ui-stack-work-$ghc
+             ${{ runner.os }}-x64-hledger-ui-stack-work-${{ env.ghcid }}-${{ env.cachedate }}
       if: env.do-all
 
     - name: Cache - hledger-web/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-web/.stack-work
-        key: ${{ runner.os }}-hledger-web-stack-work-$ghc-${{ hashFiles('hledger-web/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-web-stack-work-${{ env.ghcid }}-${{ env.cachedate }}-${{ hashFiles('hledger-web/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-hledger-web-stack-work-$ghc
+             ${{ runner.os }}-x64-hledger-web-stack-work-${{ env.ghcid }}-${{ env.cachedate }}
       if: env.do-all
+
+    # Ensure the ghc version we need is installed.
+    # The following stack path commands require it, so let's install it first, quietly if possible.
+    # Hopefully it will often be in our cached dirs, avoiding reinstall.
+    # Don't rely on the preinstalled ghc, it's too variable.
+    - name: Ensure ghc is installed
+      run: |
+        $stack setup --verbosity error
+      if: env.do-all
+
+    # - name: Show stack directories
+    #   run: |
+    #     printf "stack-root: \t";            $stack path --stack-root             # Global Stack root directory
+    #     printf "global-config: \t";         $stack path --global-config          # Global Stack configuration file
+    #     printf "project-root: \t";          $stack path --project-root           # Project root (derived from stack.yaml file)
+    #     printf "config-location: \t";       $stack path --config-location        # Configuration location (where the stack.yaml file is)
+    #     printf "bin-path: \t";              $stack path --bin-path               # PATH environment variable
+    #     printf "programs: \t";              $stack path --programs               # Install location for GHC and other core tools (see 'stack ls tools' command)
+    #     printf "compiler-exe: \t";          $stack path --compiler-exe           # Compiler binary (e.g. ghc)
+    #     printf "compiler-bin: \t";          $stack path --compiler-bin           # Directory containing the compiler binary (e.g. ghc)
+    #     printf "compiler-tools-bin: \t";    $stack path --compiler-tools-bin     # Directory containing binaries specific to a particular compiler
+    #     printf "local-bin: \t";             $stack path --local-bin              # Directory where Stack installs executables (e.g. ~/.local/bin (Unix-like OSs) or %APPDATA%\local\bin (Windows))
+    #     printf "extra-include-dirs: \t";    $stack path --extra-include-dirs     # Extra include directories
+    #     printf "extra-library-dirs: \t";    $stack path --extra-library-dirs     # Extra library directories
+    #     printf "snapshot-pkg-db: \t";       $stack path --snapshot-pkg-db        # Snapshot package database
+    #     printf "local-pkg-db: \t";          $stack path --local-pkg-db           # Local project package database
+    #     printf "global-pkg-db: \t";         $stack path --global-pkg-db          # Global package database
+    #     printf "ghc-package-path: \t";      $stack path --ghc-package-path       # GHC_PACKAGE_PATH environment variable
+    #     printf "snapshot-install-root: \t"; $stack path --snapshot-install-root  # Snapshot installation root
+    #     printf "local-install-root: \t";    $stack path --local-install-root     # Local project installation root
+    #     printf "snapshot-doc-root: \t";     $stack path --snapshot-doc-root      # Snapshot documentation root
+    #     printf "local-doc-root: \t";        $stack path --local-doc-root         # Local project documentation root
+    #     printf "local-hoogle-root: \t";     $stack path --local-hoogle-root      # Local project documentation root
+    #     printf "dist-dir: \t";              $stack path --dist-dir               # Dist work directory, relative to package directory
+    #     printf "local-hpc-root: \t";        $stack path --local-hpc-root         # Where HPC reports and tix files are stored
+    #   if: env.do-all
+    # Example output:
+    # stack-root:               /home/runner/.stack
+    # global-config:            /home/runner/.stack/config.yaml
+    # project-root:             /home/runner/work/hledger/hledger
+    # config-location:          /home/runner/work/hledger/hledger/stack.yaml
+    # bin-path:                 /home/runner/.stack/snapshots/x86_64-linux-tinfo6/640e58090350012aaeacf3bb95988ba08dbaab0ce8ce8d2cb4b2ea0c5e7dd47b/9.10.1/bin:/home/runner/.stack/compiler-tools/x86_64-linux-tinfo6/ghc-9.10.1/bin:/home/runner/.stack/programs/x86_64-linux/ghc-tinfo6-9.10.1/bin:/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+    # programs:                 /home/runner/.stack/programs/x86_64-linux
+    # compiler-exe:             /home/runner/.stack/programs/x86_64-linux/ghc-tinfo6-9.10.1/bin/ghc-9.10.1
+    # compiler-bin:             /home/runner/.stack/programs/x86_64-linux/ghc-tinfo6-9.10.1/bin
+    # compiler-tools-bin:       /home/runner/.stack/compiler-tools/x86_64-linux-tinfo6/ghc-9.10.1/bin
+    # local-bin:                /home/runner/.local/bin
+    # extra-include-dirs:       
+    # extra-library-dirs:       
+    # snapshot-pkg-db:          /home/runner/.stack/snapshots/x86_64-linux-tinfo6/640e58090350012aaeacf3bb95988ba08dbaab0ce8ce8d2cb4b2ea0c5e7dd47b/9.10.1/pkgdb
+    # local-pkg-db:             /home/runner/work/hledger/hledger/.stack-work/install/x86_64-linux-tinfo6/640e58090350012aaeacf3bb95988ba08dbaab0ce8ce8d2cb4b2ea0c5e7dd47b/9.10.1/pkgdb
+    # global-pkg-db:            /home/runner/.stack/programs/x86_64-linux/ghc-tinfo6-9.10.1/lib/ghc-9.10.1/lib/package.conf.d
+    # ghc-package-path:         /home/runner/work/hledger/hledger/.stack-work/install/x86_64-linux-tinfo6/640e58090350012aaeacf3bb95988ba08dbaab0ce8ce8d2cb4b2ea0c5e7dd47b/9.10.1/pkgdb:/home/runner/.stack/snapshots/x86_64-linux-tinfo6/640e58090350012aaeacf3bb95988ba08dbaab0ce8ce8d2cb4b2ea0c5e7dd47b/9.10.1/pkgdb:/home/runner/.stack/programs/x86_64-linux/ghc-tinfo6-9.10.1/lib/ghc-9.10.1/lib/package.conf.d
+    # snapshot-install-root:    /home/runner/.stack/snapshots/x86_64-linux-tinfo6/640e58090350012aaeacf3bb95988ba08dbaab0ce8ce8d2cb4b2ea0c5e7dd47b/9.10.1
+    # local-install-root:       /home/runner/work/hledger/hledger/.stack-work/install/x86_64-linux-tinfo6/640e58090350012aaeacf3bb95988ba08dbaab0ce8ce8d2cb4b2ea0c5e7dd47b/9.10.1
+    # snapshot-doc-root:        /home/runner/.stack/snapshots/x86_64-linux-tinfo6/a475558d986419ca16855615e08d0a95545a229cfbd26fe42e916bee9b2277d3/9.10.1/doc
+    # local-doc-root:           /home/runner/work/hledger/hledger/.stack-work/install/x86_64-linux-tinfo6/a475558d986419ca16855615e08d0a95545a229cfbd26fe42e916bee9b2277d3/9.10.1/doc
+    # local-hoogle-root:        /home/runner/work/hledger/hledger/.stack-work/hoogle/x86_64-linux-tinfo6/a475558d986419ca16855615e08d0a95545a229cfbd26fe42e916bee9b2277d3/9.10.1
+    # dist-dir:                 .stack-work/dist/x86_64-linux-tinfo6/ghc-9.10.1
+    # local-hpc-root:           /home/runner/work/hledger/hledger/.stack-work/install/x86_64-linux-tinfo6/640e58090350012aaeacf3bb95988ba08dbaab0ce8ce8d2cb4b2ea0c5e7dd47b/9.10.1/hpc
 
 
     # ACTIONS
     # in modular steps for faster & more focussed failures
 
     # XXX slow, I feel this should happen less often
-    - name: Update package index
-      run: |
-        $stack update
-      if: env.do-all
+    # - name: Update package index
+    #   run: |
+    #     $stack update
+    #   if: env.do-all
 
     - name: Build deps of hledger-lib
       run: |
@@ -272,15 +339,16 @@ jobs:
     - name: Install shelltestrunner
       run: |
         export PATH=~/.local/bin:$PATH
-        if [[ ! -x ~/.local/bin/shelltest ]]; then $stack install shelltestrunner-1.10; fi
+        # $stack update;                             $stack install --verbosity=error shelltestrunner-1.11
+        if [[ ! -x ~/.local/bin/shelltest ]]; then $stack install --verbosity=error shelltestrunner-1.11; fi
         shelltest --version
       if: env.do-all
 
     # Takes ~30s on a 2023 github worker.
-    - name: Test functional tests (excluding addons)
+    - name: Test functional tests
       run: |
         export PATH=~/.local/bin:$PATH
-        COLUMNS=80 $stack exec -- shelltest --execdir -j16 hledger/test -x /_ -x /addons -x ledger-compat/ledger-baseline -x ledger-compat/ledger-regress -x ledger-compat/ledger-collected
+        COLUMNS=80 $stack exec -- shelltest --execdir -j16 hledger/test -x /_ -x ledger-compat/ledger-baseline -x ledger-compat/ledger-regress -x ledger-compat/ledger-collected
         # XXX run the bin/ func tests corresponding to the GHC version enabled above, only
       if: env.do-all
 
@@ -298,6 +366,7 @@ jobs:
     #   if: env.do-all
 
     # ARTIFACTS
+    # not much needed, but relatively cheap to save and occasionally useful for troubleshooting ?
 
     - name: Gather binaries
       id: exes
@@ -310,17 +379,16 @@ jobs:
         strip hledger
         strip hledger-ui
         strip hledger-web
-        tar cvf hledger-linux-x64.tar hledger hledger-ui hledger-web
       if: env.do-all
 
-    # upload-artifact loses execute permissions, so we tar the binaries to preserve them.
-    # github UI always zips artifacts when they are downloaded, so we don't bother compressing the tar.
-    # Unfortunately it means users must both unzip and untar.
     - name: Upload binaries
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: hledger-linux-x64
-        path: tmp/hledger-linux-x64.tar
+        path: |
+          tmp/hledger
+          tmp/hledger-ui
+          tmp/hledger-web
       if: env.do-all
 
 
@@ -336,7 +404,7 @@ jobs:
 
     # inspect available context info, per
     # https://docs.github.com/en/free-pro-team@latest/actions/reference/context-and-expression-syntax-for-github-actions.
-    # sample output: https://github.com/simonmichael/hledger/runs/1619227104
+    # sample output: https://github.com/hledgerorg/hledger/runs/1619227104
     # - name: Dump GitHub context
     #   env:
     #     GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -361,3 +429,77 @@ jobs:
     #   env:
     #     MATRIX_CONTEXT: ${{ toJson(matrix) }}
     #   run: echo "$MATRIX_CONTEXT"
+
+
+  # The hledger-web browser tests (hledger-web/test/browser, Playwright).
+  # Reuses the binary the ci job just built, so this adds no Haskell build time.
+  #
+  # This job reports test failures, but is not a required check, so it does not
+  # block merging. These tests track the web UI's current behavior, so a PR that
+  # changes the UI on purpose has to update them, which needs node and a browser
+  # download (~550M). That is a reason to see how often it actually bites before
+  # making this a merge gate, not a reason to hide the result.
+  web-e2e:
+    needs: ci
+    if: needs.ci.outputs.do-all
+    runs-on: ubuntu-24.04
+
+    # this job installs and runs code from the npm registry, so give it nothing else
+    permissions:
+      contents: read
+
+    steps:
+
+    - name: Check out
+      uses: actions/checkout@v7
+
+    - name: Get the hledger-web built by the ci job
+      uses: actions/download-artifact@v7
+      with:
+        name: hledger-linux-x64
+        path: bin
+
+    - name: Put hledger-web on PATH
+      run: |
+        chmod +x bin/hledger-web
+        echo "$PWD/bin" >> $GITHUB_PATH
+        bin/hledger-web --version
+
+    - name: Install node
+      uses: actions/setup-node@v6
+      with:
+        node-version: 22
+
+    - name: Enable pnpm
+      run: corepack enable
+
+    # @playwright/test pins the chromium build it downloads, so the lockfile
+    # fixes the browser version too, and keys this cache.
+    - name: Cache - playwright browsers
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ hashFiles('hledger-web/test/browser/pnpm-lock.yaml') }}
+
+    - name: Install the test dependencies
+      working-directory: hledger-web/test/browser
+      run: |
+        pnpm install --frozen-lockfile --ignore-scripts
+        pnpm exec playwright install --with-deps chromium
+
+    - name: Test hledger-web in a browser
+      id: browsertest
+      working-directory: hledger-web/test/browser
+      env:
+        # without this, global-setup.js sees stack.yaml at the repo root and
+        # tries "stack exec -- hledger-web"; this job has no stack setup
+        HLEDGER_WEB: hledger-web
+        PLAYWRIGHT_HTML_OPEN: never
+      run: pnpm exec playwright test --reporter=list,html
+
+    - name: Upload the report if the tests failed
+      uses: actions/upload-artifact@v7
+      if: always() && steps.browsertest.outcome == 'failure'
+      with:
+        name: playwright-report
+        path: hledger-web/test/browser/playwright-report

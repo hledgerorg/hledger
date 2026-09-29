@@ -1,0 +1,21 @@
+if
+! ^Trades,Data,Order,Stocks,
+  skip
+
+# Trades,Header,DataDiscriminator,Asset Category,Currency,Symbol,Date/Time,Quantity,T. Price,C. Price,Proceeds,Comm/Fee,Basis,Realized P/L,MTM P/L,Code
+fields trades,header,datadiscriminator,asset,currency_, symbol,date_time,quantity,t_price,c_price,proceeds,comm_fee,basis,realized_pl,mtm_pl,code_
+
+date         		%date_time
+date-format		%F, %T
+decimal-mark		.
+description    		IBKR | %symbol 
+account1  		assets:IBKR:investing:%symbol
+amount1   		%quantity %symbol @ €%t_price
+
+account2  assets:IBKR:checking
+amount2   -€%basis
+
+account3  expenses:banking:IBKR:investing:transferfees
+amount3   -€%Comm_Fee
+
+account9  equity:rounding

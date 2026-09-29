@@ -19,43 +19,26 @@ It expects that the hledger version you are running is installed in your PATH.
 If not, it will stop until you have done that (to keep things simple).
 
 Example:
-```
+```cli
 $ hledger setup
-Checking your hledger setup..
-Legend: good, neutral, unknown, warning
-
+Checking your setup (and contacting hledger.org to find out the current release):
 hledger
-* is a released version ?                   no  hledger 1.42.99-gbca4b39c5-20250425, mac-aarch64
-* is up to date ?                          yes  1.42.99 installed, latest is 1.42.1
-* is a native binary for this machine ?    yes  aarch64
-* is installed in PATH ?                   yes  /Users/simon/.local/bin/hledger
-* has a system text encoding configured ?  yes  UTF-8, data files should use this encoding
-* has a user config file ? (optional)       no  
-* current directory has a local config ?   yes  /Users/simon/src/hledger/hledger.conf
-* the config file is readable ?            yes  /Users/simon/src/hledger/hledger.conf
-
+  is running on                                 macos 27.0 on aarch64
+  is built with a supported compiler/RTS   yes  ghc 9.14.1, using threaded RTS
+  is a native binary for this machine ?    yes  aarch64
+  is a released version ?                  yes  hledger 1.52.4, mac-aarch64
+  is up to date ? checking latest...       yes  latest is 1.52.4, 1.52.4 is installed
+  is installed in PATH (this version) ?    yes  /Users/user/.local/bin/hledger
+  has a system text encoding configured ?  yes  UTF-8, data files must use this encoding
+  has a user config file ?                 yes  /Users/user/.hledger.conf
+  has a local config file ?                 no  
+  the config file is readable ?            yes  
 terminal
-* the NO_COLOR variable is defined ?        no  
-* --color is configured by config file ?    no  
-* hledger will use color by default ?      yes  
-* the PAGER variable is defined ?          yes  less
-* --pager is configured by config file ?    no  
-* hledger will use a pager when needed ?   yes  /opt/homebrew/bin/less
-* the LESS variable is defined ?           yes  
-* the HLEDGER_LESS variable is defined ?    no  
-* adjusting LESS variable for color etc. ? yes  
-* --pretty is enabled by config file ?      no  tables will use ASCII characters
-* bash shell completions are installed ?     ?  
-* zsh shell completions are installed ?      ?  
-
+  the TERM variable is defined ?           yes  xterm-256color
+  the terminal supports ANSI color ?       yes  
+  ...
 journal
-* the LEDGER_FILE variable is defined ?    yes  /Users/simon/finance/2025/2025.journal
-* a default journal file is readable ?     yes  /Users/simon/finance/2025/2025.journal
-* it includes additional files ?           yes  15
-* all commodities are declared ?           yes  10
-* all accounts are declared ?              yes  160
-* all accounts have types ?                 no  14 untyped
-* accounts of each type were detected ?    yes  ALERXCV
-* commodities/accounts are checked ?        no  use -s to check commodities/accounts
-* balance assertions are checked ?         yes  use -I to ignore assertions
+  the LEDGER_FILE variable is defined ?    yes  /Users/user/finance/main.journal
+  a default journal file is readable ?     yes  /Users/user/finance/main.journal
+  ...
 ```

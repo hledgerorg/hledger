@@ -1,0 +1,9 @@
+# * import rules-directory discovery
+
+# ** 1. With no args, import reads .rules files from the journal's rules/ directory,
+# in alphabetical order. Files beginning with _ (disabled or shared) or . (hidden)
+# are skipped.
+$ hledger -f rulesdir/main.journal import --dry-run
+>2
+no new transactions found in aaa.rules, bbb.rules
+>=

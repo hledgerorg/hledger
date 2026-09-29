@@ -1,0 +1,76 @@
+# * print --export -O ledger
+
+# ** 1. Directives and comments are reproduced as with txt, and transactions use Ledger's lot syntax.
+# Directives which hledger accepts but Ledger does not are commented out, with an explanatory comment:
+# decimal-mark, a one-line commodity directive with an amount, a periodic transaction rule with a description,
+# and an auto posting rule with *N amount multipliers.
+<
+; a comment
+# another comment
+* an org heading
+
+account assets:investment  ; type:A
+commodity $1,000.00
+commodity AAPL
+  format 1,000.00 AAPL
+decimal-mark .
+D $1,000.00
+Y 2026
+payee Broker
+tag lot
+P 2026-01-01 AAPL $150
+
+~ monthly  forecast
+    (assets:cash)  10
+~ monthly
+    (assets:cash)  10
+= assets:investment
+    (expenses:fees)  *0.01
+= assets:investment
+    (expenses:fees)  $1
+
+comment
+a comment block
+end comment
+
+2026-01-01 Broker
+    assets:investment    10 AAPL {2026-01-01, "lot A", $150} @ $150
+    assets:cash
+$ hledger -f - print --export -O ledger -I
+; a comment
+# another comment
+* an org heading
+
+account assets:investment  ; type:A
+; not supported as-is:
+; commodity $1,000.00
+commodity AAPL
+  format 1,000.00 AAPL
+; not supported as-is:
+; decimal-mark .
+D $1,000.00
+Y 2026
+payee Broker
+tag lot
+P 2026-01-01 AAPL $150
+
+; not supported as-is:
+; ~ monthly  forecast
+;     (assets:cash)  10
+~ monthly
+    (assets:cash)  10
+; not supported as-is:
+; = assets:investment
+;     (expenses:fees)  *0.01
+= assets:investment
+    (expenses:fees)  $1
+
+comment
+a comment block
+end comment
+
+2026-01-01 Broker
+    assets:investment                             10 AAPL [2026-01-01] (lot A) {$150} @ $150
+    assets:cash
+
+>= 0

@@ -282,7 +282,7 @@ Quarterly Income Statement 2008
  expenses:food     ||       0   50.0 %       0       0   50.0 %   50.0 % 
  expenses:supplies ||       0   50.0 %       0       0   50.0 %   50.0 % 
 
-# ** 9. With --declared, declared leaf accounts are included, and in the right place.
+# ** 9. With --declared, declared accounts are included, and in the right place.
 <
 account revenues
 account revenues:aa
@@ -296,6 +296,7 @@ Income Statement ..
 =================++====
  Revenues        ||    
 -----------------++----
+ revenues        ||  0 
  revenues:aa     ||  0 
  revenues:ab     ||  0 
  revenues:ac:aca ||  0 
@@ -303,3 +304,54 @@ Income Statement ..
  Expenses        ||    
 -----------------++----
  expenses        ||  0 
+
+# ** 10. Clipping too far doesn't erase account types (#2434)
+<
+account sm:assets    ; type:A
+account sm:revenues  ; type:R
+
+2025-01-01
+    sm:revenues   -$1
+    sm:assets      $1
+
+2025-01-02
+    sm:revenues   A -2
+    sm:assets     A 2
+
+$ hledger -f - incomestatement -1 -N
+Income Statement 2025-01-01..2025-01-02
+
+          || 2025-01-01..2025-01-02 
+==========++========================
+ Revenues ||                        
+----------++------------------------
+ sm       ||                $1, A 2 
+==========++========================
+ Expenses ||                        
+----------++------------------------
+
+# ** 11. With --declared and --empty, account declaration order is preserved
+<
+account revenues:b
+account revenues:a
+account expenses:y
+account expenses:x
+
+2025-01-01 txn
+    revenues:a      -1
+    expenses:x       1
+
+$ hledger -f - incomestatement -N --empty --declared
+Income Statement 2025-01-01
+
+            || 2025-01-01 
+============++============
+ Revenues   ||            
+------------++------------
+ revenues:b ||          0 
+ revenues:a ||          1 
+============++============
+ Expenses   ||            
+------------++------------
+ expenses:y ||          0 
+ expenses:x ||          1 

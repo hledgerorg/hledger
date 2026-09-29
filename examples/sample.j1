@@ -1,0 +1,9 @@
+# sample1.jnl1
+# A one-line variant of journal format, where forward slashes are equivalent to newlines.
+# Read by bin/hledgerj1.
+
+2025-01-01 starting balances / assets:cash  100 USD = 100 USD / assets:bank:checking  1000 USD = 1000 USD / assets:broker:usd  1000 USD = 1000 USD / assets:broker:aaa  1 AAA @ 1.20 USD = 1 AAA @ 1.20 USD / liabilities:credit card  -400 USD = -400 USD / equity:start
+2025-01-01 pay rent / assets:bank:checking / expenses:rent  800 USD
+2025-01-02 salary / revenues:salary / assets:bank:checking  1000 USD
+2025-01-03 pay half of credit card balance / assets:bank:checking / liabilities:credit card  200 USD = -200 USD
+2025-01-04 shopping / assets:bank:checking / expenses:food  200 USD / expenses:supplies  50 USD

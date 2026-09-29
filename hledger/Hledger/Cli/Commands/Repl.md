@@ -1,29 +1,46 @@
 ## repl
 
-Start an interactive prompt, where you can run any of hledger's commands.
-Data files are parsed just once, so the commands run faster.
+Start an interactive prompt for running hledger commands.
+Input files are reloaded only when they change, so commands run faster.
 
 ```flags
 Flags:
-no command-specific flags
+     --no-watch             disable automatic reloading of changed input
+                            files, config aliases and addon commands
 ```
-
-This command is experimental and could change in the future.
 
 `hledger repl` starts a read-eval-print loop (REPL) where you can enter commands interactively.
 As with the `run` command, each input file (or each input file/input options combination) is parsed just once,
 so commands will run more quickly than if you ran them individually at the command line.
 
-Also like `run`, the input file(s) specified for the `repl` command will be the default input for all interactive commands.
-You can override this temporarily by specifying an `-f` option in particular commands.
-But note that commands will not see any changes made to input files (eg by `add`) until you exit and restart the REPL.
+The input file(s) specified for the `repl` command will be used throughout the session;
+but you can override this temporarily by specifying new `-f` options for a command.
+
+Before running a command, any input files which have changed on disk are automatically reloaded
+(including CSV rules files).
+Also command aliases are reloaded if the config file has changed,
+and addon commands are re-detected if PATH's contents have changed.
+The `--no-watch` flag disables all of this reloading,
+so as to work with a stable snapshot of the data,
+or to avoid file/directory polling on a slow network drive.
+
+Any other general flags given to `repl` - input, reporting, or display flags such as
+`-I`, `--strict`, `--alias`, `-b`/`-e`, `--depth`, `--cost`, `--value`, `--color` -
+are also applied to every command you run.
+A command can still override them by specifying its own flags.
 
 The command syntax is the same as with `run`:
 
 - enter one hledger command at a time, without the usual `hledger` first word
 - empty lines and comment text from `#` to end of line are ignored
-- use single or double quotes to quote arguments when needed
-- type `exit` or `quit` or control-D to exit the REPL.
+- enclose arguments in quotes if they contain spaces.
+
+Use `help` (or `h`) to show the quick reference, or `help commands` to list commands.
+Addons in PATH and command aliases defined in a config file can also be used.
+Generally `repl` should feel much like using hledger at the command line.
+But `repl` requires full command names or official abbreviations (it does not recognise ad hoc abbreviations).
+
+To run a single shell command, type `! SHELLCMD` (eg `! ls` or `! git status`).
 
 While it is running, the REPL remembers your command history, and you can navigate in the usual ways:
 
@@ -32,30 +49,26 @@ While it is running, the REPL remembers your command history, and you can naviga
 - control-R to search for a past command
 - TAB to complete file paths.
 
-Generally `repl` command lines should feel much like the normal hledger CLI, but you may find differences.
-`repl` is a little stricter;
-eg it requires full command names or official abbreviations (as seen in the commands list).
-
-The `commands` and `help` commands, and the command help flags
-(`CMD --tldr`, `CMD -h/--help`, `CMD --info`, `CMD --man`), can be useful.
-
 You can type control-C to cancel a long-running command (but only once; typing it a second time will exit the REPL).
 
-And in most shells you can type control-Z to temporarily exit to the shell (and then `fg` to return to the REPL).
+In most shells you can type control-Z to temporarily exit to the shell (and then `fg` to return to the REPL).
+
+To exit the REPL, use control-D or `q` or `quit` or `exit`.
 
 ### Examples
 
 Start the REPL and enter some commands:
 ```cli
 $ hledger repl 
-Enter hledger commands. To exit, enter 'quit' or 'exit', or send EOF.
-% stats
+hledger 1.52
+Enter hledger commands. To exit, enter 'quit' or 'exit', or send EOF / control-d.
+2025> stats
 Main file           : .../2025.journal
 ...
-% stats -f 2024/2024.journal 
+2025> stats -f 2024/2024.journal 
 Main file           : .../2024.journal
 ...
-% stats
+2025> stats
 Main file           : .../2025.journal
 ...
 ```
@@ -63,11 +76,12 @@ Main file           : .../2025.journal
 or:
 ```cli
 $ hledger repl -f some.journal
-Enter hledger commands. To exit, enter 'quit' or 'exit', or send EOF.
-% bs
+hledger 1.52
+Enter hledger commands. To exit, enter 'quit' or 'exit', or send EOF / control-d.
+some> bs
 ...
-% print -b 'last week'
+some> print -b 'last week'
 ...
-% bs -f other.journal
+some> bs -f other.journal
 ...
 ```

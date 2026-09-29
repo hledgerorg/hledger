@@ -1,0 +1,30 @@
+#!/bin/bash
+# simplefinjson 1.1 - (c) Simon Michael 2025
+# simplefinjson [ACCTID]
+#  download the last 30 days' transaction history of one or all accounts from SimpleFIN, and print as tidy JSON.
+#
+# Requirements:
+#  a SimpleFIN account with financial institution(s) and app connection configured
+#  curl
+#  GNU date
+#  jq to prettify
+
+# Insert an access token here, acquired with simplefinsetup.
+# (Or use a secrets manager, like https://bitwarden.com/help/secrets-manager-quick-start.)
+SIMPLEFIN_ACCESS_URL=''
+
+date() { if hash gdate 2>/dev/null; then gdate "$@"; else date "$@"; fi }
+
+START=`date +%s -d '-30 days'`
+ACCTPARAM=${1:+&account=$1}
+
+curl -sL "$SIMPLEFIN_ACCESS_URL/accounts?start-date=$START$ACCTPARAM" | jq
+
+# https://www.simplefin.org/protocol.html#http-endpoints
+# https://www.simplefin.org/protocol.html#get-accounts
+# Parameter	Required	Description
+# start-date	optional	If given, transactions will be restricted to those on or after this Unix epoch timestamp.
+# end-date	optional	If given, transactions will be restricted to those before (but not on) this Unix epoch timestamp.
+# pending	optional	If pending=1 is provided, pending transactions will be included (if supported). By default, pending transaction are NOT included.
+# account	optional	If given, only return information related to the given account id. May be specified multiple times.
+# balances-only	optional	If balances-only=1 is provided, no transaction data is returned.

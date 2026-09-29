@@ -1,6 +1,6 @@
 ## rewrite
 
-Print all transactions, rewriting the postings of matched transactions.
+Print all transactions, adding auto postings to some of them.
 For now the only rewrite available is adding new postings, like print --auto.
 
 ```flags
@@ -13,6 +13,13 @@ Flags:
                                     and AMTEXPR.
      --diff                         generate diff suitable as an input for
                                     patch tool
+     --verbose-tags                 add tags indicating generated/modified
+                                    data
+     --layout=hledger1|COL          how should posting amounts be aligned ?
+                                    hledger1 - right-align amounts, as in
+                                    hledger 1
+                                    COL      - align decimal marks at column
+                                    COL (default: 53)
 ```
 
 This is a start at a generic rewriter of transaction entries.
@@ -39,10 +46,10 @@ and the two spaces between account and amount.
 More:
 
 ```cli
-$ hledger rewrite -- [QUERY]        --add-posting "ACCT  AMTEXPR" ...
-$ hledger rewrite -- ^income        --add-posting '(liabilities:tax)  *.33'
-$ hledger rewrite -- expenses:gifts --add-posting '(budget:gifts)  *-1"'
-$ hledger rewrite -- ^income        --add-posting '(budget:foreign currency)  *0.25 JPY; diversify'
+$ hledger rewrite [QUERY]        --add-posting "ACCT  AMTEXPR" ...
+$ hledger rewrite ^income        --add-posting '(liabilities:tax)  *.33'
+$ hledger rewrite expenses:gifts --add-posting '(budget:gifts)  *-1"'
+$ hledger rewrite ^income        --add-posting '(budget:foreign currency)  *0.25 JPY; diversify'
 ```
 
 Argument for `--add-posting` option is a usual posting of transaction with an
@@ -79,14 +86,14 @@ you usually write. It indicates the query by which you want to match the
 posting to add new ones.
 
 ```cli
-$ hledger rewrite -- -f input.journal -f rewrite-rules.journal > rewritten-tidy-output.journal
+$ hledger rewrite -f input.journal -f rewrite-rules.journal > rewritten-tidy-output.journal
 ```
 
 This is something similar to the commands pipeline:
 
 ```cli
-$ hledger rewrite -- -f input.journal '^income' --add-posting '(liabilities:tax)  *.33' \
-  | hledger rewrite -- -f - expenses:gifts      --add-posting 'budget:gifts  *-1'       \
+$ hledger rewrite -f input.journal '^income' --add-posting '(liabilities:tax)  *.33' \
+  | hledger rewrite -f - expenses:gifts      --add-posting 'budget:gifts  *-1'       \
                                                 --add-posting 'assets:budget  *1'       \
   > rewritten-tidy-output.journal
 ```
@@ -100,7 +107,7 @@ To use this tool for batch modification of your journal files you may find
 useful output in form of unified diff.
 
 ```cli
-$ hledger rewrite -- --diff -f examples/sample.journal '^income' --add-posting '(liabilities:tax)  *.33'
+$ hledger rewrite --diff -f examples/sample.journal '^income' --add-posting '(liabilities:tax)  *.33'
 ```
 
 Output might look like:
@@ -108,18 +115,26 @@ Output might look like:
 ```
 --- /tmp/examples/sample.journal
 +++ /tmp/examples/sample.journal
-@@ -18,3 +18,4 @@
- 2008/01/01 income
+@@ -28,13 +28,15 @@
+ ; declare commodities:
+ ; commodity $
+ 
+-2008/01/01 income
 -    assets:bank:checking  $1
-+    assets:bank:checking            $1
++2008-01-01 income
++    assets:bank:checking                          $1
      income:salary
-+    (liabilities:tax)                0
-@@ -22,3 +23,4 @@
- 2008/06/01 gift
++    (liabilities:tax)                             $0
+ 
+-2008/06/01 gift
 -    assets:bank:checking  $1
-+    assets:bank:checking            $1
++2008-06-01 gift
++    assets:bank:checking                          $1
      income:gifts
-+    (liabilities:tax)                0
++    (liabilities:tax)                             $0
+ 
+ 2008/06/02 save
+     assets:bank:saving  $1
 ```
 
 If you'll pass this through `patch` tool you'll get transactions containing the
@@ -127,12 +142,47 @@ posting that matches your query be updated. Note that multiple files might be
 update according to list of input files specified via `--file` options and
 `include` directives inside of these files.
 
+Changed transactions are re-rendered in `print`'s standard format, so the diff
+shows any reformatting as well as the postings you added: amounts are realigned,
+and dates are written with `-` separators. Transactions you didn't change are
+left exactly as they are. `--layout` selects the amount alignment, so choosing
+one which matches your journal will keep the diff small. Here is the example
+above again, with `--layout=26` to match this journal's own alignment:
+
+```
+@@ -28,13 +28,15 @@
+ ; declare commodities:
+ ; commodity $
+ 
+-2008/01/01 income
++2008-01-01 income
+     assets:bank:checking  $1
+     income:salary
++    (liabilities:tax)     $0
+ 
+-2008/06/01 gift
++2008-06-01 gift
+     assets:bank:checking  $1
+     income:gifts
++    (liabilities:tax)     $0
+ 
+ 2008/06/02 save
+     assets:bank:saving  $1
+```
+
+Only transactions which exist as journal entries in a file can be patched
+this way. Transactions read from other data formats, such as CSV or timeclock,
+and transactions generated by a periodic transaction rule, have no journal
+entry of their own; these are left out of the diff, and reported on stderr.
+To rewrite those, convert them to journal entries first, eg with
+[`hledger print`](#print) or [`hledger import`](#import).
+
 Be careful. Whole transaction being re-formatted in a style of output from
 `hledger print`.
 
 See also: 
 
-https://github.com/simonmichael/hledger/issues/99
+https://github.com/hledgerorg/hledger/issues/99
 
 ### rewrite vs. print --auto
 

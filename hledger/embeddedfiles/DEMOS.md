@@ -5,7 +5,7 @@ https://asciinema.org/a/567934
 
 ``` 80x44
 curl -O
-https://raw.githubusercontent.com/simonmichael/hledger/master/hledger-install/hledger-install.sh
+https://raw.githubusercontent.com/hledgerorg/hledger/main/hledger-install/hledger-install.sh
 
 ls -l hledger-install.sh less hledger-install.sh
 

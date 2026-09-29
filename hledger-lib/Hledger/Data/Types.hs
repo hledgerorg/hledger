@@ -18,6 +18,7 @@ For more detailed documentation on each type, see the corresponding modules.
 
 -- {-# LANGUAGE DeriveAnyClass #-}  -- https://hackage.haskell.org/package/deepseq-1.4.4.0/docs/Control-DeepSeq.html#v:rnf
 {-# LANGUAGE CPP        #-}
+{-# LANGUAGE DeriveFunctor        #-}
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedStrings    #-}
@@ -44,11 +45,12 @@ import Data.List (intercalate, sortBy)
 --Note: You should use Data.Map.Strict instead of this module if:
 --You will eventually need all the values stored.
 --The stored values don't represent large virtual data structures to be lazily computed.
-import qualified Data.Map as M
+import Data.Map qualified as M
+import Data.Set qualified as S
 import Data.Ord (comparing)
 import Data.Semigroup (Min(..))
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Time.Calendar (Day)
 import Data.Time.Clock.POSIX (POSIXTime)
 import Data.Time.LocalTime (LocalTime)
@@ -83,15 +85,23 @@ type WeekDay = Int   -- 1-7
 -- wildcard (so it would mean all days of that month). See the `smartdate`
 -- parser for more examples.
 --
--- Or, one of the standard periods and an offset relative to the reference date:
+-- Or, one of the standard periods and a numeric offset relative to the reference date:
 -- (last|this|next) (day|week|month|quarter|year), where "this" means the period
 -- containing the reference date.
+--
+-- Or, (last|this|next) weekdayname, where "this" "next".
+--
+-- Or, (last|this|next) monthname, where "this" means the previous 1st if in that month,
+-- otherwise the start of the next occurrence of that month.
+--
 data SmartDate
   = SmartCompleteDate Day
   | SmartAssumeStart Year (Maybe Month)         -- XXX improve these constructor names
   | SmartFromReference (Maybe Month) MonthDay   --
   | SmartMonth Month
   | SmartRelative Integer SmartInterval
+  | SmartRelativeMonth Ordering Month           -- ^ EQ will be treated like GT
+  | SmartRelativeWeekDay Ordering WeekDay
   deriving (Show)
 
 data SmartInterval = Day | Week | Month | Quarter | Year deriving (Show)
@@ -104,8 +114,6 @@ data EFDay = Exact Day | Flex Day deriving (Eq,Generic,Show)
 
 -- EFDay's Ord instance treats them like ordinary dates, ignoring exact/flexible.
 instance Ord EFDay where compare d1 d2 = compare (fromEFDay d1) (fromEFDay d2)
-
--- instance Ord EFDay where compare = maCompare
 
 fromEFDay :: EFDay -> Day
 fromEFDay (Exact d) = d
@@ -178,18 +186,22 @@ data AccountType =
   | Equity
   | Revenue
   | Expense
-  | Cash  -- ^ a subtype of Asset - liquid assets to show in cashflow report
-  | Conversion -- ^ a subtype of Equity - account with which to balance commodity conversions
-  deriving (Eq,Ord,Generic)
+  | Cash            -- ^ a subtype of Asset - liquid assets to show in cashflow report
+  | Conversion      -- ^ a subtype of Equity - account with which to balance commodity conversions
+  | Gain            -- ^ a subtype of Revenue - realised capital gains/losses
+  | UnrealisedGain  -- ^ a subtype of Equity - accumulated unrealised capital gains/losses
+  deriving (Eq,Ord,Generic,Enum,Bounded)
 
 instance Show AccountType where
-  show Asset      = "A"
-  show Liability  = "L"
-  show Equity     = "E"
-  show Revenue    = "R"
-  show Expense    = "X"
-  show Cash       = "C"
-  show Conversion = "V"
+  show Asset          = "A"
+  show Liability      = "L"
+  show Equity         = "E"
+  show Revenue        = "R"
+  show Expense        = "X"
+  show Cash           = "C"
+  show Conversion     = "V"
+  show Gain           = "G"
+  show UnrealisedGain = "U"
 
 isBalanceSheetAccountType :: AccountType -> Bool
 isBalanceSheetAccountType t = t `elem` [
@@ -197,28 +209,16 @@ isBalanceSheetAccountType t = t `elem` [
   Liability,
   Equity,
   Cash,
-  Conversion
+  Conversion,
+  UnrealisedGain
   ]
 
 isIncomeStatementAccountType :: AccountType -> Bool
 isIncomeStatementAccountType t = t `elem` [
   Revenue,
-  Expense
+  Expense,
+  Gain
   ]
-
--- | Check whether the first argument is a subtype of the second: either equal
--- or one of the defined subtypes.
-isAccountSubtypeOf :: AccountType -> AccountType -> Bool
-isAccountSubtypeOf Asset      Asset      = True
-isAccountSubtypeOf Liability  Liability  = True
-isAccountSubtypeOf Equity     Equity     = True
-isAccountSubtypeOf Revenue    Revenue    = True
-isAccountSubtypeOf Expense    Expense    = True
-isAccountSubtypeOf Cash       Cash       = True
-isAccountSubtypeOf Cash       Asset      = True
-isAccountSubtypeOf Conversion Conversion = True
-isAccountSubtypeOf Conversion Equity     = True
-isAccountSubtypeOf _          _          = False
 
 -- not worth the trouble, letters defined in accountdirectivep for now
 --instance Read AccountType
@@ -310,26 +310,61 @@ data Rounding =
 
 -- | A style for displaying digit groups in the integer part of a
 -- floating point number. It consists of the character used to
--- separate groups (comma or period, whichever is not used as decimal
--- point), and the size of each group, starting with the one nearest
--- the decimal point. The last group size is assumed to repeat. Eg,
--- comma between thousands is DigitGroups ',' [3].
+-- separate groups (any of the digit group marks accepted when parsing:
+-- period, comma, underscore, apostrophe, or one of several unicode
+-- spaces; see isDigitSeparatorChar), and the size of each group,
+-- starting with the one nearest the decimal point. The last group size
+-- is assumed to repeat. Eg, comma between thousands is DigitGroups ',' [3].
 data DigitGroupStyle = DigitGroups !Char ![Word8]
   deriving (Eq,Ord,Read,Show,Generic)
 
 type CommoditySymbol = Text
 
 data Commodity = Commodity {
-  csymbol :: CommoditySymbol,
-  cformat :: Maybe AmountStyle
+  csymbol    :: CommoditySymbol,
+  cformat    :: Maybe AmountStyle,
+  ccomment   :: Text,              -- ^ any comment lines following the commodity directive
+  ctags      :: [Tag],             -- ^ tags extracted from the comment, if any
+  csourcepos :: SourcePos          -- ^ source position of the commodity directive
   } deriving (Show,Eq,Generic) --,Ord)
 
+-- | The cost basis of an individual lot - some quantity of an asset acquired at a given date and time.
+-- This can represent a definite cost basis, which must have a cost and date; the label is optional.
+-- Or it can represent a cost basis matcher for selecting lots.
+-- Note: cost is always stored as a per-unit cost, even if the user specified total cost with {{}}.
+data CostBasis = CostBasis {
+  cbDate  :: !(Maybe Day),       -- ^ nominal acquisition date
+  cbLabel :: !(Maybe Text),      -- ^ a short label to ensure uniqueness, correct intra-day order, or memorability, if needed
+  cbCost  :: !(Maybe Amount)     -- ^ nominal acquisition cost (per-unit)
+} deriving (Show,Eq,Generic,Ord)
+
+-- | Identifies a specific lot of a commodity, by its acquisition date and optional label.
+-- Ordered by date first, then label (Nothing sorts before Just).
+data LotId = LotId {
+  lotDate  :: !Day,
+  lotLabel :: !(Maybe Text)
+} deriving (Show,Eq,Ord,Generic)
+
+-- | The method used to select lots for disposal or transfer.
+-- Per-account methods (scoped to the posting's account):
+-- FIFO/LIFO select oldest/newest first. HIFO selects highest cost first.
+-- AVERAGE uses weighted average cost basis for disposals (FIFO consumption order).
+-- SPECID requires every disposal/transfer to have an explicit lot selector matching exactly one lot.
+-- Global validation methods (*ALL variants):
+-- FIFOALL/LIFOALL/HIFOALL select per-account but validate that the selected lots would also
+-- be chosen first if all accounts' lots were considered together. Errors if not.
+-- AVERAGEALL additionally computes weighted average cost across the global pool.
+data ReductionMethod = FIFO | LIFO | HIFO | AVERAGE | SPECID
+                     | FIFOALL | LIFOALL | HIFOALL | AVERAGEALL
+  deriving (Show,Read,Eq,Ord,Generic)
+
 data Amount = Amount {
-      acommodity  :: !CommoditySymbol,     -- commodity symbol, or special value "AUTO"
-      aquantity   :: !Quantity,            -- numeric quantity, or zero in case of "AUTO"
-      astyle      :: !AmountStyle,
-      acost       :: !(Maybe AmountCost)  -- ^ the (fixed, transaction-specific) cost in another commodity of this amount, if any
-    } deriving (Eq,Ord,Generic,Show)
+  acommodity  :: !CommoditySymbol,     -- commodity symbol, or special value "AUTO"
+  aquantity   :: !Quantity,            -- numeric quantity, or zero in case of "AUTO"
+  astyle      :: !AmountStyle,
+  acost       :: !(Maybe AmountCost),    -- ^ transacted exchange rate - the unit or total cost, in another commodity, used for this amount within its transaction
+  acostbasis  :: !(Maybe CostBasis)    -- ^ the cost basis of an investment lot represented by this amount. Or, a matcher to select such a lot from the available lots.
+} deriving (Eq,Ord,Generic,Show)
 
 -- | Types with this class have one or more amounts,
 -- which can have display styles applied to them.
@@ -348,8 +383,51 @@ instance HasAmounts a =>
   HasAmounts (Maybe a)
   where styleAmounts styles = fmap (styleAmounts styles)
 
+-- | hledger's most general amount type.
+-- It can contain multiple single-commodity Amounts, each possibly with a transacted cost and/or a lot cost basis attached.
+-- Internally it is a map from MixedAmountKey to Amount, for efficiency and so that every mixed amount has a single canonical form.
+newtype MixedAmount = Mixed (M.Map MixedAmountKey Amount)
+  deriving (Generic,Show)
 
-newtype MixedAmount = Mixed (M.Map MixedAmountKey Amount) deriving (Generic,Show)
+-- | The key used to group amounts within a MixedAmount: commodity and an optional unit or total transacted cost.
+-- Amounts with the same commodity and transacted cost are combined; different transacted costs are kept separate.
+-- (Lot cost basis is not part of the key, so not kept separate; subaccounts are used for that.)
+data MixedAmountKey
+  = MixedAmountKeyNoCost
+      !CommoditySymbol           -- ^ amount commodity
+  | MixedAmountKeyUnitCost
+      !CommoditySymbol           -- ^ amount commodity
+      !CommoditySymbol           -- ^ transacted cost commodity
+      !Quantity                  -- ^ transacted cost per unit
+  | MixedAmountKeyTotalCost
+      !CommoditySymbol           -- ^ amount commodity
+      !CommoditySymbol           -- ^ transacted cost commodity
+  deriving (Eq, Generic, Show)
+
+-- | Sort by commodity, then cost commodity (no cost first), then cost type and quantity.
+instance Ord MixedAmountKey where
+  compare = comparing commodity <> comparing costCommodity <> comparing costDetail
+    where
+      commodity (MixedAmountKeyNoCost    c)     = c
+      commodity (MixedAmountKeyUnitCost  c _ _) = c
+      commodity (MixedAmountKeyTotalCost c _)   = c
+
+      costCommodity (MixedAmountKeyNoCost    _)      = Nothing
+      costCommodity (MixedAmountKeyUnitCost  _ pc _)  = Just pc
+      costCommodity (MixedAmountKeyTotalCost _ pc)    = Just pc
+
+      costDetail (MixedAmountKeyNoCost    _)     = Nothing
+      costDetail (MixedAmountKeyUnitCost  _ _ q) = Just (1 :: Int, Just q)
+      costDetail (MixedAmountKeyTotalCost _ _)   = Just (0, Nothing)
+
+-- | Calculate the key for storing this Amount within a MixedAmount,
+-- from its commodity and transacted cost (ignoring cost basis).
+mixedAmountKey :: Amount -> MixedAmountKey
+mixedAmountKey Amount{acommodity=c, acost} =
+  case acost of
+    Nothing            -> MixedAmountKeyNoCost    c
+    Just (UnitCost  p) -> MixedAmountKeyUnitCost  c (acommodity p) (aquantity p)
+    Just (TotalCost p) -> MixedAmountKeyTotalCost c (acommodity p)
 
 instance Eq  MixedAmount where a == b  = maCompare a b == EQ
 instance Ord MixedAmount where compare = maCompare
@@ -371,39 +449,8 @@ maCompare (Mixed a) (Mixed b) = go (M.toList a) (M.toList b)
                         Just (TotalCost p) -> aquantity p
                         _                   -> 0
 
--- | Stores the CommoditySymbol of the Amount, along with the CommoditySymbol of
--- the cost, and its unit cost if being used.
-data MixedAmountKey
-  = MixedAmountKeyNoCost   !CommoditySymbol
-  | MixedAmountKeyTotalCost !CommoditySymbol !CommoditySymbol
-  | MixedAmountKeyUnitCost  !CommoditySymbol !CommoditySymbol !Quantity
-  deriving (Eq,Generic,Show)
-
--- | We don't auto-derive the Ord instance because it would give an undesired ordering.
--- We want the keys to be sorted lexicographically:
--- (1) By the primary commodity of the amount.
--- (2) By the commodity of the cost, with no cost being first.
--- (3) By the unit cost, from most negative to most positive, with total costs
--- before unit costs.
--- For example, we would like the ordering to give
--- MixedAmountKeyNoCost "X" < MixedAmountKeyTotalCost "X" "Z" < MixedAmountKeyNoCost "Y"
-instance Ord MixedAmountKey where
-  compare = comparing commodity <> comparing pCommodity <> comparing pCost
-    where
-      commodity (MixedAmountKeyNoCost    c)     = c
-      commodity (MixedAmountKeyTotalCost c _)   = c
-      commodity (MixedAmountKeyUnitCost  c _ _) = c
-
-      pCommodity (MixedAmountKeyNoCost    _)      = Nothing
-      pCommodity (MixedAmountKeyTotalCost _ pc)   = Just pc
-      pCommodity (MixedAmountKeyUnitCost  _ pc _) = Just pc
-
-      pCost (MixedAmountKeyNoCost    _)     = Nothing
-      pCost (MixedAmountKeyTotalCost _ _)   = Nothing
-      pCost (MixedAmountKeyUnitCost  _ _ q) = Just q
-
-data PostingType = RegularPosting | VirtualPosting | BalancedVirtualPosting
-                   deriving (Eq,Show,Generic)
+data PostingRealness = RealPosting | VirtualPosting | BalancedVirtualPosting
+  deriving (Eq,Show,Generic)
 
 type TagName = Text
 type TagValue = Text
@@ -471,13 +518,13 @@ data BalanceAssertion = BalanceAssertion {
     } deriving (Eq,Generic,Show)
 
 data Posting = Posting {
-      pdate             :: Maybe Day,         -- ^ this posting's date, if different from the transaction's
-      pdate2            :: Maybe Day,         -- ^ this posting's secondary date, if different from the transaction's
+      pdate             :: Maybe Day,               -- ^ this posting's date, if different from the transaction's
+      pdate2            :: Maybe Day,               -- ^ this posting's secondary date, if different from the transaction's
       pstatus           :: Status,
       paccount          :: AccountName,
       pamount           :: MixedAmount,
-      pcomment          :: Text,              -- ^ this posting's comment lines, as a single non-indented multi-line string
-      ptype             :: PostingType,
+      pcomment          :: Text,                    -- ^ this posting's comment lines, as a single non-indented multi-line string
+      preal             :: PostingRealness,         -- ^ is this a normal balanced posting, or a virtual/unbalanced one ?
       ptags             :: [Tag],                   -- ^ tag names and values, extracted from the posting comment 
                                                     --   and (after finalisation) the posting account's directive if any
       pbalanceassertion :: Maybe BalanceAssertion,  -- ^ an expected balance in the account after this posting,
@@ -505,7 +552,7 @@ instance Show Posting where
     ,"paccount="          ++ show paccount
     ,"pamount="           ++ show pamount
     ,"pcomment="          ++ show pcomment
-    ,"ptype="             ++ show ptype
+    ,"preal="             ++ show preal
     ,"ptags="             ++ show ptags
     ,"pbalanceassertion=" ++ show pbalanceassertion
     ,"ptransaction="      ++ show (ptransaction $> "txn")
@@ -614,6 +661,33 @@ showMarketPrices = intercalate "\n" . map ((' ':).showMarketPrice) . sortBy (com
 
 -- additional valuation-related types in Valuation.hs
 
+-- | A source position calculated during parsing, with the parser's offset and
+-- remaining input at that point. Kept in the parse state, so that later
+-- positions can be calculated cheaply from it (see Hledger.Read.Common.getSourcePos').
+data ParsePos = ParsePos {
+   ppSourcePos :: SourcePos
+  ,ppOffset    :: Int
+  ,ppInput     :: Text
+  } deriving (Eq,Generic,Show)
+
+-- | Counts of the journal entries which the journal parser's fast path (see
+-- Hledger.Read.JournalReader) accepted or declined, and the reasons for declining.
+-- Collected only with --debug, and reported after parsing.
+data FastPathStats = FastPathStats {
+   fpsTxnsFast      :: Int             -- ^ transactions parsed by the fast path
+  ,fpsTxnsGeneral   :: Int             -- ^ transactions it declined, parsed by the general parser
+  ,fpsPricesFast    :: Int             -- ^ price directives parsed by the fast path
+  ,fpsPricesGeneral :: Int             -- ^ price directives it declined
+  ,fpsDeclines      :: M.Map Text Int  -- ^ the number of declines for each reason
+  } deriving (Eq,Generic,Show)
+
+instance Semigroup FastPathStats where
+  FastPathStats a b c d e <> FastPathStats a' b' c' d' e' =
+    FastPathStats (a + a') (b + b') (c + c') (d + d') (M.unionWith (+) e e')
+
+instance Monoid FastPathStats where
+  mempty = FastPathStats 0 0 0 0 M.empty
+
 -- | A journal, containing general ledger transactions; also directives and various other things.
 -- This is hledger's main data model.
 --
@@ -632,8 +706,12 @@ data Journal = Journal {
   ,jparsealiases            :: [AccountAlias]                         -- ^ the current account name aliases in effect, specified by alias directives (& options ?)
   -- ,jparsetransactioncount :: Integer                               -- ^ the current count of transactions parsed so far (only journal format txns, currently)
   ,jparsetimeclockentries   :: [TimeclockEntry]                       -- ^ timeclock sessions which have not been clocked out
-  ,jincludefilestack        :: [FilePath]
-  -- principal data
+  ,jparseincludefilestack   :: [(FilePath, FilePath)]                 -- ^ (absolute path, canonical path) of included files, most recent first
+  ,jparsepos                :: Maybe ParsePos                         -- ^ the most recently calculated source position, if any, from which later ones are calculated cheaply
+  ,jparseamountstyles       :: S.Set AmountStyle                     -- ^ the distinct amount styles parsed so far, which parsed amounts share to save memory
+  ,jparsetexts              :: S.Set Text                            -- ^ the distinct account names and commodity symbols parsed so far, which parsed items share to save memory
+  ,jparsefastpathstats      :: FastPathStats                         -- ^ how many entries the parser's fast path has accepted or declined so far, and why (with --debug)
+-- principal data
   ,jdeclaredpayees          :: [(Payee,PayeeDeclarationInfo)]         -- ^ Payees declared by payee directives, in parse order.
   ,jdeclaredtags            :: [(TagName,TagDeclarationInfo)]         -- ^ Tags declared by tag directives, in parse order.
   ,jdeclaredaccounts        :: [(AccountName,AccountDeclarationInfo)] -- ^ Accounts declared by account directives, in parse order.
@@ -641,6 +719,7 @@ data Journal = Journal {
   ,jdeclaredaccounttypes    :: M.Map AccountType [AccountName]        -- ^ Accounts which were declared with a type: tag, grouped by the type.
   ,jaccounttypes            :: M.Map AccountName AccountType          -- ^ All the account types known, from account declarations or account names or parent accounts.
   ,jdeclaredcommodities     :: M.Map CommoditySymbol Commodity        -- ^ Commodities (and their display styles) declared by commodity directives, in parse order.
+  ,jdeclaredcommoditytags   :: M.Map CommoditySymbol [Tag]            -- ^ Commodities which were declared with tags, and those tags.
   ,jinferredcommoditystyles :: M.Map CommoditySymbol AmountStyle      -- ^ Commodity display styles inferred from amounts in the journal.
   ,jglobalcommoditystyles   :: M.Map CommoditySymbol AmountStyle      -- ^ Commodity display styles declared by command line options (sometimes augmented, see the import command).
   ,jpricedirectives         :: [PriceDirective]                       -- ^ P (market price) directives in the journal, in parse order.
@@ -648,16 +727,42 @@ data Journal = Journal {
   ,jtxnmodifiers            :: [TransactionModifier]                  -- ^ Auto posting rules declared in the journal.
   ,jperiodictxns            :: [PeriodicTransaction]                  -- ^ Periodic transaction rules declared in the journal.
   ,jtxns                    :: [Transaction]                          -- ^ Transactions recorded in the journal. The important bit.
-  ,jfinalcommentlines       :: Text                                   -- ^ any final trailing comments in the (main) journal file
+  ,jitems                   :: [JournalItem]                          -- ^ All top-level items of the journal file(s), in parse order,
+                                                                      --   including directives, comment lines and blank lines as written.
+                                                                      --   Used to reproduce the journal (print --export).
   ,jfiles                   :: [(FilePath, Text)]                     -- ^ the file path and raw text of the main and
                                                                       --   any included journal files. The main file is first,
                                                                       --   followed by any included files in the order encountered.
                                                                       --   TODO: FilePath is a sloppy type here, don't assume it's a
                                                                       --   real file; values like "" or "-" can be seen
+  ,jauxfiles                :: [FilePath]                             -- ^ paths of other files which affected this journal's data,
+                                                                      --   but are not journal data files (currently: CSV rules files,
+                                                                      --   and any rules files they include). Watched for changes,
+                                                                      --   like jfiles, when reloading.
   ,jlastreadtime            :: POSIXTime                              -- ^ when this journal was last read from its file(s)
   -- NOTE: after adding new fields, eg involving account names, consider updating
   -- the Anon instance in Hleger.Cli.Anon
   } deriving (Eq, Generic)
+
+-- | One top-level item of a journal file, recorded in file order so that
+-- the file can be reproduced (by print --export). Transactions are
+-- represented by a placeholder; the transaction itself is in jtxns.
+-- Text fields hold verbatim source text, including the trailing newline.
+-- Blank lines are recorded only as separators (one JIBlank for each run of them),
+-- since print --export normalises blank lines.
+-- Fields are strict so that recording items doesn't retain parse-time thunks.
+data JournalItem
+  = JITransaction !SourcePos      -- ^ a transaction: the one in jtxns whose tsourcepos starts here
+  | JIComment !Text               -- ^ a single top-level comment line (starting with ; # or *)
+  | JICommentBlock !Text          -- ^ a comment ... end comment block
+  | JIDirective !Text             -- ^ a directive which should be reproduced when exporting
+                                  --   (including P, ~ and = rules), without any ! or @ prefix
+  | JINonExportedDirective !Text  -- ^ a directive which should not be reproduced when exporting:
+                                  --   apply account, alias and their end forms, whose effect is
+                                  --   already applied to the data; and the Ledger directives hledger ignores
+  | JIInclude !Text               -- ^ an include directive line; the included file's items follow it
+  | JIBlank                       -- ^ one or more blank lines
+  deriving (Eq, Generic, Show)
 
 -- | A journal in the process of being parsed, not yet finalised.
 -- The data is partial, and list fields are in reverse order.
@@ -670,6 +775,8 @@ data SepFormat
   | Ssv  -- semicolon-separated
   deriving (Eq, Ord)
 
+-- XXX A little confusion, this is also used to name readers in splitReaderPrefix.
+-- readers, input formats, and output formats overlap but are distinct concepts.
 -- | The id of a data format understood by hledger, eg @journal@ or @csv@.
 -- The --output-format option selects one of these for output.
 data StorageFormat 
@@ -733,20 +840,38 @@ nullaccountdeclarationinfo = AccountDeclarationInfo {
   ,adisourcepos        = SourcePos "" (mkPos 1) (mkPos 1)
 }
 
--- | An account, with its balances, parent/subaccount relationships, etc.
--- Only the name is required; the other fields are added when needed.
-data Account = Account {
-   aname                     :: AccountName    -- ^ this account's full name
+-- | An account within a hierarchy, with references to its parent
+-- and subaccounts if any, and with per-report-period data of type 'a'.
+-- Only the name is required; the other fields may or may not be present.
+data Account a = Account {
+   aname                     :: AccountName        -- ^ full name
   ,adeclarationinfo          :: Maybe AccountDeclarationInfo  -- ^ optional extra info from account directives
   -- relationships in the tree
-  ,asubs                     :: [Account]      -- ^ this account's sub-accounts
-  ,aparent                   :: Maybe Account  -- ^ parent account
-  ,aboring                   :: Bool           -- ^ used in the accounts report to label elidable parents
-  -- balance information
-  ,anumpostings              :: Int            -- ^ the number of postings to this account
-  ,aebalance                 :: MixedAmount    -- ^ this account's balance, excluding subaccounts
-  ,aibalance                 :: MixedAmount    -- ^ this account's balance, including subaccounts
-  } deriving (Generic)
+  ,asubs                     :: [Account a]        -- ^ subaccounts
+  ,aparent                   :: Maybe (Account a)  -- ^ parent account
+  ,aboring                   :: Bool               -- ^ used in some reports to indicate elidable accounts
+  ,adata                     :: PeriodData a       -- ^ associated data per report period
+  } deriving (Generic, Functor)
+
+-- | A general container for storing data values associated with zero or more
+-- contiguous report (sub)periods, and with the (open ended) pre-report period.
+-- The report periods are typically all the same length, but need not be.
+--
+-- Report periods are represented only by their start dates, used as the keys of a Map.
+data PeriodData a = PeriodData {
+   pdpre     :: a            -- ^ data for the period before the report
+  ,pdperiods :: M.Map Day a  -- ^ data for each period within the report
+  } deriving (Eq, Ord, Functor, Generic)
+
+-- | Data that's useful in "balance" reports:
+-- subaccount-exclusive and -inclusive amounts,
+-- typically representing either a balance change or an end balance;
+-- and a count of postings.
+data BalanceData = BalanceData {
+   bdexcludingsubs :: MixedAmount  -- ^ balance data excluding subaccounts
+  ,bdincludingsubs :: MixedAmount  -- ^ balance data including subaccounts
+  ,bdnumpostings :: Int            -- ^ the number of postings
+  } deriving (Eq, Generic)
 
 -- | Whether an account's balance is normally a positive number (in
 -- accounting terms, a debit balance) or a negative number (credit balance).
@@ -761,7 +886,7 @@ data NormalSign = NormallyPositive | NormallyNegative deriving (Show, Eq)
 -- account is the root of the tree and always exists.
 data Ledger = Ledger {
    ljournal  :: Journal
-  ,laccounts :: [Account]
+  ,laccounts :: [Account BalanceData]
   } deriving (Generic)
 
 instance NFData AccountAlias
@@ -773,18 +898,24 @@ instance NFData AmountPrecision
 instance NFData AmountStyle
 instance NFData BalanceAssertion
 instance NFData Commodity
+instance NFData CostBasis
 instance NFData DateSpan
 instance NFData DigitGroupStyle
 instance NFData EFDay
+instance NFData FastPathStats
 instance NFData Interval
 instance NFData Journal
+instance NFData JournalItem
+instance NFData ParsePos
+instance NFData LotId
 instance NFData MarketPrice
+instance NFData ReductionMethod
 instance NFData MixedAmount
 instance NFData MixedAmountKey
 instance NFData Rounding
 instance NFData PayeeDeclarationInfo
 instance NFData PeriodicTransaction
-instance NFData PostingType
+instance NFData PostingRealness
 instance NFData PriceDirective
 instance NFData Side
 instance NFData Status

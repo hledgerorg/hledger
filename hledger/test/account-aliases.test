@@ -62,13 +62,13 @@ alias /A (.)/=\1
 
 $ hledger -f- print
 2011-01-01
-    b b               1
-    b b               2
+    b b                                            1
+    b b                                            2
     c
 
 2011-01-01
-    b               1
-    b               2
+    b                                              1
+    b                                              2
     c
 
 >=0
@@ -86,8 +86,8 @@ $ hledger -f- print
 
 $ hledger -f- print --alias '/A (.)/=a' --alias /a/=b
 2011-01-01
-    b               1
-    b               2
+    b                                              1
+    b                                              2
     c
 
 >=0
@@ -105,7 +105,7 @@ alias E=F
 
 $ hledger -f- print --alias /a/=A --alias /B/=C --alias /B/=D --alias /C/=D
 2011-01-01
-    [E:x]                 1
+    [E:x]                                          1
     [x:A:x]
 
 >=0
@@ -147,7 +147,7 @@ $ hledger -f- reg '^a$' '^b$'
 2017-01-01                      b                                1             1
                                 b                               -1             0
 
-# recursive aliases https://github.com/simonmichael/hledger/issues/1055
+# recursive aliases https://github.com/hledgerorg/hledger/issues/1055
 
 # ** 10. Recursive command line simple aliases.
 <
@@ -156,7 +156,7 @@ $ hledger -f- reg '^a$' '^b$'
 
 $ hledger -f- --alias "one=two" --alias "two=three" print
 2000-01-01
-    (three)               1
+    (three)                                        1
 
 >=0
 
@@ -170,7 +170,7 @@ alias one = two
 
 $ hledger -f- print
 2000-01-01
-    (three)               1
+    (three)                                        1
 
 >=0
 
@@ -183,7 +183,7 @@ alias one = two
 
 $ hledger -f- print
 2000-01-01
-    (two)               1
+    (two)                                          1
 
 >=0
 
@@ -194,7 +194,7 @@ $ hledger -f- print
 
 $ hledger -f- --alias "/one/=two" --alias "/two/=three" print
 2000-01-01
-    (three)               1
+    (three)                                        1
 
 >=0
 
@@ -208,7 +208,7 @@ alias /one/ = two
 
 $ hledger -f- print
 2000-01-01
-    (three)               1
+    (three)                                        1
 
 >=0
 
@@ -221,7 +221,7 @@ alias /one/ = two
 
 $ hledger -f- print
 2000-01-01
-    (two)               1
+    (two)                                          1
 
 >=0
 
@@ -234,7 +234,7 @@ alias /a:.*/=
   b
 $ hledger -f- print
 2021-01-01
-                    1
+                                                   1
     b
 
 >=0
@@ -248,7 +248,7 @@ $ hledger -f- print
 
 $ hledger -f- --alias old="new  USD" print | hledger -f- print
 2021-01-01
-    new             USD 1
+    new                                        USD 1
     other
 
 >=0
@@ -263,7 +263,7 @@ alias /\// = :
 
 $ hledger -f- print
 2021-01-01
-    hi:there               1
+    hi:there                                       1
     b
 
 >=0
@@ -278,7 +278,7 @@ alias /\./ = :
 
 $ hledger -f- print
 2021-01-01
-    hi:there               1
+    hi:there                                       1
     b
 
 >=0
@@ -293,7 +293,23 @@ alias /\\/ = :
 
 $ hledger -f- print
 2021-01-01
-    hi:there               1
+    hi:there                                       1
     b
 
 >=0
+
+# ** 21. A bad regexp in a --alias option is reported with the usual excerpt.
+<
+2021-01-01
+  a  1
+  b
+
+$ hledger -f- --alias '/{202[2-5]/=2022' print
+>2 /hledger: Error: --alias:1:2:
+  \|
+1 \| \/\{202\[2-5\]\/=2022
+  \|  \^\^\^\^\^\^\^\^\^
+
+This regular expression is invalid or unsupported, please correct it: \{202\[2-5\]
+/
+>=1

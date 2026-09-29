@@ -5,21 +5,381 @@ __      _____| |__
  \ V  V /  __/ |_) |
   \_/\_/ \___|_.__/
 
-Breaking changes
+Item order: security fixes first, then breaking changes, then the rest.
+Section headings: "Security" first if any, then "Breaking changes"
+if any; then topic headings,
+or a suitable generic heading (eg Fixes, Improvements), as needed.
+
+-->
+
+User-visible changes in hledger-web.
+See also the hledger changelog.
+
+
+# 1.99.4 2026-09-10
+
+Security
+
+- An XSS (cross-site scripting) vulnerability has been fixed in the
+  add form's autocomplete. Journal data from an untrusted source could
+  execute javascript when shown as a completion suggestion. All
+  hledger-web users should upgrade.
+  (Arthur Cinader, Simon Michael, [#2698], advisory GHSA-538p-cvc4-4qjm)
+
+- A second XSS vulnerability has been fixed, in the add form's error
+  message. Any web page visited while hledger-web was running
+  could use it to run javascript in hledger-web's origin, and
+  from there read the whole journal, or alter it. All hledger-web
+  users should upgrade.  (Arthur Cinader, Simon Michael, [#2700],
+  advisory GHSA-vq7r-8w52-jv84)
+
+- A newline submitted by a user in a transaction's description, code or
+  account name is now removed, so the user can't inject an include directive
+  to read arbitrary files accessible to the hledger-web server.
+  (Simon Michael, [#2704], advisory GHSA-vq7r-8w52-jv84)
+
+- hledger-web now sends a Content-Security-Policy header with every
+  page [#2703] (Arthur Cinader). This tells your browser to load
+  scripts, styles, images and fonts only from hledger-web itself, and
+  to run only hledger-web's own scripts - so if anything script-like
+  ever reached a page, eg through data in your journal, the browser
+  would refuse to run it and report it in the console. In
+  normal use you should notice no difference.
+
+- hledger-web now sends the `X-Frame-Options: SAMEORIGIN` and
+  `X-Content-Type-Options: nosniff` security headers on every
+  response, so other sites can't frame its pages for clickjacking, and
+  browsers won't second-guess content types. Static files and error
+  pages get them too. (Arthur Cinader)
+
+- The unused Google Analytics hook has been removed (it was always disabled;
+  no page ever loaded analytics).
+  (Simon Michael)
 
 Fixes
 
-Features
+- The upload form now shows the name of the chosen file. It never did
+  before, because of an escaping bug that disabled its handler.
+  (Arthur Cinader)
+
+- /favicon.ico and /robots.txt no longer return 404 when hledger-web
+  is run outside its source directory; they are now built into
+  the executable, like the other static files. robots.txt now also asks
+  crawlers not to index the site. (Arthur Cinader)
+
+- The register chart no longer disappears when a commodity symbol
+  contains a backslash or a double quote. Its legend has also moved
+  out of the chart, where it could cover the start of the balance
+  line, up to the title line above it.
+  (Arthur Cinader)
 
 Improvements
+
+- hledger-web now has its own favicon: a gold coin struck with an equals
+  sign, in the palette of the hledger coin logo. It replaces the Yesod
+  scaffold's blue "y". (Arthur Cinader)
+
+- The web UI's javascript has been modernised, replacing five vendored
+  libraries with standard browser features (Arthur Cinader, [#2702]):
+  autocomplete suggestions now use a native `<datalist>`; the button
+  beside the date field opens the browser's own date picker (typed
+  smart dates like "today" still work); and keyboard shortcuts,
+  sidebar state and transaction-link highlighting are handled by small
+  standard code. Two dead third-party script tags (html5shiv, chrome
+  frame) are gone, so nothing is loaded from a third party now. jquery
+  and the flot library remain, for the register chart. Also,
+  browser-drawn widgets like the suggestion list and date picker now
+  stay light when the OS is in dark mode.
+
+- The add and help dialogs now use the native `<dialog>` element
+  instead of bootstrap modals, so bootstrap.js is no longer loaded
+  (Arthur Cinader). They keep the familiar look - rounded corners,
+  shadow, dimmed backdrop - and open near the top of the window as
+  before.
+
+- The journal and register tables have been tidied up (Arthur Cinader).
+  Digits in amounts are shown with equal width, so numbers line up neatly
+  in a column; column headers are small and muted rather than bold black;
+  and the zebra striping is replaced by a faint highlight on the row
+  under the pointer. [#2718]
+
+- The account sidebar now keeps its scroll position when you click an
+  account or navigate [#2679] (Arthur Cinader). The sidebar and the
+  main content also scroll independently, on wider screens.
+
+- Add the -? and --webman flags; rename --tldr to --examples (see hledger changelog).
+
+- hledger-web still opens the browser and exits two minutes after
+  its last page is closed, by default, for cleanup and security;
+  this is now done by a new implementation which fits better
+  with the Content Security Policy.
+  (Arthur Cinader, [#2722])
+
+- --port 0 lets the OS choose a free port [#2559] (Arthur Cinader).
+  The chosen port is reported in the startup message and used in the
+  default base url, so scripts can discover it. This now works in the
+  default --serve-browse mode too, which previously required a fixed
+  port; the browser is opened at the chosen port.
+
+- Changes to CSV rules files now trigger a reload, like changes to data
+  files (see hledger changelog).
+
+- hledger-web no longer depends on the yesod-static and hjsmin
+  packages for serving its css, js and font files. This is
+  mainly a packaging fix: yesod-static doesn't build with crypton 1.1+,
+  which had kept hledger-web out of stackage nightly.
+  There is a behaviour change: static file urls no longer carry an
+  `?etag=...` suffix; instead browsers are told when their cached copy
+  is still good.
+
+- The aeson lower bound has been relaxed from 2.3 to 2.2.5.1, the
+  oldest version not vulnerable to the HSEC-2026-0007 denial of
+  service, easing installation while the ecosystem catches up with
+  newer aeson.
+
+- Exclude megaparsec 9.8.0, to avoid a position marker bug in error messages ([megaparsec#572](https://github.com/mrkkrp/megaparsec/issues/572)).
+
+[#2559]: https://github.com/hledgerorg/hledger/issues/2559
+[#2679]: https://github.com/hledgerorg/hledger/issues/2679
+[#2698]: https://github.com/hledgerorg/hledger/issues/2698
+[#2700]: https://github.com/hledgerorg/hledger/issues/2700
+[#2702]: https://github.com/hledgerorg/hledger/issues/2702
+[#2703]: https://github.com/hledgerorg/hledger/issues/2703
+[#2704]: https://github.com/hledgerorg/hledger/issues/2704
+[#2718]: https://github.com/hledgerorg/hledger/issues/2718
+[#2722]: https://github.com/hledgerorg/hledger/issues/2722
+
+
+
+
+# 1.52.4 2026-09-10
+
+Fixes
+
+- Raise aeson's lower bound to `>=2.2.5.1`, avoiding versions vulnerable to denial-of-service.
+  (<https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html>)
+
+Improvements
+
+- The yesod-static and hjsmin dependencies have been dropped;
+  hledger-web now serves its static files itself, using wai-app-static
+  and file-embed. (yesod-static doesn't currently build with crypton
+  1.1+, which has kept it, and hledger-web, out of stackage nightly.)
+  Static file urls no longer include an `?etag=...` cache buster;
+  instead the files are served with an ETag header, and conditional
+  requests are answered with 304 Not Modified.
+  (Cherry picked from an AI-assisted change in hledger 2.x.)
+
+- Allow megaparsec 9.8.1+ (but not 9.8.0, because of [megaparsec#572](https://github.com/mrkkrp/megaparsec/issues/572)).
+
+- Allow yesod-core 1.7.0.0.
+
+
+# 1.52.3 2026-08-27
+
+Fixes
+
+- Another XSS (cross-site scripting) vulnerability has been fixed, in
+  the add transaction form's error message. Any web page visited while
+  hledger-web was running could use it to run javascript in
+  hledger-web's origin, and from there read the whole journal, or
+  alter it. All hledger-web users should upgrade. See also:
+  GHSA-vq7r-8w52-jv84.  (Arthur Cinader, Simon Michael, [#2700])
+
+- A newline submitted in a transaction's description, code or account
+  name is no longer written into the journal file. This removes the
+  possibility of the user inserting an include directive, which could
+  expose system files readable by the hledger-web server. See also:
+  GHSA-vq7r-8w52-jv84.  [#2704]
+
+  Note: as with #2698 in 1.52.2, these fixes were backported from
+  AI-assisted fixes in hledger 2, under the security exception in
+  https://hledger.org/AI.html; they have been reviewed and tested.
+
+- hledger-web's official binaries, and builds from the hledger source
+  tree, now use aeson 2.3, avoiding a denial of service bug.
+  (<https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html>)
+
+[#2700]: https://github.com/hledgerorg/hledger/issues/2700
+[#2704]: https://github.com/hledgerorg/hledger/issues/2704
+
+# 1.52.2 2026-08-24
+
+Fixes
+
+- An XSS (cross-site scripting) vulnerability has been fixed in the add
+  transaction form's autocomplete. Journal data from an untrusted source
+  could execute javascript when shown as a completion suggestion. All
+  hledger-web users are encouraged to upgrade. Full technical details:
+  GHSA-538p-cvc4-4qjm.
+  (Arthur Cinader, Simon Michael, #2698)
+  
+  Note: this bug was detected, and the original patch was generated, by
+  Arthur Cinader with AI assistance, for hledger 2.x.  Because the
+  vulnerability is in theory quite severe, and the fix is small and
+  obvious, and I don't want to add risk by redoing it from memory, and
+  no-one else volunteered promptly to do that work - and after
+  discussion in the chat and mail list (see today's thread), and careful
+  human review and testing - I manually backported the same fix to
+  hledger 1. And, updated the project's https://hledger.org/AI.html
+  policy to allow this for needed security-related fixes like this one
+  (which I expect to be very rare).
+
+
+# 1.99.3 2026-06-24
+
+Breaking changes
+
+- When listening on a non-local-only IP address, hledger-web now
+  allows only read-only access by default. So if you set a public
+  address with --host, you may also need --allow=add.
+
+Fixes
+
+- hledger-web now uses aeson 2.3, avoiding a denial-of-service bug in
+  that library.  Previous hledger-web versions, with /add enabled, are
+  vulnerable to HTTP requests that could trigger memory/CPU exhaustion.
+  Now it uses a fixed version of aeson (and disables /add by default,
+  except on local-only addresses).
+  (<https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html>)
+
+Features
+
+- `cur:COMM` queries now match COMM or any of its commodity aliases (see hledger changelog).
+  To match only a specific symbol without considering aliases, use `sym:SYM`.
+  Aliases are recomputed on each journal reload, so a mid-session
+  change to alias definitions takes effect next time.
+
+Improvements
+
+- allow megaparsec >9.8
+- allow yesod-core 1.7*
 
 Docs
 
 API
 
--->
-User-visible changes in hledger-web.
-See also the hledger changelog.
+
+# 1.99.2 2026-04-28
+
+Improvements
+
+- Allow yesod-static 1.6.1.1 and later again.
+
+- Uses hledger 1.99.2.
+
+
+# 1.52.1 2026-04-28
+
+Improvements
+
+- Uses hledger 1.52.1.
+
+
+# 1.99.1 2026-03-28
+
+(2.0 preview 1)
+
+Breaking changes
+
+- Posting's `ptype` field has been renamed to `preal` (and `PostingType` to `PostingRealness`),
+  to avoid confusion with the new `ptype` tag. This changes JSON output.
+
+Improvements
+
+- Uses hledger 1.99.1
+
+- Require yesod-static <1.6.1.1 to avoid a build breakage with cabal
+  (https://github.com/psibi/crypton-conduit/issues/3).
+
+
+# 1.52 2026-03-20
+
+Fixes
+
+- The less pager (used for displaying help, eg) is now invoked more robustly; we catch and report more kinds of failure clearly.
+  [#2544]
+
+Docs
+
+- openapi.yaml (the OpenAPI spec for hledger-web's JSON API) has been updated.
+  (n0vdd)
+
+[#2544]: https://github.com/hledgerorg/hledger/issues/2544
+
+
+# 1.51.2 2026-01-08
+
+- The register view now prevents line wrapping in dates when the window is narrow. [#2520]
+
+- Allow base 4.22 / ghc 9.14.
+
+[#2520]: https://github.com/hledgerorg/hledger/issues/2520
+
+
+# 1.51.1 2025-12-08
+
+- Uses hledger 1.51.1.
+
+
+# 1.50.5 2025-12-08
+
+- Uses hledger 1.50.5.
+
+
+# 1.51 2025-12-05
+
+Improvements
+
+- Uses hledger 1.51.
+
+
+# 1.50.4 2025-12-04
+
+- Uses hledger 1.50.4.
+
+
+# 1.50.3 2025-11-18
+
+- The old "threaded" build flag, which cabal could turn off, has been dropped.
+  [#2495]
+
+- Uses hledger 1.50.3
+
+
+# 1.50.2 2025-09-26
+
+- Uses hledger 1.50.2
+
+
+# 1.50.1 2025-09-16
+
+- Uses hledger 1.50.1
+
+
+# 1.50 2025-09-03
+
+Breaking changes
+
+- hledger now requires at least GHC 9.6 (and base 4.18), to ease maintenance.
+
+Fixes
+
+- The register chart is no longer hidden when the window is narrow.
+
+- Dragging on the register chart now selects date ranges more accurately.
+  Eg, now you can select a range including transactions at the rightmost edge of the chart.
+
+Improvements
+
+- Use hledger 1.50
+
+
+# 1.43.2 2025-06-13
+
+- Use hledger-1.43.2
+
+- Add missing issue numbers in the changelog
 
 
 # 1.43.1 2025-06-04
@@ -154,7 +514,7 @@ Docs
   This is also applicable to `hledger print`'s JSON output format.
 
 [ghc-debug]: https://gitlab.haskell.org/ghc/ghc-debug
-[openapi.yaml]: https://github.com/simonmichael/hledger/blob/master/hledger-web/config/openapi.yaml
+[openapi.yaml]: https://github.com/hledgerorg/hledger/blob/master/hledger-web/config/openapi.yaml
 [tldr]: https://tldr.sh
 
 
@@ -190,9 +550,9 @@ Docs
   the non-display of costs,
   and non-zeros that look like zero because of hidden costs.
 
-[#2140]: https://github.com/simonmichael/hledger/issues/2140
-[#2163]: https://github.com/simonmichael/hledger/issues/2163
-[#2166]: https://github.com/simonmichael/hledger/issues/2166
+[#2140]: https://github.com/hledgerorg/hledger/issues/2140
+[#2163]: https://github.com/hledgerorg/hledger/issues/2163
+[#2166]: https://github.com/hledgerorg/hledger/issues/2166
 
 # 1.32.3 2024-01-28
 
@@ -370,20 +730,20 @@ Improvements
 Fixes
 
 - Toggle showing zero items properly even when called with --empty. 
-  ([#1237](https://github.com/simonmichael/hledger/issues/1237), Stephen Morgan)
+  ([#1237](https://github.com/hledgerorg/hledger/issues/1237), Stephen Morgan)
 
 - Do not hide empty accounts if they have non-empty subaccounts. 
-  ([#1237](https://github.com/simonmichael/hledger/issues/1237), Stephen Morgan)
+  ([#1237](https://github.com/hledgerorg/hledger/issues/1237), Stephen Morgan)
 
 - Allow unbalanced postings (parenthesised account name) in the add transaction form. 
-  ([#1058](https://github.com/simonmichael/hledger/issues/1058), Stephen Morgan)
+  ([#1058](https://github.com/hledgerorg/hledger/issues/1058), Stephen Morgan)
 
 - An XSS (cross-site scripting) vulnerability has been fixed.
   Previously (since hledger-web 0.24), javascript code could be added 
   to any autocompleteable field and could be executed automatically 
   by subsequent visitors viewing the journal.
   Thanks to Gaspard Baye and Hamidullah Muslih for reporting this vulnerability.
-  ([#1525](https://github.com/simonmichael/hledger/issues/1525), Arsen Arsenović)
+  ([#1525](https://github.com/hledgerorg/hledger/issues/1525), Arsen Arsenović)
 
 API changes
 

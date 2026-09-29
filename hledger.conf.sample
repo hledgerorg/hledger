@@ -78,3 +78,34 @@
 # --source SRCACCT
 # --target DSTACCT
 # ACCT
+
+
+# 3. Command aliases: your own custom hledger commands, similar to git aliases.
+# https://hledger.org/dev/hledger.html#command-aliases
+
+# [alias]
+# p     = print
+# p1    = print --oneline
+# rev10 = bal type:R -2 -X$ -p 'every 10 years from 2000'
+
+# Aliases beginning with ! are shell commands. These will run only from
+# a trusted config file (your user config, or one specified with --conf).
+
+# commit = ! jj commit `hledger files` -m
+# gitcommit = ! git commit -p -- `hledger files`
+
+# A command line can continue on following, more-indented lines:
+
+# forecast = aregister --forecast -E
+#     -p today..3months
+
+# With the run command you can build multi-command scripts:
+
+# forecasts = run
+#     -- echo bchecking: -- forecast bchecking #-e 2months
+#     -- echo pchecking: -- forecast pchecking #-e 2months
+#     -- echo ichecking: -- forecast ichecking #-e 2months
+
+# # hledger watch CMD - show a report that updates when files change
+# watch = ! hledger files | watchexec -F- -c -- hledger    
+

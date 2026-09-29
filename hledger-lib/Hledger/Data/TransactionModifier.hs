@@ -15,9 +15,9 @@ where
 import Prelude hiding (Applicative(..))
 import Control.Applicative (Applicative(..), (<|>))
 import Data.Function ((&))
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe (catMaybes)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Time.Calendar (Day)
 import Safe (headDef)
 import Hledger.Data.Types
@@ -25,7 +25,7 @@ import Hledger.Data.Amount
 import Hledger.Data.Dates
 import Hledger.Data.Transaction (txnTieKnot, transactionAddHiddenAndMaybeVisibleTag)
 import Hledger.Query (Query, filterQuery, matchesAmount, matchesPostingExtra,
-                      parseQuery, queryIsAmt, queryIsSym, simplifyQuery)
+                      parseQuery, queryIsAmt, queryIsCurOrSym, simplifyQuery)
 import Hledger.Data.Posting (commentJoin, commentAddTag, postingAddTags, modifiedTransactionTagName)
 import Hledger.Utils (dbg6, wrap)
 
@@ -38,14 +38,17 @@ import Hledger.Utils (dbg6, wrap)
 -- | Apply all the given transaction modifiers, in turn, to each transaction.
 -- Or if any of them fails to be parsed, return the first error. A reference
 -- date is provided to help interpret relative dates in transaction modifier
--- queries.
+-- queries. The provided query rewriter is applied to each parsed modifier
+-- query (typically used to make @cur:@ terms alias-aware against the
+-- enclosing journal).
 modifyTransactions :: (AccountName -> Maybe AccountType)
                    -> (AccountName -> [Tag])
                    -> M.Map CommoditySymbol AmountStyle
+                   -> (Query -> Query)
                    -> Day -> Bool -> [TransactionModifier] -> [Transaction]
                    -> Either String [Transaction]
-modifyTransactions atypes atags styles d verbosetags tmods ts = do
-  fs <- mapM (transactionModifierToFunction atypes atags styles d verbosetags) tmods  -- convert modifiers to functions, or return a parse error
+modifyTransactions atypes atags styles rewriteq d verbosetags tmods ts = do
+  fs <- mapM (transactionModifierToFunction atypes atags styles rewriteq d verbosetags) tmods  -- convert modifiers to functions, or return a parse error
   let
     modifytxn t =
       t' & if t'/=t then transactionAddHiddenAndMaybeVisibleTag verbosetags (modifiedTransactionTagName,"") else id
@@ -65,32 +68,33 @@ modifyTransactions atypes atags styles d verbosetags tmods ts = do
 -- Currently the only kind of modification possible is adding automated
 -- postings when certain other postings are present.
 --
--- >>> import qualified Data.Text.IO as T
+-- >>> import Data.Text.IO qualified as T
 -- >>> t = nulltransaction{tpostings=["ping" `post` usd 1]}
 -- >>> tmpost acc amt = TMPostingRule (acc `post` amt) False
--- >>> test = either putStr (T.putStr.showTransaction) . fmap ($ t) . transactionModifierToFunction (const Nothing) (const []) mempty nulldate True
+-- >>> test = either putStr (T.putStr.showTransaction) . fmap ($ t) . transactionModifierToFunction (const Nothing) (const []) mempty id nulldate True
 -- >>> test $ TransactionModifier "" ["pong" `tmpost` usd 2]
 -- 0000-01-01
---     ping           $1.00
---     pong           $2.00  ; generated-posting: =
+--     ping                                          $1.00
+--     pong                                          $2.00  ; generated-posting: =
 -- <BLANKLINE>
 -- >>> test $ TransactionModifier "miss" ["pong" `tmpost` usd 2]
 -- 0000-01-01
---     ping           $1.00
+--     ping                                          $1.00
 -- <BLANKLINE>
 -- >>> test $ TransactionModifier "ping" [("pong" `tmpost` nullamt{aquantity=3}){tmprIsMultiplier=True}]
 -- 0000-01-01
---     ping           $1.00
---     pong           $3.00  ; generated-posting: = ping
+--     ping                                          $1.00
+--     pong                                          $3.00  ; generated-posting: = ping
 -- <BLANKLINE>
 --
 transactionModifierToFunction :: (AccountName -> Maybe AccountType)
                               -> (AccountName -> [Tag])
                               -> M.Map CommoditySymbol AmountStyle
+                              -> (Query -> Query)
                               -> Day -> Bool -> TransactionModifier
                               -> Either String (Transaction -> Transaction)
-transactionModifierToFunction atypes atags styles refdate verbosetags TransactionModifier{tmquerytxt, tmpostingrules} = do
-  q <- simplifyQuery . fst <$> parseQuery refdate tmquerytxt
+transactionModifierToFunction atypes atags styles rewriteq refdate verbosetags TransactionModifier{tmquerytxt, tmpostingrules} = do
+  q <- rewriteq . simplifyQuery . fst <$> parseQuery refdate tmquerytxt
   let
     fs = map (\tmpr -> addAccountTags . tmPostingRuleToFunction verbosetags styles q tmquerytxt tmpr) tmpostingrules
     addAccountTags p = p `postingAddTags` atags (paccount p)
@@ -109,6 +113,7 @@ tmPostingRuleToFunction verbosetags styles query querytxt tmpr =
   \p -> styleAmounts styles . renderPostingCommentDates $ pr
       { pdate    = pdate  pr <|> pdate  p
       , pdate2   = pdate2 pr <|> pdate2 p
+      , paccount = account' p
       , pamount  = amount' p
       , pcomment = pcomment pr & (if verbosetags then (`commentAddTag` ("generated-posting",qry)) else id)
       , ptags    = ptags pr
@@ -118,7 +123,11 @@ tmPostingRuleToFunction verbosetags styles query querytxt tmpr =
   where
     pr = tmprPosting tmpr
     qry = "= " <> querytxt
-    symq = filterQuery (liftA2 (||) queryIsSym queryIsAmt) query
+    symq = filterQuery (liftA2 (||) queryIsCurOrSym queryIsAmt) query
+    account' = if accountTemplate `T.isInfixOf` paccount pr
+                 then \p -> T.replace accountTemplate (paccount p) $ paccount pr
+                 else const $ paccount pr
+      where accountTemplate = "%account"
     amount' = case postingRuleMultiplier tmpr of
         Nothing -> const $ pamount pr
         Just n  -> \p ->

@@ -1,0 +1,58 @@
+# hledger 1.51 conversion rules for Open Collective's "Platform Default" CSV format
+# with the "Export taxes and payment processor fees as columns" option enabled.
+# See README.md for more details.
+#
+# Examples:
+#
+# A contribution transaction before 2021-06:
+# "Effective Date & Time","Transaction ID","Description","Credit/Debit","Kind","Group ID","Amount Single Column","Currency","Is Reverse","Is Reversed","Reverse Transaction ID","Account Handle","Account Name","Opposite Account Handle","Opposite Account Name","Payment Processor","Payment Method","Contribution Memo","Expense Type","Expense Tags","Expense Payout Method Type","Accounting Category Code","Accounting Category Name","Merchant ID","Reverse Kind","Payment Processor Fee","Tax Amount"
+# "2017-01-20T19:21:45",5126,"Monthly contribution from Simon Michael (Bronze)","CREDIT","CONTRIBUTION","8b272eb0-d303-4cea-99db-3bcc40f54518",8.41,"USD","","","","hledger","hledger","simon","Simon Michael","STRIPE","CREDITCARD",,,"",,"","",,,-0.59,0
+#
+# A contribution transaction after 2021-06:
+# "2025-12-23T10:59:07",11299548,"Monthly contribution from Guest (Bronze)","CREDIT","CONTRIBUTION","d40ea8c3-f20f-4a88-8426-8c7405be447c",1.41,"USD","","","","hledger","hledger","guest-d120c27f","Guest","PAYPAL","SUBSCRIPTION",,,"",,"","",,,-0.59,0
+# "2025-12-23T10:59:07",11299543,"Host Fee to Open Source Collective","DEBIT","HOST_FEE","d40ea8c3-f20f-4a88-8426-8c7405be447c",-0.2,"USD","","","","hledger","hledger","opensource","Open Source Collective",,,,,"",,"","",,,0,0
+
+source hledger-transactions.csv
+#archive
+fields date_time, transaction_id, description, credit_debit, kind, group_id, amount_single_column, currency_, is_reverse, is_reversed, reverse_transaction_id, account_handle, account_name, opposite_account_handle, opposite_account_name, payment_processor, payment_method, contribution_memo, expense_type, expense_tags, expense_payout_method_type, accounting_category_code, accounting_category_name, merchant_id, reverse_kind, payment_processor_fee, tax_amount
+skip 1
+newest-first
+date-format %Y-%m-%dT%H:%M:%S
+date %date_time
+comment  \nid:%transaction_id, group:%group_id, dc:%type
+if %is_reverse .
+ comment \nid:%transaction_id, reversing:%reverse_transaction_id, group:%group_id, dc:%type
+
+# We will generate postings in FROM,TO order most of the time:
+# posting1 is the source, if any
+# posting2 is this open collective account
+# posting3 is the payment processor fee, if any
+# posting4 is the destination, if any
+
+account2 assets:opencollective:%account_name
+amount2  %amount_single_column %currency_
+
+
+if %payment_processor_fee [1-9]
+ account3 expenses:fees:processor:%payment_processor
+ amount3  -%payment_processor_fee %currency_
+
+if %payment_processor_fee [1-9] && ! %payment_processor .
+ account3 expenses:fees:processor:%expense_payout_method_type
+
+
+if %kind CONTRIBUTION
+ account1 revenues:contributions:%opposite_account_name
+
+if %kind CONTRIBUTION && %credit_debit DEBIT && ! %is_reverse REVERSE
+ account1 expenses:disbursed:%opposite_account_name
+
+
+if %kind EXPENSE
+ account4 expenses:disbursed:%opposite_account_name
+
+if %kind HOST_FEE
+ account4 expenses:fees:host:%opposite_account_name
+
+if %kind PAYMENT_PROCESSOR_COVER
+ account4 expenses:fees:processor:%opposite_account_name

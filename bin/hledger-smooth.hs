@@ -4,7 +4,7 @@
 -- See hledger-check-fancyassertions.hs.
 
 
--- This is an unfinished prototype, see https://github.com/simonmichael/hledger/issues/1171
+-- This is an unfinished prototype, see https://github.com/hledgerorg/hledger/issues/1171
 -- Requires a contemporaneous version of the hledger package.
 -- Requires journal entries to be sorted by date.
 -- Run it inside an up to date hledger source tree, eg: bin/hledger-smooth.hs ACCT
@@ -17,10 +17,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -Wall -Wno-missing-signatures #-}
 
-import Data.List
 import Data.Maybe
 import Data.String.QQ (s)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Time.Calendar
 import Safe
 -- import Hledger
@@ -29,10 +28,11 @@ import Hledger.Cli.Script
 ------------------------------------------------------------------------------
 cmdmode = hledgerCommandMode
   [s| smooth
-Like the print command, but splits any posting to ACCT (a full account name)
-into multiple daily postings having a similar overall effect.
+Like the print command, but splits any posting to ACCTPAT (a case-insensitive
+infix account name pattern) into multiple daily postings having a similar overall
+effect. The first account name matching ACCTPAT is selected.
 
-Each posting is smoothed across the period until the next ACCT posting, and
+Each posting is smoothed across the period until the next ACCTPAT posting, and
 the last one is smoothed until the report end date, or today.
 Eg: $30 on 1/1 and $50 on 1/4, if smoothed on 1/6 with no end date specified,
 becomes $10 on 1/1, $10 on 1/2, $10 on 1/3, $25 on 1/4, $25 on 1/5.
@@ -47,7 +47,7 @@ hledger smooth revenues:consulting | hledger -f- incomestatement -W
   []
   [generalflagsgroup1]
   []
-  ([], Just $ argsFlag "ACCT")
+  ([], Just $ argsFlag "ACCTPAT")
 ------------------------------------------------------------------------------
 -- we could smooth postings across the journal period, or within standard intervals: --smooth-interval=posting|journal|weekly|monthly|...
 -- we could perhaps split transactions instead: --smooth-split=postings|transactions
@@ -63,12 +63,16 @@ main = do
         -- Don't let our ACCT argument be interpreted as a query by print
         ,reportspec_ = rspec{_rsReportOpts=ropts{querystring_=[]}}
         }
-  withJournalDo copts' $ \j -> do
+  withJournal copts' $ \j -> do
     today <- getCurrentDay
     let
       menddate = reportPeriodLastDay rspec
       q = _rsQuery rspec
-      acct = headDef (error' "Please provide an account name argument") $ querystring_ ropts
+      acctpat = headDef (error' "Please provide an account name argument") $ querystring_ ropts
+      acct = fromMaybe (error' $ "smooth: no account matched " ++ show acctpat)
+             $ case toRegexCI acctpat of
+                 Right re -> find (regexMatchText re) $ journalAccountNamesDeclaredOrImplied j
+                 Left  _  -> Nothing
       pr = postingsReport rspec{_rsQuery = And [Acct $ accountNameToAccountRegexCI acct, q]} j
 
       -- dates of postings to acct (in report)
@@ -132,4 +136,4 @@ postingSetDate md p@Posting{ptags,pcomment} = p{pdate=md, ptags=ptags'', pcommen
 
     pcomment' = case md of
                   Nothing -> pcomment
-                  Just d  -> commentAddTag pcomment ("date:", T.pack $ show d)
+                  Just d  -> commentAddTag pcomment ("date", T.pack $ show d)

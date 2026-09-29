@@ -1,0 +1,2 @@
+#!/bin/sh
+printf 'argv:'; for a in "$@"; do printf ' [%s]' "$a"; done; echo

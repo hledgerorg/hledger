@@ -21,6 +21,7 @@ module Hledger.Write.Spreadsheet (
     horizontalSpan,
     addHeaderBorders,
     addRowSpanHeader,
+    addRowSpanHeaderNE,
     rawTableContent,
     cellFromMixedAmount,
     cellsFromMixedAmount,
@@ -28,12 +29,15 @@ module Hledger.Write.Spreadsheet (
     integerCell,
     ) where
 
-import qualified Hledger.Data.Amount as Amt
+import Hledger.Data.Amount qualified as Amt
 import Hledger.Data.Types (Amount, MixedAmount, acommodity)
 import Hledger.Data.Amount (AmountFormat)
 
-import qualified Data.List as List
-import qualified Data.Text as Text
+import Data.Foldable qualified as Fold
+import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List qualified as List
+import Data.Maybe (isNothing)
+import Data.Text qualified as Text
 import Data.Text (Text)
 import Text.WideString (WideBuilder)
 
@@ -146,12 +150,17 @@ data Cell border text =
         cellSpan :: Span,
         cellAnchor :: Text,
         cellClass :: Class,
+        -- | The cell content split into parts to be joined with ", ":
+        -- individual amounts of a multi-commodity amount, for writers
+        -- (eg HTML) that want to style each amount separately.
+        -- Empty for other cells and writers; 'cellContent' is always complete.
+        cellParts :: [text],
         cellContent :: text
     }
 
 instance Functor (Cell border) where
-    fmap f (Cell typ border style span anchor class_ content) =
-        Cell typ border style span anchor class_ $ f content
+    fmap f (Cell typ border style span anchor class_ parts content) =
+        Cell typ border style span anchor class_ (map f parts) (f content)
 
 defaultCell :: (Lines border) => text -> Cell border text
 defaultCell text =
@@ -162,6 +171,7 @@ defaultCell text =
         cellSpan = NoSpan,
         cellAnchor = mempty,
         cellClass = Class mempty,
+        cellParts = [],
         cellContent = text
     }
 
@@ -182,9 +192,9 @@ transpose :: [[Cell border text]] -> [[Cell border text]]
 transpose = List.transpose . map (map transposeCell)
 
 
-addHeaderBorders :: [Cell () text] -> [Cell NumLines text]
+addHeaderBorders :: (Functor f) => f (Cell () text) -> f (Cell NumLines text)
 addHeaderBorders =
-    map (\c -> c {cellBorder = noBorder {borderBottom = DoubleLine}})
+    fmap (\c -> c {cellBorder = noBorder {borderBottom = DoubleLine}})
 
 horizontalSpan ::
     (Lines border, Monoid text) =>
@@ -198,31 +208,54 @@ horizontalSpan subCells cell =
 addRowSpanHeader ::
     Cell border text ->
     [[Cell border text]] -> [[Cell border text]]
-addRowSpanHeader header rows =
+addRowSpanHeader header = map Fold.toList . addRowSpanHeaderNE header
+
+addRowSpanHeaderNE ::
+    Cell border text ->
+    [[Cell border text]] -> [NonEmpty (Cell border text)]
+addRowSpanHeaderNE header rows =
     case rows of
         [] -> []
-        [row] -> [header:row]
+        [row] -> [header:|row]
         _ ->
-            zipWith (:)
+            zipWith (:|)
                 (header{cellSpan = SpanVertical (length rows)} :
                  repeat header{cellSpan = Covered})
                 rows
 
-rawTableContent :: [[Cell border text]] -> [[text]]
-rawTableContent = map (map cellContent)
+rawTableContent :: (Functor f) => [f (Cell border text)] -> [f text]
+rawTableContent = map (fmap cellContent)
 
 
+
+-- | Add the "negative" class to a negative amount's cell, so that writers
+-- with a stylesheet (HTML) can color it. A cell whose rendering rounds to
+-- zero is not marked
+markNegative :: Bool -> Class -> Class
+markNegative False cls = cls
+markNegative True (Class cls) =
+    Class $ Text.unwords $ filter (not . Text.null) [cls, Text.pack "negative"]
 
 cellFromMixedAmount ::
     (Lines border) =>
     AmountFormat -> (Class, MixedAmount) -> Cell border WideBuilder
 cellFromMixedAmount bopts (cls, mixedAmt) =
     (defaultCell $ Amt.showMixedAmountB bopts mixedAmt) {
-        cellClass = cls,
+        cellClass =
+          markNegative
+            (Amt.isNegativeMixedAmount mixedAmt == Just True
+             && not (Amt.mixedAmountLooksZero mixedAmt)) cls,
         cellType =
           case Amt.unifyMixedAmount mixedAmt of
             Just amt -> amountType bopts amt
-            Nothing -> TypeMixedAmount
+            Nothing -> TypeMixedAmount,
+        -- Individual amounts, for writers that style them separately (eg HTML).
+        -- Only when they can be recovered exactly from the one-line rendering
+        -- (padding to displayMinWidth is insignificant in those writers).
+        cellParts =
+          if Amt.displayOneLine bopts && isNothing (Amt.displayMaxWidth bopts)
+            then map fst $ Amt.showMixedAmountOneLinePartsB bopts mixedAmt
+            else []
     }
 
 cellsFromMixedAmount ::
@@ -232,7 +265,9 @@ cellsFromMixedAmount bopts (cls, mixedAmt) =
     map
         (\(str,amt) ->
             (defaultCell str) {
-                cellClass = cls,
+                cellClass =
+                  markNegative
+                    (Amt.isNegativeAmount amt && not (Amt.amountLooksZero amt)) cls,
                 cellType = amountType bopts amt
             })
         (Amt.showMixedAmountLinesPartsB bopts mixedAmt)
@@ -242,7 +277,9 @@ cellFromAmount ::
     AmountFormat -> (Class, (wb, Amount)) -> Cell border wb
 cellFromAmount bopts (cls, (str,amt)) =
     (defaultCell str) {
-        cellClass = cls,
+        cellClass =
+          markNegative
+            (Amt.isNegativeAmount amt && not (Amt.amountLooksZero amt)) cls,
         cellType = amountType bopts amt
     }
 

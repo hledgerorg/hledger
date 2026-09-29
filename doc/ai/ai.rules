@@ -1,0 +1,6 @@
+# Convert summary csv from ccusage.journal for import to ai.journal (see `just ai-aij-import`).
+
+skip     1
+fields   _txnidx,date,code,description,account1,amount1,_total
+description sm
+account1 (%account1)

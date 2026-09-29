@@ -8,6 +8,15 @@ reversing known prices.
 Flags:
      --show-reverse         also show the prices inferred by reversing known
                             prices
+     --summary              summarise declared prices per commodity instead
+                            of listing them
+     --locations            also show where prices where declared
+
+With --locations, each price line gets a trailing ; location: FILE:LINE
+comment showing where it came from. Declared prices point at their P
+directive; prices inferred from costs point at the parent transaction's
+first line. Reversed prices keep the source position of the directive
+they were derived from.
 
 Price amounts are always displayed with their full precision, except for
 reverse prices which are limited to 8 decimal digits.
@@ -18,3 +27,37 @@ Generally if you run this command with --infer-market-prices
 --show-reverse, it will show the same prices used internally to
 calculate value reports. But if in doubt, you can inspect those directly
 by running the value report with --debug=2.
+
+Examples:
+
+$ hledger prices
+P 2024-01-01 AAPL $150
+P 2024-02-01 AAPL $160
+P 2024-02-01 EUR $1.08
+
+$ hledger prices --infer-market-prices
+P 2024-01-01 AAPL $150
+P 2024-01-05 AAPL $150
+P 2024-02-01 AAPL $160
+P 2024-02-01 EUR $1.08
+
+prices summary
+
+With --summary, instead of listing individual prices, prices prints one
+row per commodity used in the journal (other than the base currency),
+with the following columns:
+
+- Commodity — the commodity, as an ISO 4217 code if possible.
+- Prices — the number of market price declarations for that commodity.
+- Earliest / Latest — the date range of those prices.
+- Period — the duration between earliest and latest.
+- Coverage — the percentage of weekdays in that period that have a price
+  declared (or blank when fewer than two prices).
+
+Summary mode is a quick way to spot gaps in your price data, and pairs
+naturally with getprices. Only prices declared with P directives are
+counted; prices inferred with --show-reverse or --infer-market-prices
+are ignored.
+
+Queries (cur:, date:, amt:) can be used to narrow the prices that are
+summarised.

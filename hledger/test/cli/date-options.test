@@ -57,7 +57,7 @@ $ hledger -f- register date:2019-02 date:2019-01-01-
 #$ hledger -f- register date:2019-02 -p 2019
 #> /2019-01-01/
 
-# ** 0. Smart dates https://github.com/simonmichael/hledger/issues/1079
+# ** 0. Smart dates https://github.com/hledgerorg/hledger/issues/1079
 $ hledger -f- activity -b 2019-02-01 -e 'next year'
 > /2019-02-01 \*/
 
@@ -85,3 +85,41 @@ $ hledger -f- reg date:2019-01-2019-02
 $ hledger -f- reg --forecast=2024
 2024-07-31                      (a)                              1             1
 2024-08-31                      (a)                              1             2
+
+# ** 0. Report interval can also be specified by a date: query.
+<
+2026-01-15
+    (a)    10
+
+2026-03-05
+    (a)    20
+
+2026-03-15
+    (a)    30
+
+$ hledger -f- reg -E date:monthly
+2026-01   a                                                     10            10
+2026-02                                                          0            10
+2026-03   a                                                     50            60
+
+# ** 0. date: queries override interval options, and the last date: query wins.
+$ hledger -f- reg -E date:monthly date:quarterly -Y
+2026Q1   a                                                      60            60
+
+# ** 0. Report interval in a date2: query is ignored.
+$ hledger -f- reg date2:"yearly in 2026"
+2026-01-15                      (a)                             10            10
+2026-03-05                      (a)                             20            30
+2026-03-15                      (a)                             30            60
+
+# ** 0. After a dash with no spaces around it, a lone day number is not accepted as the end date,
+# since eg 2026-13 is more likely a mistyped date than "2026 to the 13th of this month"
+# (for which, write 2026..13).
+$ hledger -f- reg date:2026-13
+>2 /could not parse "date:2026-13": 1:5:/
+>=1
+
+# ** 0. Likewise for a period option.
+$ hledger -f- reg -p 2026-02-30
+>2 /could not parse period option: 1:8:/
+>=1

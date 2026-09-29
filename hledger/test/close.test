@@ -21,9 +21,9 @@
 # ** 1. By default, closes ALE accounts, on the last day of the report period.
 $ hledger close -f- -e 2017
 2016-12-31 closing balances  ; clopen:
-    assets:bank                                $-80 = $0
-    assets:cash                                $-10 = $0
-    liabilities                                $-25 = $0
+    assets:bank                                 $-80 = $0
+    assets:cash                                 $-10 = $0
+    liabilities                                 $-25 = $0
     equity:opening/closing balances
 
 >=0
@@ -31,9 +31,9 @@ $ hledger close -f- -e 2017
 # ** 2. With --close, likewise.
 $ hledger close -f- -e 2017 --close
 2016-12-31 closing balances  ; clopen:
-    assets:bank                                $-80 = $0
-    assets:cash                                $-10 = $0
-    liabilities                                $-25 = $0
+    assets:bank                                 $-80 = $0
+    assets:cash                                 $-10 = $0
+    liabilities                                 $-25 = $0
     equity:opening/closing balances
 
 >=0
@@ -41,7 +41,7 @@ $ hledger close -f- -e 2017 --close
 # ** 3. With --retain, closes RX accounts.
 $ hledger close -f- -e 2017 --retain
 2016-12-31 retain earnings  ; retain:
-    expenses:sweets                      $-5 = $0
+    expenses:sweets                              $-5 = $0
     equity:retained earnings
 
 >=0
@@ -49,15 +49,15 @@ $ hledger close -f- -e 2017 --retain
 # ** 4. With --clopen, opens and closes ALE.
 $ hledger close -f- -p 2016 --clopen
 2016-12-31 closing balances  ; clopen:
-    assets:bank                                $-80 = $0
-    assets:cash                                $-10 = $0
-    liabilities                                $-25 = $0
+    assets:bank                                 $-80 = $0
+    assets:cash                                 $-10 = $0
+    liabilities                                 $-25 = $0
     equity:opening/closing balances
 
 2017-01-01 opening balances  ; clopen:
-    assets:bank                                 $80 = $80
-    assets:cash                                 $10 = $10
-    liabilities                                 $25 = $25
+    assets:bank                                  $80 = $80
+    assets:cash                                  $10 = $10
+    liabilities                                  $25 = $25
     equity:opening/closing balances
 
 >=0
@@ -65,9 +65,9 @@ $ hledger close -f- -p 2016 --clopen
 # ** 5. With --open, opens ALE.
 $ hledger close -f- -p 2016 --open
 2017-01-01 opening balances  ; clopen:
-    assets:bank                                 $80 = $80
-    assets:cash                                 $10 = $10
-    liabilities                                 $25 = $25
+    assets:bank                                  $80 = $80
+    assets:cash                                  $10 = $10
+    liabilities                                  $25 = $25
     equity:opening/closing balances
 
 >=0
@@ -75,10 +75,10 @@ $ hledger close -f- -p 2016 --open
 # ** 6. -x makes all amounts explicit.
 $ hledger close -f- -p 2016 -x
 2016-12-31 closing balances  ; clopen:
-    assets:bank                                $-80 = $0
-    assets:cash                                $-10 = $0
-    liabilities                                $-25 = $0
-    equity:opening/closing balances            $115
+    assets:bank                                 $-80 = $0
+    assets:cash                                 $-10 = $0
+    liabilities                                 $-25 = $0
+    equity:opening/closing balances             $115
 
 >=0
 
@@ -91,8 +91,8 @@ $ hledger close -f- -p 2016 -x
 
 $ hledger -f- close assets -p 2019 -x
 2019-12-31 closing balances  ; clopen:
-    assets                                      -2A = 0A
-    equity:opening/closing balances              2A
+    assets                                        -2A = 0A
+    equity:opening/closing balances                2A
 
 >=0
 
@@ -101,10 +101,10 @@ $ hledger -f- close assets -p 2019 -x
 # Balance assertion amounts do not have a price.
 $ hledger -f- close assets -p 2019 --show-costs -x
 2019-12-31 closing balances  ; clopen:
-    assets                                 -1A @ 1B
-    assets                                 -1A @ 1C = 0A
-    equity:opening/closing balances         1A @ 1B
-    equity:opening/closing balances         1A @ 1C
+    assets                                        -1A @ 1B
+    assets                                        -1A @ 1C = 0A
+    equity:opening/closing balances                1A @ 1B
+    equity:opening/closing balances                1A @ 1C
 
 >=0
 
@@ -120,18 +120,18 @@ $ hledger -f- close assets -p 2019 --show-costs -x
 
 $ hledger -f- close assets -p 2019 -x
 2019-12-31 closing balances  ; clopen:
-    assets                                      -2A = 0A
-    equity:opening/closing balances              2A
+    assets                                        -2A = 0A
+    equity:opening/closing balances                2A
 
 >=0
 
 # ** 10. The same with costs preserved.
 $ hledger -f- close assets -p 2019 --show-costs -x
 2019-12-31 closing balances  ; clopen:
-    assets                                 -1A @ 1B
-    assets                                 -1A @ 2B = 0A
-    equity:opening/closing balances         1A @ 1B
-    equity:opening/closing balances         1A @ 2B
+    assets                                        -1A @ 1B
+    assets                                        -1A @ 2B = 0A
+    equity:opening/closing balances                1A @ 1B
+    equity:opening/closing balances                1A @ 2B
 
 >=0
 
@@ -161,15 +161,15 @@ $ hledger -f- close assets -p 2019 --show-costs -x
 
 $ hledger -f- close -p 2016 assets liabilities --show-costs -x
 2016-12-31 closing balances  ; clopen:
-    assets:bank                                -5,733.00 EUR = 0.00 EUR
-    liabilities:employer                         $-10,000.00
-    liabilities:employer                $5,000.00 @ 0.93 EUR
-    liabilities:employer                $5,000.00 @ 0.95 EUR = $0.00
-    liabilities:employer                           -1.00 EUR = 0.00 EUR
-    equity:opening/closing balances               $10,000.00
-    equity:opening/closing balances    $-5,000.00 @ 0.93 EUR
-    equity:opening/closing balances    $-5,000.00 @ 0.95 EUR
-    equity:opening/closing balances             5,734.00 EUR
+    assets:bank                               -5,733.00 EUR        =  0.00 EUR
+    liabilities:employer                    $-10,000.00
+    liabilities:employer                      $5,000.00 @ 0.93 EUR
+    liabilities:employer                      $5,000.00 @ 0.95 EUR = $0.00
+    liabilities:employer                          -1.00 EUR        =  0.00 EUR
+    equity:opening/closing balances          $10,000.00
+    equity:opening/closing balances          $-5,000.00 @ 0.93 EUR
+    equity:opening/closing balances          $-5,000.00 @ 0.95 EUR
+    equity:opening/closing balances            5,734.00 EUR
 
 >=0
 
@@ -178,16 +178,16 @@ $ hledger -f- close -p 2016 assets liabilities --show-costs -x
 # a single posting. Eg the 5734 EUR above is 5733 EUR and 1 EUR below.)
 $ hledger -f- close -p 2016 assets liabilities --interleaved --show-costs -x
 2016-12-31 closing balances  ; clopen:
-    assets:bank                                -5,733.00 EUR = 0.00 EUR
-    equity:opening/closing balances             5,733.00 EUR
-    liabilities:employer                         $-10,000.00
-    equity:opening/closing balances               $10,000.00
-    liabilities:employer                $5,000.00 @ 0.93 EUR
-    equity:opening/closing balances    $-5,000.00 @ 0.93 EUR
-    liabilities:employer                $5,000.00 @ 0.95 EUR = $0.00
-    equity:opening/closing balances    $-5,000.00 @ 0.95 EUR
-    liabilities:employer                           -1.00 EUR = 0.00 EUR
-    equity:opening/closing balances                 1.00 EUR
+    assets:bank                               -5,733.00 EUR        =  0.00 EUR
+    equity:opening/closing balances            5,733.00 EUR
+    liabilities:employer                    $-10,000.00
+    equity:opening/closing balances          $10,000.00
+    liabilities:employer                      $5,000.00 @ 0.93 EUR
+    equity:opening/closing balances          $-5,000.00 @ 0.93 EUR
+    liabilities:employer                      $5,000.00 @ 0.95 EUR = $0.00
+    equity:opening/closing balances          $-5,000.00 @ 0.95 EUR
+    liabilities:employer                          -1.00 EUR        =  0.00 EUR
+    equity:opening/closing balances                1.00 EUR
 
 >=0
 
@@ -207,22 +207,22 @@ commodity AAA 0.00000000
 
 $ hledger -f- close -p 2019 assets --show-costs -x
 2019-12-31 closing balances  ; clopen:
-    assets:aaa                                              AAA -510 = AAA 0
-    assets:usd                                               $-49.50
-    assets:usd                          $49.3900010 @ AAA 10.3528243 = $0.0000000
-    equity:opening/closing balances                           $49.50
-    equity:opening/closing balances    $-49.3900010 @ AAA 10.3528243
-    equity:opening/closing balances                          AAA 510
+    assets:aaa                              AAA -510                          = AAA 0
+    assets:usd                                  $-49.50
+    assets:usd                                   $49.3900010 @ AAA 10.3528243 =    $0.0000000
+    equity:opening/closing balances              $49.50
+    equity:opening/closing balances             $-49.3900010 @ AAA 10.3528243
+    equity:opening/closing balances          AAA 510
 
 >=0
 
 # ** 14. The same, without costs and with --interleaved.
 $ hledger -f- close -p 2019 assets --interleaved -x
 2019-12-31 closing balances  ; clopen:
-    assets:aaa                             AAA -510 = AAA 0
-    equity:opening/closing balances         AAA 510
-    assets:usd                          $-0.1099990 = $0.0000000
-    equity:opening/closing balances      $0.1099990
+    assets:aaa                              AAA -510         = AAA 0
+    equity:opening/closing balances          AAA 510
+    assets:usd                                   $-0.1099990 =    $0.0000000
+    equity:opening/closing balances               $0.1099990
 
 >=0
 
@@ -231,12 +231,16 @@ $ hledger -f- close -p 2019 assets --interleaved -x
 999999-12-31
   (a)  1
 $ hledger -f- close
-> /999999-12-31 closing balances/
+999999-12-31 closing balances  ; clopen:
+    equity:opening/closing balances
+
 >=
 
 # ** 16. "override the closing date ... by specifying a report period, where last day of the report period will be the closing date"
-$ hledger -f- close -e 100000-01-01
-> /99999-12-31 closing balances/
+$ hledger -f- close -e 10000
+9999-12-31 closing balances  ; clopen:
+    equity:opening/closing balances
+
 >=
 
 # ** 17. close (and print) should add trailing decimal marks when needed to posting amounts and costs.
@@ -247,11 +251,11 @@ commodity $1,000.00
 
 $ hledger -f- close --clopen --show-costs -e 2001
 2000-12-31 closing balances  ; clopen:
-    assets:a                           $-1,000. @@ $1,000. = $0
+    assets:a                                 $-1,000. @@ $1,000. = $0
     equity:opening/closing balances
 
 2001-01-01 opening balances  ; clopen:
-    assets:a                           $1,000. @@ $1,000. = $1,000.
+    assets:a                                  $1,000. @@ $1,000. = $1,000.
     equity:opening/closing balances
 
 >=
@@ -259,18 +263,92 @@ $ hledger -f- close --clopen --show-costs -e 2001
 # ** 18. And to balance assertion and balance assignment amounts and costs. (#2076)
 $ hledger -f- close --assert --show-costs -e 2001
 2000-12-31 assert balances  ; assert:
-    assets:a              $0 = $1,000. @@ $1,000.
+    assets:a                                      $0 = $1,000. @@ $1,000.
 
 >=
 
 # ** 19. close supports --round, like print.
 $ hledger -f- close --clopen -e 2001 --round=hard -c '$1.0'
 2000-12-31 closing balances  ; clopen:
-    assets:a                               $-1000.0 = $0.0
+    assets:a                                  $-1000.0 = $0.0
     equity:opening/closing balances
 
 2001-01-01 opening balances  ; clopen:
-    assets:a                                $1000.0 = $1000.0
+    assets:a                                   $1000.0 = $1000.0
+    equity:opening/closing balances
+
+>=
+
+# ** 20. With --retain, Gain accounts (subtype of Revenue) are also closed.
+<
+account revenues  ; type:R
+account gains     ; type:G
+account expenses  ; type:X
+
+2016/1/1
+    revenues     $-100
+    gains        $-50
+    expenses      $150
+
+$ hledger close -f- -e 2017 --retain
+2016-12-31 retain earnings  ; retain:
+    revenues                                    $100 = $0
+    gains                                        $50 = $0
+    expenses                                   $-150 = $0
+    equity:retained earnings
+
+>=0
+
+# ** 21. close supports --layout, like print.
+<
+2020-01-01
+    assets:a     $100
+    equity:opening/closing balances
+
+$ hledger -f- close --clopen -e 2021 --layout=hledger1
+2020-12-31 closing balances  ; clopen:
+    assets:a                                  $-100 = $0
+    equity:opening/closing balances
+
+2021-01-01 opening balances  ; clopen:
+    assets:a                                   $100 = $100
+    equity:opening/closing balances
+
+>=
+
+# ** 22. An account emptied by postings with mismatched costs (eg bought with
+# a cost, moved away without one) is excluded from close's output, like other
+# emptied accounts; no spurious zero posting is generated. (#2689)
+<
+2021-03-08 buy
+     equity:open-close   -$10
+     assets:broker1      2 ABC @@ $10
+
+2021-03-09 move
+     assets:broker1      -2 ABC
+     assets:broker2       2 ABC
+
+$ hledger -f- close --open -e 2022
+2022-01-01 opening balances  ; clopen:
+    assets:broker2                                 2 ABC = 2 ABC
+    equity:opening/closing balances
+
+>=
+
+# ** 23. With -E, such zero balances are kept.
+<
+2021-03-08 buy
+     equity:open-close   -$10
+     assets:broker1      2 ABC @@ $10
+
+2021-03-09 move
+     assets:broker1      -2 ABC
+     assets:broker2       2 ABC
+
+$ hledger -f- close --open -e 2022 -E
+2022-01-01 opening balances  ; clopen:
+    assets:broker1                                 0 ABC = 0 ABC
+    assets:broker2                                 2 ABC = 2 ABC
     equity:opening/closing balances
 
 >=

@@ -1,0 +1,23 @@
+HLEDGER QUICK REFERENCE
+Usage           hledger [COMMAND] [OPTIONS] [ARGS]
+Common commands
+ UIs            help ui web repl run
+ Data           add get import close
+ Status         setup stats files accounts commodities check
+ Reports        print areg reg bs is bal holdings roi
+repl commands   HLEDGERCMD !SHELLCMD echo h q C-d C-c C-z
+help commands   commands usage examples manual TOPIC
+                home install relnotes docs support sponsor
+Common flags
+ Input          -f --rules -s -I --forecast --pivot
+ Reports        -p/-b/-e -E -C/-U -D/-W/-M/-Q/-Y -B/-V/-X/--value --lots
+ Output         --pretty --title -c -o/-O
+Input formats   journal csv tsv ssv rules timeclock timedot
+Output formats  txt html journal csv tsv fods ledger beancount sql json
+Account types   ALERX  (Asset Liability Equity     Revenue Expense)
+   & subtypes   C VG   (Cash            Conversion Gain           )
+Query prefixes  acct: amt: code: cur: sym: desc: date: depth: note: payee:
+                real: status: type: tag: not: expr: any: all: find: ::
+Default checks  parseable autobalanced assertions lots
+Strict checks   balanced commodities accounts
+Other checks    tags payees ordereddates recentassertions uniqueleafnames basis

@@ -1,0 +1,57 @@
+diff --git a/budget/expenses.ledger b/budget/expenses.ledger
+index 955edfc..9e2a3f7 100644
+--- a/budget/expenses.ledger
++++ b/budget/expenses.ledger
+@@ -92,6 +92,6 @@
+     ; TREASURER #6553
+-    expenses:venue:debcamp:food_accomodation         (1,274,000.00 INR * 0.3)
+-    expenses:venue:debconf:food_accomodation         (7,221,760.00 INR * 0.3)
+-    expenses:venue:debcamp:halls                       (548,700.00 INR * 0.3)
+-    expenses:venue:debconf:halls                     (1,274,400.00 INR * 0.3)
++    expenses:venue:debcamp:food_accomodation         382,200.00 INR
++    expenses:venue:debconf:food_accomodation         2,166,528.00 INR
++    expenses:venue:debcamp:halls                       164,610.00 INR
++    expenses:venue:debconf:halls                     382,320.00 INR
+     ; unexpected bank fee
+@@ -132,4 +132,4 @@
+     ; TREASURER#6674
+-    expenses:travel:bursary:diversity                    ( 5390.87 USD / 2)
+-    expenses:travel:bursary:general                      ( 5390.87 USD / 2)
++    expenses:travel:bursary:diversity                    2695.435 USD
++    expenses:travel:bursary:general                      2695.435 USD
+     assets:SPI                                           - 5390.87 USD
+@@ -153,3 +153,3 @@
+     ; invoices/swag/20230810-teelabs-shirt-estimate.pdf
+-    expenses:swag:merchandise                           (284495.00 INR / 2)
++    expenses:swag:merchandise                           142247.50 INR
+     assets:debian-ch
+@@ -191,6 +191,6 @@
+     ; TREASURER #6553
+-    expenses:venue:debcamp:food_accomodation         (1,274,000.00 INR * 0.3)
+-    expenses:venue:debconf:food_accomodation         (7,221,760.00 INR * 0.3)
+-    expenses:venue:debcamp:halls                       (548,700.00 INR * 0.3)
+-    expenses:venue:debconf:halls                     (1,274,400.00 INR * 0.3)
++    expenses:venue:debcamp:food_accomodation         382,200.00 INR
++    expenses:venue:debconf:food_accomodation         2,166,528.00 INR
++    expenses:venue:debcamp:halls                       164,610.00 INR
++    expenses:venue:debconf:halls                     382,320.00 INR
+     ; Subtotal                                        3,095,658.00 INR
+@@ -296,4 +296,4 @@
+     expenses:venue:debconf:food_accomodation          1,257,372.00 INR
+-    expenses:venue:debcamp:halls                       (548,700.00 INR * 0.3)
+-    expenses:venue:debconf:halls                     (1,274,400.00 INR * 0.3)
++    expenses:venue:debcamp:halls                       164,610.00 INR
++    expenses:venue:debconf:halls                     382,320.00 INR
+     ; Subtotal                                        2,026,117.00 INR
+@@ -665,4 +665,4 @@
+     expenses:venue:debconf:food_accomodation            359,357.00 INR
+-    expenses:venue:debcamp:halls                       (548,700.00 INR * 0.10)
+-    expenses:venue:debconf:halls                     (1,274,400.00 INR * 0.10)
++    expenses:venue:debcamp:halls                       54,870.00 INR
++    expenses:venue:debconf:halls                     127,440.00 INR
+     ; Subtotal                                          605,059.00 INR
+@@ -716,3 +716,3 @@
+     ; TREASURER #7020
+-    expenses:venue:debconf:halls                    (2 * 28,320.00 INR)
++    expenses:venue:debconf:halls                    56,640.00 INR
+     assets:SPI                                             -706.62 USD

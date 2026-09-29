@@ -1,5 +1,5 @@
-$$$ hledger check -f  csvdaterule.csv
->>>2 /Error: offset=0:
+$ hledger check -f  csvdaterule.csv
+>2 /hledger: Error: .*csvdaterule\.csv\.rules:
 Please specify \(at top level\) the date field. Eg: date %1
 /
->>>= 1
+>= 1

@@ -1,0 +1,79 @@
+# * balance command --full-names flag
+#
+<
+2024/1/1
+  b:bb       -10
+  a:aa:aaa    10
+
+2024/1/2
+  b:bb        -5
+  c:cc         5
+
+2024/1/3
+  b:bb        -7
+  z:zz         7
+
+2024/1/4
+  z:zz        -7
+  b:bb         7
+
+# ** 1. In tree mode, --full-names shows full account names instead of
+# indented leaf names, keeping tree mode's inclusive balances.
+$ hledger -f - balance --tree --full-names --no-total
+                  10  a:aa:aaa
+                 -15  b:bb
+                   5  c:cc
+>=0
+
+# ** 2. With --no-elide and -E also, it shows a complete table of all
+# posted-to accounts and their parents, with full names and inclusive balances.
+$ hledger -f - balance --tree --no-elide --full-names -E --no-total
+                  10  a
+                  10  a:aa
+                  10  a:aa:aaa
+                 -15  b
+                 -15  b:bb
+                   5  c
+                   5  c:cc
+                   0  z
+                   0  z:zz
+>=0
+
+# ** 3. The same, as CSV: full account names, convenient for lookups in spreadsheets.
+$ hledger -f - balance --tree --no-elide --full-names -E -O csv
+"account","balance"
+"a","10"
+"a:aa","10"
+"a:aa:aaa","10"
+"b","-15"
+"b:bb","-15"
+"c","5"
+"c:cc","5"
+"z","0"
+"z:zz","0"
+"Total:","0"
+>=0
+
+# ** 4. Same as 2 for multiperiod.
+$ hledger -f - balance --tree --no-elide --full-names -E --no-total -Y
+Balance changes in 2024:
+
+          || 2024 
+==========++======
+ a        ||   10 
+ a:aa     ||   10 
+ a:aa:aaa ||   10 
+ b        ||  -15 
+ b:bb     ||  -15 
+ c        ||    5 
+ c:cc     ||    5 
+ z        ||    0 
+ z:zz     ||    0 
+>=0
+
+# ** 5. In list mode, --full-names has no effect; full names are always shown.
+$ hledger -f - balance --flat --full-names --no-total
+                  10  a:aa:aaa
+                 -15  b:bb
+                   5  c:cc
+>=0

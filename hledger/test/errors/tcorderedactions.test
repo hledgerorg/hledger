@@ -1,8 +1,10 @@
-$$$ hledger check -f  tcorderedactions.timeclock
->>>2 /Error: .*tcorderedactions.timeclock:8:1:
-8 \| i 2022-01-01 00:01:00   
+$ hledger check -f tcorderedactions.timeclock
+>2 /hledger: Error: .*tcorderedactions\.timeclock:8:1:
+7 \| i 2022-01-01 00:00:00 a
+8 \| i 2022-01-01 00:01:00 a
   \| \^
 
-Encountered clockin entry for session "" that is already active.
+This clockin overlaps the session in the same account which began on line 7\.
+Overlapping sessions with the same account name are not supported\.
 /
->>>= 1
+>= 1

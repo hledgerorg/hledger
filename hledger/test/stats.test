@@ -10,3 +10,14 @@ include b.j
 $  touch a.j b.j; hledger -f- stats -v; rm -f a.j b.j
 > /Included files.*\/a\.j
 .*\/b\.j/
+
+# ** 3. The guessed base currency is shown as the journal's commodity symbol,
+# with its ISO 4217 currency code alongside when that differs.
+<
+P 2026-01-01 AAPL $72
+
+2026-01-01
+    (a)    $1
+
+$ hledger -f- stats
+> /Base currency       : \$ \(USD\)/

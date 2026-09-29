@@ -1,9 +1,31 @@
-# import applies the receiving journal's commodity styles to imported amounts
+# * import
+# ** 1. import applies the receiving journal's commodity styles to imported amounts
 $ hledger -f a.j import --dry-run a.csv
-; would import 1 new transactions from a.csv:
+2020-01-01
+    expenses:unknown                       1.000.000,00
+    income:unknown                        -1.000.000,00
 
+>2
+would import 1 new transactions from a.csv:
+
+>=
+
+# ** 2. --layout=hledger1 affects the dry-run output (and non-dry-run entries).
+$ hledger -f a.j import --dry-run --layout=hledger1 a.csv
 2020-01-01
     expenses:unknown     1.000.000,00
     income:unknown      -1.000.000,00
 
+>2
+would import 1 new transactions from a.csv:
+
 >=
+
+# ** 3. A dry run archives nothing and leaves the source data file in place,
+# including when the dry-run flag is abbreviated (eg --dr).
+$ d=$(mktemp -d); mkdir -p $d/rules $d/data; printf '2020-01-01 x\n  (a)  1\n' >$d/main.journal; printf 'source foo*.csv\narchive\nskip 1\nfields date,description,amount\naccount1 a\naccount2 b\n' >$d/rules/foo.rules; printf 'date,description,amount\n2020-01-02,x,1\n' >$d/data/foo.csv; hledger -f $d/main.journal imp --dr >/dev/null 2>&1; ls $d/data; rm -rf $d
+foo.csv
+
+# ** 4. A real import archives the data and removes the source data file.
+$ d=$(mktemp -d); mkdir -p $d/rules $d/data; printf '2020-01-01 x\n  (a)  1\n' >$d/main.journal; printf 'source foo*.csv\narchive\nskip 1\nfields date,description,amount\naccount1 a\naccount2 b\n' >$d/rules/foo.rules; printf 'date,description,amount\n2020-01-02,x,1\n' >$d/data/foo.csv; hledger -f $d/main.journal import >/dev/null 2>&1; ls $d/data; rm -rf $d
+archive

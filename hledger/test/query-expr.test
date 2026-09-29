@@ -22,12 +22,12 @@
 # ** 1. Simple queries can be directly embedded in expression queries
 $ hledger -f - print expr:"tag:transactiontag=B"
 2022-01-01 Transaction 3  ; transactiontag:B
-    assets:bank:main              -1  ; A comment
+    assets:bank:main                              -1  ; A comment
     expenses:drink
 
 2022-01-01 Transaction 4  ; transactiontag:B
-    assets:bank:main              -1  ; A comment
-    expenses:food                  2
+    assets:bank:main                              -1  ; A comment
+    expenses:food                                  2
     expenses:drink
 
 >=
@@ -35,12 +35,12 @@ $ hledger -f - print expr:"tag:transactiontag=B"
 # ** 2. Simple queries can be encased in an arbitrary number of parentheses
 $ hledger -f - print "expr:(((tag:transactiontag=B)))"
 2022-01-01 Transaction 3  ; transactiontag:B
-    assets:bank:main              -1  ; A comment
+    assets:bank:main                              -1  ; A comment
     expenses:drink
 
 2022-01-01 Transaction 4  ; transactiontag:B
-    assets:bank:main              -1  ; A comment
-    expenses:food                  2
+    assets:bank:main                              -1  ; A comment
+    expenses:food                                  2
     expenses:drink
 
 >=
@@ -48,7 +48,7 @@ $ hledger -f - print "expr:(((tag:transactiontag=B)))"
 # ** 3. Simple boolean AND query works
 $ hledger -f - print expr:"tag:'transactiontag=B' AND desc:3"
 2022-01-01 Transaction 3  ; transactiontag:B
-    assets:bank:main              -1  ; A comment
+    assets:bank:main                              -1  ; A comment
     expenses:drink
 
 >=
@@ -56,11 +56,11 @@ $ hledger -f - print expr:"tag:'transactiontag=B' AND desc:3"
 # ** 4. AND + OR works without parentheses
 $ hledger -f - print expr:"tag:'transactiontag=B' AND desc:3 OR desc:1"
 2022-01-01 Transaction 1  ; transactiontag:A
-    assets:bank:main              -1  ; A comment
+    assets:bank:main                              -1  ; A comment
     expenses:food
 
 2022-01-01 Transaction 3  ; transactiontag:B
-    assets:bank:main              -1  ; A comment
+    assets:bank:main                              -1  ; A comment
     expenses:drink
 
 >=
@@ -68,12 +68,12 @@ $ hledger -f - print expr:"tag:'transactiontag=B' AND desc:3 OR desc:1"
 # ** 5. Unnecessary NOT + OR works without parentheses
 $ hledger -f - print expr:"NOT tag:'transactiontag=B' OR desc:1"
 2022-01-01 Transaction 1  ; transactiontag:A
-    assets:bank:main              -1  ; A comment
+    assets:bank:main                              -1  ; A comment
     expenses:food
 
 2022-01-01 Transaction 2  ; transactiontag:A
-    assets:bank:main                   -1
-    assets:bank:secondary              -1  ; atag:a
+    assets:bank:main                              -1
+    assets:bank:secondary                         -1  ; atag:a
     expenses:food
 
 >=
@@ -81,17 +81,17 @@ $ hledger -f - print expr:"NOT tag:'transactiontag=B' OR desc:1"
 # ** 6. Necessary NOT + OR works without parentheses
 $ hledger -f - print expr:"NOT tag:'transactiontag=B' OR desc:4"
 2022-01-01 Transaction 1  ; transactiontag:A
-    assets:bank:main              -1  ; A comment
+    assets:bank:main                              -1  ; A comment
     expenses:food
 
 2022-01-01 Transaction 2  ; transactiontag:A
-    assets:bank:main                   -1
-    assets:bank:secondary              -1  ; atag:a
+    assets:bank:main                              -1
+    assets:bank:secondary                         -1  ; atag:a
     expenses:food
 
 2022-01-01 Transaction 4  ; transactiontag:B
-    assets:bank:main              -1  ; A comment
-    expenses:food                  2
+    assets:bank:main                              -1  ; A comment
+    expenses:food                                  2
     expenses:drink
 
 >=
@@ -99,17 +99,17 @@ $ hledger -f - print expr:"NOT tag:'transactiontag=B' OR desc:4"
 # ** 7. Boolean expression query keywords are case insensitive
 $ hledger -f - print expr:"NoT tag:'transactiontag=B' OR desc:4"
 2022-01-01 Transaction 1  ; transactiontag:A
-    assets:bank:main              -1  ; A comment
+    assets:bank:main                              -1  ; A comment
     expenses:food
 
 2022-01-01 Transaction 2  ; transactiontag:A
-    assets:bank:main                   -1
-    assets:bank:secondary              -1  ; atag:a
+    assets:bank:main                              -1
+    assets:bank:secondary                         -1  ; atag:a
     expenses:food
 
 2022-01-01 Transaction 4  ; transactiontag:B
-    assets:bank:main              -1  ; A comment
-    expenses:food                  2
+    assets:bank:main                              -1  ; A comment
+    expenses:food                                  2
     expenses:drink
 
 >=
@@ -117,20 +117,19 @@ $ hledger -f - print expr:"NoT tag:'transactiontag=B' OR desc:4"
 # ** 8. Lower case not is not confused with existing not: queries
 $ hledger -f - print expr:"not tag:transactiontag=B"
 2022-01-01 Transaction 1  ; transactiontag:A
-    assets:bank:main              -1  ; A comment
+    assets:bank:main                              -1  ; A comment
     expenses:food
 
 2022-01-01 Transaction 2  ; transactiontag:A
-    assets:bank:main                   -1
-    assets:bank:secondary              -1  ; atag:a
+    assets:bank:main                              -1
+    assets:bank:secondary                         -1  ; atag:a
     expenses:food
 
 >=
 
 # ** 9. Having parentheses directly follow 'not' sees 'not' as part of a query.
 $ hledger -f - print expr:"not(tag:transactiontag=B)"
->2 /Error: This regular expression is invalid or unsupported, please correct it:
-not\(tag:transactiontag=B
+>2 /Error: This regular expression is invalid or unsupported, please correct it: not\(tag:transactiontag=B
 /
 >=1
 # XXX regex needed for error tests with ghc 9.10, https://gitlab.haskell.org/ghc/ghc/-/issues/25116
@@ -138,12 +137,12 @@ not\(tag:transactiontag=B
 # ** 10. ... whereas parentheses with a space between 'not' and '(' is fine.
 $ hledger -f - print expr:"not (tag:transactiontag=B)"
 2022-01-01 Transaction 1  ; transactiontag:A
-    assets:bank:main              -1  ; A comment
+    assets:bank:main                              -1  ; A comment
     expenses:food
 
 2022-01-01 Transaction 2  ; transactiontag:A
-    assets:bank:main                   -1
-    assets:bank:secondary              -1  ; atag:a
+    assets:bank:main                              -1
+    assets:bank:secondary                         -1  ; atag:a
     expenses:food
 
 >=
@@ -172,29 +171,120 @@ $ hledger -f - reg expr:'(a and amt:>0) or b'
                                 a                              300           301
                                 b                            -4000         -3699
 
-# ** 13. #2371 aregister
+# ** 13. #2371 aregister.
+# any: selects whole transactions, so the postings of a matched transaction are
+# not filtered further; this shows the same transactions as print in test 14.
 $ hledger -f sample2.journal areg assets any:'(checking and amt:>0) or credit'
 Transactions in assets and subaccounts (matching query):
-2025-01-01 starting balances    li:credit card            1000 USD      1000 USD
-2025-01-02 salary               as:ba:checking            1000 USD      2000 USD
-2025-01-03 pay half of credi..  li:credit card            -200 USD      1800 USD
+2025-01-01 starting balances    li:credit card, eq..         1 AAA         1 AAA
+                                                          2100 USD      2100 USD
+2025-01-02 salary               re:salary                 1000 USD         1 AAA
+                                                                        3100 USD
+2025-01-03 pay half of credi..  li:credit card            -200 USD         1 AAA
+                                                                        2900 USD
 
 # ** 14. #2371 print
 $ hledger -f sample2.journal print -x any:'(checking and amt:>0) or credit'
 2025-01-01 starting balances
-    assets:cash                         100 USD = 100 USD
-    assets:bank:checking               1000 USD = 1000 USD
-    assets:broker:usd                  1000 USD = 1000 USD
-    assets:broker:aaa          1 AAA @ 1.20 USD = 1 AAA @ 1.20 USD
-    liabilities:credit card            -400 USD = -400 USD
-    equity:start                   -1701.20 USD
+    assets:cash                                  100 USD            =  100 USD
+    assets:bank:checking                        1000 USD            = 1000 USD
+    assets:broker:usd                           1000 USD            = 1000 USD
+    assets:broker:aaa                              1 AAA @ 1.20 USD =    1 AAA @ 1.20 USD
+    liabilities:credit card                     -400 USD            = -400 USD
+    equity:start                               -1701.20 USD
 
 2025-01-02 salary
-    revenues:salary            -1000 USD
-    assets:bank:checking        1000 USD
+    revenues:salary                            -1000 USD
+    assets:bank:checking                        1000 USD
 
 2025-01-03 pay half of credit card balance
-    assets:bank:checking           -200 USD
-    liabilities:credit card         200 USD = -200 USD
+    assets:bank:checking                        -200 USD
+    liabilities:credit card                      200 USD = -200 USD
 
+>=
+
+# ** 15. any: matches transactions where the whole query matches at least one of the postings.
+<
+2025-01-01 no postings
+
+2025-01-02 a, b
+   a   1
+   b
+
+2025-01-03 a, .5
+   a   1
+   a  -0.5
+   a  -0.5
+
+2025-01-03 a, 1
+   a   1
+   a
+
+$ hledger -f- print any:'a and amt:0.5'
+2025-01-03 a, .5
+    a                                              1
+    a                                             -0.5
+    a                                             -0.5
+
+>=
+
+# ** 16. all: matches transactions where the query matches all of one or more postings.
+$ hledger -f- print all:'a and amt:1'
+2025-01-03 a, 1
+    a                                              1
+    a
+
+>=
+
+
+# ** 17. any: in a posting-oriented report selects a posting when one of its
+# sibling postings matches, so this shows only the expenses paid with cash.
+<
+2026-01-01 groceries paid cash
+    expenses:food             10
+    assets:cash
+
+2026-01-02 groceries paid by card
+    expenses:food             20
+    liabilities:card
+
+$ hledger -f- bal expenses any:cash
+                  10  expenses:food
+--------------------
+                  10  
+>=
+
+# ** 18. And negating it selects the expenses paid some other way.
+$ hledger -f- bal expenses not:any:cash
+                  20  expenses:food
+--------------------
+                  20  
+>=
+
+# ** 19. A bare any: query keeps whole transactions, so the report stays balanced.
+$ hledger -f- bal any:cash
+                 -10  assets:cash
+                  10  expenses:food
+--------------------
+                   0  
+>=
+
+# ** 20. all: in a posting-oriented report requires every sibling posting to match.
+$ hledger -f- bal all:'expenses or cash'
+                 -10  assets:cash
+                  10  expenses:food
+--------------------
+                   0  
+>=
+
+# ** 21. any: is sibling-aware in register too, so both postings of the
+# matched transaction are shown.
+$ hledger -f- reg any:card
+2026-01-02 groceries paid by..  expenses:food                   20            20
+                                liabilities:card               -20             0
+>=
+
+# ** 22. Since any: matches every posting of a selected transaction, there are no
+# unmatched related postings, so --related shows nothing.
+$ hledger -f- reg --related any:cash
 >=

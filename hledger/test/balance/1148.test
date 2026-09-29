@@ -1,0 +1,25 @@
+# * balance: long commodity names widen the default amount column (#1148)
+
+<
+2024-01-01
+  assets:short     1 "short"
+  equity:opening
+
+2024-01-02
+  assets:long      1 "a very very long commodity"
+  equity:opening
+$ hledger -f- balance assets --flat --no-total
+1 "a very very long commodity"  assets:long
+                       1 short  assets:short
+
+# Wide quantities also widen the default amount column.
+
+<
+2024-01-01
+  assets:big       12345678901234567890.00 USD
+  assets:small     1.00 USD
+  equity:opening
+$ hledger -f- balance --no-total
+ 12345678901234567890.00 USD  assets:big
+                    1.00 USD  assets:small
+-12345678901234567891.00 USD  equity:opening

@@ -1,0 +1,216 @@
+# * print --export: reproduce the whole journal
+
+# ** 1. Directives, top-level comment lines and comment blocks are reproduced verbatim,
+# in the original order, with transactions rendered as print normally renders them.
+# Blank lines are normalised: one between transactions and between groups of directive/comment lines.
+# Comment lines immediately preceding a transaction stay with it.
+# A ! or @ directive prefix is dropped. apply account, alias, their end forms, and Ledger directives
+# which hledger ignores (like assert) are not reproduced; their effects are already applied.
+<
+; top comment
+# hash comment
+* org heading
+
+account assets:cash  ; type:A
+  ; a subdirective comment
+!account expenses:food
+commodity $1,000.00
+commodity EUR
+  format 1.000,00 EUR
+D $1,000.00
+decimal-mark .
+payee Foo  ; some payee
+tag mytag
+P 2024-01-01 EUR $1.10
+~ monthly  forecast
+    (assets:cash)  10
+= expenses:food
+    (expenses:food:auto)  *0.1
+alias food = expenses:food
+apply account top
+assert foo
+2024-01-02 * (123) Foo  ; txn comment
+    ; another txn comment line
+    food   $5  ; posting comment
+    assets:cash
+
+end apply account
+end aliases
+comment
+a comment block
+end comment
+
+; preceding comment 1
+; preceding comment 2
+2024-01-03 later
+    assets:cash  $-1
+    expenses:food
+
+2024-01-01 earlier
+    assets:cash  1
+    expenses:food
+; trailing comment
+$ hledger -f - print --export
+; top comment
+# hash comment
+* org heading
+
+account assets:cash  ; type:A
+  ; a subdirective comment
+account expenses:food
+commodity $1,000.00
+commodity EUR
+  format 1.000,00 EUR
+D $1,000.00
+decimal-mark .
+payee Foo  ; some payee
+tag mytag
+P 2024-01-01 EUR $1.10
+~ monthly  forecast
+    (assets:cash)  10
+= expenses:food
+    (expenses:food:auto)  *0.1
+
+2024-01-02 * (123) Foo  ; txn comment
+    ; another txn comment line
+    top:food                                      $5  ; posting comment
+    top:assets:cash
+
+comment
+a comment block
+end comment
+
+; preceding comment 1
+; preceding comment 2
+2024-01-03 later
+    assets:cash                                  $-1
+    expenses:food
+
+2024-01-01 earlier
+    assets:cash                                   $1.00
+    expenses:food
+
+; trailing comment
+>= 0
+
+# ** 2. A query selects the transactions shown, but all directives and comments are kept.
+<
+account a
+
+; before 1
+2024-01-01 one
+    (a)  1
+
+; before 2
+2024-01-02 two
+    (a)  2
+$ hledger -f - print --export date:2024-01-02
+account a
+
+; before 2
+2024-01-02 two
+    (a)                                            2
+
+>= 0
+
+# ** 3. Without --forecast or --auto, periodic transaction rules and auto posting rules are reproduced
+# and nothing is generated.
+<
+~ monthly from 2024-02  forecast
+    (a)  10
+
+= a
+    (b)  *2
+
+2024-01-01 one
+    (a)  1
+$ hledger -f - print --export
+~ monthly from 2024-02  forecast
+    (a)  10
+
+= a
+    (b)  *2
+
+2024-01-01 one
+    (a)                                            1
+
+>= 0
+
+# ** 4. With --forecast, the generated transactions are shown (at the end) and the periodic rules are dropped;
+# with --auto, the generated postings are shown and the auto posting rules are dropped.
+<
+~ monthly from 2024-02  forecast
+    (a)  10
+
+= a
+    (b)  *2
+
+2024-01-01 one
+    (a)  1
+$ hledger -f - print --export --forecast=2024-02..2024-04 --auto
+2024-01-01 one
+    (a)                                            1
+    (b)                                            2
+
+2024-02-01 forecast
+    (a)                                           10
+    (b)                                           20
+
+2024-03-01 forecast
+    (a)                                           10
+    (b)                                           20
+
+>= 0
+
+# ** 5. Included files are inlined in place of the include directive.
+$ hledger -f export-main.j print --export
+; export-main.j: a journal with an include
+Y 2024
+
+# export-included.j
+
+2024-01-02 included txn
+    (inc:b)                                        2
+
+; after the include
+2024-01-03 main txn
+    (a)                                            3
+
+>= 0
+
+# ** 6. A file included twice is reproduced twice. Transactions from a non-journal file
+# (eg an included CSV file) are added at the end.
+$ hledger -f export-main2.j print --export
+; export-main2.j: includes a csv file, and a journal file twice
+
+# export-included.j
+
+2024-01-02 included txn
+    (inc:b)                                        2
+
+# export-included.j
+
+2024-01-02 included txn
+    (inc:b)                                        2
+
+2024-01-06 last
+    (a)                                            6
+
+2024-01-05 csv txn
+    c                                              5
+    income:unknown                                -5
+
+>= 0
+
+# ** 7. With a non-journal main file, just the transactions are shown, in file order.
+$ hledger -f export-inc.csv print --export
+2024-01-05 csv txn
+    c                                              5
+    income:unknown                                -5
+
+>= 0
+
+# ** 8. Only the txt, ledger and beancount output formats are supported.
+$ hledger -f export-main.j print --export -O csv
+>2 /print --export supports only the txt, ledger and beancount output formats/
+>= 1

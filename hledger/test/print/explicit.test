@@ -7,7 +7,7 @@
     assets
 $ hledger -f - print
 2017-01-01
-    expenses              $5
+    expenses                                      $5
     assets
 
 >= 0
@@ -19,8 +19,8 @@ $ hledger -f - print
     assets
 $ hledger -f - print --explicit
 2017-01-01
-    expenses              $5
-    assets               $-5
+    expenses                                      $5
+    assets                                       $-5
 
 >= 0
 
@@ -31,8 +31,8 @@ $ hledger -f - print --explicit
     assets  $-5
 $ hledger -f - print
 2017-01-01
-    expenses           4 EUR
-    assets               $-5
+    expenses                                       4 EUR
+    assets                                       $-5
 
 >= 0
 
@@ -43,8 +43,8 @@ $ hledger -f - print
     assets  $-5
 $ hledger -f - print --explicit
 2017-01-01
-    expenses     4 EUR @@ $5
-    assets               $-5
+    expenses                                       4 EUR @@ $5
+    assets                                       $-5
 
 >= 0
 
@@ -55,7 +55,7 @@ $ hledger -f - print --explicit
     equity
 $ hledger -f - print
 2017-01-01
-    assets                 = $100
+    assets                                           = $100
     equity
 
 >= 0
@@ -67,8 +67,8 @@ $ hledger -f - print
     equity
 $ hledger -f - print --explicit
 2017-01-01
-    assets            $100 = $100
-    equity           $-100
+    assets                                      $100 = $100
+    equity                                     $-100
 
 >= 0
 
@@ -80,7 +80,7 @@ D 1000.00 EUR
     assets
 $ hledger -f - print
 2017-01-01
-    expenses      100.00 EUR
+    expenses                                     100.00 EUR
     assets
 
 >= 0
@@ -92,8 +92,8 @@ $ hledger -f - print
     equity
 $ hledger -f - print --explicit
 2017-01-01
-    assets              $0
-    equity              $0
+    assets                                        $0
+    equity                                        $0
 
 >= 0
 
@@ -108,9 +108,9 @@ $ hledger -f - print --explicit
     b
 $ hledger -f - print --auto
 2021-09-01
-    a        1000 EUR
-    c        -453 EUR
-    d         453 EUR
+    a                                           1000 EUR
+    c                                           -453 EUR
+    d                                            453 EUR
     b
 
 >= 0

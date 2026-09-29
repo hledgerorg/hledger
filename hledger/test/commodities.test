@@ -1,0 +1,145 @@
+# * commodities command
+# "This command lists commodity symbols/names - all of them by default,
+# or just the ones which have been used in transactions or `P` directives,
+# or declared with `commodity` directives,
+# or used but not declared,
+# or declared but not used."
+
+# ** 1. all commodities
+<
+commodity 1. CA
+commodity 1. CB
+commodity 1. CC
+commodity 1. CD
+commodity 1. CE
+
+D 1. DH
+
+P 2025-01-01 CA 1 CB
+P 2025-01-01 PI 1 PJ
+
+2025-01-01
+  a        1 CC @ 1 CD
+  b        1 TK @ 1 TL
+  d
+
+$ hledger -f - commodities
+CA
+CB
+CC
+CD
+CE
+PI
+PJ
+TK
+TL
+
+# ** 2. used (in transactions; P-directive commodities are listed by --priced).
+$ hledger -f - commodities --used
+CC
+CD
+TK
+TL
+
+# ** 3. priced (in P directives).
+$ hledger -f - commodities --priced
+CA
+CB
+PI
+PJ
+
+# ** 4. declared
+$ hledger -f - commodities --declared
+CA
+CB
+CC
+CD
+CE
+
+# ** 5. undeclared
+$ hledger -f - commodities --undeclared
+PI
+PJ
+TK
+TL
+
+# ** 6. unused
+$ hledger -f - commodities --unused
+CE
+
+# ** 7. with a query
+$ hledger -f - commodities --priced expr:"cur:CA or cur:'P.*'"
+CA
+PI
+PJ
+
+# ** 8. date: queries filter transactions and price directives by date.
+<
+commodity 1. DA
+commodity 1. DB
+
+P 2025-01-01 PA 1 PB
+P 2099-01-01 PX 1 PY
+
+2025-01-01
+  a   1 UA
+  b  -1 UA
+
+2099-06-01
+  a   1 UX
+  b  -1 UX
+
+$ hledger -f - commodities date:2025
+PA
+PB
+UA
+
+# ** 9. --declared ignores date: (declarations have no date).
+$ hledger -f - commodities --declared date:2099
+DA
+DB
+
+# ** 10. all digit group separators can be used in commodity directives
+<
+commodity 1,000.0 comma
+commodity 1.000,0 dot
+commodity 1_000.0 underscore
+commodity 1'000,0 apostrophe
+
+commodity 1 000,0 space
+commodity 1 000,0 no_break_space
+commodity 1 000,0 en_space
+commodity 1 000,0 em_space
+commodity 1 000,0 punctuation_space
+commodity 1 000,0 thin_space
+commodity 1 000,0 narrow_no_break_space
+commodity 1 000,0 medium_mathematical_space
+
+$ hledger -f - commodities
+apostrophe
+comma
+dot
+em_space
+en_space
+medium_mathematical_space
+narrow_no_break_space
+no_break_space
+punctuation_space
+space
+thin_space
+underscore
+
+# ** 11. --directives shows commodity directives declaring each commodity's display style,
+# declared or inferred, using a sample amount. A decimal mark is always included.
+<
+commodity 1.000,00 EUR
+
+2024-01-01
+    (a)   $1,234.50
+    (b)   10 AAPL
+    (c)   1 EUR
+
+$ hledger -f- commodities --directives
+commodity $1,000.00
+commodity 1000. AAPL
+commodity 1.000,00 EUR

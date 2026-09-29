@@ -193,3 +193,229 @@ Till Mar
                                 assets                         $-1             0
 2025-02-26 Buy soylent green    ex:food:not people              $1            $1
                                 assets                         $-1             0
+
+# ** 13. Run propagates its general input flags (eg -I) to the commands it runs
+<
+2017-01-01
+   assets:cash  $10 = $999
+   equity
+$ hledger run -f- -I -- balance
+                 $10  assets:cash
+                $-10  equity
+--------------------
+                   0  
+
+# ** 14. A command's own input flags override run's (eg --strict overrides -I)
+<
+2017-01-01
+   assets:cash  $10 = $999
+   equity
+$ hledger run -f- -I -- balance --strict
+>2 /Balance assertion failed in assets:cash/
+>=1
+
+# ** 15. Run propagates other general input flags too (eg --pivot)
+<
+2017-01-01 shop  ; cat:groceries
+   expenses  $10
+   assets
+$ hledger run -f- --pivot cat -- accounts
+groceries
+
+# ** 16. Run propagates general output/report flags too (eg --depth)
+<
+2017-01-01
+   a:b  $1
+   c
+$ hledger run -f- --depth 1 -- balance
+                  $1  a
+                 $-1  c
+--------------------
+                   0  
+
+# ** 17. A command's own report flags override run's (eg --depth 2 overrides --depth 1)
+<
+2017-01-01
+   a:b  $1
+   c
+$ hledger run -f- --depth 1 -- balance --depth 2
+                  $1  a:b
+                 $-1  c
+--------------------
+                   0  
+
+# ** 18. repl (and run reading commands from stdin) supports the ! shell escape
+<
+! echo hello
+accounts
+! echo bye
+$ hledger repl -f sample.journal
+>
+hello
+assets:bank:checking
+assets:bank:saving
+assets:cash
+expenses:food
+expenses:supplies
+income:gifts
+income:salary
+liabilities:debts
+bye
+>=0
+
+# ** 19. repl auto-reloads an input file after it changes on disk (using ! to modify it mid-session).
+# The reload notice is printed on stderr; a bad edit keeps the previous version.
+<
+balance
+! printf '\n2017-02-02 y\n  a  5\n  b\n' >> "$HLEDGER_RELTEST"
+balance
+$ sh -c 'export HLEDGER_RELTEST=$(mktemp "${TMPDIR:-/tmp}/hledger-reltest.XXXXXX"); printf "2017-01-01 x\n  a  1\n  b\n" > "$HLEDGER_RELTEST"; hledger repl -f "$HLEDGER_RELTEST"; rm -f "$HLEDGER_RELTEST"'
+>
+                   1  a
+                  -1  b
+--------------------
+                   0  
+                   6  a
+                  -6  b
+--------------------
+                   0  
+>2 /\(reloading /
+
+# ** 20. repl auto-reloads config-file command aliases when the config file changes.
+# foo is an alias for accounts, changed to balance mid-session; the second foo runs balance.
+<
+foo
+! printf '[alias]\nfoo = balance\n' > "$HLEDGER_RELCONF"
+foo
+$ sh -c 'export HLEDGER_RELCONF=$(mktemp "${TMPDIR:-/tmp}/hledger-relconf.XXXXXX"); J=$(mktemp "${TMPDIR:-/tmp}/hledger-relj.XXXXXX"); printf "[alias]\nfoo = accounts\n" > "$HLEDGER_RELCONF"; printf "2017-01-01 x\n  a  1\n  b\n" > "$J"; hledger repl --conf "$HLEDGER_RELCONF" -f "$J"; rm -f "$HLEDGER_RELCONF" "$J"'
+>
+a
+b
+                   1  a
+                  -1  b
+--------------------
+                   0  
+>2 /\(reloading /
+
+# ** 21. repl -f propagation, part 1:
+# If repl was started with explicit -f options, it passes them through when running addon commands.
+# (hledger-showargs is a fake addon echoing its arguments; it should receive -f FILE.)
+<
+showargs expenses:
+$ sh -c 'D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-addon.XXXXXX"); J=$(mktemp "${TMPDIR:-/tmp}/hledger-addonj.XXXXXX"); printf "#!/bin/sh\necho SHOWARGS: \"\$@\"\n" > "$D/hledger-showargs"; chmod +x "$D/hledger-showargs"; printf "2017-01-01 x\n  a  1\n  b\n" > "$J"; PATH="$D:$PATH" hledger repl --no-conf -f "$J"; rm -rf "$D" "$J"'
+> /SHOWARGS: -f .* expenses:/
+
+# ** 22. repl -f propagation, part 2:
+# If repl was started without -f options, it does not pass -f to addon commands.
+# (In this mode a default journal is required, so we provide one.)
+<
+showargs expenses:
+$ sh -c 'D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-addon.XXXXXX"); J=$(mktemp "${TMPDIR:-/tmp}/hledger-addonj.XXXXXX"); printf "#!/bin/sh\necho SHOWARGS: \"\$@\"\n" > "$D/hledger-showargs"; chmod +x "$D/hledger-showargs"; printf "2017-01-01 x\n  a  1\n  b\n" > "$J"; PATH="$D:$PATH" LEDGER_FILE="$J" hledger repl --no-conf; rm -rf "$D" "$J"'
+>
+SHOWARGS: expenses:
+
+# ** 23. A command alias that expands to "run -- CMD" works (the run command's first -- is protected).
+<
+exphl
+$ sh -c 'C=$(mktemp "${TMPDIR:-/tmp}/hledger-exphl.XXXXXX"); J=$(mktemp "${TMPDIR:-/tmp}/hledger-exphlj.XXXXXX"); printf "[alias]\nexphl = run -- echo %sNonreimbursed expenses:%s\n" "'"'"'" "'"'"'" > "$C"; printf "2017-01-01 x\n  a  1\n  b\n" > "$J"; hledger repl --conf "$C" -f "$J"; rm -f "$C" "$J"'
+>
+Nonreimbursed expenses:
+
+# ** 24. In the repl, help (with no argument) shows the quick reference card.
+<
+help
+$ hledger repl -f sample.journal
+> /HLEDGER QUICK REFERENCE/
+
+# ** 25. In the repl, help subtopics dispatch like the help command at the CLI
+# (here: help usage CMD shows that command's usage, not the manual).
+<
+help usage balance
+$ hledger repl -f sample.journal
+> /^balance \[OPTIONS\]/
+
+# ** 26. In the repl, h is a short alias for help, passing arguments through
+# (here: h usage CMD works like help usage CMD).
+<
+h usage balance
+$ hledger repl -f sample.journal
+> /^balance \[OPTIONS\]/
+
+# ** 27. In the repl, CMD -h shows the full help (including the general flags),
+# not a truncated version, like CMD -h at the command line.
+<
+balance -h
+$ hledger repl -f sample.journal
+> /General input flags:/
+
+# ** 28. run/repl's echo interprets the backslash escapes \n, \t, \r and \\
+# (unrecognised escapes like \q are kept as written). Tab and CR are mapped to
+# T and R by tr, so the expected output needs no literal control characters.
+<
+2017-01-01
+  a  1
+  b
+$ hledger run -f- -- echo 'one\ntwo' -- echo 'tab\tend' -- echo 'cr\rend' -- echo 'back\\slash' -- echo 'keep\qme' | tr '\t\r' 'TR'
+>
+one
+two
+tabTend
+crRend
+back\slash
+keep\qme
+
+# ** 29. A successful addon command does not end a run sequence; later commands still run.
+$ mkdir -p $$d; printf '#!/bin/sh\necho ADDON RAN\n' >$$d/hledger-zzzz; chmod +x $$d/hledger-zzzz; PATH=$$d:$PATH hledger run -f /dev/null -- zzzz -- echo after; rm -rf $$d
+ADDON RAN
+after
+
+# ** 30. A failing addon command ends the run sequence, propagating its exit code.
+$ mkdir -p $$d; printf '#!/bin/sh\nexit 3\n' >$$d/hledger-zzzz; chmod +x $$d/hledger-zzzz; PATH=$$d:$PATH hledger run -f /dev/null -- echo one -- zzzz -- echo two; s=$?; rm -rf $$d; exit $s
+one
+>= 3
+
+# ** 31. run passes an empty argument to an addon, as the command line does.
+$ mkdir -p $$d; printf '#!/bin/sh\nprintf "argv:"; for a in "$@"; do printf " [%%s]" "$a"; done; echo\n' >$$d/hledger-zzzz; chmod +x $$d/hledger-zzzz; printf 'zzzz a "" b\n' >$$f; PATH=$$d:$PATH hledger run -f /dev/null $$f; rm -rf $$d $$f
+argv: [-f] [/dev/null] [a] [] [b]
+
+# ** 32. repl passes an empty argument to an addon, as the command line does.
+<
+zzzz a "" b
+$ sh -c 'D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-addon.XXXXXX"); J=$(mktemp "${TMPDIR:-/tmp}/hledger-addonj.XXXXXX"); printf "#!/bin/sh\nprintf argv:; for a in \"\$@\"; do printf \" [%%s]\" \"\$a\"; done; echo\n" > "$D/hledger-zzzz"; chmod +x "$D/hledger-zzzz"; printf "2017-01-01 x\n  a  1\n  b\n" > "$J"; PATH="$D:$PATH" hledger repl --no-conf -f "$J"; rm -rf "$D" "$J"'
+> /argv: \[-f\] \[.*\] \[a\] \[\] \[b\]/
+
+# ** 33. run passes an argument containing an apostrophe to an addon unchanged.
+$ mkdir -p $$d; printf '#!/bin/sh\nprintf "argv:"; for a in "$@"; do printf " [%%s]" "$a"; done; echo\n' >$$d/hledger-zzzz; chmod +x $$d/hledger-zzzz; printf 'zzzz a "it%ss" b\n' "'" >$$f; PATH=$$d:$PATH hledger run -f /dev/null $$f; rm -rf $$d $$f
+argv: [-f] [/dev/null] [a] [it's] [b]
+
+# ** 34. A run/repl command line with an unclosed quote gives a clear error,
+# showing the position and the problem, not a raw parse error dump.
+$  printf "bal 'f\n" >$$f; hledger run -f /dev/null $$f; s=$?; rm -f $$f; exit $s
+>2 /could not parse this command line:
+1:7:
+  \|
+1 \| bal 'f
+  \|       \^
+unexpected end of input
+expecting '''/
+>= 1
+
+# ** 35. repl's automatic reloading notices a change to a CSV rules file,
+# not just to the data file. (The rules file is edited from within the repl,
+# with a ! shell command, between two print commands.)
+$ mkdir -p $$d; printf 'date,amount\n2026-01-01,10\n' >$$d/t.csv; printf 'skip 1\nfields date,amount\naccount1 assets:one\naccount2 income:two\n' >$$d/t.csv.rules; printf 'skip 1\nfields date,amount\naccount1 assets:two\naccount2 income:two\n' >$$d/r2; printf 'print\n!cp %s/r2 %s/t.csv.rules\nprint\n' $$d $$d | hledger repl --no-conf -f $$d/t.csv 2>/dev/null | grep assets:; rm -rf $$d
+    assets:one                                    10
+    assets:two                                    10
+
+# ** 36. In a run/repl command line, quotes can enclose part of an argument,
+# as in the shell: date:'1 to 15' is the single argument "date:1 to 15".
+<
+2026-09-05 five
+  a  1
+  b
+2026-09-20 twenty
+  a  1
+  b
+$  printf "reg date:'2026-09-01 to 2026-09-15'\n" >$$f; hledger run -f- $$f; rm -f $$f
+2026-09-05 five                 a                                1             1
+                                b                               -1             0

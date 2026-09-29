@@ -1,15 +1,38 @@
 # Contributor Quick Start
 
-<div class=pagetoc>
-
-<!-- toc -->
-</div>
-
 New contributors of all kinds are always welcome in the hledger project. 
 We invite you to jump in, and thank you!
 
 There are many ways to help. Browse the ideas below,
 and/or say hello in the [chat](support.md) and we'll help find you a useful job.
+
+## Developer quick start
+
+Install these prerequisites:
+
+- [git](https://git-scm.com)
+- [stack](https://haskellstack.org) (or [cabal](https://www.haskell.org/cabal/), but project scripts use stack)
+- [just](https://just.systems), which runs our project scripts
+- bash, used by the project scripts (on mac, a newer one than /bin/bash: `brew install bash`)
+- [shelltestrunner](https://hackage.haskell.org/package/shelltestrunner), which runs our functional tests: `stack install shelltestrunner`
+
+Get and build the code (for more details and help with build problems, see [Build from source](install.md#build-from-source)):
+
+    git clone https://github.com/hledgerorg/hledger
+    cd hledger
+    stack build hledger    # or hledger-ui, hledger-web, or no argument to build all
+
+Run the executable you just built:
+
+    stack exec -- hledger    # ARGS...
+
+Run the tests:
+
+    just functest    # unit and functional tests; add --hide for less output
+    just test        # all tests; slower, requires a second build for doctests
+
+For more workflows (GHCI, ghcid, benchmarks, docs generation..) see [Developer workflows](DEVWORKFLOWS.md),
+and for more project scripts run `just` in the main repo.
 
 ## Visitor / passer-by ?
 
@@ -23,6 +46,7 @@ and/or say hello in the [chat](support.md) and we'll help find you a useful job.
 
 - Share what you've learned so far to help others. This is a quadruple win -
   it helps them, improves your own understanding, builds community, and frees up maintainer time!
+- Add translation to your language. Starting with the [tldr](https://github.com/hledgerorg/hledger/tree/main/doc/tldr) has high value. Or if you want to spend minimal effort, then just translate the [top level account names](https://github.com/hledgerorg/hledger/tree/main/examples/i18n). To translate hledger's own report headings and interfaces, see [TRANSLATING](TRANSLATING.md); no programming needed.
 
 ## Funder ?
 
@@ -36,8 +60,8 @@ and/or say hello in the [chat](support.md) and we'll help find you a useful job.
 - Test installation on platforms you have access to
 - Test examples, advice, and links in the docs
 - Run the latest release or developer build in daily use
-- Run [tests](#run-package-tests)
-- Run [benchmarks](#run-package-benchmarks)
+- Run [tests](DEVWORKFLOWS.md#run-package-tests)
+- Run [benchmarks](DEVWORKFLOWS.md#run-benchmarks)
 - Report packaging, documentation, UX, functional, performance issues (<https://bugs.hledger.org/new>)
 - Test new releases, report regressions and collect regression finder bounties
 - Discuss and help analyse problems via chat/mail list/issue tracker
@@ -61,6 +85,7 @@ and/or say hello in the [chat](support.md) and we'll help find you a useful job.
 
 ## Developer ?
 
+- See the [Developer quick start](#developer-quick-start) above
 - Give feedback on your experience using the hledger packages
 - Suggest API improvements
 - See the [Developer FAQ](DEVFAQ.md) and other [Developer docs](dev.md).
@@ -68,8 +93,8 @@ and/or say hello in the [chat](support.md) and we'll help find you a useful job.
 ## Technical writer ?
 
 - Get familiar with the documentation, website and online presence; review and test
-- Get familiar with the doc/site source files and generation process (see [Just, Make, Shake](JUST-MAKE-SHAKE.md))
-- Help improve user, contributor, process docs
+- Get familiar with the doc/site source files and generation process (see [DOCS](DOCS.md) and [DEVWORKFLOWS](DEVWORKFLOWS.md#work-on-docs))
+- Help improve user, contributor, process docs, translation
 
 ## Web designer / webmaster ?
 

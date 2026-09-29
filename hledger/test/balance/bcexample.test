@@ -1,8 +1,7 @@
 # Record a complicated real-life example. Layout is not perfect, but any
 # changes should be noted and evaluated whether they improve things.
 
-$ hledger -f bcexample.hledger bal -t -1 --color=always
->
+$ hledger -f bcexample.journal bal -t -1 --color=always
              70.00 GLD
             17.00 ITOT
 489.957000000000 RGAGX
@@ -11,14 +10,14 @@ $ hledger -f bcexample.hledger bal -t -1 --color=always
 309.950000000000 VBMPX
              36.00 VEA
             294.00 VHT  Assets
-        [31m-2891.85 USD[m  Liabilities
-        [31m-3077.70 USD[m  Equity
-    [31m-52000.00 IRAUSD[m
-      [31m-365071.44 USD[m
-       [31m-337.26 VACHR[m  Income
-     52000.00 IRAUSD
-       260911.70 USD  Expenses
---------------------
+          [31m-2891.85 USD[m  Liabilities
+          [31m-3077.70 USD[m  Equity
+      [31m-52000.00 IRAUSD[m
+        [31m-365071.44 USD[m
+         [31m-337.26 VACHR[m  Income
+       52000.00 IRAUSD
+         260911.70 USD  Expenses
+----------------------
              70.00 GLD
             17.00 ITOT
 489.957000000000 RGAGX

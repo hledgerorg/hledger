@@ -20,11 +20,12 @@ import           Data.Aeson
 import           Data.Aeson.Encode.Pretty (Config(..), Indent(..), NumberFormat(..),
                      encodePretty', encodePrettyToTextBuilder')
 --import           Data.Aeson.TH
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Lazy qualified as BL
 import           Data.Decimal (DecimalRaw(..), roundTo)
 import           Data.Maybe (fromMaybe)
-import qualified Data.Text.Lazy    as TL
-import qualified Data.Text.Lazy.Builder as TB
+import Data.Text.Lazy qualified    as TL
+import Data.Text.Lazy.Builder qualified as TB
+import Data.Map qualified as M
 import           Text.Megaparsec (Pos, SourcePos, mkPos, unPos)
 
 import           Hledger.Data.Types
@@ -41,7 +42,7 @@ instance ToJSON Pos where
   toJSON = toJSON . unPos
   toEncoding = toEncoding . unPos
 
--- https://github.com/simonmichael/hledger/issues/1195
+-- https://github.com/hledgerorg/hledger/issues/1195
 
 -- The default JSON output for Decimal can contain 255-digit integers
 -- (for repeating decimals caused by implicit transaction prices).
@@ -82,6 +83,7 @@ decimalKV d = let d' = if decimalPlaces d <= 10 then d else roundTo 10 d in
     , "floatingPoint"   .= (realToFrac d' :: Double)
     ]
 
+instance ToJSON CostBasis
 instance ToJSON Amount
 instance ToJSON Rounding
 instance ToJSON AmountStyle
@@ -105,7 +107,7 @@ instance ToJSON MixedAmount where
 instance ToJSON BalanceAssertion
 instance ToJSON AmountCost
 instance ToJSON MarketPrice
-instance ToJSON PostingType
+instance ToJSON PostingRealness
 
 instance ToJSON Posting where
   toJSON = object . postingKV
@@ -125,7 +127,7 @@ postingKV Posting{..} =
     , "paccount"          .= paccount
     , "pamount"           .= pamount
     , "pcomment"          .= pcomment
-    , "ptype"             .= ptype
+    , "preal"             .= preal
     , "ptags"             .= ptags
     , "pbalanceassertion" .= pbalanceassertion
     -- To avoid a cycle, show just the parent transaction's index number
@@ -153,26 +155,61 @@ instance ToJSON TagDeclarationInfo
 instance ToJSON Commodity
 instance ToJSON TimeclockCode
 instance ToJSON TimeclockEntry
-instance ToJSON Journal
 
-instance ToJSON Account where
-  toJSON = object . accountKV
-  toEncoding = pairs . mconcat . accountKV
+-- Journal's jparse* fields are transient parser state, not journal data,
+-- so we omit them from the JSON.
+instance ToJSON Journal where
+  toJSON = object . journalKV
+  toEncoding = pairs . mconcat . journalKV
 
-accountKV ::
+journalKV ::
 #if MIN_VERSION_aeson(2,2,0)
   KeyValue e kv
 #else
   KeyValue kv
 #endif
-  => Account -> [kv]
+  => Journal -> [kv]
+journalKV j =
+    [ "jdeclaredpayees"          .= jdeclaredpayees j
+    , "jdeclaredtags"            .= jdeclaredtags j
+    , "jdeclaredaccounts"        .= jdeclaredaccounts j
+    , "jdeclaredaccounttags"     .= jdeclaredaccounttags j
+    , "jdeclaredaccounttypes"    .= jdeclaredaccounttypes j
+    , "jaccounttypes"            .= jaccounttypes j
+    , "jdeclaredcommodities"     .= jdeclaredcommodities j
+    , "jdeclaredcommoditytags"   .= jdeclaredcommoditytags j
+    , "jinferredcommoditystyles" .= jinferredcommoditystyles j
+    , "jglobalcommoditystyles"   .= jglobalcommoditystyles j
+    , "jpricedirectives"         .= jpricedirectives j
+    , "jinferredmarketprices"    .= jinferredmarketprices j
+    , "jtxnmodifiers"            .= jtxnmodifiers j
+    , "jperiodictxns"            .= jperiodictxns j
+    , "jtxns"                    .= jtxns j
+    , "jfiles"                   .= jfiles j
+    , "jlastreadtime"            .= jlastreadtime j
+    ]
+
+instance ToJSON BalanceData
+instance ToJSON a => ToJSON (PeriodData a) where
+  toJSON a = object
+    [ "pdpre" .= pdpre a
+    , "pdperiods" .= (M.toList $ pdperiods a)
+    ]
+
+instance ToJSON a => ToJSON (Account a) where
+  toJSON = object . accountKV
+  toEncoding = pairs . mconcat . accountKV
+
+accountKV ::
+#if MIN_VERSION_aeson(2,2,0)
+  (KeyValue e kv, ToJSON a)
+#else
+  (KeyValue kv, ToJSON a)
+#endif
+  => Account a -> [kv]
 accountKV a =
     [ "aname"            .= aname a
     , "adeclarationinfo" .= adeclarationinfo a
-    , "aebalance"        .= aebalance a
-    , "aibalance"        .= aibalance a
-    , "anumpostings"     .= anumpostings a
-    , "aboring"          .= aboring a
     -- To avoid a cycle, show just the parent account's name
     -- in a dummy field. When re-parsed, there will be no parent.
     , "aparent_"         .= maybe "" aname (aparent a)
@@ -181,7 +218,9 @@ accountKV a =
     -- The actual subaccounts (and their subs..), making a (probably highly redundant) tree
     -- ,"asubs"        .= asubs a
     -- Omit the actual subaccounts
-    , "asubs"            .= ([]::[Account])
+    , "asubs"            .= ([]::[Account BalanceData])
+    , "aboring"          .= aboring a
+    , "adata"            .= adata a
     ]
 
 instance ToJSON Ledger
@@ -194,6 +233,7 @@ instance FromJSON SourcePos
 instance FromJSON Pos where
   parseJSON = fmap mkPos . parseJSON
 
+instance FromJSON CostBasis
 instance FromJSON Amount
 instance FromJSON Rounding
 instance FromJSON AmountStyle
@@ -211,14 +251,21 @@ instance FromJSON MixedAmount where
 instance FromJSON BalanceAssertion
 instance FromJSON AmountCost
 instance FromJSON MarketPrice
-instance FromJSON PostingType
+instance FromJSON PostingRealness
 instance FromJSON Posting
 instance FromJSON Transaction
 instance FromJSON AccountDeclarationInfo
+
+instance FromJSON BalanceData
+instance FromJSON a => FromJSON (PeriodData a) where
+  parseJSON = withObject "PeriodData" $ \v -> PeriodData
+    <$> v .: "pdpre"
+    <*> (M.fromList <$> v .: "pdperiods")
+
 -- XXX The ToJSON instance replaces subaccounts with just names.
 -- Here we should try to make use of those to reconstruct the
 -- parent-child relationships.
-instance FromJSON Account
+instance FromJSON a => FromJSON (Account a)
 
 -- Decimal, various attempts
 --

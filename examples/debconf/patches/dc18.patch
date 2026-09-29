@@ -1,0 +1,19 @@
+diff --git a/budget/commodities.inc b/budget/commodities.inc
+index 8a644c7..675d1c1 100644
+--- a/budget/commodities.inc
++++ b/budget/commodities.inc
+@@ -17,2 +17,6 @@ commodity CHF
+ 
++commodity CNY
++   note Chinese yuan
++   format CNY 1,000.00
++
+ commodity MXN
+@@ -23,3 +27,3 @@ commodity TWD
+    note Taiwan New Dollar
+-   format TWD 1,000
++   format TWD 1,000.00
+    default
+diff --git a/budget/forex.db b/budget/forex.db
+new file mode 100644
+index 0000000..e69de29

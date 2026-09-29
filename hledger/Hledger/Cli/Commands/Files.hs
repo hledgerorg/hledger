@@ -11,7 +11,7 @@ module Hledger.Cli.Commands.Files (
  ,files
 ) where
 
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Safe (headMay)
 
 import Hledger

@@ -1,0 +1,42 @@
+# * --period-titles option
+
+# ** 1. compact headings are the default, describing subperiods in compact form when feasible
+# (eg falling on natural period boundaries, and within a single year).
+<
+2024/1/1
+  (a)  1
+2024/2/1
+  (a)  1
+
+$ hledger -f- balance --monthly
+Balance changes in 2024-01-01..2024-02-29:
+
+   || Jan  Feb 
+===++==========
+ a ||   1    1 
+---++----------
+   ||   1    1 
+
+# ** 2. --period-titles=dates always shows full ISO dates or date ranges.
+$ hledger -f- balance --monthly --period-titles=dates
+Balance changes in 2024-01-01..2024-02-29:
+
+   || 2024-01-01..2024-01-31  2024-02-01..2024-02-29 
+===++================================================
+ a ||                      1                       1 
+---++------------------------------------------------
+   ||                      1                       1 
+
+# ** 3. --period-titles=dates affects other output formats, like csv.
+<
+2024/1/1
+  (a)  1
+$ hledger -f- balance --monthly -O csv --period-titles=dates
+"account","2024-01-01..2024-01-31"
+"a","1"
+"Total:","1"
+
+# ** 4. An invalid argument gives a helpful error message
+$ hledger -f- balance --monthly --period-titles=foo
+>2 /--period-titles's argument should be "compact" or "dates", not "foo"/
+>=1

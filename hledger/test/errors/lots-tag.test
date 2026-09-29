@@ -1,0 +1,8 @@
+$ hledger check -f lots-tag.j
+>2 /hledger: Error: .*lots-tag\.j:3:
+3 \| commodity AAPL  ; lots: BADMETHOD
+
+unrecognised lots: tag value "BADMETHOD"\.
+Use FIFO, .*
+/
+>= 1

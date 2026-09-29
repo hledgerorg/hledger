@@ -1,6 +1,6 @@
 # hledger aregister
 
-> Show the transactions and running balances in one account, with each transaction on one line.
+> Show the transactions and running balances in one account, with one entry per transaction.
 > More information: <https://hledger.org/hledger.html#aregister>.
 
 - Show transactions and running balance in the `assets:bank:checking` account:

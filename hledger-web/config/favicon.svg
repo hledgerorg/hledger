@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>hledger</title>
+  <!-- A coin from hledger's logo, struck with an equals sign: every transaction
+       balances. Deliberately not a currency symbol - hledger is multi-commodity.
+       Palette from .sandstorm/grain.svg. config/favicon.ico is generated from
+       this by tools/mkfavicon.py. -->
+  <circle cx="16" cy="16" r="15.5" fill="#D87E12"/>
+  <circle cx="16" cy="16" r="12.6" fill="#F4B519"/>
+  <rect x="8.2" y="10.2" width="15.6" height="4.2" rx="1.6" fill="#7A4406"/>
+  <rect x="8.2" y="17.6" width="15.6" height="4.2" rx="1.6" fill="#7A4406"/>
+</svg>

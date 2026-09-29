@@ -2,17 +2,17 @@
   #{title'}
 
 $if elem AddPermission perms
-  <a #addformlink href="#" role="button" style="cursor:pointer; margin-top:1em;"
-     data-toggle="modal" data-target="#addmodal" title="Add a new transaction to the journal">
-    Add a transaction
+  <a #addformlink href="#" role="button"
+     data-toggle="modal" data-target="#addmodal" title=_{HMsg "Add a new transaction to the journal"}>
+    _{HMsg "Add a transaction"}
 
 <div .table-responsive>
   <table .transactionsreport .table .table-condensed>
     <thead>
-      <th .date style="text-align:left;">Date
-      <th .description style="text-align:left;">Description
-      <th .account style="text-align:left;">Account
-      <th .amount style="text-align:right;">Amount
+      <th .date>_{HMsgc "column heading" "Date"}
+      <th .description>_{HMsgc "column heading" "Description"}
+      <th .account>_{HMsgc "column heading" "Account"}
+      <th .amount>_{HMsgc "column heading" "Amount"}
 
     $forall torig <- items
       <tr .title ##{transactionFrag torig} title="#{showTransaction torig}">
@@ -20,7 +20,7 @@ $if elem AddPermission perms
           #{show (tdate torig)}
         <td colspan=2>
           #{textElideRight 60 (tdescription torig)}
-        <td .amount style="text-align:right;">
+        <td .amount>
 
       $forall Posting { paccount = acc, pamount = amt } <- tpostings torig
         <tr .posting>
@@ -30,7 +30,7 @@ $if elem AddPermission perms
             &nbsp;
             <a href="@?{acctlink acc}##{tindex torig}" title="#{acc}">
               #{elideAccountName 40 acc}
-          <td .amount style="text-align:right;">
+          <td .amount>
             ^{mixedAmountAsHtml amt}
 
 $if elem AddPermission perms

@@ -1,5 +1,5 @@
 ; An example of YNAB-ish envelope budgeting with hledger/ledger
-; cf https://github.com/simonmichael/hledger/issues/315
+; cf https://github.com/hledgerorg/hledger/issues/315
 
 ; Using accounts like the following:
 ;

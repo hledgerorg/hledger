@@ -11,76 +11,107 @@ $if elem ViewPermission perms
   <div#sidebar-menu .sidebar-offcanvas.#{sideShowmd}.#{sideShowsm}>
     <table .main-menu .table>
       ^{accounts}
+  $# Restore the sidebar's scroll position (saved per-tab in sessionStorage)
+  $# as soon as its markup is parsed, ie right here, inline. Waiting for eg
+  $# DOMContentLoaded would be too late: on pages with a long journal/register
+  $# the browser paints the sidebar (at scroll position 0) well before the
+  $# rest of the document is parsed, and restoring then makes the sidebar
+  $# visibly jump. sessionStorage can throw (not just be absent) when storage
+  $# is blocked, eg in a sandboxed iframe, with cookies disabled, or in some
+  $# private-browsing modes; the try makes this convenience a no-op there.
+  <script nonce=#{nonce}>
+    (function () {
+      var sidebar = document.getElementById('sidebar-menu');
+      var key = 'hledgerSidebarScrollTop';
+      var ignoreNextScrollSave = false;
+      try {
+        var saved = parseInt(sessionStorage.getItem(key), 10);
+        if (!isNaN(saved)) {
+          sidebar.scrollTop = saved;
+          // Restoring fires a scroll event, but only if the position actually
+          // changed; on a page whose account list is shorter the value clamps,
+          // so skip saving that one event to avoid shrinking the remembered
+          // offset for later pages.
+          ignoreNextScrollSave = sidebar.scrollTop !== 0;
+        }
+      } catch (e) {}
+      sidebar.addEventListener('scroll', function () {
+        if (ignoreNextScrollSave) { ignoreNextScrollSave = false; return; }
+        try { sessionStorage.setItem(key, sidebar.scrollTop); } catch (e) {}
+      });
+    })();
 
 <div#main-content .col-xs-12.#{mainShowmd}.#{mainShowsm}>
   $maybe m <- msg
     <div #message .alert.alert-info>#{m}
   $if elem ViewPermission perms
     <form#searchform.input-group method=GET>
-      <input .form-control name=q value=#{qparam} placeholder="Search"
-        title="Enter hledger search patterns to filter the data below">
+      <input .form-control name=q value=#{qparam} placeholder=_{HMsgc "search box" "Search"}
+        title=_{HMsg "Enter hledger search patterns to filter the data below"}>
+      $forall (name, value) <- periodParams
+        <input type=hidden name=#{name} value=#{value}>
       <div .input-group-btn>
         $if not (T.null qparam)
-          <a href=@{here} .btn .btn-default title="Clear search terms">
+          <a href=@?{(here, periodParams)} .btn .btn-default title=_{HMsg "Clear search terms"}>
             <span .glyphicon .glyphicon-remove-circle>
-        <button .btn .btn-default type=submit title="Apply search terms">
+        <button .btn .btn-default type=submit title=_{HMsg "Apply search terms"}>
           <span .glyphicon .glyphicon-search>
         $if elem EditPermission perms
-          <a href="@{ManageR}" .btn.btn-default title="Manage journal files">
+          <a href="@{ManageR}" .btn.btn-default title=_{HMsg "Manage journal files"}>
             <span .glyphicon .glyphicon-wrench>
         <button .btn .btn-default type=button data-toggle="modal" data-target="#helpmodal"
-           title="Show search and general help">
+           title=_{HMsg "Show search and general help"}>
           <span .glyphicon .glyphicon-question-sign>
   ^{widget}
 
-<div .modal.fade #helpmodal tabindex="-1" role="dialog" aria-labelledby="helpLabel" aria-hidden="true">
-  <div .modal-dialog .modal-lg>
-    <div .modal-content>
-      <div .modal-header>
-        <button type="button" .close data-dismiss="modal" aria-hidden="true">&times;
-        <span style="float:right; margin-right:4em;">#{progname} #{packageversion}
-        <h3 .modal-title #helpLabel>Help
-      <div .modal-body>
+<dialog #helpmodal tabindex=-1 aria-labelledby="helpLabel">
+  <div .modal-header>
+    <button type="button" .close data-dismiss="modal" aria-label=_{HMsg "Close"}>&times;
+    <span .version>#{progname} #{packageversion}
+    <h3 .modal-title #helpLabel>_{HMsg "Help"}
+  <div .modal-body>
+        $# The keys and query syntax stay outside the translatable text.
         <div .row>
           <div .col-xs-6>
             <p>
-              <b>Keyboard shortcuts
+              <b>_{HMsg "Keyboard shortcuts"}
               <ul>
-                <li> <code>h</code> or maybe <code>?</code> - view this help (escape or click to exit)
-                <li> <code>j</code> - go to the Journal view (home)
-                <li> <code>a</code> - add a transaction (escape to cancel)
-                <li> <code>s</code> - toggle sidebar
-                <li> <code>f</code> - focus search form ("find")
-                <li> <code>e</code> - hide empty accounts in sidebar
+                <li> <code>h</code> _{HMsg "or maybe"} <code>?</code> - _{HMsg "view this help (escape or click to exit)"}
+                <li> <code>j</code> - _{HMsg "go to the Journal view (home)"}
+                <li> <code>a</code> - _{HMsg "add a transaction (escape to cancel)"}
+                <li> <code>s</code> - _{HMsg "toggle sidebar"}
+                <li> <code>f</code> - _{HMsg "focus search form"} ("find")
+                <li> <code>e</code> - _{HMsg "hide empty accounts in sidebar"}
             <p>
-              <b>General
+              <b>_{HMsg "General"}
               <ul>
-                <li> The Journal view shows general journal entries, representing zero-sum movements of money (or other commodity) between hierarchical accounts
-                <li> The sidebar shows the resulting accounts and their final balances
-                <li> Parent account balances include subaccount balances
-                <li> Multiple currencies in balances are displayed one above the other
-                <li> Click account name links to see transactions affecting that account, with running balance
-                <li> Click date links to see journal entries on that date
+                <li> _{HMsg "The Journal view shows general journal entries, representing zero-sum movements of money (or other commodity) between hierarchical accounts"}
+                <li> _{HMsg "The sidebar shows the resulting accounts and their final balances"}
+                <li> _{HMsg "Parent account balances include subaccount balances"}
+                <li> _{HMsg "Multiple currencies in balances are displayed one above the other"}
+                <li> _{HMsg "Click account name links to see transactions affecting that account, with running balance"}
+                <li> _{HMsg "Click date links to see journal entries on that date"}
           <div .col-xs-6>
             <p>
-              <b>Search
+              <b>_{HMsgc "help heading" "Search"}
               <ul>
-                <li> Search patterns with spaces should be enclosed in quotes.
-                <li> <code>REGEX</code> - match account names
-                <li> <code>type:TYPE</code> - match account types
-                <li> <code>date:PERIODEXP</code> - match dates
-                <li> <code>status:*</code>, <code>status:!</code>, <code>status:</code> - match status
-                <li> <code>code:REGEX</code> - match transaction codes
-                <li> <code>desc:REGEX</code> - match transaction descriptions
-                <li> <code>payee:REGEX</code> - match payee part of descriptions
-                <li> <code>note:REGEX</code> - match note part of descriptions
-                <li> <code>amt:N</code>, <code>amt:&lt;N</code>, <code>amt:&gt;N</code> - match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only.
-                <li> <code>cur:REGEX</code> - match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write <code>\$</code>
-                <li> <code>tag:NAME</code>, <code>tag:NAME=REGEX</code> - match tags, or tag and value
-                <li> <code>real:BOOL</code> - match postings' realness/virtualness
-                <li> <code>not:QTERM</code> - prepend not: to negate a search term
-                <li> <code>expr:'QEXPR'</code> - match with a boolean query (and, or, not, (..))
-                <li>  <code>any:'QEXPR'</code> - match transactions where any posting matches
-                <li>  <code>all:'QEXPR'</code> - match transactions where all postings match
-                <li style="margin-top:1em;"> <code>depth:N</code> - clip account names at this depth
+                <li> _{HMsg "Search patterns with spaces should be enclosed in quotes."}
+                <li> <code>REGEX</code> - _{HMsg "match account names"}
+                <li> <code>type:TYPE</code> - _{HMsg "match account types"}
+                <li> <code>date:PERIODEXP</code> - _{HMsg "match dates"}
+                <li> <code>status:*</code>, <code>status:!</code>, <code>status:</code> - _{HMsg "match status"}
+                <li> <code>code:REGEX</code> - _{HMsg "match transaction codes"}
+                <li> <code>find:REGEX</code> _{HMsg "or"} <code>::REGEX</code> - _{HMsg "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"}
+                <li> <code>desc:REGEX</code> - _{HMsg "match transaction descriptions"}
+                <li> <code>payee:REGEX</code> - _{HMsg "match payee part of descriptions"}
+                <li> <code>note:REGEX</code> - _{HMsg "match note part of descriptions"}
+                <li> <code>amt:N</code>, <code>amt:&lt;N</code>, <code>amt:&gt;N</code> - _{HMsg "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."}
+                <li> <code>cur:REGEX</code> - _{HMsg "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"} <code>\$</code>
+                <li> <code>tag:NAME</code>, <code>tag:NAME=REGEX</code> - _{HMsg "match tags, or tag and value"}
+                <li> <code>real:BOOL</code> - _{HMsg "match postings' realness/virtualness"}
+                <li> <code>not:QTERM</code> - _{HMsg "prepend not: to negate a search term"}
+                <li> <code>expr:'QEXPR'</code> - _{HMsg "match with a boolean query (and, or, not, (..))"}
+                <li>  <code>any:'QEXPR'</code> - _{HMsg "match transactions where any posting matches"}
+                <li>  <code>all:'QEXPR'</code> - _{HMsg "match transactions where all postings match"}
+                <li .gap-above> <code>depth:N</code> - _{HMsg "clip account names at this depth"}
                 $# <li> Description, account, status query terms are OR'ed, others are AND'ed.

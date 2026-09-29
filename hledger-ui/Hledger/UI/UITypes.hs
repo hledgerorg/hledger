@@ -37,6 +37,11 @@ Brick.defaultMain brickapp st
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE TemplateHaskell    #-}
 {-# LANGUAGE EmptyDataDeriving #-}
+-- StrictData makes all screen-state and item record fields strict by default, so a future
+-- field that captures prior-generation data cannot silently be lazy and reintroduce the
+-- --watch reload leak (#1825). Note: this does not reach brick's GenericList.listSelected,
+-- so the explicit index forcing in UIScreens/UIState is still required.
+{-# LANGUAGE StrictData #-}
 
 module Hledger.UI.UITypes where
 
@@ -68,10 +73,26 @@ data UIState = UIState {
    astartupopts  :: UIOpts    -- ^ the command-line options and query arguments specified at program start
     -- can change while program runs:
   ,aopts         :: UIOpts    -- ^ the command-line options and query arguments currently in effect
-  ,ajournal      :: Journal   -- ^ the journal being viewed (can change with --watch)
-  ,aPrevScreens :: [Screen] -- ^ previously visited screens, most recent first (XXX silly, reverse these)
-  ,aScreen      :: Screen   -- ^ the currently active screen
+  ,ajournal      :: Journal   -- ^ the journal being viewed (can change with --watch).
+                              --   This is auncollapsedjournal collapsed for display, unless the lots toggle (--lots) is on.
+  ,auncollapsedjournal :: Journal  -- ^ the journal as loaded, retaining full lot detail (lot subaccounts and
+                                   --   synthetic lot postings). Kept so the lots toggle can re-derive ajournal in memory.
+  -- aScreen together with aPrevScreens forms a non-empty navigation zipper: there is
+  -- always an active screen, with zero or more suspended ancestor screens behind it.
+  -- "At least one screen" is thus guaranteed by the types, and popScreen at the root is
+  -- a no-op. aPrevScreens is kept nearest-first, so pushScreen/popScreen are O(1). Change
+  -- the stack only through pushScreen/popScreen/resetScreens, not by editing these fields.
+  --
+  -- Both fields are kept lazy (~) under StrictData: a screen's construction may read back
+  -- from the UIState that will contain it (eg --register startup derives a screen parameter
+  -- from the ui's options), and forcing them at construction would turn that benign laziness
+  -- knot into a <<loop>> (#1825). Reload regeneration forces screens explicitly
+  -- (regenerateScreens), so this does not weaken the leak fix.
+  ,aScreen      :: ~Screen   -- ^ the currently active screen (the zipper's focus)
+  ,aPrevScreens :: ~[Screen] -- ^ suspended ancestor screens, nearest first
   ,aMode         :: Mode      -- ^ the currently active mode on the current screen
+  ,aWarnings     :: [String]  -- ^ warnings collected during the last journal (re)load, oldest first;
+                              --   displayed until the next keypress (see warningOverlay)
   } deriving (Show)
 
 -- | Any screen can be in one of several modes, which modifies 
@@ -98,12 +119,13 @@ data Name =
   | TransactionEditor
   deriving (Ord, Show, Eq)
 
--- Unique names for screens the user can navigate to from the menu.
-data ScreenName =
-    Accounts
-  | CashScreen
-  | Balancesheet
-  | Incomestatement
+-- The kinds of accounts-like screen, selecting which accounts and balances it shows.
+-- Also used as the menu's screen names, since these are the screens reachable from the menu.
+data AccountsScreenKind =
+    AllAccounts
+  | CashAccounts
+  | BalancesheetAccounts
+  | IncomestatementAccounts
   deriving (Ord, Show, Eq)
 
 ----------------------------------------------------------------------------------------------------
@@ -163,12 +185,11 @@ data ScreenName =
 -- A new screen requires
 -- 1. a new constructor in the Screen type
 -- 2. a new screen state type if needed
--- 3. a new case in toAccountsLikeScreen if needed
--- 4. new cases in the uiDraw and uiHandle functions
--- 5. new constructor and updater functions in UIScreens, and a new case in screenUpdate
--- 6. a new module implementing draw and event-handling functions
--- 7. a call from any other screen which enters it (eg the menu screen, a new case in msEnterScreen)
--- 8. if it appears on the main menu: a new menu item in msNew
+-- 3. new cases in the uiDraw and uiHandle functions
+-- 4. new constructor and updater functions in UIScreens, and a new case in screenUpdate
+-- 5. a new module implementing draw and event-handling functions
+-- 6. a call from any other screen which enters it (eg the menu screen, a new case in msEnterScreen)
+-- 7. if it appears on the main menu: a new menu item in msNew
 
 -- cf https://github.com/jtdaugherty/brick/issues/379#issuecomment-1192000374
 -- | The various screens which a user can navigate to in hledger-ui,
@@ -176,31 +197,11 @@ data ScreenName =
 -- (The separate state types add code noise but seem to reduce partial code/invalid data a bit.)
 data Screen =
     MS MenuScreenState
-  | AS AccountsScreenState
-  | CS AccountsScreenState
-  | BS AccountsScreenState
-  | IS AccountsScreenState
+  | AS AccountsScreenState  -- ^ the all-accounts, cash, balance sheet and income statement screens; see _assKind
   | RS RegisterScreenState
   | TS TransactionScreenState
   | ES ErrorScreenState
   deriving (Show)
-
--- | A subset of the screens which reuse the account screen's state and logic.
--- Such Screens can be converted to and from this more restrictive type
--- for cleaner code.
-data AccountsLikeScreen = ALS (AccountsScreenState -> Screen) AccountsScreenState
-  deriving (Show)
-
-toAccountsLikeScreen :: Screen -> Maybe AccountsLikeScreen
-toAccountsLikeScreen scr = case scr of
-  AS ass -> Just $ ALS AS ass
-  CS ass -> Just $ ALS CS ass
-  BS ass -> Just $ ALS BS ass
-  IS ass -> Just $ ALS IS ass
-  _      -> Nothing
-
-fromAccountsLikeScreen :: AccountsLikeScreen -> Screen
-fromAccountsLikeScreen (ALS scons ass) = scons ass
 
 data MenuScreenState = MSS {
     -- view data:
@@ -208,10 +209,12 @@ data MenuScreenState = MSS {
   ,_mssUnused          :: ()                        -- ^ dummy field to silence warning
 } deriving (Show)
 
--- Used for the accounts screen and similar screens.
+-- Used for the all-accounts, cash, balance sheet and income statement screens,
+-- which differ only in which accounts and balances they show (selected by _assKind).
 data AccountsScreenState = ASS {
     -- screen parameters:
-   _assSelectedAccount :: AccountName                   -- ^ a copy of the account name from the list's selected item (or "")
+   _assKind            :: AccountsScreenKind                    -- ^ which accounts-like screen this is
+  ,_assSelectedAccount :: AccountName                   -- ^ a copy of the account name from the list's selected item (or "")
     -- view data derived from options, reporting date, journal, and screen parameters:
   ,_assList            :: List Name AccountsScreenItem  -- ^ list widget showing account names & balances
 } deriving (Show)
@@ -228,9 +231,10 @@ data RegisterScreenState = RSS {
 
 data TransactionScreenState = TSS {
     -- screen parameters:
-   _tssAccount      :: AccountName                  -- ^ the account whose register we entered this screen from
-  ,_tssTransactions :: [NumberedTransaction]        -- ^ the transactions in that register, which we can step through
-  ,_tssTransaction  :: NumberedTransaction          -- ^ the currently displayed transaction, and its position in the list
+   _tssAccount        :: AccountName                -- ^ the account whose register we entered this screen from
+  ,_tssForceInclusive :: Bool                       -- ^ whether the parent register included subaccounts
+  ,_tssTransactions   :: [NumberedTransaction]      -- ^ the transactions in that register, which we can step through
+  ,_tssTransaction    :: NumberedTransaction        -- ^ the currently displayed transaction, and its position in the list
 } deriving (Show)
 
 data ErrorScreenState = ESS {
@@ -242,7 +246,7 @@ data ErrorScreenState = ESS {
 -- | An item in the menu screen's list of screens.
 data MenuScreenItem = MenuScreenItem {
    msItemScreenName :: Text                         -- ^ screen display name
-  ,msItemScreen     :: ScreenName                   -- ^ an internal name we can use to find the corresponding screen
+  ,msItemScreen     :: AccountsScreenKind                   -- ^ an internal name we can use to find the corresponding screen
   } deriving (Show)
 
 -- | An item in the accounts screen's list of accounts and balances.
@@ -278,11 +282,6 @@ makeLenses ''ErrorScreenState
 
 ----------------------------------------------------------------------------------------------------
 
--- | Error message to use in case statements adapting to the different Screen shapes.
-errorWrongScreenType :: String -> a
-errorWrongScreenType lbl =
-  -- unsafePerformIO $ threadDelay 2000000 >>  -- delay to allow console output to be seen
-  error' (unwords [lbl, "called with wrong screen type, should not happen"])
 
 -- dummy monoid instance needed make lenses work with List fields not common across constructors
 --instance Monoid (List n a)

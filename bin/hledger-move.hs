@@ -37,8 +37,8 @@ import System.IO (hPutStrLn, stderr)
 import System.IO.Unsafe (unsafePerformIO)
 import Lens.Micro ((^.))
 import Text.Printf
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 
 import Hledger.Cli.Script
 
@@ -128,7 +128,7 @@ $ hledger-move all assets:broker1:FOO assets:broker2:FOO  # move all FOO lots to
 main :: IO ()
 main = do
   copts@CliOpts{rawopts_=rawopts, reportspec_=rspec0} <- getHledgerCliOpts cmdmode
-  withJournalDo copts $ \j -> do
+  withJournal copts $ \j -> do
     -- d <- getCurrentDay
     let
       -- arg errors

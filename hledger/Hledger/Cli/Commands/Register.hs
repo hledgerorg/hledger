@@ -21,27 +21,28 @@ module Hledger.Cli.Commands.Register (
 import Data.Default (def)
 import Data.Maybe (fromMaybe, isJust)
 import Data.Text (Text)
-import qualified Data.Map as Map
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.IO as TL
-import qualified Data.Text.Lazy.Builder as TB
+import Data.Map qualified as Map
+import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
+import Data.Text.Lazy.IO qualified as TL
+import Data.Text.Lazy.Builder qualified as TB
+import Safe (readMay)
 import System.Console.CmdArgs.Explicit (flagNone, flagReq)
 
+import Hledger.Utils.I18n qualified as I18n
 import Hledger hiding (per)
 import Hledger.Write.Csv (CSV, printCSV, printTSV)
 import Hledger.Write.Ods (printFods)
-import Hledger.Write.Html.Lucid (styledTableHtml)
-import qualified Hledger.Write.Spreadsheet as Spr
+import Hledger.Write.Html (titledTableHtml, htmlAsLazyText, toHtml)
+import Hledger.Write.Spreadsheet qualified as Spr
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils
 import Hledger.Cli.Anchor (setAccountAnchor, dateCell)
 import Text.Tabular.AsciiWide (Cell(..), Align(..), Properties(..), Header(Header, Group), renderRowB, textCell, tableBorders, borderSpaces)
-import qualified Lucid
 import Data.List (sortBy)
 import Data.Char (toUpper)
 import Data.List.Extra (intersect)
-import qualified System.IO as IO
+import System.IO qualified as IO
 
 registermode = hledgerCommandMode
   $(embedFileRelative "Hledger/Cli/Commands/Register.txt")
@@ -56,6 +57,7 @@ registermode = hledgerCommandMode
     ("fuzzy search for one recent posting with description closest to "++arg)
   ,flagNone ["related","r"] (setboolopt "related") "show postings' siblings instead"
   ,flagNone ["invert"] (setboolopt "invert") "display all amounts with reversed sign"
+  ,flagReq  ["drop"] (\s opts -> Right $ setopt "drop" s opts) "N" "omit N leading account name parts"
   ,flagReq  ["sort"] (\s opts -> Right $ setopt "sort" s opts) "FIELDS" 
     ("sort by: " <> sortKeysDescription
     <> ", or a comma-separated combination of these. For a descending sort, prefix with -. (Default: date)")
@@ -99,38 +101,46 @@ register opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j
   where
     styles = journalCommodityStylesWith HardRounding j
     rpt = postingsReport rspec j
-    render | fmt=="txt"  = postingsReportAsText opts
+    render | fmt=="txt"  = withTitle (_rsReportOpts rspec) . postingsReportAsText opts
            | fmt=="json" = toJsonText
-           | fmt=="csv"  = printCSV . postingsReportAsCsv
-           | fmt=="tsv"  = printTSV . postingsReportAsCsv
+           | fmt=="csv"  = printCSV . postingsReportAsCsv opts
+           | fmt=="tsv"  = printTSV . postingsReportAsCsv opts
            | fmt=="html" =
-                (<>"\n") . Lucid.renderText . styledTableHtml .
-                map (map (fmap Lucid.toHtml)) .
-                postingsReportAsSpreadsheet oneLineNoCostFmt baseUrl query
+                (<>"\n") . htmlAsLazyText .
+                titledTableHtml (effectiveTitle (_rsReportOpts rspec) "") .
+                map (map (fmap toHtml)) .
+                postingsReportAsSpreadsheet opts oneLineNoCostFmt baseUrl query
            | fmt=="fods" =
-                printFods IO.localeEncoding . Map.singleton "Register" .
+                printFods IO.localeEncoding . Map.singleton (I18n.tr (translations_ (_rsReportOpts rspec)) "Register") .
                 (,) (1,0) .
-                postingsReportAsSpreadsheet oneLineNoCostFmt baseUrl query
+                postingsReportAsSpreadsheet opts oneLineNoCostFmt baseUrl query
            | otherwise   = error' $ unsupportedOutputFormatError fmt  -- PARTIAL:
       where fmt = outputFormatFromOpts opts
             baseUrl = balance_base_url_ $ _rsReportOpts rspec
             query = querystring_ $ _rsReportOpts rspec
 
-postingsReportAsCsv :: PostingsReport -> CSV
-postingsReportAsCsv =
-  Spr.rawTableContent . postingsReportAsSpreadsheet machineFmt Nothing []
+postingsReportAsCsv :: CliOpts -> PostingsReport -> CSV
+postingsReportAsCsv opts pr =
+  case postingsReportAsSpreadsheet opts machineFmt Nothing [] pr of
+    []                    -> []
+    rows@(headerrow : _) -> Spr.rawTableContent $ titleRows headerrow ++ rows
+  where
+    titleText = effectiveTitle (_rsReportOpts $ reportspec_ opts) ""
+    titleRows headerrow
+      | T.null titleText = []
+      | otherwise        = [Spr.horizontalSpan headerrow (Spr.headerCell titleText)]
 
 -- ToDo: --layout=bare etc.
 -- ToDo: Text output does not show headers, but Spreadsheet does
 postingsReportAsSpreadsheet ::
-  AmountFormat -> Maybe Text -> [Text] ->
+  CliOpts -> AmountFormat -> Maybe Text -> [Text] ->
   PostingsReport -> [[Spr.Cell Spr.NumLines Text]]
-postingsReportAsSpreadsheet fmt baseUrl query is =
+postingsReportAsSpreadsheet opts fmt baseUrl query is =
   Spr.addHeaderBorders
     (map Spr.headerCell
       ["txnidx","date","code","description","account","amount","total"])
   :
-  map (postingsReportItemAsRecord fmt baseUrl query) is
+  map (postingsReportItemAsRecord opts fmt baseUrl query) is
 
 {- ToDo:
 link txnidx to journal URL,
@@ -138,11 +148,11 @@ link txnidx to journal URL,
 -}
 postingsReportItemAsRecord ::
     (Spr.Lines border) =>
-    AmountFormat -> Maybe Text -> [Text] ->
+    CliOpts -> AmountFormat -> Maybe Text -> [Text] ->
     PostingsReportItem -> [Spr.Cell border Text]
-postingsReportItemAsRecord fmt baseUrl query (_, _, _, p, b) =
+postingsReportItemAsRecord opts@CliOpts{reportspec_=rspec} fmt baseUrl query (_, mperiod, _, p, b) =
     [idx,
-     (dateCell baseUrl query (paccount p) date) {Spr.cellType = Spr.TypeDate},
+     dateSpanCellOrDate,
      cell code, cell desc,
      setAccountAnchor baseUrl query (paccount p) $ cell acct,
      amountCell (pamount p),
@@ -151,11 +161,20 @@ postingsReportItemAsRecord fmt baseUrl query (_, _, _, p, b) =
     cell = Spr.defaultCell
     idx  = Spr.integerCell . maybe 0 tindex $ ptransaction p
     date = postingDate p -- XXX csv should show date2 with --date2
+    -- With --period-titles=dates and a report interval, render the period as
+    -- a full ISO date range string instead of the period start date.
+    dateSpanCellOrDate = case (mperiod, period_titles_ $ _rsReportOpts rspec) of
+      (Just per, PTDates) ->
+        cell (showDateSpanFull (periodAsDateSpan per))
+      _ ->
+        (dateCell baseUrl query (paccount p) date) {Spr.cellType = Spr.TypeDate}
     code = maybe "" tcode $ ptransaction p
     desc = maybe "" tdescription $ ptransaction p
-    acct = bracket $ paccount p
+    -- (account names have already been clipped to the depth limit by postingsReport)
+    acct = bracket . dropAcct $ paccount p
       where
-        bracket = case ptype p of
+        dropAcct = accountNameDrop (fromMaybe 0 $ readMay =<< maybestringopt "drop" (rawopts_ opts))
+        bracket = case preal p of
                              BalancedVirtualPosting -> wrap "[" "]"
                              VirtualPosting -> wrap "(" ")"
                              _ -> id
@@ -199,7 +218,7 @@ postingsReportAsText opts = TB.toLazyText .
 postingsReportItemAsText :: CliOpts -> Int -> Int
                          -> (PostingsReportItem, [WideBuilder], [WideBuilder])
                          -> TB.Builder
-postingsReportItemAsText opts preferredamtwidth preferredbalwidth ((mdate, mperiod, mdesc, p, _), amt, bal) =
+postingsReportItemAsText opts@CliOpts{reportspec_=rspec} preferredamtwidth preferredbalwidth ((mdate, mperiod, mdesc, p, _), amt, bal) =
     table <> TB.singleton '\n'
   where
     table = renderRowB def{tableBorders=False, borderSpaces=False} . Group NoLine $ map Header
@@ -219,9 +238,18 @@ postingsReportItemAsText opts preferredamtwidth preferredbalwidth ((mdate, mperi
       where w = fullwidth - wbWidth amt'
     -- calculate widths
     (totalwidth,mdescwidth) = registerWidthsFromOpts opts
-    datewidth = maybe 10 periodTextWidth mperiod
+    ph = period_titles_ $ _rsReportOpts rspec
+    datewidth = case mperiod of
+                  Nothing  -> 10
+                  Just per -> case ph of
+                    PTDates   -> 22  -- YYYY-MM-DD..YYYY-MM-DD
+                    PTCompact -> periodTextWidth per
     date = case mperiod of
-             Just per -> if isJust mdate then showPeriod per else ""
+             Just per -> if isJust mdate
+                           then case ph of
+                             PTDates   -> showDateSpanFull (periodAsDateSpan per)
+                             PTCompact -> showPeriod per
+                           else ""
              Nothing  -> maybe "" showDate mdate
     (amtwidth, balwidth)
       | shortfall <= 0 = (preferredamtwidth, preferredbalwidth)
@@ -243,9 +271,11 @@ postingsReportItemAsText opts preferredamtwidth preferredbalwidth ((mdate, mperi
 
     -- gather content
     desc = fromMaybe "" mdesc
-    acct = parenthesise . elideAccountName awidth $ paccount p
+    -- (account names have already been clipped to the depth limit by postingsReport)
+    acct = parenthesise . elideAccountName awidth . dropAcct $ paccount p
       where
-        (parenthesise, awidth) = case ptype p of
+        dropAcct = accountNameDrop (fromMaybe 0 $ readMay =<< maybestringopt "drop" (rawopts_ opts))
+        (parenthesise, awidth) = case preal p of
             BalancedVirtualPosting -> (wrap "[" "]", acctwidth-2)
             VirtualPosting         -> (wrap "(" ")", acctwidth-2)
             _                      -> (id,acctwidth)

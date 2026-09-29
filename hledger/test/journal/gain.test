@@ -93,3 +93,43 @@ Monthly Balance Sheet 1999-12-31..2000-02-29 (Historical Gain), valued at period
 =============++====================================
  Liabilities ||                                    
 -------------++------------------------------------
+
+# ** 8. With bare @ (no lot notation), --gain accumulates realised gain
+# alongside unrealised once disposals exist. After a partial sale, the
+# figure is realised + unrealised, not unrealised alone (#2049).
+<
+P 2023-12-31 AAPL 15 USD
+
+2023-01-01 buy
+    assets:cash             -100 USD
+    assets:stock              10 AAPL @ 10 USD
+
+2023-03-01 sell half
+    assets:cash               60 USD
+    assets:stock              -5 AAPL @ 12 USD
+
+$ hledger -f- bal --gain -e 2024 assets:stock
+              35 USD  assets:stock
+--------------------
+              35 USD  
+
+# ** 9. Once the position is fully disposed, --gain reports realised gain only.
+<
+P 2023-12-31 AAPL 15 USD
+
+2023-01-01 buy
+    assets:cash             -100 USD
+    assets:stock              10 AAPL @ 10 USD
+
+2023-03-01 sell half
+    assets:cash               60 USD
+    assets:stock              -5 AAPL @ 12 USD
+
+2023-06-01 sell rest
+    assets:cash               65 USD
+    assets:stock              -5 AAPL @ 13 USD
+
+$ hledger -f- bal --gain -e 2024 assets:stock
+              25 USD  assets:stock
+--------------------
+              25 USD  

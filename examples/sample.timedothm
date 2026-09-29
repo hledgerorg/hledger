@@ -1,0 +1,7 @@
+; A timedot variant, read by hledger-timedothm.
+
+2025-09-27
+time  ..
+time  0.5
+time  30m
+time  0:30  ; new H:M syntax

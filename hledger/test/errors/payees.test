@@ -1,13 +1,10 @@
-$$$ hledger check payees -f payees.j
->>>2 /Error: .*payees.j:6:
+$ hledger check payees -f payees.j
+>2 /hledger: Error: .*payees\.j:6:
 6 \| 2022-01-01 p
   \|            \^
-  \|     \(a\)             A 1
+  \|     \(a\)                                          A 1
 
-Strict payee checking is enabled, and
+.*
 payee "p" has not been declared.
-Consider adding a payee directive. Examples:
-
-payee p
 /
->>>= 1
+>= 1

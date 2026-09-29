@@ -1,11 +1,7 @@
 # TESTS
 
-<div class=pagetoc>
-
-<!-- toc -->
-</div>
-
-About testing in the hledger project, as of 201809.
+About testing in the hledger project.
+For how to run the tests, see [Developer workflows](DEVWORKFLOWS.md).
 
 ## Kinds of tests
 
@@ -37,9 +33,9 @@ About testing in the hledger project, as of 201809.
     [tasty](https://hackage.haskell.org/package/tasty) test runner,
     [tasty-hunit](https://hackage.haskell.org/package/tasty-hunit) HUnit-style tests,
     and some helpers from
-    [Hledger.Utils.Test](https://github.com/simonmichael/hledger/blob/master/hledger-lib/Hledger/Utils/Test.hs),
+    [Hledger.Utils.Test](https://github.com/hledgerorg/hledger/blob/main/hledger-lib/Hledger/Utils/Test.hs),
     such as:
-    
+
     - `tests` and `test` aliases for `testGroup` and `testCase`
     - `assert*` helpers for constructing various kinds of assertions
 
@@ -88,15 +84,16 @@ About testing in the hledger project, as of 201809.
          assertBool "" BOOL
          EXPR @?= VALUE
 
-      ,tests_Foo            -- aggregate submodule tests
-      ,tests_Bar
+      ,tests_Bar            -- aggregate submodule tests
+      ,tests_Baz
       ]
     ```
 
     Here are
-    [some](https://github.com/simonmichael/hledger/blob/master/hledger-lib/Hledger/Data/Posting.hs#L296)
+    [some](https://github.com/hledgerorg/hledger/blob/main/hledger-lib/Hledger/Data/Posting.hs)
     real-world
-    [examples](https://github.com/simonmichael/hledger/blob/master/hledger-lib/Hledger/Read/JournalReader.hs#L579).
+    [examples](https://github.com/hledgerorg/hledger/blob/main/hledger-lib/Hledger/Read/JournalReader.hs)
+    (search for `tests_`).
 
     The unit tests are shipped as part of the hledger executable, and
     can always be run via the [test](https://hledger.org/hledger.html#test)
@@ -108,14 +105,8 @@ About testing in the hledger project, as of 201809.
     documentation, in the style of a GHCI transcript. These test
     functionality, provide usage examples in the API docs, and test
     those examples, all at once. They are a bit more finicky and slower
-    than unit tests. See
-    [doctest](https://hackage.haskell.org/package/doctest) for more.
-
-    doctests [do not work on Mac with GHC
-    8.4+](https://github.com/sol/doctest/issues/199), out of the box.
-    See
-    [ghc\#15105](https://ghc.haskell.org/trac/ghc/ticket/15105#comment:10)
-    for current status and a workaround.
+    than unit tests; running them requires a separate build of hledger-lib.
+    See [doctest](https://hackage.haskell.org/package/doctest) for more.
 
 3.  Functional tests
 
@@ -126,31 +117,41 @@ About testing in the hledger project, as of 201809.
     with
     [shelltestrunner](https://hackage.haskell.org/package/shelltestrunner).
     Tests are defined in files named `*.test` under
-    [hledger/test/](https://github.com/simonmichael/hledger/tree/master/hledger/test),
+    [hledger/test/](https://github.com/hledgerorg/hledger/tree/main/hledger/test),
     grouped by *component* (command or topic name).
     For more about these, see the README there.
+
+    When these test for an error, they usually match just a key phrase of the message.
+    The layout of error messages is tested separately in
+    [hledger/test/errors/](https://github.com/hledgerorg/hledger/tree/main/hledger/test/errors),
+    which has one full-message example of each kind of error message
+    (see [ERRORS](ERRORS.md)).
+
+    hledger-web also has some browser tests, defined with playwright in
+    [hledger-web/test/browser/](https://github.com/hledgerorg/hledger/tree/main/hledger-web/test/browser);
+    see the README there.
 
 4.  Code tests
 
     We have some tests aimed at testing eg code quality, generally runnable via just.
-    Eg `just haddocktest`, `just hlinttest`.
+    Eg `just haddocktest` (haddock generation), `just embedtest` (embedded files),
+    `just cabalfilestest` (cabal file syntax).
 
 5.  Package test suites
 
     Haskell tools like stack and cabal recognise test suites defined in
     a package\'s cabal file (or package.yaml file). These can be run via
     `stack test`, `cabal test` etc., and they are required to build and
-    pass by services like Stackage. Here are the currently hledger
+    pass by services like Stackage. Here are the current hledger
     package test suites:
 
-      ------------- ------------ ---------------------------------------------------------------
-      package       test suite   what it runs
-      hledger-lib   doctests     doctests
-      hledger-lib   easytests    unit tests
-      hledger       test         builtin test command (hledger\'s + hledger-lib\'s unit tests)
-      hledger-ui                 
-      hledger-web                
-      ------------- ------------ ---------------------------------------------------------------
+    | package     | test suite | what it runs |
+    |-------------|------------|--------------|
+    | hledger-lib | unittest   | hledger-lib's unit tests |
+    | hledger-lib | doctest    | doctests |
+    | hledger     | unittest   | builtin test command (hledger\'s + hledger-lib\'s unit tests) |
+    | hledger-ui  |            | |
+    | hledger-web |            | |
 
 ## Coverage
 
@@ -160,86 +161,27 @@ possible code paths, states, situations tested ?).
 
 Our current test coverage can be summarised like so:
 
-  ------------- ------ ----- ------------
-  package       unit   doc   functional
-  hledger-lib   X      X     X
-  hledger       X            X
-  hledger-ui                 
-  hledger-web                
-  ------------- ------ ----- ------------
+| package     | unit | doc | functional |
+|-------------|------|-----|------------|
+| hledger-lib | X    | X   | X          |
+| hledger     | X    |     | X          |
+| hledger-ui  |      |     |            |
+| hledger-web |      |     | X (browser tests) |
 
 There are ways to generate detailed coverage reports for haskell unit
 tests, at least. It would be useful to set this up for hledger.
 
 ## How to run tests
 
-Run unit tests:
+See [Developer workflows](DEVWORKFLOWS.md) for the main commands
+(`just functest`, `just doctest`, `just test`, `stack test` etc.),
+and `just h test` for all test-related scripts.
+
+Also, the unit tests are built in to the hledger executable, and can be
+run any time with the `test` command:
 
 ``` example
-$ just unittest
+$ hledger test               # run all unit tests
+$ hledger test balance       # run tests with "balance" in their name
+$ hledger test -- -h         # show tasty test runner options
 ```
-
-Run doctests:
-
-``` example
-$ just doctest
-```
-
-Run functional tests (and unit tests, now):
-
-``` example
-$ stack install shelltestrunner
-$ just functest
-```
-
-Run the package tests (unit tests, maybe doctests, but not functional
-tests) of all or selected packages.
-
-``` example
-$ stack test [PKG]
-```
-
-Run \"default tests: package plus functional tests\":
-
-``` example
-$ just test
-```
-
-Test generation of haddock docs:
-
-``` example
-$ just haddocktest
-```
-
-Run built-in hledger/hledger-lib unit tests via hledger command:
-
-``` example
-$ hledger test  # test installed hledger
-$ stack build hledger && stack exec -- hledger test  # test just-built hledger
-$ hledger test --help
-test [TESTPATTERN] [SEED]
-  Run the unit tests built in to hledger-lib and hledger,
-  printing results on stdout and exiting with success or failure.
-  Tests are run in two batches: easytest-based and hunit-based tests.
-  If any test fails or gives an error, the exit code will be non-zero.
-  If a pattern argument (case sensitive) is provided, only easytests
-  in that scope and only hunit tests whose name contains it are run.
-  If a numeric second argument is provided, it will set the randomness
-  seed for easytests.
-```
-
-Rebuild and rerun hledger/hledger-lib doc tests via ghcid:
-
-``` example
-$ just ghcid-doctest
-```
-
-See all test-related just rules:
-
-``` example
-$ just h test
-```
-
-
-
-

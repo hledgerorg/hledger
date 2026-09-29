@@ -7,26 +7,23 @@ on:
   # When there's a push to the oldest branch, it runs in that branch.
   push:
     branches: [ oldest ]
-  # If manually triggered in github ui, it runs in master.
+  # If manually triggered in github ui, it runs in main.
   workflow_dispatch:
 
 jobs:
   oldest:
     runs-on: ubuntu-24.04
+      # arch:  x64
+      # image: https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md
+
     env:
-      # This workflow uses github's preinstalled ghc & stack on ubuntu.
-      # Keep these synced with the latest ghc version at https://github.com/actions/runner-images/blob/ubuntu22/20240514.2/images/ubuntu/Ubuntu2404-Readme.md#haskell-tools
-      #
-      # caching id for this ghc's build artifacts:
-      # XXX supposed to be interpolated by $ghc below, but this is not working
-      ghc: 8107
-      # stack config for this ghc:
-      stack: stack --stack-yaml=stack810.yaml
+      stack: stack --stack-yaml=stack96.yaml
+      ghcid:   9.6.6
 
     steps:
 
     - name: Check out
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       # have to fetch everything for git describe for hledger's --version
       with:
         fetch-depth: 0
@@ -36,64 +33,64 @@ jobs:
 
     - name: Cache - stack global package db
       id:   stack-global
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.stack
         # XXX if stack.yaml is a symlink, this fails with
         #  Error: The template is not valid. .github/workflows/push.yml (Line: 103, Col: 14): hashFiles('**.yaml') failed.
         #  Fail to hash files under directory '/home/runner/work/hledger/hledger'
-        key: ${{ runner.os }}-stack-global-$ghc-${{ hashFiles('**.yaml') }}
+        key: ${{ runner.os }}-x64-stack-global-${{ env.ghcid }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-stack-global-$ghc
+             ${{ runner.os }}-x64-stack-global-${{ env.ghcid }}
 
     - name: Cache - stack-installed programs in ~/.local/bin
       id:   stack-programs
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.local/bin
-        key: ${{ runner.os }}-stack-programs-$ghc-${{ hashFiles('**.yaml') }}
+        key: ${{ runner.os }}-x64-stack-programs-${{ env.ghcid }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-stack-programs-$ghc
+             ${{ runner.os }}-x64-stack-programs-${{ env.ghcid }}
 
     - name: Cache - .stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: .stack-work
-        key: ${{ runner.os }}-stack-work-$ghc-${{ hashFiles('**.yaml') }}
+        key: ${{ runner.os }}-x64-stack-work-${{ env.ghcid }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-stack-work-$ghc
+             ${{ runner.os }}-x64-stack-work-${{ env.ghcid }}
 
     - name: Cache - hledger-lib/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-lib/.stack-work
-        key: ${{ runner.os }}-hledger-lib-stack-work-$ghc-${{ hashFiles('hledger-lib/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-lib-stack-work-${{ env.ghcid }}-${{ hashFiles('hledger-lib/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-hledger-lib-stack-work-$ghc
+             ${{ runner.os }}-x64-hledger-lib-stack-work-${{ env.ghcid }}
 
     - name: Cache - hledger/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger/.stack-work
-        key: ${{ runner.os }}-hledger-stack-work-$ghc-${{ hashFiles('hledger/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-stack-work-${{ env.ghcid }}-${{ hashFiles('hledger/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-hledger-stack-work-$ghc
+             ${{ runner.os }}-x64-hledger-stack-work-${{ env.ghcid }}
 
     - name: Cache - hledger-ui/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-ui/.stack-work
-        key: ${{ runner.os }}-hledger-ui-stack-work-$ghc-${{ hashFiles('hledger-ui/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-ui-stack-work-${{ env.ghcid }}-${{ hashFiles('hledger-ui/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-hledger-ui-stack-work-$ghc
+             ${{ runner.os }}-x64-hledger-ui-stack-work-${{ env.ghcid }}
 
     - name: Cache - hledger-web/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-web/.stack-work
-        key: ${{ runner.os }}-hledger-web-stack-work-$ghc-${{ hashFiles('hledger-web/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-web-stack-work-${{ env.ghcid }}-${{ hashFiles('hledger-web/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-hledger-web-stack-work-$ghc
+             ${{ runner.os }}-x64-hledger-web-stack-work-${{ env.ghcid }}
 
 
     # ACTIONS
@@ -139,18 +136,19 @@ jobs:
       run: |
         $stack install --test --bench hledger-web --fast --ghc-options=-Werror
 
-    # XXX disable until this is fixed: shelltestrunner-1.10/src/shelltest.hs:125:20: error:
+    # XXX disable until this is fixed: shelltest.hs:125:20: error:
     # shelltestrunner      >     Not in scope: ‘configFailFast’
     # shelltestrunner      >     Perhaps you meant ‘configFastFail’ (imported from Test.Hspec.Core.Runner)
 
     # - name: Install shelltestrunner
     #   run: |
     #     export PATH=~/.local/bin:$PATH
-    #     if [[ ! -x ~/.local/bin/shelltest ]]; then $stack install shelltestrunner-1.10; fi
+    #     $stack update;                             $stack install --verbosity=error shelltestrunner-1.11
+    #     if [[ ! -x ~/.local/bin/shelltest ]]; then $stack install --verbosity=error shelltestrunner-1.11; fi
     #     shelltest --version
 
-    # - name: Test functional tests (excluding addons)
+    # - name: Test functional tests
     #   run: |
     #     export PATH=~/.local/bin:$PATH
-    #     COLUMNS=80 $stack exec -- shelltest --execdir -j16 hledger/test -x /_ -x /addons -x ledger-compat/ledger-baseline -x ledger-compat/ledger-regress -x ledger-compat/ledger-collected
+    #     COLUMNS=80 $stack exec -- shelltest --execdir -j16 hledger/test -x /_ -x ledger-compat/ledger-baseline -x ledger-compat/ledger-regress -x ledger-compat/ledger-collected
     #     # XXX run the bin/ func tests corresponding to the GHC version enabled above, only

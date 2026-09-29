@@ -1,0 +1,14 @@
+$ hledger check -f lots-gain.j
+>2 /hledger: Error: .*lots-gain\.j:7:
+7 \| 2022-02-01 sell
+  \|     assets:stocks +-10 AAPL \{\$50\} @ \$55
+.*
+  \|     revenues:gains +\$-999
+
+This disposal's realised gain amount is wrong\.
+  written: +\$-999
+  calculated: \$-50
+
+Postings were read as: dispose, unclassified, gain\.
+/
+>= 1

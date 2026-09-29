@@ -23,10 +23,9 @@ module Hledger.Utils.Text
   -- escapeSingleQuotes,
   -- escapeQuotes,
   -- words',
-  -- unwords',
-  stripquotes,
-  -- isSingleQuoted,
-  -- isDoubleQuoted,
+  textStripQuotes,
+  -- textIsSingleQuoted,
+  -- textIsDoubleQuoted,
   -- * single-line layout
   -- elideLeft,
   textElideRight,
@@ -55,9 +54,9 @@ import Data.Char (digitToInt)
 import Data.Default (def)
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.Builder as TB
+import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
+import Data.Text.Lazy.Builder qualified as TB
 import Text.DocLayout (charWidth, realLength)
 
 import Test.Tasty (testGroup)
@@ -109,7 +108,7 @@ formatText leftJustified minwidth maxwidth t =
 -- quotes, if it contains whitespace and is not already single- or
 -- double-quoted.
 quoteIfSpaced :: T.Text -> T.Text
-quoteIfSpaced s | isSingleQuoted s || isDoubleQuoted s = s
+quoteIfSpaced s | textIsSingleQuoted s || textIsDoubleQuoted s = s
                 | not $ any (\c -> T.any (==c) s) whitespacechars = s
                 | otherwise = textQuoteIfNeeded s
 
@@ -117,7 +116,7 @@ quoteIfSpaced s | isSingleQuoted s || isDoubleQuoted s = s
 -- -- quotes, if it contains whitespace and is not already single- or
 -- -- double-quoted.
 -- quoteIfSpaced :: String -> String
--- quoteIfSpaced s | isSingleQuoted s || isDoubleQuoted s = s
+-- quoteIfSpaced s | textIsSingleQuoted s || textIsDoubleQuoted s = s
 --                 | not $ any (`elem` s) whitespacechars = s
 --                 | otherwise = "'"++escapeSingleQuotes s++"'"
 
@@ -153,7 +152,7 @@ escapeBackslash = T.replace "\\" "\\\\"
 -- -- NB correctly handles "a'b" but not "''a''". Can raise an error if parsing fails.
 -- words' :: String -> [String]
 -- words' "" = []
--- words' s  = map stripquotes $ fromparse $ parsewith p s
+-- words' s  = map textStripQuotes $ fromparse $ parsewith p s
 --     where
 --       p = do ss <- (singleQuotedPattern <|> doubleQuotedPattern <|> pattern) `sepBy` many1 spacenonewline
 --              -- eof
@@ -162,20 +161,16 @@ escapeBackslash = T.replace "\\" "\\\\"
 --       singleQuotedPattern = between (char '\'') (char '\'') (many $ noneOf "'")
 --       doubleQuotedPattern = between (char '"') (char '"') (many $ noneOf "\"")
 
--- -- | Quote-aware version of unwords - single-quote strings which contain whitespace
--- unwords' :: [Text] -> Text
--- unwords' = T.unwords . map quoteIfNeeded
-
 -- | Strip one matching pair of single or double quotes on the ends of a string.
-stripquotes :: Text -> Text
-stripquotes s = if isSingleQuoted s || isDoubleQuoted s then T.init $ T.tail s else s
+textStripQuotes :: Text -> Text
+textStripQuotes s = if textIsSingleQuoted s || textIsDoubleQuoted s then T.init $ T.tail s else s
 
-isSingleQuoted :: Text -> Bool
-isSingleQuoted s =
+textIsSingleQuoted :: Text -> Bool
+textIsSingleQuoted s =
   T.length s >= 2 && T.head s == '\'' && T.last s == '\''
 
-isDoubleQuoted :: Text -> Bool
-isDoubleQuoted s =
+textIsDoubleQuoted :: Text -> Bool
+textIsDoubleQuoted s =
   T.length s >= 2 && T.head s == '"' && T.last s == '"'
 
 -- | Remove all matching pairs of square brackets and parentheses from the text.
@@ -216,7 +211,7 @@ fitText mminwidth mmaxwidth ellipsify rightside = clip . pad
     clip s =
       case mmaxwidth of
         Just w
-          | realLength s > w ->
+          | realLength s > max 0 w ->
             if rightside
               then textTakeWidth (w - T.length ellipsis) s <> ellipsis
               else ellipsis <> T.reverse (textTakeWidth (w - T.length ellipsis) $ T.reverse s)
@@ -292,5 +287,9 @@ tests_Text = testGroup "Text" [
      textUnbracket "[([]())]" @?= "[]()"
      textUnbracket "[([[[()]]])]" @?= ""
      textUnbracket "[([[[(]]])]" @?= "("
-     textUnbracket "[([[[)]]])]" @?= ")"
+     textUnbracket "[([[[)]]])]" @?= ")",
+   testCase "fitText" $ do
+     fitText Nothing (Just (-2)) True True "" @?= ""
+     fitText Nothing (Just 0) True True "" @?= ""
+     fitText Nothing (Just 6) True True "Test Text" @?= "Test.."
   ]

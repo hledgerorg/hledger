@@ -1,13 +1,13 @@
-$$$ hledger check ordereddates -f ordereddates.j
->>>2 /Error: .*ordereddates.j:10:
+$ hledger check ordereddates -f ordereddates.j
+>2 /hledger: Error: .*ordereddates\.j:10:
 7 \| 2022-01-02 p
-  \|     \(a\)               1
- 
+  \|     \(a\)                                            1
+
 10 \| 2022-01-01 p
    \| \^\^\^\^\^\^\^\^\^\^
-   \|     \(a\)               1
+   \|     \(a\)                                            1
 
-Ordered dates checking is enabled, and this transaction's
+.*
 date \(2022-01-01\) is out of order with the previous transaction.
-Consider/
->>>= 1
+/
+>= 1

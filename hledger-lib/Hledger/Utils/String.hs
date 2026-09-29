@@ -11,11 +11,16 @@ module Hledger.Utils.String (
  -- quoting
  quoteIfNeeded,
  singleQuoteIfNeeded,
+ shellQuoteIfNeeded,
  quoteForCommandLine,
  -- quotechars,
  -- whitespacechars,
  words',
- unwords',
+ wordsmay,
+ wordsEither,
+ stripQuotes,
+ isSingleQuoted,
+ isDoubleQuoted,
  stripAnsi,
  -- * single-line layout
  strip,
@@ -40,9 +45,10 @@ module Hledger.Utils.String (
 
 import Data.Char (isSpace, toLower, toUpper)
 import Data.List (intercalate, dropWhileEnd)
-import qualified Data.Text as T
+import Data.Text qualified as T
+import System.Info (os)
 import Safe (headErr, tailErr)
-import Text.Megaparsec ((<|>), between, many, noneOf, sepBy)
+import Text.Megaparsec (between, choice, errorBundlePretty, many, noneOf, sepBy, some)
 import Text.Megaparsec.Char (char)
 import Text.Printf (printf)
 
@@ -156,6 +162,18 @@ singleQuoteIfNeeded s | any (`elem` s) (quotechars++whitespacechars) = singleQuo
 singleQuote :: String -> String
 singleQuote s = "'"++s++"'"
 
+-- | Quote a string if needed for use as one argument in a shell command line
+-- on the current platform. Uses double-quote escaping on Windows (cmd.exe does
+-- not recognise single quotes as a quoting character); elsewhere uses single
+-- quotes, which are literal in POSIX shells. Use this whenever interpolating
+-- a path or other string into a command that will be passed to
+-- 'System.Process.runCommand', 'System.Process.callCommand', or
+-- 'System.Process.shell'.
+shellQuoteIfNeeded :: String -> String
+shellQuoteIfNeeded
+  | os == "mingw32" = quoteIfNeeded
+  | otherwise       = singleQuoteIfNeeded
+
 -- | Try to single- and backslash-quote a string as needed to make it usable
 -- as an argument on a (sh/bash) shell command line. At least, well enough 
 -- to handle common currency symbols, like $. Probably broken in many ways.
@@ -165,50 +183,86 @@ singleQuote s = "'"++s++"'"
 -- >>> quoteForCommandLine "\""
 -- "'\"'"
 -- >>> quoteForCommandLine "$"
--- "'\\$'"
+-- "'$'"
+-- >>> quoteForCommandLine "it's"
+-- "'it'\\''s'"
 --
 quoteForCommandLine :: String -> String
 quoteForCommandLine s
-  | any (`elem` s) (quotechars++whitespacechars++shellchars) = singleQuote $ quoteShellChars s
+  | null s = "''"  -- an empty argument must be quoted, or it vanishes from the command line
+  | any (`elem` s) (quotechars++whitespacechars++shellchars) = singleQuote $ escapeSingleQuotes s
   | otherwise = s
 
--- | Try to backslash-quote common shell-significant characters in this string.
--- Doesn't handle single quotes, & probably others.
-quoteShellChars :: String -> String
-quoteShellChars = concatMap escapeShellChar
+-- | Escape single quotes appearing in a string we're protecting by wrapping in single quotes.
+-- A backslash is not an escape inside single quotes in POSIX sh, so the quote has to be
+-- closed, the apostrophe emitted separately, and the quote reopened: 'it'\\''s'.
+escapeSingleQuotes :: String -> String
+escapeSingleQuotes = concatMap escapeSingleQuote
   where
-    escapeShellChar c | c `elem` shellchars = ['\\',c]
-    escapeShellChar c = [c]
+    escapeSingleQuote c | c `elem` "'" = "'\\''"
+    escapeSingleQuote c = [c]
 
 quotechars, whitespacechars, redirectchars, shellchars :: [Char]
 quotechars      = "'\""
 whitespacechars = " \t\n\r"
 redirectchars   = "<>"
-shellchars      = "<>(){}[]$7?#!~`"
+shellchars      = "<>(){}[]$&?#!~`*+\\"
 
--- | Quote-aware version of words - don't split on spaces which are inside quotes.
--- NB correctly handles "a'b" but not "''a''". Can raise an error if parsing fails.
+-- | Quote-aware version of words, splitting a string into words like the
+-- shell does: spaces inside single or double quotes don't split, quotes enclosing
+-- a word are removed, and a word can mix unquoted and quoted parts
+-- (so date:'1 to 15' is the single word date:1 to 15).
+-- Can raise an error if parsing fails (eg if there's an unclosed quote);
+-- wordsmay and wordsEither are total versions.
+--
+-- >>> words' "a b"
+-- ["a","b"]
+-- >>> words' "'a b' c"
+-- ["a b","c"]
+-- >>> words' "date:'1 to 15' x"
+-- ["date:1 to 15","x"]
+-- >>> words' "\"it's\""
+-- ["it's"]
+-- >>> words' "a '' b"
+-- ["a","","b"]
+-- >>> wordsmay "an unclosed 'quote"
+-- Nothing
 words' :: String -> [String]
 words' "" = []
-words' s  = map stripquotes $ fromparse $ parsewithString p s  -- PARTIAL
-    where
-      p = (singleQuotedPattern <|> doubleQuotedPattern <|> patterns) `sepBy` skipNonNewlineSpaces1
-          -- eof
-      patterns = many (noneOf whitespacechars)
-      singleQuotedPattern = between (char '\'') (char '\'') (many $ noneOf "'")
-      doubleQuotedPattern = between (char '"') (char '"') (many $ noneOf "\"")
+words' s  = fromparse $ parsewithString wordsp s  -- PARTIAL
 
--- | Quote-aware version of unwords - single-quote strings which contain whitespace
-unwords' :: [String] -> String
-unwords' = unwords . map quoteIfNeeded
+-- | Like words', but return Nothing if parsing fails
+-- (eg because of an unclosed quote), rather than raising an error.
+wordsmay :: String -> Maybe [String]
+wordsmay = either (const Nothing) Just . wordsEither
+
+-- | Like words', but on failure (eg because of an unclosed quote) return
+-- a pretty error message, showing the position and the problem, instead of
+-- raising an error.
+wordsEither :: String -> Either String [String]
+wordsEither "" = Right []
+wordsEither s  = either (Left . errorBundlePretty) Right $ parsewithString wordsp s
+
+wordsp :: SimpleStringParser [String]
+wordsp = wordp `sepBy` skipNonNewlineSpaces1
+    -- eof
+    where
+      wordp = concat <$> many segmentp
+      segmentp = choice
+        [ between (char '\'') (char '\'') (many $ noneOf "'")
+        , between (char '"') (char '"') (many $ noneOf "\"")
+        , some $ noneOf $ quotechars <> whitespacechars
+        ]
 
 -- | Strip one matching pair of single or double quotes on the ends of a string.
-stripquotes :: String -> String
-stripquotes s = if isSingleQuoted s || isDoubleQuoted s then init $ tailErr s else s  -- PARTIAL tailErr won't fail because isDoubleQuoted
+stripQuotes :: String -> String
+stripQuotes s = if isSingleQuoted s || isDoubleQuoted s then init $ tailErr s else s  -- PARTIAL tailErr won't fail because isDoubleQuoted
 
+isSingleQuoted :: String -> Bool
 isSingleQuoted s@(_:_:_) = headErr s == '\'' && last s == '\''  -- PARTIAL headErr, last will succeed because of pattern
 isSingleQuoted _ = False
 
+isDoubleQuoted :: String -> Bool
 isDoubleQuoted s@(_:_:_) = headErr s == '"' && last s == '"'  -- PARTIAL headErr, last will succeed because of pattern
 isDoubleQuoted _ = False
 

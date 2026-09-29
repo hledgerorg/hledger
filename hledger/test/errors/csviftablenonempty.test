@@ -1,8 +1,8 @@
-$$$ hledger check -f  csviftablenonempty.csv
->>>2 /Error: .*csviftablenonempty.csv.rules:2:1:
+$ hledger check -f  csviftablenonempty.csv
+>2 /hledger: Error: .*csviftablenonempty.csv.rules:2:1:
   \|
 2 \| if,date,description,comment
   \| \^
 start of conditional table found, but no assignment rules afterward
 /
->>>= 1
+>= 1

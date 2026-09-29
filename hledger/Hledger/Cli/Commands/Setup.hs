@@ -51,33 +51,36 @@ module Hledger.Cli.Commands.Setup (
 )
 where
 
+import Control.Concurrent (rtsSupportsBoundThreads)
 import Control.Exception
 import Control.Monad
--- import qualified Data.ByteString as B
+-- import Data.ByteString qualified as B
 import Data.Char
 import Data.Default (def)
 import Data.List
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
+import Data.Version qualified (showVersion)
 import Network.HTTP.Client
 import Network.HTTP.Types (statusCode, hLocation)
 import Network.HTTP.Req as R
 import Safe
 import System.Directory
-import System.Environment (lookupEnv)
+import System.Environment (getEnvironment, lookupEnv)
 import System.Exit
 import System.FilePath
 import System.Info
 import System.Process
 import Text.Printf (printf)
 
-import Hledger hiding (setupPager)
+import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Conf
 import Hledger.Cli.Version
-import System.IO (localeEncoding)
+import System.Console.ANSI (hSupportsANSIColor)
+import System.IO (localeEncoding, stdout, hFlush, hIsTerminalDevice)
 
 
 setupmode = hledgerCommandMode
@@ -107,43 +110,43 @@ setup :: CliOpts -> Journal -> IO ()
 setup _opts@CliOpts{rawopts_=_rawopts, reportspec_=_rspec} _ignoredj = do
   -- This command is not given a journal and should not use _ignoredj;
   -- instead read it ourselves when we are ready.
-  putStrLn "Checking your hledger setup.."
-  color <- useColorOnStdout
-  when color $ 
-    putStrLn $ "Legend: " <> intercalate ", " [
-       good    "good"
-      ,neutral "neutral"
-      ,warning "unknown"
-      ,bad     "warning"
-      ]
-  meconf <- setupHledger
+  putStrLn "Checking your setup (and contacting hledger.org to find out the current release):"
+  -- color <- useColorOnStdout
+  -- when color $ 
+  --   putStrLn $ "Legend: " <> intercalate ", " [
+  --      good    "good"
+  --     ,neutral "neutral"
+  --     ,warning "unknown"
+  --     ,bad     "warning"
+  --     ]
+  elatestversionnumstr <- getLatestHledgerVersion
+  meconf <- setupHledger elatestversionnumstr
   setupTerminal meconf
   setupJournal meconf
-  putStr "\n"
+  -- putStr "\n"
 
 ------------------------------------------------------------------------------
 
 -- Returns Nothing if no config file was found,
 -- or Just the read error or config if it was found.
-setupHledger :: IO (Maybe (Either String Conf))
-setupHledger = do
+setupHledger :: Either String String -> IO (Maybe (Either String Conf))
+setupHledger elatestversionnumstr = do
   pgroup "hledger"
 
-  pdesc "is a released version ?"
-  if isReleaseVersion $ hbinPackageVersion binaryinfo
-  then p Y prognameandversion
-  else i N prognameandversion
+  let
+    os'
+      | os=="darwin" = "macos"
+      | os=="mingw32" = "windows"
+      | otherwise = os
+  mosversion <- getOSVersion
+  let osdesc = os' <> maybe "" (" "<>) mosversion
+  pdesc "is running on"
+  putStrLn $ "      " <> osdesc <> " on " <> arch
 
-  pdesc "is up to date ?"
-  elatestversionnumstr <- getLatestHledgerVersion
-  case elatestversionnumstr of
-    Left e -> p U ("couldn't read " <> latestHledgerVersionUrlStr <> " , " <> e)
-    Right latestversionnumstr ->
-      case toVersion latestversionnumstr of
-        Nothing -> p U "couldn't parse latest version number"
-        Just latestversion -> p
-          (if hbinPackageVersion binaryinfo >= latestversion then Y else N)
-          (showVersion (hbinPackageVersion binaryinfo) <> " installed, latest is " <> latestversionnumstr)
+  pdesc "is built with a supported compiler/RTS"
+  p (if rtsSupportsBoundThreads then Y else N) $ 
+    compilerName <> " " <> Data.Version.showVersion fullCompilerVersion
+      <> if rtsSupportsBoundThreads then ", using threaded RTS" else ", RTS does not have threads enabled"
 
   pdesc "is a native binary for this machine ?"
   case hbinArch binaryinfo of
@@ -151,35 +154,52 @@ setupHledger = do
     Just a | a /= arch -> p N $ "binary is for " <> a <> ", system is " <> arch <> ", may run slowly"
     Just a -> p Y a
 
-  pdesc "is installed in PATH ?"
+  pdesc "is a released version ?"
+  if isReleaseVersion $ hbinPackageVersion binaryinfo
+  then p Y prognameandversion
+  else i N prognameandversion
+
+  pdesc "is up to date ? checking latest..." >> hFlush stdout
+  case elatestversionnumstr of
+    Left e -> p U ("couldn't read " <> latestHledgerVersionUrlStr <> " " <> e)
+    Right latestversionnumstr ->
+      case toVersion latestversionnumstr of
+        Nothing -> p U "couldn't parse latest version number"
+        Just latestversion -> p
+          (if hbinPackageVersion binaryinfo >= latestversion then Y else N)
+          ("latest is " <> latestversionnumstr <> ", " <> showVersion (hbinPackageVersion binaryinfo) <> " is installed")
+
+  pdesc "is installed in PATH (this version) ?"
   pathexes  <- findExecutables progname
-  let msg = "To see more, please install this hledger in PATH and run hledger setup again."
+  let
+    (failaction, failmsg) =
+      -- (exitFailure , "Please install this hledger in PATH then run setup again.")
+      (return ()   , " Some of this info may not apply to that hledger version. Continuing anyway..")
   case pathexes of
-    [] -> p N msg >> exitFailure
+    [] -> p N failmsg >> failaction
     exe:_ -> do
       eerrout <- tryHledgerArgs [["--version", "--no-conf"], ["--version"]]
       case eerrout of
-        Left  err -> p U (progname <> " --version failed: " <> err) >> exitFailure
+        Left  err -> p U (progname <> " --version failed: " <> err) >> failaction
         Right out -> do
           case parseHledgerVersion out of
             Left  _ -> p U ("couldn't parse " <> progname <> " --version: " <> rstrip out) >> exitFailure
             Right pathbin -> do
               let pathversion = hbinVersionOutput pathbin
               if pathversion /= prognameandversion
-              then p N (unlines [
+              then p N (chomp $ unlines [
                  ""
-                ,"found in PATH: " <> exe
-                ,"PATH hledger is: " <> pathversion
-                ,"this hledger is: " <> prognameandversion
-                ,msg
-                ]) >> exitFailure
+                ," A different hledger version was found in PATH: " <> pathversion
+                ," at: " <> exe
+                ,failmsg
+                ]) >> failaction
               else p Y exe
 
   pdesc "has a system text encoding configured ?"
   let encoding = localeEncoding  -- the initial system encoding
   if map toLower (show encoding) == "ascii"
   then p N (show encoding <> ", please configure an encoding for non-ascii data")
-  else p Y (show encoding <> ", data files should use this encoding")
+  else p Y (show encoding <> ", data files must use this encoding")
 
   -- pdesc "can handle UTF-8 text ?"
   -- let
@@ -192,37 +212,33 @@ setupHledger = do
   -- pdesc "can report text decoding failures ?"
   -- i U (T.unpack $ T.decodeUtf8 eAcuteLatin1)
 
-  pdesc "has a user config file ? (optional)"
+  pdesc "has a user config file ?"
   muf <- activeUserConfFile
+  mlf <- activeLocalConfFile
   let
     (ok, msg) = case muf of
+      Just f  -> (Y, f <> if isJust mlf then " (overridden)" else "")
+      Nothing -> (N, "")
+  i ok msg
+
+  pdesc "has a local config file ?"
+  let
+    (ok, msg) = case mlf of
       Just f  -> (Y, f)
       Nothing -> (N, "")
   i ok msg
-
-  pdesc "current directory has a local config ?"
-  mlf <- activeLocalConfFile
-  let
-    (ok, msg) = case mlf of
-      Just f  -> (Y, f) -- <> if isJust muf then " (masking user config)" else "")
-      Nothing -> (N, "")
-  i ok msg
-
-  when (isJust muf && isJust mlf) $ do
-    pdesc "local config is masking user config ?"
-    i Y ""
 
   if (isJust muf || isJust mlf) then do
     pdesc "the config file is readable ?"
     econf <- getConf def
     case econf of
       Left e -> p N e >> return (Just $ Left e)
-      Right (conf, f) -> do
-        p Y (fromMaybe "" f)
+      Right (conf, _) -> do
+        p Y ""
 
         -- pdesc "common general options are configured ?"
         -- --infer-costs"
-        -- print --explicit --show-costs"
+        -- print --explicit --infer-costs"
 
         return $ Just $ Right conf
   else
@@ -237,6 +253,23 @@ setupTerminal meconf = do
     conflookup predicate = case meconf of
       Just (Right conf) -> find predicate $ reverse $ confLookup "general" conf
       _ -> Nothing
+
+  pdesc "the TERM variable is defined ?"
+  mterm <- lookupEnv "TERM"
+  let dumbterminal = (map toLower <$> mterm) == Just "dumb"
+  case mterm of
+    Nothing -> i N "terminal type is unknown"
+    Just v  -> i Y $ v <> if dumbterminal then " (color and styles will not be used)" else ""
+
+  pdesc "the terminal supports ANSI color ?"
+  isterminal <- hIsTerminalDevice stdout
+  supportscolor <- hSupportsANSIColor stdout
+  truecolor <- supportsTrueColor
+  if not supportscolor then i N $ if isterminal then "" else "stdout is not a terminal"
+  else i Y $ if
+    | truecolor -> "24-bit color (COLORTERM is set)"
+    | "256color" `isInfixOf` fromMaybe "" mterm -> "256 colors"
+    | otherwise -> "16 colors"
 
   pdesc "the NO_COLOR variable is defined ?"
   mnocolor <- lookupEnv "NO_COLOR"
@@ -255,12 +288,23 @@ setupTerminal meconf = do
           arg = reverse $ takeWhile (`notElem` ['=',' ']) $ reverse a
         return $ Just $ parseYNA arg
 
+  -- Use the same logic as the rest of hledger, and explain a negative result.
+  -- (The config file is not applied to setup itself, so its --color is checked here.)
   pdesc "hledger will use color by default ?"
-  case (meconfigcolor, isJust mnocolor) of
-    (Just (Right Yes), _)     -> p Y ""
-    (Just (Right No),  _)     -> i N ""
-    (_,                True)  -> i N ""
-    (_,                False) -> p Y ""
+  usecolor <- case meconfigcolor of
+    Just (Right Yes) -> return True
+    Just (Right No)  -> return False
+    _                -> useColorOnStdout
+  coloropt <- colorOption
+  if usecolor then p Y ""
+  else i N $ if
+    | meconfigcolor == Just (Right No) -> "disabled by config file"
+    | coloropt == No                   -> "disabled by --color"
+    | isJust mnocolor                  -> "disabled by NO_COLOR"
+    | dumbterminal                     -> "disabled by TERM=dumb"
+    | not isterminal                   -> "stdout is not a terminal"
+    | not supportscolor                -> "the terminal does not support ANSI color"
+    | otherwise                        -> ""
 
   pdesc "the PAGER variable is defined ?"
   mv <- lookupEnv "PAGER"
@@ -280,10 +324,10 @@ setupTerminal meconf = do
   pdesc "hledger will use a pager when needed ?"
   mpager <- findPager
   case mpager of
-    Nothing    -> p N "no pager was found"
+    Nothing    -> i N "no pager was found"
     Just pager ->
       case meconfpager of
-        Just (Right No) -> p N "disabled in config file"
+        Just (Right No) -> i N "disabled in config file"
         _ -> do
           p Y pager
 
@@ -295,30 +339,41 @@ setupTerminal meconf = do
               Just v  -> i Y v
 
           when (map toLower (takeBaseName pager) == "less") $ do
-            pdesc "the LESS variable is defined ?"
+            mHLEDGER_LESS <- lookupEnv "HLEDGER_LESS"
             mLESS <- lookupEnv "LESS"
+
+            pdesc "the LESS variable is defined ?"
             case mLESS of
               Nothing -> i N ""
-              Just _  -> i Y ""
+              Just v  -> i Y $ v <> if isJust mHLEDGER_LESS then " (overridden)" else ""
 
             pdesc "the HLEDGER_LESS variable is defined ?"
-            mHLEDGER_LESS <- lookupEnv "HLEDGER_LESS"
             case mHLEDGER_LESS of
               Nothing -> i N ""
               Just v  -> i Y v
 
             when (isNothing mHLEDGER_LESS) $ do
-              pdesc "adjusting LESS variable for color etc. ?"
+              pdesc "adjusting LESS var for consistent UX ?"
               usecolor <- useColorOnStdout
-              i (if usecolor then Y else N) ""
+              i Y $ lessVarValue mHLEDGER_LESS mLESS usecolor
 
-  pdesc "--pretty is enabled by config file ?"
+            pdesc "less is working, with these options ?"
+            usecolor <- useColorOnStdout
+            let newlessvar = lessVarValue mHLEDGER_LESS mLESS usecolor
+            env <- getEnvironment
+            let customEnv = ("LESS", newlessvar) : filter ((/= "LESS") . fst) env
+            lessHasError <- lessIsWorking (Just customEnv)
+            if lessHasError
+              then p N "less --version shows a problem, check LESS/HLEDGER_LESS settings"
+              else p Y ""
+
+  pdesc "box-drawing chars are used by default ?"
   if isJust $ conflookup ("--pretty"==)
-  then p Y "tables will use box-drawing characters"
-  else i N "tables will use ASCII characters"
+  then p Y ""
+  else i N "you can add --pretty to enable them"
 
-  pdesc "bash shell completions are installed ?" >> p U ""
-  pdesc "zsh shell completions are installed ?" >> p U ""
+  -- pdesc "bash shell completions are installed ?" >> p U ""
+  -- pdesc "zsh shell completions are installed ?" >> p U ""
 
 ------------------------------------------------------------------------------
 
@@ -344,6 +399,7 @@ setupJournal meconf = do
   mf <- lookupEnv journalEnvVar
   let
     (ok, msg) = case mf of
+      Just ""  -> (N, "defined, but with a null value")
       Just f  -> (Y, f)
       Nothing -> (N, "")
   i ok msg
@@ -360,7 +416,7 @@ setupJournal meconf = do
   --   i Y ""
 
   pdesc "a default journal file is readable ?"
-  jfile <- defaultJournalPath
+  ef <- defaultJournalPathSafely
   -- let
   --   args = concat [
   --     ["print"],
@@ -370,29 +426,47 @@ setupJournal meconf = do
   -- (exit, _, err) <- readProcessWithExitCode progname args ""
   -- XXX can this ignore assertions and config files, like the above ?
   ej <- defaultJournalSafely
-  case ej of
-    Left estr -> p N (jfile <> ":\n" <> estr)
-    Right j@Journal{..} -> do
-      p Y jfile
+  let trim s = either (const s) id $ regexReplace (toRegex' "^Error: ") "" s
+  case (ef, ej) of
+    (Left err, _) -> p N $ trim err
+    (Right f, Left err) -> do
+      -- show a missing file compactly, other read errors in full
+      exists <- doesFileExist f
+      p N $ if exists then f <> ":\n" <> trim err else f <> " (not found)"
+      journalFilesystemCanAppend f
+    (Right f, Right j@Journal{..}) -> do
+      p Y f
+      journalFilesystemCanAppend f
 
       pdesc "it includes additional files ?"
       let numfiles = length jfiles
       if numfiles > 1
-      then i Y (show $ numfiles - 1)
+      then i Y (show (numfiles - 1) <> " files")
       else i N ""
 
       pdesc "all commodities are declared ?"
       let
         numcommodities = length $ journalCommodities j
-        undeclaredcommodities = journalCommoditiesUsed j \\ journalCommoditiesDeclared j
+        undeclaredcommodities = journalUndeclaredCommodities j  -- same logic as "hledger check commodities"
       if null undeclaredcommodities
-      then p Y (show numcommodities)
-      else p N (show (length undeclaredcommodities) <> "; declaring helps set their precision")
+      then p Y (show numcommodities <> " commodities")
+      else p N (show (length undeclaredcommodities) <> " undeclared commodities")
 
       let
-        accttypes = [Asset, Liability, Equity, Revenue, Expense, Cash, Conversion]
-        typesdeclaredorinferred = nub $ M.elems jaccounttypes
-        typesnotfound = filter (not.(`elem` typesdeclaredorinferred)) accttypes
+        -- The basic types which the bs/bse/is/cf reports depend on
+        -- (subtypes like Cash also count as their parent type, as in those reports),
+        -- and the reports which will be empty when a type has no accounts.
+        basictypes = [Asset, Liability, Equity, Revenue, Expense, Cash]
+        typesdetected = nub $ M.elems jaccounttypes
+        hastype t = any (`isAccountSubtypeOf` t) typesdetected
+        typesnotfound = filter (not . hastype) basictypes
+        missing = any (`elem` typesnotfound)
+        reportsaffected = concat
+          [ ["bs"  | missing [Asset, Liability]]  -- and bse, implied
+          , ["bse" | missing [Equity], not $ missing [Asset, Liability]]
+          , ["is"  | missing [Revenue, Expense]]
+          , ["cf"  | missing [Cash]]
+          ]
         acctswithdeclaredorinferredtype = nub (M.keys jaccounttypes)
         numaccts = length $ journalAccountNames j
         untypedaccts = journalAccountNames j \\ acctswithdeclaredorinferredtype
@@ -435,28 +509,38 @@ setupJournal meconf = do
       -- if null typesinferredfromnames then i N "" else i Y (concatMap show typesinferredfromnames)
 
       pdesc "all accounts are declared ?"
-      if null undeclaredaccts then p Y (show numaccts) else i N (show (length undeclaredaccts) <> " undeclared")
+      if null undeclaredaccts then p Y (show numaccts <> " accounts") else i N (show (length undeclaredaccts) <> " undeclared accounts")
 
       pdesc "all accounts have types ?"
-      if null untypedaccts then p Y "" else i N (show (length untypedaccts) <> " untyped")
+      if null untypedaccts then p Y "" else i N (show (length untypedaccts) <> " accounts without types")
 
-      pdesc "accounts of each type were detected ?"
+      pdesc "accounts of all basic types exist ?"
       if null typesnotfound
-      then p Y (concatMap show accttypes)
-      else p N (concatMap show typesnotfound <> "not found; type: queries, bs/cf/is reports may not work")
+      then p Y (concatMap show basictypes <> " accounts detected")
+      else i N (intercalate "/" reportsaffected
+                <> (if length reportsaffected == 1 then " needs " else " need ")
+                <> concatMap show typesnotfound <> " accounts")
 
-      pdesc "commodities/accounts are checked ?"
       let strict = isJust $ conflookup (\a -> any (==a) ["-s", "--strict"])
-      if strict
-      then i Y "commodities and accounts must be declared"
-      else i N "use -s to check commodities/accounts"
 
-      pdesc "balance assertions are checked ?"
+      pdesc "balance assertions checked by default ?"
       let ignoreassertions = isJust $ conflookup (\a -> any (==a) ["-I", "--ignore-assertions"])
       if 
-        | ignoreassertions && not strict -> i N "use -s to check assertions"
-        | not strict -> i Y "use -I to ignore assertions"
-        | otherwise -> i Y "can't ignore assertions (-s in config file)"
+        | ignoreassertions && not strict -> i N "you can add -s to check them"
+        | not strict -> i Y "you can add -I to ignore them"
+        | otherwise -> i Y "and can't be ignored, because strict checks are enabled"
+
+      pdesc "lot movements checked by default ?"
+      let ignorelots = isJust $ conflookup (\a -> any (==a) ["-I", "--ignore-lots"])
+      if
+        | ignorelots && not strict -> i N "you can add -s to check them"
+        | not strict -> i Y "you can add -I to ignore them"
+        | otherwise -> i Y "and can't be ignored, because strict checks are enabled"
+
+      pdesc "strict checks checked by default ?"
+      if strict
+      then i Y "commodities and accounts must be declared"
+      else i N "you can add -s to check them"
 
 ------------------------------------------------------------------------------
 
@@ -506,11 +590,26 @@ i ok msg = putStrLn $ unwords ["", showInfo ok, "", msg]
 
 -- | Print a setup test groups heading.
 pgroup :: String -> IO ()
-pgroup s = putStrLn $ "\n" <> bold' s
+pgroup s = putStrLn $ -- "\n" <> 
+            bold' s
 
 -- | Print a setup test's description, formatting and padding it to a fixed width.
 pdesc :: String -> IO ()
-pdesc s = printf "* %-40s" s
+pdesc s = printf "  %-40s" s
+
+-- | Probe the journal file's directory to confirm it honors O_APPEND,
+-- ie that 'hledger add' will be safe there. Reports the result as a
+-- setup check. Any IOException (eg unwritable directory) is reported
+-- as unknown rather than a failure.
+journalFilesystemCanAppend :: FilePath -> IO ()
+journalFilesystemCanAppend f = do
+  pdesc "its filesystem supports appending ?"
+  let dir = takeDirectory f
+  eres <- try (ensureFilesystemCanAppend dir) :: IO (Either IOException Bool)
+  case eres of
+    Right True  -> p Y ""
+    Right False -> p N "add/import won't work; use a reliable filesystem"
+    Left e      -> i U $ "unknown; " <> show e
 
 (getLatestHledgerVersion, latestHledgerVersionUrlStr) =
   -- (getLatestHledgerVersionFromHackage, "https://hackage.haskell.org/package/hledger/docs")
@@ -543,14 +642,17 @@ getLatestHledgerVersionFromHackage = do
         else return $ Left $ "HTTP status " ++ show status
     Left err -> return $ Left $ "other exception: " ++ show err
 
--- | Like the above, but get the version from the first number on the hledger.org Install page.
+-- | Like the above, but get the version from the first number
+-- in the first line containing "current hledger release"
+-- on the hledger.org Install page.
+-- (This has been hard coded for a while, so keep those words in the page to avoid breaking this.)
 getLatestHledgerVersionFromHledgerOrg :: IO (Either String String)
 getLatestHledgerVersionFromHledgerOrg = do
   let url = https "hledger.org" /: "install.html"
   do
     result <- try $ runReq defaultHttpConfig $ req GET url NoReqBody bsResponse (R.responseTimeout httptimeout)
     case result of
-      Left (e :: R.HttpException) -> return $ Left $ show e
+      Left (_ :: R.HttpException) -> return $ Left "(HTTP failure)"
       Right rsp -> case T.decodeUtf8' $ R.responseBody rsp of
         Left e  -> return $ Left $ show e
         Right t -> return $
@@ -560,7 +662,7 @@ getLatestHledgerVersionFromHledgerOrg = do
             versionline = take 1 $ dropWhile (not . ("current hledger release" `isInfixOf`)) $ lines $ T.unpack t
             version = takeWhile (`elem` ("0123456789."::[Char])) $ dropWhile (not . isDigit) $ headDef "" $ versionline
   -- work around potential failure on mac (& possible security issue, reported upstream)
-  `catch` (\(_ :: IOError) -> return $ Left "req failed (mac PATH issue ?)")
+  `catch` (\(_ :: IOError) -> return $ Left $ "(IO error" <> if os=="darwin" then " - mac PATH issue ?)" else ")")
 
 -- | Try to run the hledger in PATH with one or more sets of command line arguments.
 -- Returns the output from the first set of arguments that runs successfully,
@@ -581,3 +683,20 @@ runHledger args = do
   pure $ case exit of
     ExitSuccess -> Right out
     ExitFailure _ -> Left err
+
+-- | Get the operating system version string, if possible.
+-- Uses platform-specific commands to detect the OS version.
+getOSVersion :: IO (Maybe String)
+getOSVersion = case os of
+  "darwin"  -> tryProc "sw_vers" ["-productVersion"]
+  -- Use shell mode so process composes the cmd.exe command line itself,
+  -- avoiding cmd /c's quirky argument-quote parsing.
+  "mingw32" -> tryShell "ver"
+  "linux"   -> tryProc "uname" ["-r"]
+  _         -> return Nothing
+  where
+    tryProc cmd args = tryRead $ readProcess cmd args ""
+    tryShell cmd    = tryRead $ readCreateProcess (shell cmd) ""
+    tryRead action =
+      (Just . strip <$> action)
+      `catch` (\(_ :: SomeException) -> return Nothing)

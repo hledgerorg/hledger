@@ -1,0 +1,42 @@
+; from https://plaintextaccounting.org/VAT
+
+
+; Recording a Purchase with VAT (Input VAT)
+; Example: Buying office supplies for £100 with 20% VAT.
+
+2025-01-01 * Purchase office supplies
+    expenses:office supplies                    £100
+    assets:vat:input                             £20
+    assets:cash                                -£120
+
+; Recording a Sale with VAT (Output VAT)
+; Example: Selling goods for £500 with 20% VAT.
+
+2025-01-02 * Sale of goods
+    assets:cash                                 £600
+    income:sales                               -£500
+    liabilities:vat:output                     -£100
+
+; Balancing VAT at the end of the Period
+; Example (VAT Payable): Output VAT is £100 and Input VAT is £20.
+
+2025-01-31 * VAT adjustment
+    ; consolidate smaller into larger
+    assets:vat:input                            -£20 = £0
+    liabilities:vat:output                       £20
+    ; convert to a payable or receivable
+    liabilities:vat:output                       £80 = £0
+    liabilities:vat:payable                     -£80
+
+; Settling VAT
+; Example: Paying the above £80 VAT payable.
+
+2025-02-15 * VAT payment
+    liabilities:vat:payable                      £80 = £0
+    assets:bank                                 -£80
+
+; If VAT was receivable, the business would receive a refund from the tax authorities instead.
+
+; 2025-02-15 * VAT refund
+;     assets:vat:receivable                       -£80 = £0
+;     assets:bank                                  £80

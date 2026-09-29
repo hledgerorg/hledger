@@ -8,8 +8,8 @@
     ; TAG: value
 $ hledger -f- --pivot TAG print
 2016-02-16 Test Transaction
-                    2 EUR
-    value          -2 EUR
+                                                   2 EUR
+    value                                         -2 EUR
     ; TAG: value
 
 >= 0
@@ -207,3 +207,26 @@ Balance changes in 2025:
  @ $100 ||             2 B 
 --------++-----------------
         || $-210, 1 A, 2 B 
+
+# ** 18. Pivoting relinks postings to their transaction, so sibling-aware
+# queries (any:, all:) see the pivoted account names.
+<
+2026-01-01 shopping
+    expenses:food   10  ; category:groceries
+    assets:cash    -10  ; category:banking
+
+$ hledger -f- bal --pivot category any:banking
+                 -10  banking
+                  10  groceries
+--------------------
+                   0  
+>=
+
+# ** 19. The pre-pivot account name still matches, as it does for a
+# posting's own account name (pivoting keeps the original posting).
+$ hledger -f- bal --pivot category any:cash
+                 -10  banking
+                  10  groceries
+--------------------
+                   0  
+>=

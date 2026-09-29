@@ -23,15 +23,15 @@ Income Statement 2014-01-01..2014-01-02
 # ** 2. aliases etc. in files currently don't carry over to subsequent files
 $ hledger print -f personal.journal -f business.journal -f alias.journal -f personal.journal
 2014-01-01
-    expenses:office supplies              $1
+    expenses:office supplies                      $1
     assets:business checking
 
 2014-01-02
-    expenses:food              $1
+    expenses:food                                 $1
     assets:cash
 
 2014-01-02
-    expenses:food              $1
+    expenses:food                                 $1
     assets:cash
 
 >=
@@ -41,16 +41,16 @@ $ hledger print -f personal.journal -f business.journal -f alias.journal -f pers
 
 
 # ** 3. files can be of different formats
-$ hledger print -f personal.journal -f ../journal/a.timeclock -f ../journal/b.timedot
+$ hledger print -f personal.journal -f a.timeclock -f b.timedot
 2014-01-02
-    expenses:food              $1
+    expenses:food                                 $1
     assets:cash
 
 2016-01-01 * 12:00-16:00
-    (a:aa)           4.00h
+    (a:aa)                                         4.00h
 
 2016-01-01 *
-    (b.bb)            1.00
+    (b.bb)                                         1.00
 
 >=
 

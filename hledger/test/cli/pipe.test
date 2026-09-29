@@ -1,0 +1,4 @@
+# Tests related to using hledger in piped commands.
+# ** 1. Truncating output (including largeish output) in a pipe doesn't cause an error. (#2405)
+$ hledger -f bcexample.journal print | head
+> /Opening Balance for checking account/

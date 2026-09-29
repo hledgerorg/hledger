@@ -44,7 +44,7 @@ import Control.Monad.Except (ExceptT, liftEither)
 import Control.Monad.State.Strict
 import Data.Char (isSpace)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Time (Day)
 import Text.Megaparsec hiding (parse)
 import Text.Megaparsec.Char
@@ -74,7 +74,7 @@ reader = Reader
 
 -- | Parse and post-process a "Journal" from the timedot format, or give an error.
 parse :: InputOpts -> FilePath -> Text -> ExceptT String IO Journal
-parse iopts fp t = initialiseAndParseJournal timedotp iopts fp t
+parse iopts fp t = initialiseAndParseJournal (timedotp iopts) iopts fp t
                    >>= liftEither . journalApplyAliases (aliasesFromOpts iopts)
                    >>= journalFinalise iopts fp t
 
@@ -106,13 +106,31 @@ Org headings before the first date line are ignored, regardless of content.
 
 timedotfilep = timedotp -- XXX rename export above
 
-timedotp :: JournalParser m ParsedJournal
-timedotp = preamblep >> many dayp >> eof >> get
+timedotp :: InputOpts -> JournalParser m ParsedJournal
+timedotp _ = preamblep >> many dayp >> eof >> get
+
+-- | A lookahead that succeeds when the current line looks like a date line attempt:
+-- either a valid date line (full or partial date, with optional org heading prefix),
+-- or three groups of digits separated by '-', '/', or '.' (catches malformed full dates,
+-- so they error clearly via datep rather than being silently treated as a comment or entry).
+-- Does not consume input.
+datelineattemptp :: JournalParser m ()
+datelineattemptp = lift datelikep <|> void datelinep
+  where
+    datelikep = try . lookAhead $ do
+      optional . try $ skipSome (char '*') >> skipNonNewlineSpaces1
+      void $ some digitChar
+      void datesepchar
+      void $ some digitChar
+      void datesepchar
+      void $ some digitChar
 
 preamblep :: JournalParser m ()
 preamblep = do
   dp "preamblep"
-  void $ many $ notFollowedBy datelinep >> (lift $ emptyorcommentlinep2 "#;*")
+  void $ many $ do
+    notFollowedBy datelineattemptp
+    lift $ emptyorcommentlinep2 "#;*"
 
 -- | Parse timedot day entries to multi-posting time transactions for that day.
 -- @
@@ -167,16 +185,17 @@ commentlinesp = do
 
 orgheadingprefixp = skipSome (char '*') >> skipNonNewlineSpaces1
 
--- | Parse a single timedot entry to one (dateless) transaction.
+-- | Parse a single timedot data line as one or more postings.
+-- (Multiple postings can arise if timedot letter syntax is used.)
 -- @
 -- fos.haskell  .... ..
 -- @
 timedotentryp :: JournalParser m [Posting]
 timedotentryp = do
   dp "timedotentryp"
-  notFollowedBy datelinep
+  notFollowedBy datelineattemptp
   lift $ optional $ choice [orgheadingprefixp, skipNonNewlineSpaces1]
-  a <- modifiedaccountnamep
+  a <- modifiedaccountnamep False
   lift skipNonNewlineSpaces
   taggedhours <- lift durationsp
   (comment0, tags0) <-
@@ -190,7 +209,7 @@ timedotentryp = do
     ps = [
       nullposting{paccount=a
                 ,pamount=mixedAmount $ nullamt{acommodity=c, aquantity=hours, astyle=s}
-                ,ptype=VirtualPosting
+                ,preal=VirtualPosting
                 ,pcomment=comment
                 ,ptags=tags
                 }

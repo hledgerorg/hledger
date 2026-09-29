@@ -51,6 +51,7 @@ module Hledger.Utils.Regex (
   ,toRegexCI
   ,toRegex'
   ,toRegexCI'
+  ,regexEscape
    -- * type aliases
   ,Replacement
   ,RegexError
@@ -74,12 +75,11 @@ import Data.List (foldl')
 #endif
 import Data.MemoUgly (memo)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Text.Regex.TDFA (
   Regex, CompOption(..), defaultCompOpt, defaultExecOpt,
   makeRegexOptsM, AllMatches(getAllMatches), match, MatchText,
-  RegexLike(..), RegexMaker(..), RegexOptions(..), RegexContext(..),
-  (=~)
+  RegexLike(..), RegexMaker(..), RegexOptions(..), RegexContext(..)
   )
 
 
@@ -143,7 +143,7 @@ toRegexCI = memo $ \s -> mkRegexErr s (RegexpCI s <$> makeRegexOptsM defaultComp
 -- | Make a nice error message for a regexp error.
 mkRegexErr :: Text -> Maybe a -> Either RegexError a
 mkRegexErr s = maybe (Left errmsg) Right
-  where errmsg = T.unpack $ "This regular expression is invalid or unsupported, please correct it:\n" <> s
+  where errmsg = T.unpack $ "This regular expression is invalid or unsupported, please correct it: " <> s
 
 -- Convert a Regexp string to a compiled Regex, throw an error
 toRegex' :: Text -> Regexp
@@ -152,6 +152,15 @@ toRegex' = either errorWithoutStackTrace id . toRegex
 -- Like toRegex', but make a case-insensitive Regex.
 toRegexCI' :: Text -> Regexp
 toRegexCI' = either errorWithoutStackTrace id . toRegexCI
+
+-- | Escape POSIX extended regex metacharacters in a text so the result
+-- matches the input as a literal. Eg @regexEscape "U$"@ produces @"U\\$"@,
+-- which compiled as a regex matches only the two-character string @U$@.
+regexEscape :: Text -> Text
+regexEscape = T.concatMap esc
+  where
+    esc c | c `elem` ("\\.^$*+?()[]{}|" :: String) = T.pack ['\\', c]
+          | otherwise                              = T.singleton c
 
 -- | A replacement pattern. May include numeric backreferences (\N).
 type Replacement = String
@@ -179,8 +188,8 @@ regexMatchText r = matchTest r . T.unpack
 -- Regex to a Text.
 regexMatchTextGroups :: Regexp -> Text -> [Text]
 regexMatchTextGroups r txt = let
-    pat = reString r
-    (_,_,_,matches) = txt =~ pat :: (Text,Text,Text,[Text])
+    pat = reCompiled r
+    (_,_,_,matches) = match pat txt :: (Text,Text,Text,[Text])
     in matches
 
 --------------------------------------------------------------------------------

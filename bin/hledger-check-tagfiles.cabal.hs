@@ -16,12 +16,12 @@ $ hledger check-tagfiles       # compiles every time (?)
 -}
 
 import Control.Monad
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Hledger.Cli.Script
 import System.Directory
 import System.Exit
 
-main = withJournalDo defcliopts $ \j -> do
+main = withJournal defcliopts $ \j -> do
   let filetags = [ (t,v)
                  | (t',v') <- concatMap transactionAllTags $ jtxns j
                  , let t = T.unpack t'

@@ -1,38 +1,38 @@
 <h2>
   #{header}
 
-<div .hidden-xs>
-  ^{registerChartHtml qparam balancelabel $ accountTransactionsReportByCommodity items}
+<div>
+  ^{registerChartHtml qparam (T.unpack balancelabel) $ accountTransactionsReportByCommodity items}
 
 <div.table-responsive>
-  <table .table.table-striped.table-condensed>
+  <table .table.table-condensed>
     <thead>
       <tr>
-        <th style="text-align:left;">
-          Date
+        <th>
+          _{HMsgc "column heading" "Date"}
           <span .glyphicon.glyphicon-chevron-up>
-        <th style="text-align:left;">Description
-        <th style="text-align:left;">To/From Account(s)
-        <th style="text-align:right; white-space:normal;">Amount Out/In
-        <th style="text-align:right; white-space:normal;">
+        <th>_{HMsgc "column heading" "Description"}
+        <th>_{HMsgc "column heading" "To/From Account(s)"}
+        <th .amount>_{HMsgc "column heading" "Amount Out/In"}
+        <th .amount>
           #{balancelabel}
 
     <tbody>
       $forall (torig, tacct, split, _acct, amt, bal) <- items
-        <tr ##{tindex torig} title="#{showTransaction torig}" style="vertical-align:top;">
-          <td .date>
+        <tr ##{tindex torig} title="#{showTransaction torig}">
+          <td .date nowrap>
             <a href="@?{(JournalR, [("q", T.unwords $ removeInacct qparam)])}##{transactionFrag torig}">
               #{show (tdate tacct)}
-          <td>
+          <td .description>
             #{textElideRight 30 (tdescription tacct)}
           <td .account>
             $forall (Posting { paccount = acc }, (summName,comma)) <- otherTransAccounts torig
               <a href="@?{acctlink acc}##{tindex torig}" title="#{acc}">
                 #{summName}</a>#{comma}
-          <td .amount style="text-align:right; white-space:nowrap;">
+          <td .amount>
             $if not split || not (mixedAmountLooksZero amt)
               ^{mixedAmountAsHtml amt}
-          <td style="text-align:right;">
+          <td .amount>
             ^{mixedAmountAsHtml bal}
 
 $if elem AddPermission perms

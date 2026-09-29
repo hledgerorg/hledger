@@ -1,8 +1,9 @@
 # * file, transaction and posting comments
 
-# ** 1. several comment characters allowed for file characters; 
+# ** 1. several comment characters allowed for file characters;
 # print shows in-transaction & posting comments;
 # comment line is preserved, starting column is not.
+# Comment lines immediately preceding a transaction are attached to it and shown as written.
 <
 ; file comments, ignored
 # file comment using a hash
@@ -11,7 +12,8 @@
  # start in
  * column 0
 
-; pre-transaction comment, ignored
+; pre-transaction comment, preserved
+ # pre-transaction comment, indented
 2009/1/1 x ; transaction same line comment
       ; transaction new line comment
     a  1  ; posting 1 same line comment
@@ -22,9 +24,11 @@
 
 ; trailing file comment, ignored
 $ hledger -f - print
+; pre-transaction comment, preserved
+ # pre-transaction comment, indented
 2009-01-01 x  ; transaction same line comment
     ; transaction new line comment
-    a               1  ; posting 1 same line comment
+    a                                              1  ; posting 1 same line comment
     ; posting 1 new line comment
     a
     ; posting 2 new line comment

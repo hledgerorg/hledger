@@ -1,8 +1,10 @@
-$$$ hledger print -f  csvdateformat.csv
->>>2 /Error: could not parse "a" as a date using date format "YYYY\/M\/D", "YYYY-M-D" or "YYYY.M.D"
+$ hledger print -f csvdateformat.csv
+>2 /hledger: Error: .*csvdateformat\.csv:4:
+4 \| a,b
+
+could not parse "a" as a date using date format "YYYY\/M\/D", "YYYY-M-D" or "YYYY\.M\.D"
 record: a,b
-the date rule is:   %1
-the date-format is: unspecified
-you may need to change your date rule, add a date-format rule, or change your skip rule
-for m\/d\/y or d\/m\/y date/
->>>= 1
+(.*
+)*the date rule is:   %1 +\(.*rules:2\)
+/
+>= 1

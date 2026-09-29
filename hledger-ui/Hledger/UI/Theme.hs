@@ -17,14 +17,14 @@ module Hledger.UI.Theme (
 )
 where
 
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Maybe
 import Graphics.Vty
 import Brick
 import Safe (headErr)
 
 defaultTheme :: AttrMap
-defaultTheme = fromMaybe (snd $ headErr themesList) $ getTheme "white"  -- PARTIAL headErr succeeds because themesList is non-null
+defaultTheme = fromMaybe (snd $ headErr themesList) $ getTheme "light"  -- PARTIAL headErr succeeds because themesList is non-null
   -- the theme named here should exist;
   -- otherwise it will take the first one from the list,
   -- which must be non-empty.
@@ -60,12 +60,12 @@ themeNames = map fst themesList
 
 (&) = withStyle
 active = fg brightWhite & bold
-selectbg = yellow
+selectbg = cyan
 select = black `on` selectbg
 
 themesList :: [(String, AttrMap)]
 themesList = [
-   ("default", attrMap (black `on` white) [
+   ("light", attrMap (black `on` white) [
      (attrName "border"                                        , white `on` black & dim)
     ,(attrName "border" <> attrName "bold"                              , currentAttr & bold)
     ,(attrName "border" <> attrName "depth"                             , active)
@@ -75,6 +75,7 @@ themesList = [
     ,(attrName "border" <> attrName "query"                             , active)
     ,(attrName "border" <> attrName "selected"                          , active)
     ,(attrName "error"                                         , fg red)
+    ,(attrName "warning"                                       , fg brightYellow & bold)  -- like the CLI's warning colour (ansiFormatWarning)
     ,(attrName "help"                                          , white `on` black & dim)
     ,(attrName "help" <> attrName "heading"                             , fg yellow)
     ,(attrName "help" <> attrName "key"                                 , active)
@@ -94,16 +95,6 @@ themesList = [
     -- ,(attrName "list" <> attrName "selected"                         , black `on` brightYellow)
   ])
 
-  ,("greenterm", attrMap (green `on` black) [
-    (attrName "list" <> attrName "selected"                             , black `on` green)
-  ])
-
-  ,("terminal", attrMap defAttr [
-    (attrName "border"                                         , white `on` black),
-    (attrName "list"                                           , defAttr),
-    (attrName "list" <> attrName "selected"                             , defAttr & reverseVideo)
-  ])
-
   ,("dark", attrMap (white `on` black & dim) [
       (attrName "border"                                                                   , white `on` black)
     , (attrName "border" <> attrName "bold"                                                , currentAttr & bold)
@@ -114,6 +105,7 @@ themesList = [
     , (attrName "border" <> attrName "query"                                               , active)
     , (attrName "border" <> attrName "selected"                                            , active)
     , (attrName "error"                                                                    , fg red)
+    , (attrName "warning"                                                                  , fg brightYellow & bold)  -- like the CLI's warning colour (ansiFormatWarning)
     , (attrName "help"                                                                     , currentAttr & bold)
     , (attrName "help" <> attrName "heading"                                               , fg blue)
     , (attrName "help" <> attrName "key"                                                   , active)
@@ -123,8 +115,18 @@ themesList = [
     , (attrName "list" <> attrName "balance" <> attrName "negative"                        , fg red)
     , (attrName "list" <> attrName "balance" <> attrName "positive"                        , fg white)
     , (attrName "list" <> attrName "balance" <> attrName "negative" <> attrName "selected" , red `on` black    & bold)
-    , (attrName "list" <> attrName "balance" <> attrName "positive" <> attrName "selected" , yellow `on` black & bold)
-    , (attrName "list" <> attrName "selected"                                              , yellow `on` black & bold)
+    , (attrName "list" <> attrName "balance" <> attrName "positive" <> attrName "selected" , cyan `on` black & bold)
+    , (attrName "list" <> attrName "selected"                                              , cyan `on` black & bold)
+  ])
+
+  ,("terminal", attrMap defAttr [
+    (attrName "border"                                         , white `on` black),
+    (attrName "list"                                           , defAttr),
+    (attrName "list" <> attrName "selected"                             , defAttr & reverseVideo)
+  ])
+
+  ,("greenterm", attrMap (green `on` black) [
+    (attrName "list" <> attrName "selected"                             , black `on` green)
   ])
 
   ]

@@ -1,0 +1,5 @@
+# for https://github.com/well-typed/haskell-debugger/issues/38
+
+cradle:
+  cabal:
+    component: "all"

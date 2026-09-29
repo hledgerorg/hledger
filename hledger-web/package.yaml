@@ -1,13 +1,13 @@
 name:          hledger-web
-version: 1.43.99
+version: 1.99
 license:       GPL-3.0-or-later
 maintainer:    Simon Michael <simon@joyful.com>
 author:        Simon Michael <simon@joyful.com>
 stability:     stable
-tested-with:   ghc==8.10.7, ghc==9.0.2, ghc==9.2.8, ghc==9.4.8, ghc==9.6.7, ghc==9.8.4, ghc==9.10.2, ghc==9.12.1
+tested-with:   ghc==9.6.7, ghc==9.8.4, ghc==9.10.3, ghc==9.12.4, ghc==9.14.1
 homepage:      http://hledger.org
 bug-reports:   http://bugs.hledger.org
-github:        simonmichael/hledger
+github:        hledgerorg/hledger
 category:      Finance
 synopsis:      Web user interface for the hledger accounting system
 description: |
@@ -50,17 +50,13 @@ flags:
   library-only:
     description: Build for use with "yesod devel"
     default: false
-    manual:  false
+    manual:  true
   dev:
     description: Turn on development settings, like auto-reload templates.
     default: false
-    manual:  false
-  threaded:
-    description: Build with support for multithreaded execution.
-    default: true
-    manual:  false
+    manual:  true
   debug:
-    description: Build with GHC 9.10+'s stack traces enabled   # '
+    description: Build with GHC 9.10+ stack traces enabled   # '
     default: false
     manual:  true
 #  ghcdebug:
@@ -68,24 +64,33 @@ flags:
 #    default: false
 #    manual:  true
 
+dependencies:
+- base >=4.18 && <4.23
+
+cpp-options: -DVERSION="1.99"
+
+language: GHC2021
+
 ghc-options:
 - -Wall
-# not included in -Wall:
-- -Wredundant-constraints
-# not included in -Wall by older GHC versions:
-- -Wincomplete-record-updates
-- -Wincomplete-uni-patterns
+- -Wno-incomplete-uni-patterns
+- -Wno-missing-signatures
+- -Wno-orphans
+- -Wno-type-defaults
+- -Wno-unused-do-bind
+- -threaded  # needed for runPager & probably other things
 
 when:
-- condition: flag(threaded)
-  ghc-options: -threaded
+
 - condition: (flag(dev)) || (flag(library-only))
   cpp-options: -DDEVELOPMENT
+
 # This causes a warning when uploading to hackage:
 #Package check reported the following warnings:
 # 'ghc-options: -O0' is not needed. Use the --disable-optimization configure flag.
 - condition: flag(dev)
   ghc-options: -O0
+
 - condition: (flag(debug))
   cpp-options: -DDEBUG
 # - condition: (flag(ghcdebug))
@@ -93,24 +98,16 @@ when:
 #   dependencies:
 #   - ghc-debug-stub >=0.6.0.0 && <0.7
 
-dependencies:
-- base >=4.14 && <4.22
-
 library:
   source-dirs: .
-  cpp-options: -DVERSION="1.43.99"
-  exposed-modules:
-  - Hledger.Web
-  - Hledger.Web.Main
-  - Hledger.Web.WebOptions
-  - Hledger.Web.Application
-  - Hledger.Web.Import
-  - Hledger.Web.Test
+  # default: All modules in source-dirs less other-modules less modules mentioned in when
+  # exposed-modules:
   dependencies:
-  - hledger-lib >=1.43.99 && <1.44
-  - hledger >=1.43.99 && <1.44
-  - aeson >=1 && <2.3
-  - base64
+  - hledger-lib >=1.99 && <1.100
+  - hledger >=1.99 && <1.100
+  - aeson >=2.2.5.1 && <2.4  # avoid https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html
+  - async
+  - base64-bytestring
   - blaze-html
   - blaze-markup
   - bytestring
@@ -123,19 +120,20 @@ library:
   - data-default
   - Decimal >=0.5.1
   - directory >=1.2.3.0
+  - entropy
   - extra >=1.7.11
   - file-embed >=0.0.16.0
   - filepath
   - githash >=0.1.6.2
-  - hjsmin
   - http-conduit
   - http-client
   - http-types
-  - megaparsec >=7.0.0 && <9.8
+  - megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9   # avoid https://github.com/mrkkrp/megaparsec/issues/572; 9.8.3+ is ~10% faster (#612)
   - mtl >=2.2.1
   - network
   - safe >=0.3.20
   - shakespeare >=2.0.2.2
+  - streaming-commons
   - template-haskell
   - text >=1.2.4.1
   - time >=1.5
@@ -144,15 +142,14 @@ library:
   - unordered-containers
   - utf8-string
   - wai
+  - wai-app-static >=3.1
   - wai-extra
-  - wai-handler-launch >=3.0.3
   - wai-cors
   - warp
   - yaml
   - yesod        >=1.4 && < 1.7
-  - yesod-core   >=1.4 && < 1.7
+  - yesod-core   >=1.4 && < 1.8
   - yesod-form   >=1.4 && < 1.8
-  - yesod-static >=1.4 && < 1.7
   - hspec
   - yesod-test
 
@@ -160,20 +157,19 @@ executables:
   hledger-web:
     source-dirs: app
     main: main.hs
-    cpp-options: -DVERSION="1.43.99"
-    ghc-options: -with-rtsopts=-T  # for stats command
-    dependencies:
-    - hledger-web
+    # -rtsopts lets users set GHC runtime options, eg +RTS -M2G -RTS to limit memory
+    ghc-options: -rtsopts
     when:
     - condition: flag(library-only)
       buildable: false
+    dependencies:
+    - hledger-web
 
 tests:
-  test:
+  apptest:
     source-dirs: test
     main: test.hs
     other-modules: []  # prevent double compilation, https://github.com/sol/hpack/issues/188
-    cpp-options: -DVERSION="1.43.99"
     dependencies:
     - hledger-web
     # - hspec

@@ -237,3 +237,12 @@ commodity 1 000. A  ; narrow no-break space
 
 $ hledger bal -f - -N
              3 000 A  a
+
+# ** 23. underscores and apostrophes in numbers
+<
+2000-01-01
+  (a)  1_000. A
+  (a)  1'000. A  ;' <- this apostrophe is for syntax highlighting
+
+$ hledger bal -f - -N
+             2_000 A  a

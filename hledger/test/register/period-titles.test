@@ -1,0 +1,34 @@
+# * register --period-titles option
+
+# ** 1. compact headings are the default, describing subperiods in compact form when feasible
+# (eg falling on natural period boundaries, and within a single year).
+<
+2024/1/15
+  (a)  1
+2024/2/15
+  (a)  1
+$ hledger -f- register --monthly
+2024-01   a                                                      1             1
+2024-02   a                                                      1             2
+
+# ** 2. --period-titles=dates always shows full ISO date ranges.
+<
+2024/1/15
+  (a)  1
+2024/2/15
+  (a)  1
+$ hledger -f- register --monthly --period-titles=dates
+2024-01-01..2024-01-31   a                                       1             1
+2024-02-01..2024-02-29   a                                       1             2
+
+# ** 3. --period-titles=dates affects other output formats, like csv.
+<
+2024/1/15
+  (a)  1
+2024/2/15
+  (a)  1
+$ hledger -f- register --monthly -O csv --period-titles=dates
+"txnidx","date","code","description","account","amount","total"
+"0","2024-01-01..2024-01-31","","","a","1","1"
+"0","2024-02-01..2024-02-29","","","a","1","2"
+

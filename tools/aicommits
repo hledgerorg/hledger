@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""Report on the "AI usage:" disclosure lines in hledger commit messages.
+
+Scans the commit history reachable from HEAD for commits containing an
+"AI usage:" disclosure line (a convention started in 2026Q2), parses each
+one, and prints the results as CSV to stdout.
+
+Disclosure lines look like:
+
+    AI usage: Claude Opus 4.8, ~30k output tokens
+    AI usage: Claude Opus 4.8/Fable 5, ~160k output tokens (including rebase)
+    AI usage: Claude Opus 5, ~41k output tokens.
+    AI usage: Claude Fable 5, (estimate included in previous commit message)
+
+CSV columns (sorted by commit timestamp, oldest commit first):
+    commitdate     commit (committer) date (YYYY-MM-DD)
+    commit         abbreviated commit hash (first 9 chars)
+    author         commit author name
+    provider       AI provider (eg "Anthropic")
+    model          AI model(s) (eg "Opus 4.8", "Opus 4.8/Fable 5")
+    koutputtokens  estimated output tokens, in thousands, whole number,
+                   right-aligned in a 4-char field (eg "  30")
+    summary        the commit message's first line
+    notes          free-form remainder (eg parenthetical remarks)
+
+Usage: tools/aicommits
+"""
+# Keep synced with doc/ai/aicommits.csv.rules
+
+
+import csv
+import re
+import subprocess
+import sys
+
+# Record separator: git log -z separates commits with NUL; within each
+# commit we join fields with the unit-separator character (0x1f).
+US = "\x1f"
+
+# Matches the estimated output token count, eg "~30k", "160k", "1M", "~41.5k".
+TOKENS_RE = re.compile(r"~?\s*([0-9]+(?:\.[0-9]+)?)\s*([kKmM])\b")
+
+# Matches a parenthetical free-form note.
+NOTE_RE = re.compile(r"\(([^)]*)\)")
+
+# Normalise the disclosed provider name to a canonical form.
+PROVIDERS = {"Claude": "Anthropic"}
+
+
+def ktokens(unit_value, unit):
+    """Convert a token count to thousands (k), as a float."""
+    n = float(unit_value)
+    if unit in "mM":
+        n *= 1000
+    return n
+
+
+def parse_disclosure(line):
+    """Parse the text after "AI usage:" into (provider, model, ktokens, notes).
+
+    ktokens is a float in thousands, or None if no count was given.
+    """
+    body = line.split("AI usage:", 1)[1].strip()
+
+    # provider + model is everything up to the first comma.
+    modelpart, _, rest = body.partition(",")
+    words = modelpart.split()
+    provider = words[0] if words else ""
+    provider = PROVIDERS.get(provider, provider)
+    # Normalise " */ *" between multiple models to a bare "/".
+    model = re.sub(r" */ *", "/", " ".join(words[1:]))
+
+    m = TOKENS_RE.search(rest)
+    kt = ktokens(m.group(1), m.group(2)) if m else None
+
+    n = NOTE_RE.search(rest)
+    notes = n.group(1).strip() if n else ""
+
+    return provider, model, kt, notes
+
+
+def find_disclosure(body):
+    """Return the first line in a commit body that starts with "AI usage:"."""
+    for line in body.splitlines():
+        if line.strip().startswith("AI usage:"):
+            return line.strip()
+    return None
+
+
+def commits():
+    """Yield (hash, timestamp, date, author, body) for "AI usage:" commits.
+
+    timestamp is the commit (committer) date as a UNIX epoch int, used for
+    sorting; date is the committer date as YYYY-MM-DD.
+    """
+    out = subprocess.run(
+        ["git", "log", "--grep=AI usage:", "--date=short", "-z",
+         "--format=%H" + US + "%ct" + US + "%cd" + US + "%an" + US + "%B"],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    for record in out.split("\0"):
+        if not record.strip():
+            continue
+        hash_, ts, date, author, body = record.split(US, 4)
+        yield hash_[:9], int(ts), date, author, body
+
+
+def main():
+    rows = []
+    for hash_, ts, date, author, body in commits():
+        line = find_disclosure(body)
+        # Skip commits where "AI usage:" only appears in the subject/text,
+        # not as an actual disclosure line naming a provider.
+        if not line or not line.startswith("AI usage:"):
+            continue
+        provider, model, kt, notes = parse_disclosure(line)
+        summary = body.splitlines()[0].strip() if body.strip() else ""
+        rows.append((ts, [
+            date, hash_, author, provider, model,
+            f"{kt:>4.0f}" if kt is not None else "",
+            summary, notes,
+        ]))
+    rows.sort(key=lambda r: r[0])  # by commit timestamp, oldest commit first
+
+    # lineterminator="\n" gives Unix line endings (csv defaults to "\r\n").
+    writer = csv.writer(sys.stdout, lineterminator="\n")
+    writer.writerow(["commitdate", "commit", "author", "provider", "model",
+                     "koutputtokens", "summary", "notes"])
+    writer.writerows(row for _, row in rows)
+
+
+if __name__ == "__main__":
+    main()

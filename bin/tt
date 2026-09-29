@@ -4,6 +4,8 @@
 # Customise as needed; consider keeping as a git checkout for merging updates.
 # Uses hledger, bash, python, a few other unix tools.
 # wakelog is a script grepping system logs for sleep/wake events; provide it or comment it.
+# $TIMELOG should be set to the main time log file.
+# $TIMELOGDATA should be set to the time log data file if that's different.
 # See also: justfile, an alternative.
 
 ## #!/usr/bin/env -S osh  # -*- sh -*-  # or osh - more powerful, less tool support
@@ -37,10 +39,7 @@ cd "$DIR"
 
 # The file where actual time data is logged, for dashboard's stats.
 # This might or might not be the top-level $TIMELOG file.
-#TIMELOGDATA=$TIMELOG
-YEAR=$($date +%Y)
-TIMELOGDATA="$DIR"/time-"$YEAR".timedot
-
+TIMELOGDATA=${TIMELOGDATA:-$TIMELOG}
 
 # ** REPORTS ------------------------------------------------------------
 

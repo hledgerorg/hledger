@@ -9,8 +9,8 @@ module Text.WideString (
   ) where
 
 import Data.Text (Text)
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.Builder as TB
+import Data.Text.Lazy qualified as TL
+import Data.Text.Lazy.Builder qualified as TB
 import Text.DocLayout (realLength)
 
 

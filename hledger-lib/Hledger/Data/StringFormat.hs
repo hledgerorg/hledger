@@ -21,7 +21,7 @@ import Data.Char (isPrint)
 import Data.Default (Default(..))
 import Data.Maybe (isJust)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Text.Megaparsec
 import Text.Megaparsec.Char (char, digitChar, string)
 

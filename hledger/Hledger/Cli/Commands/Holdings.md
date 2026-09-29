@@ -1,0 +1,104 @@
+## holdings
+
+Show a report of investment holdings.
+
+```flags
+Flags:
+  -l --flat                 list/tree mode: show accounts as a flat list
+                            (default). Amounts exclude subaccount amounts,
+                            except where the account is depth-clipped.
+  -t --tree                 list/tree mode: show accounts as a tree. Amounts
+                            include subaccount amounts.
+     --no-elide             in tree mode, don't squash boring parent
+                            accounts; in list mode, also show parent accounts
+                            (usually zero, hidden without -E)
+     --full-names           in tree mode, show full account names instead of
+                            indented leaf names
+     --drop=N               in list mode, omit N leading account name parts
+  -S --sort-amount          sort by value (or cost) instead of account name,
+                            largest first
+  -N --no-total             omit the final total row
+     --round=TYPE           how much rounding or padding should be done when
+                            displaying amounts ?
+                            none - show original decimal digits
+                            soft - just add or remove decimal zeros
+                                   to match precision
+                            hard - round amounts to precision (default)
+                            all  - also round cost amounts to precision
+  -O --output-format=FMT    select the output format. Supported formats:
+                            txt, csv, tsv, html, fods, json.
+  -o --output-file=FILE     write output to FILE. A file extension matching
+                            one of the above formats selects that format.
+```
+
+
+This command shows your lot-tracked assets (see [Lots and capital gains](#lots-and-capital-gains)), and their performance, as of the report end date.
+An example:
+
+```cli
+$ hledger holdings -e 2023-04-02
+Holdings on 2023-04-01
+
+                           ||       Date   Age    Units  Avg cost     Price      Cost        Value  Weight        UGain   UGain%     RGain     XIRR 
+===========================++=======================================================================================================================
+ assets:investments:stocks || 2022-04-07  359d  10 INFY    2.00 ₹  100.00 ₹   20.00 ₹   1,000.00 ₹    6.4%     980.00 ₹  4900.0%            5252.4% 
+ assets:investments:stocks ||                   73 LTTS    4.79 ₹  200.00 ₹  350.00 ₹  14,600.00 ₹   93.6%  14,250.00 ₹  4071.4%  140.00 ₹  4290.2% 
+---------------------------++-----------------------------------------------------------------------------------------------------------------------
+                           ||                                                370.00 ₹  15,600.00 ₹  100.0%  15,230.00 ₹  4116.2%  140.00 ₹  4342.1% 
+```
+
+With `--lots`, the individual lots are shown:
+```cli
+$ hledger holdings --lots -e 2023-04-02
+Holdings on 2023-04-01
+
+                                                         ||       Date   Age    Units  Unit cost     Price      Cost        Value  Weight        UGain   UGain%     RGain     XIRR 
+=========================================================++========================================================================================================================
+ assets:investments:stocks:{2022-04-06, "0002", 10.00 ₹} || 2022-04-06  360d  13 LTTS    10.00 ₹  200.00 ₹  130.00 ₹   2,600.00 ₹   16.7%   2,470.00 ₹  1900.0%  140.00 ₹  3876.1% 
+ assets:investments:stocks:{2022-04-07, 2.00 ₹}          || 2022-04-07  359d  10 INFY     2.00 ₹  100.00 ₹   20.00 ₹   1,000.00 ₹    6.4%     980.00 ₹  4900.0%            5252.4% 
+ assets:investments:stocks:{2022-05-06, "0002", 11.00 ₹} || 2022-05-06  330d  20 LTTS    11.00 ₹  200.00 ₹  220.00 ₹   4,000.00 ₹   25.6%   3,780.00 ₹  1718.2%            5032.7% 
+ assets:investments:stocks:{2022-06-06, "0002", 0.00 ₹}  || 2022-06-06  299d  40 LTTS          0  200.00 ₹         0   8,000.00 ₹   51.3%   8,000.00 ₹                             
+---------------------------------------------------------++------------------------------------------------------------------------------------------------------------------------
+                                                         ||                                                 370.00 ₹  15,600.00 ₹  100.0%  15,230.00 ₹  4116.2%  140.00 ₹  4342.1% 
+```
+
+The columns show:
+
+- each holding's acquisition date (or earlier basis date) and age
+- the number of units held
+- the unit cost basis (or average cost; for accounts using the AVERAGE method, this is the pool's running average on the report date),
+- the unit market price on the report date
+- the total cost
+- the total market value
+- the percentage of the portfolio's total value (Weight)
+- the unrealised gain and gain percent (UGain, UGain%)
+- the realised gain from disposals so far (RGain)
+- and the annualised rate of return, as of the report end date (XIRR, calculated from the holding's dated cashflows and current value, like roi's IRR; it includes realised gains).
+
+Fully disposed commodities and accounts are not shown, unless you add `-E/--empty`.
+(But the RGain and XIRR in the totals row always includes them.)
+
+To see a commodity's performance, a market price should be declared for it (as of the report end date).
+Market prices come from [P directives](#p-directive) or (with `--infer-market-prices`) from transacted prices, as usual. 
+Each lot is valued in its cost commodity.
+In a multi-currency portfolio, aggregated values may contain multiple currencies; use `-X COMM` for a single-currency view.
+
+With `-V`, `-X COMM` or `--value` ([Valuation](#valuation)), holdings
+are valued in the default or given valuation commodity instead, and the
+cost columns are also converted to it (at the valuation date, so percent
+gain is unaffected). Cashflows are not converted, however, so the XIRR
+column is left blank for holdings whose cashflows are in a different commodity.
+`--value=then` is not supported, and `-B/--cost` has no effect.
+
+Amounts are displayed with their commodity's display precision.
+`--round` can select another rounding strategy.
+The percent columns (Weight, UGain%, XIRR) are shown with the display style configured for the `%` commodity (eg by `-c '0.00 %'`).
+
+Query arguments and report flags like `-t/--tree`, `--depth`, `-S/--sort-amount`, `--title` etc. work as usual.
+
+With `-O html`, an HTML table is produced instead.
+With `-O fods`, a spreadsheet document readable by LibreOffice etc. is produced.
+With `-O csv` or `-O tsv`, machine-readable output is produced:
+one record per displayed row, with full account names, age in days,
+bare units and gain percent numbers, and no totals record.
+With `-O json`, a JSON array of holding objects is produced.

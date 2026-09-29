@@ -2,7 +2,7 @@
 
 (reg)
 
-Show postings and their running total.
+Show postings & running total across accounts.
 
 ```flags
 Flags:
@@ -17,6 +17,7 @@ Flags:
                             description closest to DESC
   -r --related              show postings' siblings instead
      --invert               display all amounts with reversed sign
+     --drop=N               omit N leading account name parts
      --sort=FIELDS          sort by: date, desc, account, amount, absamount,
                             or a comma-separated combination of these. For a
                             descending sort, prefix with -. (Default: date)
@@ -72,6 +73,8 @@ $ hledger register checking -b 2008/6 --historical
 
 The `--depth` option limits the amount of sub-account detail displayed.
 
+The `--drop` option will trim leading segments from account names.
+
 The `--average`/`-A` flag shows the running average posting amount
 instead of the running total (so, the final number displayed is the
 average for the whole report period). This flag implies `--empty` (see below).
@@ -99,7 +102,7 @@ transactions ordered from smallest amount to largest amount.
 $ hledger register --related --invert assets:checking
 ```
 
-With a [reporting interval](#reporting-interval), register shows
+With a [reporting interval](#report-intervals), register shows
 summary postings, one per interval, aggregating the postings to each account:
 
 ```cli
@@ -130,7 +133,7 @@ Often, you'll want to see just one line per interval.
 The `--depth` option helps with this, causing subaccounts to be aggregated:
 
 ```cli
-$ hledger register --monthly assets --depth 1h
+$ hledger register --monthly assets --depth 1
 2008/01                 assets                                  $1           $1
 2008/06                 assets                                 $-1            0
 2008/12                 assets                                 $-1          $-1
@@ -140,6 +143,15 @@ Note when using report intervals, if you specify start/end dates these
 will be adjusted outward if necessary to contain a whole number of
 intervals. This ensures that the first and last intervals are full
 length and comparable to the others in the report.
+
+If you have a deeply nested account tree some reports might benefit from trimming
+leading segments from the account names using `--drop`.
+
+```cli
+$ hledger register --monthly income --drop 1
+2008/01                 salary                                 $-1          $-1
+2008/06                 gifts                                  $-1          $-2
+```
 
 With `-m DESC`/`--match=DESC`, register does a fuzzy search for one recent posting
 whose description is most similar to DESC.
@@ -172,4 +184,4 @@ This command also supports the
 [output destination](hledger.html#output-destination) and
 [output format](hledger.html#output-format) options
 The output formats supported are
-`txt`, `csv`, `tsv` (*Added in 1.32*), and `json`.
+`txt`, `csv`, `tsv`, and `json`.

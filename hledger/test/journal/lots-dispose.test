@@ -1,0 +1,1498 @@
+# Testing lot disposal scenarios.
+
+# * Lot disposal
+
+# ** 1. Simple dispose - negative amount to Asset account with cost basis - gets ptype:dispose tag
+<
+2026-01-01 Buy stock
+    assets:broker    5 AAPL {$100} @ $100
+    assets:cash
+
+2026-01-02 Sell stock
+    assets:broker    -5 AAPL {$100} @ $100
+    assets:cash       $500
+
+$ hledger -f- print --verbose-tags
+2026-01-01 Buy stock
+    assets:broker                                  5 AAPL {$100} @ $100  ; ptype: acquire
+    assets:cash
+
+2026-01-02 Sell stock
+    assets:broker                                 -5 AAPL {$100} @ $100  ; ptype: dispose
+    assets:cash                                 $500
+
+>=
+
+# ** 2. Simple single-lot disposal: the sell posting selects the appropriate lot subaccount.
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 sell
+    assets:stocks    -5 AAPL {$50} @ $50
+    assets:cash       $250
+
+$ hledger -f- bal assets:stocks --lots -N
+              5 AAPL  assets:stocks:{2026-01-15, $50}
+
+# ** 3. Full lot consumption: the lot is fully consumed.
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 sell all
+    assets:stocks   -10 AAPL {$50} @ $50
+    assets:cash       $500
+
+$ hledger -f- bal assets:stocks --lots -N
+
+# ** 4. FIFO multi-lot disposal: sell with {} can select multiple lots, oldest first.
+<
+2026-01-15 buy cheap
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 buy expensive
+    assets:stocks    10 AAPL {$60}
+    assets:checking
+
+2026-03-01 sell some
+    assets:stocks   -15 AAPL {} @ $55
+    assets:cash      $825
+    revenue:gains   -$25
+
+$ hledger -f- bal assets:stocks --lots -N
+              5 AAPL  assets:stocks:{2026-02-01, $60}
+
+# ** 5. Insufficient lots error: disposing more than is available at the specified cost fails.
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 sell too many
+    assets:stocks   -15 AAPL {$50} @ $55
+    assets:cash      $825
+
+$ hledger -f- bal assets:stocks --lots
+>2 /Insufficient lots/
+>=1
+
+# ** 6. Disposing when there's no lots at all gives a different error, apparently. ?
+<
+2026-02-01 sell without buying
+    assets:stocks    -5 AAPL {$50} @ $55
+    assets:cash       $275
+
+$ hledger -f- bal assets:stocks --lots
+>2 /no AAPL lots available for disposal/
+>=1
+
+# ** 7. Multiple disposals reduce lots correctly.
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 sell some
+    assets:stocks    -3 AAPL {$50} @ $50
+    assets:cash       $150
+
+2026-02-15 sell more
+    assets:stocks    -4 AAPL {$50} @ $50
+    assets:cash       $200
+
+2026-03-01 sell rest
+    assets:stocks    -3 AAPL {$50} @ $50
+    assets:cash       $150
+
+$ hledger -f- bal assets:stocks --lots -N
+
+# ** 8. A disposal-like posting without a transacted cost (selling price),
+# balanced by an elided asset posting, is read as a lot transfer to that
+# account instead: the dispose reading would fail for lack of a price.
+# So a sale which forgot its price quietly becomes a transfer.
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 sell, price forgotten
+    assets:stocks    -5 AAPL {$50}
+    assets:cash
+
+$ hledger -f- bal --lots -N
+              5 AAPL  assets:cash:{2026-01-15, $50}
+               $-500  assets:checking
+              5 AAPL  assets:stocks:{2026-01-15, $50}
+
+# ** 9. Explicit lot subaccount on dispose posting is accepted when it matches the resolved lot.
+<
+commodity AAPL  ; lots:
+2026-01-15 buy
+    assets:stocks    10 AAPL {} @ $50
+    assets:checking
+
+2026-02-01 sell
+    assets:stocks:{2026-01-15, $50}    -5 AAPL {2026-01-15, $50} @ $60
+    assets:cash      $300
+    revenue:gains   -$50
+
+$ hledger -f- print --lots
+2026-01-15 buy
+    assets:stocks:{2026-01-15, $50}               10 AAPL {} @ $50
+    assets:checking
+
+2026-02-01 sell
+    assets:stocks:{2026-01-15, $50}               -5 AAPL {2026-01-15, $50} @ $60
+    assets:cash                                 $300
+    revenue:gains                               $-50
+
+>=
+
+# ** 10. Explicit lot subaccount that doesn't match the resolved lot is an error.
+<
+commodity AAPL  ; lots:
+2026-01-15 buy
+    assets:stocks    10 AAPL {} @ $50
+    assets:checking
+
+2026-02-01 sell
+    assets:stocks:{2026-02-01, $99}    -5 AAPL {2026-01-15, $50} @ $60
+    assets:cash      $300
+    revenue:gains   -$50
+
+$ hledger -f- print --lots
+>2 /conflicting cost basis date/
+>=1
+
+# ** 11. Lot subaccount comparison ignores commodity-style whitespace.
+# The user wrote "$60.82" with no space, but the $ commodity is styled
+# with a space; the lot subaccount cost still matches the resolved lot.
+<
+commodity $ 0.00
+
+2022-09-22 buy
+    assets:broker        5 AAPL {$60.82}
+    assets:cash    $-304.10
+
+2022-12-01 sell
+    assets:broker:{2022-09-22, $60.82}    -5 AAPL @ $70
+    assets:cash     $350
+
+$ hledger -f- check assertions
+
+# ** 12. Implicit multi-lot disposal: bare negative amount with no cost basis, sale price inferred from cash.
+<
+commodity AAPL  ; lots:
+2026-01-15 buy cheap
+    assets:stocks    10 AAPL {} @ $50
+    assets:checking
+
+2026-02-01 buy expensive
+    assets:stocks    10 AAPL {} @ $55
+    assets:checking
+
+2026-03-01 sell some
+    assets:stocks   -15 AAPL
+    assets:cash      $900
+
+$ hledger -f- print --lots -x desc:sell
+2026-03-01 sell some
+    assets:stocks:{2026-01-15, $50}              -10 AAPL {2026-01-15, $50} @ $60
+    assets:stocks:{2026-02-01, $55}               -5 AAPL {2026-02-01, $55} @ $60
+    assets:cash                                 $900
+    revenues:gain                              $-125
+
+>=
+
+# ** 13. Implicit multi-lot disposal: negative amount with explicit @ cost, cash and gains inferred.
+<
+commodity AAPL  ; lots:
+2026-01-15 buy cheap
+    assets:stocks    10 AAPL {} @ $50
+    assets:checking
+
+2026-02-01 buy expensive
+    assets:stocks    10 AAPL {} @ $55
+    assets:checking
+
+2026-03-01 sell
+    assets:stocks   -15 AAPL @ $60
+    assets:cash
+
+$ hledger -f- print --lots -x desc:sell
+2026-03-01 sell
+    assets:stocks:{2026-01-15, $50}              -10 AAPL {2026-01-15, $50} @ $60
+    assets:stocks:{2026-02-01, $55}               -5 AAPL {2026-02-01, $55} @ $60
+    assets:cash                                 $900
+    revenues:gain                              $-125
+
+>=
+
+# ** 14. Plain print (no --lots) on a multi-lot disposal collapses the per-lot
+# split back to the user's single original posting.
+<
+commodity AAPL  ; lots:
+2026-01-15 buy cheap
+    assets:stocks    10 AAPL {} @ $50
+    assets:checking
+
+2026-02-01 buy expensive
+    assets:stocks    10 AAPL {} @ $55
+    assets:checking
+
+2026-03-01 sell
+    assets:stocks   -15 AAPL @ $60
+    assets:cash
+
+$ hledger -f- print desc:sell
+2026-03-01 sell
+    assets:stocks                                -15 AAPL {} @ $60
+    assets:cash
+    revenues:gain                              $-125
+
+>=
+
+# ** 15. print -x on the same disposal also collapses (cost basis annotations
+# stripped because the user didn't write one), but fills in inferred amounts.
+$ hledger -f- print -x desc:sell
+2026-03-01 sell
+    assets:stocks                                -15 AAPL {} @ $60
+    assets:cash                                 $900
+    revenues:gain                              $-125
+
+>=
+
+# ** 16. print --lots on the same disposal shows the per-lot split with lot
+# subaccounts but keeps the user's amount form (no inferred cost basis details).
+$ hledger -f- print --lots desc:sell
+2026-03-01 sell
+    assets:stocks:{2026-01-15, $50}              -10 AAPL @ $60
+    assets:stocks:{2026-02-01, $55}               -5 AAPL @ $60
+    assets:cash
+    revenues:gain                              $-125
+
+>=
+
+# ** 17. Bare negative lotful posting without selling price gets a lot subaccount
+# (dispose matches lot via FIFO, no gain posting since there's no selling price).
+<
+commodity AAPL  ; lots:
+
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:cash
+
+2026-02-01 gift given
+    assets:stocks    -5 AAPL
+    equity:opening
+
+$ hledger -f- bal assets:stocks --lots -N
+              5 AAPL  assets:stocks:{2026-01-15, $50}
+
+# ** 18. Balance assertion on a multi-lot disposal is moved to a generated parent-account
+# posting with subaccount-inclusive checking (=*), so the assertion still passes on re-read.
+
+<
+2026-01-15 buy cheap
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 buy expensive
+    assets:stocks    10 AAPL {$60}
+    assets:checking
+
+2026-03-01 sell all
+    assets:stocks    -20 AAPL {} @ $70 = 0 AAPL
+    assets:cash       $1400
+
+$ hledger -f- print --lots -x desc:sell
+2026-03-01 sell all
+    assets:stocks:{2026-01-15, $50}              -10 AAPL {2026-01-15, $50} @ $70
+    assets:stocks:{2026-02-01, $60}              -10 AAPL {2026-02-01, $60} @ $70
+    assets:stocks                                  0 AAPL                         =* 0 AAPL
+    assets:cash                                $1400
+    revenues:gain                              $-300
+
+>=
+
+# ** 19. Single-lot disposal with balance assertion: no =* parent synthetic is
+# needed, since the lot subaccount balance equals the parent balance when no
+# other lots exist. The user's assertion stays on the single fragment.
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 sell all
+    assets:stocks   -10 AAPL {$50} @ $50 = 0 AAPL
+    assets:cash       $500
+
+$ hledger -f- print --lots -x desc:sell
+2026-02-01 sell all
+    assets:stocks:{2026-01-15, $50}              -10 AAPL {2026-01-15, $50} @ $50 = 0 AAPL
+    assets:cash                                 $500
+
+>=
+
+# ** 20. A balance assertion on a dispose posting is moved to a generated parent-account
+# posting with subaccount-inclusive checking (=*).
+# Here after selling lot1, assets:stocks:{2026-01-15, $50} is 0 but assets:stocks:{2026-02-01, $60} is 10 AAPL.
+# The assertion = 10 AAPL, converted to =*, checks the inclusive balance of assets:stocks = 10 AAPL.
+<
+2026-01-15 buy lot1
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 buy lot2
+    assets:stocks    10 AAPL {$60}
+    assets:checking
+
+2026-03-01 sell lot1
+    assets:stocks    -10 AAPL {} @ $70 = 10 AAPL
+    assets:cash       $700
+
+$ hledger -f- --lots check assertions
+
+# ** 21. But if a lot subaccount is written explicitly, a balance assertion checks that subaccount's balance.
+<
+2026-01-15 buy lot1
+    assets:stocks:{2026-01-15, $50}    10 AAPL
+    assets:checking
+
+2026-02-01 buy lot2
+    assets:stocks:{2026-02-01, $60}    10 AAPL
+    assets:checking
+
+2026-03-01 sell lot1
+    assets:stocks:{2026-01-15, $50}    -10 AAPL = 0 AAPL
+    assets:cash       $700
+
+$ hledger -f- check assertions
+
+# ** 22. Round-trip: print --lots -x output can be re-read and balance assertions still pass.
+# A generated parent account posting with a =* assertion reproduces the original assertion's meaning.
+<
+2026-01-15 buy cheap
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 buy expensive
+    assets:stocks    10 AAPL {$60}
+    assets:checking
+
+2026-03-01 sell all
+    assets:stocks    -20 AAPL {} @ $70 = 0 AAPL
+    assets:cash       $1400
+
+$ hledger -f- print --lots -x | hledger -f- check assertions
+
+# ** 23. Dispose with explicit lot subaccount infers cost basis from account name.
+<
+commodity AAPL  ; lots:
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:cash
+
+2026-02-01 sell with explicit lot subaccount
+    assets:stocks:{2026-01-15, $50}    -5 AAPL @ $60
+    assets:cash
+
+$ hledger -f- print --lots -x desc:sell
+2026-02-01 sell with explicit lot subaccount
+    assets:stocks:{2026-01-15, $50}               -5 AAPL {2026-01-15, $50} @ $60
+    assets:cash                                 $300
+    revenues:gain                               $-50
+
+>=
+
+# ** 24. SPECID errors show the method's source (here, a commodity tag).
+<
+commodity AAPL  ; lots: SPECID
+
+2026-01-15 buy
+    assets:stocks    10 AAPL @ $50
+    assets:checking
+
+2026-02-01 sell without a lot selector
+    assets:stocks    -5 AAPL @ $55
+    assets:cash       $275
+
+$ hledger -f- check
+>2 /Using SPECID \(from commodity tag on AAPL\)/
+>=1
+
+# ** 25. Insufficient lots error shows review hint.
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 sell too many
+    assets:stocks   -15 AAPL {$50} @ $55
+    assets:cash      $825
+
+$ hledger -f- check
+>2 /need 15 but only 10 available/
+>=1
+
+# ** 26. Also when the method comes from an account tag.
+<
+commodity AAPL  ; lots:
+account assets:stocks  ; lots: SPECID
+
+2026-01-15 buy
+    assets:stocks    10 AAPL @ $50
+    assets:checking
+
+2026-02-01 sell without a lot selector
+    assets:stocks    -5 AAPL @ $55
+    assets:cash       $275
+
+$ hledger -f- check
+>2 /Using SPECID \(from account tag on assets:stocks\)/
+>=1
+
+# ** 27. The ambiguous lot selector error also shows the method's source.
+<
+commodity AAPL  ; lots: SPECID
+
+2026-01-15 buy
+    assets:stocks    10 AAPL @ $50
+    assets:checking
+
+2026-01-15 buy again, same date
+    assets:stocks    10 AAPL @ $50
+    assets:checking
+
+2026-02-01 sell with an ambiguous selector
+    assets:stocks    -5 AAPL {2026-01-15} @ $55
+    assets:cash       $275
+
+$ hledger -f- check
+>2 /lot selector is ambiguous, matches 2 lots in account assets:stocks:
+  \{2026-01-15, "0001", \$50\}  10
+  \{2026-01-15, "0002", \$50\}  10
+  Total: 20 AAPL
+Using SPECID \(from commodity tag on AAPL\)\./
+>=1
+
+# ** 28. Lot error highlights the posting line, not the transaction line.
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 sell too many
+    assets:stocks   -15 AAPL {$50} @ $55
+    assets:cash      $825
+
+$ hledger -f- bal assets:stocks --lots
+>2 /6 \|     assets:stocks/
+>=1
+
+# ** 29. Expense posting with cost basis does not get a lot subaccount.
+<
+commodity AAPL  ; lots:
+2026-01-15 buy
+    assets:stocks    10 AAPL {$80}
+    assets:cash
+
+2026-02-01 sell with stock fee
+    assets:stocks    -5 AAPL {$80} @ $90
+    expenses:fees    0.1 AAPL {$80} @ $90
+    assets:cash      $441
+    revenue:gains   -$49
+
+$ hledger -f- bal --lots -N
+               $-359  assets:cash
+            5.0 AAPL  assets:stocks:{2026-01-15, $80}
+            0.1 AAPL  expenses:fees
+                $-49  revenue:gains
+
+# ** 30. Sub-cent gain (issue #2575): a fractional-commodity disposal
+# produces a gain below 2-decimal display precision. The dispose entry has
+# no top-level $ amounts (only ETH), so entry-local $ precision is 0 dp;
+# the inferred gain is rounded to integer $ ($0 / $0) per the
+# precision-tolerance rule. Sub-cent gains in 0-dp entries are rounded
+# away — users who want sub-cent resolution should record cents-bearing
+# amounts explicitly in the entry.
+<
+commodity 1.000000 ETH  ; lots:
+2026-03-06 buy
+    assets:custodial      1.000000 ETH
+    assets:custodial    $-1,980.78
+
+2026-03-09 transfer
+    assets:custodial        -1.000000 ETH
+    assets:cold wallet       0.999601 ETH
+    expenses:fees:trading    0.000399 ETH @ $1,992.36
+
+$ hledger -f- print -x --lots desc:transfer
+2026-03-09 transfer
+    assets:custodial:{2026-03-06, $1,980.78}      -0.999601 ETH {2026-03-06, $1,980.78}
+    assets:custodial:{2026-03-06, $1,980.78}      -0.000399 ETH {2026-03-06, $1,980.78} @ $1,992.36
+    assets:cold wallet:{2026-03-06, $1,980.78}     0.999601 ETH {2026-03-06, $1,980.78}
+    expenses:fees:trading                          0.000399 ETH @ $1,992.36
+    revenues:gain                                 $0
+
+>=
+
+# ** 31. Disposal balance check works with --infer-equity.
+# Equity conversion postings (from --infer-equity) should not disrupt the
+# disposal cost-basis balance check, and should not carry cost basis annotations.
+# For a disposal, the conversion postings record the cost basis of the units
+# sold ($500), not the proceeds ($600); the difference is the gain posting,
+# so the entry (and the journal) still sums to zero.
+<
+account income:capital  ; type:G
+
+2026-01-15 buy
+    assets:broker    10 AAPL {$50}
+    assets:cash
+
+2026-02-15 sell
+    assets:cash       $600
+    assets:broker    -10 AAPL {$50} @ $60
+    income:capital   -$100
+
+$ hledger -f- print --lots --infer-equity
+2026-01-15 buy
+    assets:broker:{2026-01-15, $50}               10 AAPL {$50}
+    equity:conversion:$-AAPL:AAPL                -10 AAPL
+    equity:conversion:$-AAPL:$                  $500
+    assets:cash
+
+2026-02-15 sell
+    assets:cash                                 $600
+    assets:broker:{2026-01-15, $50}              -10 AAPL {$50} @ $60
+    equity:conversion:$-AAPL:AAPL                 10 AAPL
+    equity:conversion:$-AAPL:$                 $-500
+    income:capital                             $-100
+
+>=
+
+# ** 32. Equity conversion amounts are rounded to the transaction's local display precision.
+# 9.216 * 1801.215277778 = 16600.000000002, which should be rounded to 16600.00 (2dp from Rs-16600.00).
+<
+2017-04-09 buy
+    assets:fund    9.216 FUND @ Rs1801.215277778
+    assets:cash                       Rs-16600.00
+
+$ hledger -f- print --infer-equity
+2017-04-09 buy
+    assets:fund                                    9.216 FUND @ Rs1801.215277778
+    equity:conversion:FUND-Rs:FUND                -9.216 FUND
+    equity:conversion:FUND-Rs:Rs             Rs16600.00
+    assets:cash                             Rs-16600.00
+
+>=
+
+# ** 33. Unbalanced disposal error shows per-posting cost-basis breakdown.
+<
+account income:capital  ; type:G
+commodity FUND  ; lots:
+
+2026-01-15 buy
+    assets:fund    10 FUND {Rs100}
+    assets:savings            Rs-1000
+
+2026-02-15 sell
+    assets:savings                             Rs1500
+    assets:fund    -10 FUND {Rs100} @@ Rs1500
+    income:capital                             Rs-400
+
+$ hledger -f- print --lots
+>2 /realised gain amount is wrong/
+>=1
+
+# ** 34. An imprecise per-unit cost basis produces sub-Rs0.005 noise in
+# calculated gain. The user-written gain matches at the entry's local
+# Rs precision (2 dp), so it is accepted and the entry is balanced.
+# 9.216 × 1801.215277778 = 16600.000000002, off by 0.000000002 from the
+# Rs16600.00 paid; this rounds away at the entry's 2 dp tolerance.
+<
+account income:capital  ; type:G
+
+2017-04-09 buy
+    assets:fund    9.216 FUND {Rs1801.215277778}
+    assets:savings                   Rs-16600.00
+
+2019-07-10 sell
+    assets:savings                                     Rs19403.24
+    assets:fund    -9.216 FUND {Rs1801.215277778} @@ Rs19403.24
+    income:capital                                     Rs-2803.24
+
+$ hledger -f- print --lots
+2017-04-09 buy
+    assets:fund:{2017-04-09, Rs1801.215277778}         9.216 FUND {Rs1801.215277778}
+    assets:savings                              Rs-16600.00
+
+2019-07-10 sell
+    assets:savings                              Rs19403.24
+    assets:fund:{2017-04-09, Rs1801.215277778}       -9.216 FUND {Rs1801.215277778} @@ Rs19403.24
+    income:capital                              Rs-2803.24
+
+>=
+
+# ** 35. TODO: {{ }} total cost basis syntax should let us work around test
+# 25's imprecision issue. But currently hledger normalises {{ total }} to
+# { per-unit } internally, and this normalisation is flawed:
+#
+#   - It divides the total by the posting's *signed* quantity. So the acquire's
+#     9.216 FUND {{Rs16600.00}} stores per-unit Rs1801.22 but the dispose's
+#     -9.216 FUND {{Rs16600.00}} is normalised to per-unit Rs-1801.22 (wrong sign),
+#     and the dispose fails to match the acquired lot.
+#
+#   - It rounds the per-unit to the commodity's declared precision (2 decimals
+#     for Rs), so even with the sign fixed, Rs1801.22 would not equal the
+#     acquire's exact Rs16600/9.216 ≈ Rs1801.215277778..., and the Decimal
+#     artifact from test 25 would reappear.
+#
+# Until this is fixed, users have to avoid test 25's case by choosing
+# quantities and per-unit costs that multiply exactly.
+<
+account income:capital  ; type:G
+
+2017-04-09 buy
+    assets:fund    9.216 FUND {{Rs16600.00}}
+    assets:savings                   Rs-16600.00
+
+2019-07-10 sell
+    assets:savings                                     Rs19403.24
+    assets:fund    -9.216 FUND {{Rs16600.00}} @@ Rs19403.24
+    income:capital                                     Rs-2803.24
+
+$ hledger -f- print --lots
+>2 /no lots matching .* for commodity FUND in account assets:fund/
+>=1
+
+
+# ** 36. When a declared commodity display style widens an inferred cost
+# basis (eg 'commodity 1.00 €' shows 2.5 as 2.50), disposal postings use
+# the same widened lot subaccount name as the acquire, since the widened
+# cost basis is stored with the lot. #2659
+<
+commodity AAAA ; lots:
+commodity 1.00 €
+
+2026-01-01
+    assets       100.00 AAAA @@ 250 €
+    cash
+
+2026-01-02
+    assets       -40.00 AAAA {} @ 3 €
+    cash
+
+$ hledger -f- bal --lots -e 2026-01-03 assets cur:AAAA
+          60.00 AAAA  assets:{2026-01-01, 2.50 €}
+--------------------
+          60.00 AAAA  
+
+# ** 37. A dispose posting whose amount is inferred from a balance
+# assignment (eg selling all) is classified in a second pass after
+# balancing, and the balancing cost (the sale proceeds) is attached to
+# the lotful commodity, so the gain is calculated (#2686).
+<
+commodity ABC ; lots:
+
+2026-01-01 buy
+    equity:open-close   -$10
+    assets:broker1      2.3 ABC
+
+2026-02-01 sell all
+    assets:broker1      = 0 ABC
+    assets:cash         $25
+
+$ hledger -f- print -a date:2026-02
+2026-02-01 sell all
+    assets:broker1:{2026-01-01, $4.34782609}      -2.3 ABC {2026-01-01, $4.34782609} @@ $25 = 0 ABC  ; ptype: dispose
+    assets:cash                                  $25
+    revenues:gain                               $-15  ; ptype: gain, generated-posting:
+
+>=
+
+# ** 38. A lot's displayed name can be used to select the lot, even when it
+# rounds an inferred cost with more digits than displayed (eg $10/3 shown as
+# $3.33333333); gains are still computed from the full-precision stored cost,
+# so the gain here is exactly $2, not $2.00000001. #2689
+<
+commodity ABC ; lots:
+
+2021-03-08 buy
+     equity:open-close   -$10
+     assets:broker1      3 ABC
+
+2021-04-01 sell
+     assets:broker1     -3 ABC {2021-03-08, $3.33333333} @ $4
+     assets:cash        $12
+
+$ hledger -f- print --lots -x
+2021-03-08 buy
+    equity:open-close                           $-10
+    assets:broker1:{2021-03-08, $3.33333333}       3 ABC {$3.33333333} @@ $10
+
+2021-04-01 sell
+    assets:broker1:{2021-03-08, $3.33333333}      -3 ABC {2021-03-08, $3.33333333} @ $4
+    assets:cash                                  $12
+    revenues:gain                                $-2
+
+>=
+
+# ** 39. A priceless disposal is allowed when it is an in-kind outflow:
+# non-asset postings receive the disposed units (same commodity, same total
+# quantity, possibly split across postings). No gain is calculated; the
+# units leave their lots at cost basis. #2692
+<
+commodity ABC ; lots:
+
+2020-03-08 buy
+    assets:cash        -$20
+    assets:broker1      5 ABC
+
+2020-06-01 donate from two programs
+    assets:broker1       -5 ABC {}
+    expenses:charity:a    3 ABC
+    expenses:charity:b    2 ABC
+$ hledger -f- bal --lots -N
+                $-20  assets:cash
+               3 ABC  expenses:charity:a
+               2 ABC  expenses:charity:b
+
+# ** 40. Also with several priceless disposals feeding one receiving posting. #2692
+<
+commodity ABC ; lots:
+
+2020-03-08 buy1
+    assets:cash        -$12
+    assets:broker1      3 ABC
+
+2020-03-09 buy2
+    assets:cash        -$10
+    assets:broker1      2 ABC
+
+2020-06-01 donate two lots
+    assets:broker1       -3 ABC {2020-03-08}
+    assets:broker1       -2 ABC {2020-03-09}
+    expenses:charity      5 ABC
+$ hledger -f- bal --lots -N
+                $-22  assets:cash
+               5 ABC  expenses:charity
+
+# ** 41. A multi-lot stock split in one transaction. The equal-quantity
+# priced postings (+20 from one lot, -20 from another) must not be paired
+# as a same-account transfer; priced postings are always dispose/acquire.
+<
+commodity AAA ; lots:
+
+2022-01-01 buy
+    assets:cash          -$100
+    assets:broker      10 AAA @@ $100
+
+2022-02-01 bonus shares
+    assets:broker      20 AAA @@ $0
+    equity:bonus      -20 AAA @@ $0
+
+2022-03-01 2:1 split of both lots
+    assets:broker     -10 AAA {2022-01-01} @@ $100
+    assets:broker      20 AAA {2022-01-01} @@ $100
+    assets:broker     -20 AAA {2022-02-01} @@ $0
+    assets:broker      40 AAA {2022-02-01} @@ $0
+$ hledger -f- bal --lots -N
+              20 AAA  assets:broker:{2022-01-01, "0002", $5}
+              40 AAA  assets:broker:{2022-02-01, "0002", $0}
+               $-100  assets:cash
+             -20 AAA  equity:bonus
+
+# ** 42. Disposals balance at cost basis, with a single realised-gain posting
+# and no unrealised-gain counterpart. So the accounting equation holds: after
+# selling everything and closing revenue to equity, the books balance. #2731
+<
+commodity AAPL  ; lots:
+
+2026-01-01 opening
+    equity:opening  $-500
+    assets:cash      $500
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks     -10 AAPL @ $70
+    assets:cash      $700
+
+2026-03-01 retain
+    revenues:gain     $200
+    equity:retained  $-200
+$ hledger -f- bal
+                $700  assets:cash
+               $-500  equity:opening
+               $-200  equity:retained
+--------------------
+                   0  
+
+# ** 43. With an explicit gain posting, a missing cash amount is inferred
+# from the proceeds, as if the gain posting were not there.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash
+    revenues:gain  $-100
+$ hledger -f- print -x
+2026-02-01 buy
+    assets:cash                                $-500
+    assets:stocks                                 10 AAPL {$50} @ $50
+
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL {2026-02-01, $50} @ $70
+    assets:cash                                 $350
+    revenues:gain                              $-100
+
+>=
+
+# ** 44. Likewise a missing transacted price is inferred from the proceeds.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL
+    assets:cash  $350
+    revenues:gain  $-100
+$ hledger -f- print -x
+2026-02-01 buy
+    assets:cash                                $-500
+    assets:stocks                                 10 AAPL {$50} @ $50
+
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL {2026-02-01, $50} @@ $350
+    assets:cash                                 $350
+    revenues:gain                              $-100
+
+>=
+
+# ** 45. A gain posting in a lot transfer (which has no gain) is an error.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 transfer
+    assets:stocks  -5 AAPL
+    assets:broker   5 AAPL
+    revenues:gain  $-100
+$ hledger -f- print
+>2 /realised gain amount is wrong.
+  written:    \$-100
+  calculated: 0/
+>=1
+
+# ** 46. An old-style unrealised-gain counter posting is no longer expected,
+# and unbalances the entry.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain  $-100
+    equity:unrealised-gain  $100
+$ hledger -f- print
+>2 /sum should be 0 but is \$100
+  \$-350  \+  \$350  \+  \$100  =  \$100  \(excluding gain postings\)/
+>=1
+
+# ** 47. But an unrealised-gain posting with its own asset-side counterpart
+# (eg reversing a manual revaluation) is an ordinary balanced pair.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain  $-100
+    assets:stocks:revaluation  $-100
+    equity:unrealised-gain  $100
+$ hledger -f- bal -N
+               $-150  assets:cash
+              5 AAPL  assets:stocks
+               $-100  assets:stocks:revaluation
+                $100  equity:unrealised-gain
+               $-100  revenues:gain
+
+# ** 48. An explicit gain posting also works with --auto (whose preliminary
+# balancing runs early).
+<
+commodity AAPL  ; lots:
+
+= assets:cash
+    (budget)  *0.1
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain  $-100
+$ hledger -f- print --auto
+2026-02-01 buy
+    assets:cash                                $-500
+    (budget)                                    $-50
+    assets:stocks                                 10 AAPL {$50} @ $50
+
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL {2026-02-01, $50} @ $70
+    assets:cash                                 $350
+    (budget)                                     $35
+    revenues:gain                              $-100
+
+>=
+
+# ** 49. And with --ignore-lots, an entry with an explicit gain posting still loads
+# (the gain amount is not checked).
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain  $-99
+$ hledger -f- print --ignore-lots
+2026-02-01 buy
+    assets:cash                                $-500
+    assets:stocks                                 10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL @ $70
+    assets:cash                                 $350
+    revenues:gain                               $-99
+
+>=
+
+# ** 50. print shows the cost basis annotations inferred by lot processing,
+# so its output is self-describing: the entries below (as printed from a
+# journal with a `commodity AAPL ; lots:` declaration) are read the same way
+# without that declaration. A disposal from several lots shows `{}`.
+<
+2026-01-01 buy
+    assets:cash                                $-500
+    assets:stocks                                 10 AAPL {$50} @ $50
+
+2026-01-02 buy
+    assets:cash                                $-600
+    assets:stocks                                 10 AAPL {$60} @ $60
+
+2026-02-01 sell
+    assets:stocks                                 -5 AAPL {2026-01-01, $50} @ $70
+    assets:cash                                 $350
+    revenues:gain                              $-100
+
+2026-03-01 sell more
+    assets:stocks                                -10 AAPL {} @ $70
+    assets:cash                                 $700
+    revenues:gain                              $-150
+$ hledger -f- bal --lots -N
+                $-50  assets:cash
+              5 AAPL  assets:stocks:{2026-01-02, $60}
+               $-250  revenues:gain
+
+# ** 51. And a multi-lot disposal is printed with the unspecified basis `{}`.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-01-02 buy
+    assets:cash     $-600
+    assets:stocks      10 AAPL @ $60
+
+2026-02-01 sell
+    assets:stocks     -15 AAPL @ $70
+    assets:cash
+$ hledger -f- print desc:sell
+2026-02-01 sell
+    assets:stocks                                -15 AAPL {} @ $70
+    assets:cash
+    revenues:gain                              $-250
+
+>=
+
+# ** 52. A gain posting written without an amount is filled in with the
+# calculated gain (and shown as written by plain print, explicitly by -x).
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain
+$ hledger -f- print -x desc:sell
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL {2026-02-01, $50} @ $70
+    assets:cash                                 $350
+    revenues:gain                              $-100
+
+>=
+
+# ** 53. Both an amountless gain posting and an elided amount are inferred.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash
+    revenues:gain
+$ hledger -f- print -x desc:sell
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL {2026-02-01, $50} @ $70
+    assets:cash                                 $350
+    revenues:gain                              $-100
+
+>=
+
+# ** 54. With several gain postings, one may be amountless; it receives the
+# remainder of the calculated gain.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain  $-60
+    revenues:gain:rest
+$ hledger -f- print -x desc:sell
+2026-03-01 sell
+    assets:stocks                                 -5 AAPL {2026-02-01, $50} @ $70
+    assets:cash                                 $350
+    revenues:gain                               $-60
+    revenues:gain:rest                          $-40
+
+>=
+
+# ** 55. But more than one amountless gain posting is an error.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+    revenues:gain
+    revenues:gain:other
+$ hledger -f- print
+>2 /more than one amountless gain posting/
+>=1
+
+# ** 56. print --export reproduces the declarations, so it keeps lot entries
+# as written, without the inferred annotations.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-02-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash
+$ hledger -f- print --export
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:cash                                $-500
+    assets:stocks                                 10 AAPL @ $50
+
+2026-02-01 sell
+    assets:stocks                                 -5 AAPL @ $70
+    assets:cash
+    revenues:gain                              $-100
+
+>=
+
+# ** 57. -B converts lot postings at cost basis: after a partial sale the
+# stock account's cost balance is the cost of the units still held.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+$ hledger -f- bal -B -N assets:stocks
+                $250  assets:stocks
+
+# ** 58. --value=transacted shows the transacted amounts (net cash invested) instead.
+$ hledger -f- bal --value=transacted -N assets:stocks
+                $150  assets:stocks
+
+# ** 59. So cost reports balance, like the entries: after selling everything
+# and closing revenue to equity, bal -B sums to zero and shows no stock cost.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 opening
+    equity:opening  $-500
+    assets:cash      $500
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks     -10 AAPL @ $70
+    assets:cash      $700
+
+2026-03-01 retain
+    revenues:gain     $200
+    equity:retained  $-200
+$ hledger -f- bal -B
+                $700  assets:cash
+               $-500  equity:opening
+               $-200  equity:retained
+--------------------
+                   0  
+
+# ** 60. Also for a disposal from several lots, whose per-lot fragments are
+# merged in non---lots reports (the conversion happens before merging).
+<
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-01-02 buy
+    assets:cash     $-600
+    assets:stocks      10 AAPL @ $60
+
+2026-02-01 sell
+    assets:stocks     -15 AAPL @ $70
+    assets:cash
+$ hledger -f- reg -B assets:stocks
+2026-01-01 buy                  assets:stocks                 $500          $500
+2026-01-02 buy                  assets:stocks                 $600         $1100
+2026-02-01 sell                 assets:stocks                $-800          $300
+
+# ** 61. print -B shows lot postings converted too.
+<
+commodity AAPL  ; lots:
+
+2026-02-01 buy
+    assets:cash     $-500
+    assets:stocks      10 AAPL @ $50
+
+2026-03-01 sell
+    assets:stocks  -5 AAPL @ $70
+    assets:cash  $350
+$ hledger -f- print -B desc:sell
+2026-03-01 sell
+    assets:stocks                              $-250
+    assets:cash                                 $350
+    revenues:gain                              $-100
+
+>=
+
+# ** 62. A purchase with a cash fee, and a fee paid in the lot commodity,
+# is not mistaken for a disposal with a gain posting: the entry's net
+# shape is a purchase (lot commodity received, cash paid), so the cash
+# fee posting is not tagged as a gain and the entry loads normally.
+<
+commodity A  ; lots:
+
+2026-01-01 buy A, paying fees in $ and A
+    assets:cc       10 A
+    assets:cc     -0.1 A
+    expenses:fees  0.1 A
+    expenses:fees   $2
+    assets:cash   $-102
+$ hledger -f- print -x --verbose-tags
+2026-01-01 buy A, paying fees in $ and A
+    assets:cc                                     10 A {$10} @@ $100  ; ptype: acquire
+    assets:cc                                     -0.1 A {2026-01-01, $10}  ; ptype: dispose
+    expenses:fees                                  0.1 A
+    expenses:fees                                 $2
+    assets:cash                                $-102
+
+>=
+
+# ** 63. --infer-equity on a lot disposal: the conversion postings record the
+# units at their cost basis, so the entry sums to zero including the gain (#2751).
+<
+commodity AAPL  ; lots:
+
+2026-01-02 buy
+    assets:stock    10 AAPL @@ $1000
+    assets:cash
+
+2026-01-03 sell
+    assets:stock    -4 AAPL @@ $600
+    assets:cash      $600
+$ hledger -f- print --infer-equity desc:sell
+2026-01-03 sell
+    assets:stock                                  -4 AAPL {2026-01-02, $100} @@ $600
+    equity:conversion:$-AAPL:AAPL                  4 AAPL
+    equity:conversion:$-AAPL:$                 $-400
+    assets:cash                                 $600
+    revenues:gain                              $-200
+
+>=
+
+# ** 64. And the whole journal's balance is zero with --infer-equity.
+<
+commodity AAPL  ; lots:
+
+2026-01-02 buy
+    assets:stock    10 AAPL @@ $1000
+    assets:cash
+
+2026-01-03 sell
+    assets:stock    -4 AAPL @@ $600
+    assets:cash      $600
+$ hledger -f- bal --infer-equity
+               $-400  assets:cash
+              6 AAPL  assets:stock
+                $600  equity:conversion:$-AAPL:$
+             -6 AAPL  equity:conversion:$-AAPL:AAPL
+               $-200  revenues:gain
+--------------------
+                   0  
+
+# ** 65. A disposal from several lots gets one pair of conversion postings,
+# at the summed cost basis, after all its per-lot fragments; so the collapsed
+# entry keeps its shape.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:cash     $-500
+    assets:stock       10 AAPL @ $50
+
+2026-01-02 buy
+    assets:cash     $-600
+    assets:stock       10 AAPL @ $60
+
+2026-02-01 sell
+    assets:stock     -15 AAPL @ $70
+    assets:cash
+$ hledger -f- print --infer-equity desc:sell
+2026-02-01 sell
+    assets:stock                                 -15 AAPL {} @ $70
+    equity:conversion:$-AAPL:AAPL                 15 AAPL
+    equity:conversion:$-AAPL:$                 $-800
+    assets:cash
+    revenues:gain                              $-250
+
+>=
+
+# ** 66. The output of print --infer-equity can be read back: the conversion
+# pair is matched to the disposal by its cost basis, the disposal's transacted
+# cost is then ignored by the balancer, and the gain posting counts.
+<
+commodity AAPL  ; lots:
+
+2026-01-02 buy
+    assets:stock    10 AAPL @@ $1000
+    assets:cash
+
+2026-01-03 sell
+    assets:stock                                  -4 AAPL {2026-01-02, $100} @@ $600
+    equity:conversion:$-AAPL:AAPL                  4 AAPL
+    equity:conversion:$-AAPL:$                 $-400
+    assets:cash                                 $600
+    revenues:gain                              $-200
+$ hledger -f- print -x --verbose-tags desc:sell
+2026-01-03 sell
+    assets:stock                                  -4 AAPL {2026-01-02, $100} @@ $600  ; ptype: dispose, cost-posting:
+    equity:conversion:$-AAPL:AAPL                  4 AAPL  ; conversion-posting:
+    equity:conversion:$-AAPL:$                 $-400  ; conversion-posting:
+    assets:cash                                 $600
+    revenues:gain                              $-200  ; ptype: gain
+
+>=
+
+# ** 67. A wrong conversion amount is not matched, and the entry is reported as unbalanced.
+<
+commodity AAPL  ; lots:
+
+2026-01-02 buy
+    assets:stock    10 AAPL @@ $1000
+    assets:cash
+
+2026-01-03 sell
+    assets:stock                                  -4 AAPL {2026-01-02, $100} @@ $600
+    equity:conversion:$-AAPL:AAPL                  4 AAPL
+    equity:conversion:$-AAPL:$                 $-450
+    assets:cash                                 $600
+    revenues:gain                              $-200
+$ hledger -f- print desc:sell
+>2 /This multi-commodity transaction is unbalanced./
+>=1
+
+# ** 68. With an unspecified {} basis (as in collapsed multi-lot output), the pair
+# is matched by commodity, and the amounts are verified after lot matching.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:cash     $-500
+    assets:stock       10 AAPL @ $50
+
+2026-01-02 buy
+    assets:cash     $-600
+    assets:stock       10 AAPL @ $60
+
+2026-02-01 sell
+    assets:stock                                 -15 AAPL {} @ $70
+    equity:conversion:$-AAPL:AAPL                 15 AAPL
+    equity:conversion:$-AAPL:$                 $-800
+    assets:cash
+    revenues:gain                              $-250
+$ hledger -f- bal --infer-equity
+                $-50  assets:cash
+              5 AAPL  assets:stock
+                $300  equity:conversion:$-AAPL:$
+             -5 AAPL  equity:conversion:$-AAPL:AAPL
+               $-250  revenues:gain
+--------------------
+                   0  
+
+# ** 69. An elided amount alongside conversion postings is inferred with the
+# cost posting's cost ignored, as when checking balance (previously it counted
+# the cost as well as the conversion postings).
+<
+2026-01-01
+    assets:euros    €100 @ $1.35
+    equity:conversion:$-€:€    €-100
+    equity:conversion:$-€:$    $135
+    assets:dollars
+$ hledger -f- print -x
+2026-01-01
+    assets:euros                                €100 @ $1.35
+    equity:conversion:$-€:€                    €-100
+    equity:conversion:$-€:$                     $135
+    assets:dollars                             $-135
+
+>=
+
+# ** 70. --gain shows value minus cost basis for lot accounts, however the
+# costs were written (#2751): here with @@ ...
+<
+commodity AAPL  ; lots:
+
+2026-01-02 buy
+    assets:stock    10 AAPL @@ $1000
+    assets:cash
+
+2026-01-03 sell
+    assets:stock    -4 AAPL @@ $600
+    assets:cash      $600
+
+P 2026-01-04 AAPL $200
+$ hledger -f- bal assets:stock --gain -N
+                $600  assets:stock
+
+# ** 71. ... and the same with @.
+<
+commodity AAPL  ; lots:
+
+2026-01-02 buy
+    assets:stock    10 AAPL @ $100
+    assets:cash
+
+2026-01-03 sell
+    assets:stock    -4 AAPL @ $150
+    assets:cash      $600
+
+P 2026-01-04 AAPL $200
+$ hledger -f- bal assets:stock --gain -N
+                $600  assets:stock
+
+# ** 72. Also after a disposal from several lots, with and without --lots:
+# the remaining 5 AAPL from the second lot cost $60 each and are worth $80.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:cash     $-500
+    assets:stock       10 AAPL @ $50
+
+2026-01-02 buy
+    assets:cash     $-600
+    assets:stock       10 AAPL @ $60
+
+2026-02-01 sell
+    assets:stock     -15 AAPL @ $70
+    assets:cash
+
+P 2026-03-01 AAPL $80
+$ hledger -f- bal assets:stock --gain -N
+                $100  assets:stock
+
+# ** 73.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:cash     $-500
+    assets:stock       10 AAPL @ $50
+
+2026-01-02 buy
+    assets:cash     $-600
+    assets:stock       10 AAPL @ $60
+
+2026-02-01 sell
+    assets:stock     -15 AAPL @ $70
+    assets:cash
+
+P 2026-03-01 AAPL $80
+$ hledger -f- bal assets:stock --gain -N --lots
+                $100  assets:stock:{2026-01-02, $60}

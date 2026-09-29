@@ -5,22 +5,24 @@ module Hledger.Cli.Anchor (
     dateCell,
     dateSpanCell,
     headerDateSpanCell,
+    renderPeriodHeading,
     ) where
 
-import qualified Data.Text as Text
+import Data.Text qualified as Text
 import Data.Text (Text)
 import Data.Time (Day)
 import Data.Maybe (fromMaybe)
 
-import qualified Text.URI as Uri
-import qualified Text.URI.QQ as UriQQ
+import Text.URI qualified as Uri
+import Text.URI.QQ qualified as UriQQ
 
-import qualified Hledger.Write.Spreadsheet as Spr
+import Hledger.Write.Spreadsheet qualified as Spr
 import Hledger.Write.Spreadsheet (headerCell)
 import Hledger.Utils.IO (error')
 import Hledger.Utils.Text (quoteIfSpaced)
-import Hledger.Data.Dates (showDateSpan, showDate)
+import Hledger.Data.Dates (showDateSpan, showDateSpanFull, showDate)
 import Hledger.Data.Types (DateSpan)
+import Hledger.Reports.ReportOptions (PeriodTitles(..))
 
 
 registerQueryUrl :: [Text] -> Text
@@ -63,9 +65,9 @@ replaceDate :: Text -> [Text] -> [Text]
 replaceDate prd query = "date:"<>prd : removeDates query
 
 headerDateSpanCell ::
-    Maybe Text -> [Text] -> DateSpan -> Spr.Cell () Text
-headerDateSpanCell base query spn =
-    let prd = showDateSpan spn in
+    PeriodTitles -> Maybe Text -> [Text] -> DateSpan -> Spr.Cell () Text
+headerDateSpanCell ph base query spn =
+    let prd = renderPeriodHeading ph spn in
     (headerCell prd) {
         Spr.cellAnchor = composeAnchor base $ replaceDate prd query
     }
@@ -87,8 +89,13 @@ dateCell base query acct = dateQueryCell base query acct . showDate
 
 dateSpanCell ::
     (Spr.Lines border) =>
-    Maybe Text -> [Text] -> Text -> DateSpan -> Spr.Cell border Text
-dateSpanCell base query acct = dateQueryCell base query acct . showDateSpan
+    PeriodTitles -> Maybe Text -> [Text] -> Text -> DateSpan -> Spr.Cell border Text
+dateSpanCell ph base query acct = dateQueryCell base query acct . renderPeriodHeading ph
+
+-- | Render a DateSpan as a period heading according to the requested style.
+renderPeriodHeading :: PeriodTitles -> DateSpan -> Text
+renderPeriodHeading PTDates   = showDateSpanFull
+renderPeriodHeading PTCompact = showDateSpan
 
 setAccountAnchor ::
     Maybe Text -> [Text] -> Text -> Spr.Cell border text -> Spr.Cell border text

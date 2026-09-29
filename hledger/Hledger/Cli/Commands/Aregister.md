@@ -3,7 +3,7 @@
 (areg)
 
 Show the transactions and running balances in one account,
-with each transaction on one line.
+with one entry per transaction.
 
 ```flags
 Flags:
@@ -16,7 +16,15 @@ Flags:
   -H --historical           accumulation mode: show historical running
                             total/balance (includes postings before report
                             start date) (default)
+  -A --average              show running average of transaction amounts
+                            instead of balance (implies --empty and, unless -H
+                            is used, --cumulative)
+  -r --related              show the other accounts in each transaction
+                            (default)
+     --matched              show the matched accounts (this account or its
+                            subaccounts) instead
      --invert               display all amounts with reversed sign
+     --drop=N               omit N leading account name parts
      --heading=YN           show heading row above table: yes (default) or no
   -w --width=N              set output width (default: terminal width). -wN,M
                             sets description width as well.
@@ -37,26 +45,22 @@ This is a more "real world", bank-like view than the [`register`](#register)
 command (which shows individual postings, possibly from multiple accounts,
 not necessarily in historical mode). 
 As a quick rule of thumb:
-- use `aregister` for reviewing and reconciling real-world asset/liability accounts
-- use `register` for reviewing detailed revenues/expenses.
 
-`aregister` requires one argument: the account to report on.
-You can write either the full account name, or a case-insensitive regular expression 
-which will select the alphabetically first matched account.
+- `aregister` is best when reconciling real-world asset/liability accounts
+- `register` is best when reviewing individual revenues/expenses.
 
-When there are multiple matches, the alphabetically-first choice can be surprising; 
-eg if you have `assets:per:checking 1` and `assets:biz:checking 2` accounts,
-`hledger areg checking` would select `assets:biz:checking 2`.
-It's just a convenience to save typing, so if in doubt, write the full account name,
-or a distinctive substring that matches uniquely.
+Note this command's non-standard, and required, first argument; it specifies the account whose register will be shown.
+You can write the account's name, or (to save typing) a case-insensitive infix regular expression matching the name,
+which selects the alphabetically first matched account.
+(For example, if you have `assets:personal checking` and `assets:business checking`,
+`hledger areg checking` would select `assets:business checking`.)
 
 Transactions involving subaccounts of this account will also be shown.
 `aregister` ignores depth limits, so its final total will always match 
-a balance report with similar arguments.
+a historical balance report with similar arguments.
 
-Any additional arguments form a [query](#queries) which will filter the
-transactions shown. Note some queries will disturb the running balance,
-causing it to be different from the account's real-world running balance.
+Any additional arguments are standard [query arguments](#queries), which will limit the transactions shown.
+Note some queries will disturb the running balance, causing it to be different from the account's real-world running balance.
 
 An example: this shows the transactions and historical running balance
 during july, in the first account whose name contains "checking":
@@ -72,8 +76,30 @@ Each `aregister` line item shows:
 - the total change to this account's balance from this transaction
 - the account's historical running balance after this transaction.
 
+The account column normally shows the other accounts in each transaction
+(this is also selectable with `-r/--related`).
+With `--matched`, it shows the matched accounts instead:
+this account, or the subaccounts of it that were posted to.
+This is useful when the account has subaccounts, eg:
+
+```cli
+$ hledger areg expenses --matched
+```
+
+shows which expense categories each transaction touched.
+Any additional query arguments also narrow the matched accounts shown.
+The amounts and running balance are the same in both modes.
+
 Transactions making a net change of zero are not shown by default;
 add the `-E/--empty` flag to show them.
+
+The `-A/--average` flag shows the running average change per transaction,
+instead of the running balance, so the last number shown is the average
+for the whole report period. It implies `--empty`, since zero-change transactions
+also affect the average. Unlike aregister's other reports, it is not
+historical by default; add `-H` to include the transactions before the report
+start date in the average. Like [`register -A`](#register), it works best
+with a single commodity.
 
 For performance reasons, column widths are chosen based on the first 1000 lines;
 this means unusually wide values in later lines can cause visual discontinuities
@@ -88,11 +114,13 @@ For this purpose, use the `--heading=no` option.
 This command also supports the
 [output destination](hledger.html#output-destination) and
 [output format](hledger.html#output-format) options.
-The output formats supported are `txt`, `csv`, `tsv` (*Added in 1.32*), `html`, `fods` (*Added in 1.41*) and `json`.
+The output formats supported are `txt`, `csv`, `tsv`, `html`, `fods` and `json`.
 
 ### aregister and posting dates
 
-aregister always shows one line (and date and amount) per transaction.
+aregister always shows one entry (and one date and amount) per
+transaction. (With a single commodity, this means line = one transaction.
+But multi-commodity amounts will be shown with one line per commodity.)
 But sometimes transactions have postings with different dates.  Also,
 not all of a transaction's postings may be within the report period.
 To resolve this, aregister shows the earliest of the transaction's

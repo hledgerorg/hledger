@@ -1,7 +1,9 @@
-# stack build plan using GHC 9.12.2
+# stack build plan using GHC 9.12.4
 # https://gitlab.haskell.org/ghc/ghc/-/wikis/migration/9.12
 # https://downloads.haskell.org/ghc/9.12.1/docs/users_guide/9.12.1-notes.html
 # https://downloads.haskell.org/ghc/9.12.2/docs/users_guide/9.12.2-notes.html
+# https://downloads.haskell.org/ghc/9.12.2/docs/users_guide/9.12.3-notes.html
+# https://downloads.haskell.org/ghc/9.12.4/docs/users_guide/9.12.4-notes.html
 
 packages:
 - hledger-lib
@@ -9,10 +11,11 @@ packages:
 - hledger-ui
 - hledger-web
 
-resolver: nightly-2025-05-01
-compiler: ghc-9.12.2
-notify-if-ghc-untested:   false
-notify-if-cabal-untested: false
+resolver: nightly-2026-09-01
+
+extra-deps:
+# megaparsec 9.8.3 parses about 10% faster than earlier versions (megaparsec#612)
+- megaparsec-9.8.3
 
 nix:
   pure: false

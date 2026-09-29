@@ -9,8 +9,8 @@
 
 $ hledger -f - print
 2009-01-01 x
-    a                     2
-    b (b) b              -1
+    a                                              2
+    b (b) b                                       -1
     c
 
 >= 0
@@ -24,8 +24,8 @@ $ hledger -f - print
 
 $ hledger -f- print
 2023-01-01
-    [a]                     1
-    [b:bb]                  1
+    [a]                                            1
+    [b:bb]                                         1
     [b:[bbb]]
 
 >= 0

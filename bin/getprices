@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# getprices is a helper for hledger's `get` command (prices phase). You can also run it yourself.
+# It is a simple, customisable front end for price-fetching tools like pricehist.
+# It attempts to hide the variability between tools, price sources, and commodities,
+# and allow for customisation, without hardcoding too much into hledger.
+#
+# Requires:
+# https://github.com/chrisberkhout/pricehist
+#
+# See also:
+# https://hledger.org/prices.html
+# https://github.com/BittyTax/BittyTax/?tab=readme-ov-file#price-tool
+
+usage() {
+    cat <<EOF
+getprices [-v] BASECUR COMM START [END]
+
+Fetch daily historical prices for one commodity over a date range,
+as hledger P directives, using pricehist by default.
+
+Arguments:
+  BASECUR  ISO code of your base currency (eg USD, EUR), prices are quoted in this
+  COMM     ISO currency code or stock/cryptocurrency ticker (eg EUR, AAPL, BTC)
+  START    ISO start date (YYYY-MM-DD)
+  END      ISO end date   (YYYY-MM-DD), inclusive (default: today)
+
+Examples:
+
+\$ getprices USD EUR 2026-01-01
+\$ getprices USD EUR 2026-01-01 2026-12-31
+\$ getprices -v USD BTC 2026-01-01
+
+EOF
+}
+
+# Commodities to not fetch prices for, |-separated; customise as needed.
+SKIPCOMMS="BAT|TCOIN"
+
+################################################################################
+
+set -uo pipefail
+
+# ISO 4217 currency codes, copied from Hledger.Data.Currency.currencies.
+CURRENCIES="
+  ALL AFN ARS AWG AUD AZN BSD BBD BYN BZD BMD BOB BAM BWP BGN BRL BND
+  KHR CAD KYD CLP CNY COP CRC HRK CUP CZK DKK DOP XCD EGP SVC EUR FKP
+  FJD GHS GIP GTQ GGP GYD HNL HKD HUF ISK INR IDR IRR IMP ILS JMD JPY
+  JEP KZT KPW KRW KGS LAK LBP LRD MKD MYR MUR MXN MNT MZN NAD NPR ANG
+  NZD NIO NGN NOK OMR PKR PAB PYG PEN PHP PLN QAR RON RUB SHP SAR RSD
+  SCR SGD SBD SOS ZAR LKR SEK CHF SRD SYP TWD THB TTD TRY TVD UAH GBP
+  USD UYU UZS VEF VND YER ZWD
+"
+
+# Top 100 cryptocurrency tickers, copied from
+# Hledger.Data.Currency.cryptocurrencies (CoinGecko snapshot 2026-04-30).
+CRYPTOCURRENCIES="
+  BTC ETH USDT XRP BNB USDC SOL TRX FIGR_HELOC DOGE WBT USDS HYPE LEO
+  ADA BCH XMR LINK ZEC CC XLM USD1 DAI LTC M AVAX USDE HBAR RAIN SHIB
+  SUI PYUSD TON CRO USYC XAUT USDG TAO BUIDL PAXG MNT UNI DOT WLFI SKY
+  PI USDF OKB NEAR ASTER PEPE HTX USDD RLUSD AAVE BGB ICP USDY JTRSY
+  BFUSD ETC ONDO MORPHO KCS U QNT POL EUTBL ALGO USTB BCAP ATOM ENA
+  NEXO KAS RENDER APT GT WLD ARB JST STABLE FIL PUMP FLR PENGU BDX JUP
+  OUSG VET XDC USDTB GHO HASH USD0 TRUMP BONK NIGHT DEXE YLDS
+"
+
+# Replace newlines with spaces so the lookup pattern below sees each
+# code surrounded by whitespace, regardless of how the lists are wrapped.
+CURRENCIES=${CURRENCIES//$'\n'/ }
+CRYPTOCURRENCIES=${CRYPTOCURRENCIES//$'\n'/ }
+
+isCurrency() {
+    [[ "$CURRENCIES" == *" $1 "* ]]
+}
+
+isCryptocurrency() {
+    [[ "$CRYPTOCURRENCIES" == *" $1 "* ]]
+}
+
+# Check for flags
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [ $# -lt 3 ] || [ $# -gt 4 ]; then
+    usage
+    exit 1
+fi
+
+BASECUR=$1
+COMM=$2
+START=$3
+END=${4:-$(date +%Y-%m-%d)}
+
+# Skip if COMM is the base currency or one of the commodities to skip.
+if [[ "$COMM" == "$BASECUR" || "$COMM" =~ ^($SKIPCOMMS)$ ]]; then
+    exit 0
+fi
+
+
+# Select an appropriate price provider and pair format.
+# Customise as needed.
+
+if isCurrency "$COMM"; then
+    SOURCE="alphavantage"
+    PAIR="$COMM/$BASECUR"
+
+elif isCryptocurrency "$COMM"; then
+    SOURCE="coinmarketcap"
+    PAIR="$COMM/$BASECUR"
+
+# other cases
+elif [[ "$COMM" =~ ^(OMG)$ ]]; then
+    SOURCE="coinmarketcap"
+    PAIR="$COMM/$BASECUR"
+
+# default
+else
+    SOURCE="yahoo"
+    PAIR="$COMM"
+
+fi
+
+# Run pricehist to fetch prices in the date range, as P directives, and print them.
+TMPFILE=$(mktemp)
+trap 'rm -f "$TMPFILE"' EXIT
+CMD="pricehist fetch -o ledger --fmt-time '' -s $START -e $END $SOURCE $PAIR | sed -e 's|[-/]$BASECUR||'"
+
+# some providers work better with a delay
+# echo "sleeping for 1" >&2
+sleep 0.5
+
+echo "$CMD" >&2
+if ! eval "$CMD" 2>"$TMPFILE"; then
+    sed -E 's/^(CRITICAL )?/error: /' "$TMPFILE" >&2
+    exit 1
+fi

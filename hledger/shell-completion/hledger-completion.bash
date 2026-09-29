@@ -424,7 +424,6 @@ check
 close
 codes
 commodities
-demo
 descriptions
 diff
 files
@@ -540,13 +539,13 @@ read -r -d "" _hledger_complist_options_accounts <<"__TEXT__"
 --infer-equity
 --infer-market-prices
 --info
+--locations
 --man
 --market
 --monthly
 --pending
 --period=
 --pivot=
---positions
 --pretty
 --quarterly
 --real
@@ -1436,16 +1435,6 @@ read -r -d "" _hledger_complist_options_commodities <<"__TEXT__"
 --strict
 --tldr
 --verbose-tags
---version
-__TEXT__
-
-read -r -d "" _hledger_complist_options_demo <<"__TEXT__"
---debug=
---help
---info
---man
---speed=
---tldr
 --version
 __TEXT__
 

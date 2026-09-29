@@ -1,0 +1,285 @@
+# An overview of lot functional tests:
+# 1. This file covers basic input/output of lot syntax.
+# 2. lots-*-entries.test cover basic lot posting classification and calculation, for many journal entry variants.
+# 3. lots-*.test cover more complex lot scenarios.
+
+# * Reading and writing lot syntax
+
+# ** 1. Ledger-style lot syntax is parsed and printed in consolidated format.
+<
+2026-01-01
+    assets:investment    10 AAPL @ $100 {$100} [2026-01-01] (lot A)
+    assets:cash
+
+$ hledger -f- print
+2026-01-01
+    assets:investment                             10 AAPL {2026-01-01, "lot A", $100} @ $100
+    assets:cash
+
+>=
+
+# ** 2. hledger consolidated lot syntax {DATE, COST} is accepted in input.
+<
+2026-01-01
+    assets:investment    10 AAPL {2026-01-01, $100}
+    assets:cash
+
+$ hledger -f- print
+2026-01-01
+    assets:investment                             10 AAPL {2026-01-01, $100}
+    assets:cash
+
+>=
+
+# ** 3. hledger consolidated lot syntax with label {DATE, "LABEL", COST}.
+<
+2026-01-01
+    assets:investment    10 AAPL {2026-01-01, "lot A", $100}
+    assets:cash
+
+$ hledger -f- print
+2026-01-01
+    assets:investment                             10 AAPL {2026-01-01, "lot A", $100}
+    assets:cash
+
+>=
+
+# ** 4. Partial: date only. An acquisition annotation with no cost or price
+# can't create a lot; the entry is read as a transfer from the elided
+# account instead, which errors here since that account holds no lots.
+<
+2026-01-01
+    assets:investment    10 AAPL {2026-01-01}
+    assets:cash
+
+$ hledger -f- print
+>2 /no AAPL lots available for transfer from account assets:cash/
+>= 1
+
+# ** 5. Partial: label only. Like 4, no cost, so it errors as a transfer
+# from the lot-less elided account.
+<
+2026-01-01
+    assets:investment    10 AAPL {"lot1"}
+    assets:cash
+
+$ hledger -f- print
+>2 /no AAPL lots available for transfer from account assets:cash/
+>= 1
+
+# ** 6. Parsing: a lot subaccount name with date and cost,
+# with commas in the commodity symbol and a comma decimal mark.
+# The commas should not disrupt parsing of the parts.  Shown with --lots
+# so the lot subaccount stays visible.
+<
+2000-01-01 buy
+    assets:{2026-01-01, "an, odd, commodity" 1,5}     2 AAA
+    assets
+
+$ hledger -f- print --lots
+2000-01-01 buy
+    assets:{2026-01-01, "an, odd, commodity" 1,5}  2 AAA {2026-01-01, "an, odd, commodity" 1,5}
+    assets
+
+>=
+
+# ** 7. Parsing: like the above, but also with a label containing commas.
+<
+2000-01-01 buy
+    assets:{2026-01-01, "a, b, b", "an, odd, commodity" 1,5}     2 AAA
+    assets
+
+$ hledger -f- print --lots
+2000-01-01 buy
+    assets:{2026-01-01, "a, b, b", "an, odd, commodity" 1,5}  2 AAA {2026-01-01, "a, b, b", "an, odd, commodity" 1,5}
+    assets
+
+>=
+
+# ** 8. Parsing: like 7, but with the cost's commodity symbol on the right.
+<
+2000-01-01 buy
+    assets:{2026-01-01, "a, b, b", 1,5 "an, odd, commodity"}     2 AAA
+    assets
+
+$ hledger -f- print --lots
+2000-01-01 buy
+    assets:{2026-01-01, "a, b, b", 1,5 "an, odd, commodity"}  2 AAA {2026-01-01, "a, b, b", 1,5 "an, odd, commodity"}
+    assets
+
+>=
+
+# ** 9. Consolidated with @ transacted cost.
+<
+2026-01-01
+    assets:broker    10 AAPL {2026-01-01, $150} @ $150
+    assets:cash
+
+$ hledger -f- print -I
+2026-01-01
+    assets:broker                                 10 AAPL {2026-01-01, $150} @ $150
+    assets:cash
+
+>=
+
+# ** 10. Consolidated with --lots pipeline.
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {2026-01-15, $50}
+    assets:checking
+
+$ hledger -f- bal assets:stocks --lots -N
+             10 AAPL  assets:stocks:{2026-01-15, $50}
+
+# ** 11. Consolidated syntax rejects trailing [DATE].
+<
+2026-01-01
+    assets:broker    10 AAPL {2026-01-01, $100} [2026-01-01]
+    assets:cash
+
+$ hledger -f- print
+>2 /cannot be combined/
+>=1
+
+# ** 12. Empty cost basis annotations like {} are a cost-basis-present marker
+# but with no cost; like 4, it errors as a transfer from the lot-less
+# elided account.
+<
+2026-01-01
+    assets:broker    10 AAPL {}
+    assets:cash
+
+$ hledger -f- print
+>2 /no AAPL lots available for transfer from account assets:cash/
+>= 1
+
+# ** 13. print's json output exposes lot info in the acostbasis field.
+<
+2026-01-01
+    assets:broker    10 AAPL {$50}
+    assets:cash
+
+$ hledger -f- print -O json | grep -E '"cbCost"|"_ptype"|"acquire"' | head -3
+              "cbCost": {
+            "_ptype",
+            "acquire"
+
+# ** 14. print -O beancount produces Beancount lot syntax.
+<
+2026-01-01 Buy stocks with full lot info
+    assets:investment    10 AAPL {$150} [2026-01-01] (lot1)
+    assets:cash
+
+2026-01-02 Buy stocks with cost and date only
+    assets:investment    5 TSLA {$200} [2026-01-02]
+    assets:cash
+
+2026-01-03 Buy stocks with cost and date
+    assets:investment    3 MSFT {$300} [2026-01-03]
+    assets:cash
+
+2026-01-04 Buy stocks with cost and label
+    assets:investment    2 GOOG {$400} (lot4)
+    assets:cash
+
+$ hledger -f- print -O beancount
+2026-01-01 * "Buy stocks with full lot info"
+    Assets:Investment    10 AAPL {150 USD, 2026-01-01, "lot1"}
+    Assets:Cash
+
+2026-01-02 * "Buy stocks with cost and date only"
+    Assets:Investment    5 TSLA {200 USD, 2026-01-02}
+    Assets:Cash
+
+2026-01-03 * "Buy stocks with cost and date"
+    Assets:Investment    3 MSFT {300 USD, 2026-01-03}
+    Assets:Cash
+
+2026-01-04 * "Buy stocks with cost and label"
+    Assets:Investment    2 GOOG {400 USD, "lot4"}
+    Assets:Cash
+
+>=
+
+# ** 15. In beancount export output, an account's lots: tag value becomes the account's booking method
+<
+account assets:broker  ; lots: FIFO
+
+2026-01-08 Buy stock
+    assets:broker     10 AAPL {$100}
+    assets:cash     -$1000
+
+$ hledger -f- print -O beancount --export
+;option "inferred_tolerance_default" "*:0.005"
+
+2026-01-08 open Assets:Broker "FIFO"
+2026-01-08 open Assets:Cash
+
+2026-01-08 * "Buy stock"
+    Assets:Broker    10 AAPL {100 USD}
+    Assets:Cash              -1000 USD
+
+>=
+
+# ** 16. In beancount output, balance assignment amounts are always made explicit.
+<
+2026-01-01 * opening balances
+    equity:opening
+    assets:cash    = 2000 USD
+
+$ hledger -f- print -O beancount
+2026-01-01 * "opening balances"
+    Equity:Opening
+    Assets:Cash           2000 USD
+
+>=
+
+# ** 17. Most other reports ignore cost basis by default
+<
+2026-01-01 Buy with transaction cost
+    assets:broker    10 AAPL @ $160
+    assets:cash
+
+2026-01-02 Buy with cost basis
+    assets:broker    10 AAPL {$150}
+    assets:cash
+
+$ hledger -f- bal assets:broker
+             20 AAPL  assets:broker
+--------------------
+             20 AAPL  
+
+# ** 18. print -O ledger produces Ledger-style lot syntax.
+<
+2026-01-01
+    assets:investment    10 AAPL {2026-01-01, "lot A", $150} @ $150
+    assets:cash
+
+$ hledger -f- print -O ledger -I
+2026-01-01
+    assets:investment                             10 AAPL [2026-01-01] (lot A) {$150} @ $150
+    assets:cash
+
+>=
+
+# ** 19. The cost amount inside a lot subaccount name uses the journal's
+# canonical commodity style (decimal mark, digit-group separators, commodity
+# position), so lot subaccount names look consistent regardless of how each
+# cost was written. The original decimal precision is preserved — only the
+# style fields, not the displayed precision, come from the commodity directive.
+# Here the $1,000.00 directive adds digit-group commas, so $1500 is shown as
+# $1,500 in the subaccount name (no decimals added since the user wrote none).
+<
+commodity $1,000.00
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:investment    10 AAPL {2026-01-01, $1500}
+    assets:cash
+
+$ hledger -f- print -x --lots
+2026-01-01 buy
+    assets:investment:{2026-01-01, $1,500}        10 AAPL {2026-01-01, $1500} @ $1,500.
+    assets:cash                             $-15,000.
+
+>=

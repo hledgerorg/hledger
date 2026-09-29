@@ -1,0 +1,4 @@
+skip 1
+fields date,description,amount
+account1 assets:b
+account2 income:b

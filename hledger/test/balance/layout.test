@@ -3,19 +3,19 @@
 # changes should be noted and evaluated whether they improve things.
 
 # ** 1. Balance report csv output with no commodity columns.
-$ hledger -f bcexample.hledger bal assets.*etrade -3 -O csv
+$ hledger -f bcexample.journal bal assets.*etrade -3 -O csv
 "account","balance"
 "Assets:US:ETrade","70.00 GLD, 17.00 ITOT, 5120.50 USD, 36.00 VEA, 294.00 VHT"
 "Total:","70.00 GLD, 17.00 ITOT, 5120.50 USD, 36.00 VEA, 294.00 VHT"
 
 # ** 2.
-$ hledger -f bcexample.hledger bal assets.*etrade -3 -O tsv
+$ hledger -f bcexample.journal bal assets.*etrade -3 -O tsv
 account	balance
 Assets:US:ETrade	70.00 GLD, 17.00 ITOT, 5120.50 USD, 36.00 VEA, 294.00 VHT
 Total:	70.00 GLD, 17.00 ITOT, 5120.50 USD, 36.00 VEA, 294.00 VHT
 
 # ** 3. Balance report csv output with one line per commodity (--layout=bare).
-$ hledger -f bcexample.hledger bal assets.*etrade -3 -O csv --layout=bare
+$ hledger -f bcexample.journal bal assets.*etrade -3 -O csv --layout=bare
 "account","commodity","balance"
 "Assets:US:ETrade","GLD","70.00"
 "Assets:US:ETrade","ITOT","17.00"
@@ -29,7 +29,7 @@ $ hledger -f bcexample.hledger bal assets.*etrade -3 -O csv --layout=bare
 "Total:","VHT","294.00"
 
 # ** 4.
-$ hledger -f bcexample.hledger bal assets.*etrade -3 -O tsv --layout=bare
+$ hledger -f bcexample.journal bal assets.*etrade -3 -O tsv --layout=bare
 account	commodity	balance
 Assets:US:ETrade	GLD	70.00
 Assets:US:ETrade	ITOT	17.00
@@ -43,7 +43,7 @@ Total:	VEA	36.00
 Total:	VHT	294.00
 
 # ** 5. Balance report output with no commodity column.
-$ hledger -f bcexample.hledger bal assets.*etrade -3
+$ hledger -f bcexample.journal bal assets.*etrade -3
            70.00 GLD
           17.00 ITOT
          5120.50 USD
@@ -57,7 +57,7 @@ $ hledger -f bcexample.hledger bal assets.*etrade -3
           294.00 VHT  
 
 # ** 6. Balance report with commodity column.
-$ hledger -f bcexample.hledger bal assets.*etrade -3 --layout=bare
+$ hledger -f bcexample.journal bal assets.*etrade -3 --layout=bare
    70.00  GLD                    
    17.00  ITOT                   
  5120.50  USD                    
@@ -71,19 +71,19 @@ $ hledger -f bcexample.hledger bal assets.*etrade -3 --layout=bare
   294.00  VHT                    
 
 # ** 7. Multicolumn balance report csv output with no commodity columns.
-$ hledger -f bcexample.hledger bal -T -Y assets.*etrade -3 -O csv
+$ hledger -f bcexample.journal bal -T -Y assets.*etrade -3 -O csv
 "account","2012","2013","2014","total"
 "Assets:US:ETrade","10.00 ITOT, 337.18 USD, 12.00 VEA, 106.00 VHT","70.00 GLD, 18.00 ITOT, -98.12 USD, 10.00 VEA, 18.00 VHT","-11.00 ITOT, 4881.44 USD, 14.00 VEA, 170.00 VHT","70.00 GLD, 17.00 ITOT, 5120.50 USD, 36.00 VEA, 294.00 VHT"
 "Total:","10.00 ITOT, 337.18 USD, 12.00 VEA, 106.00 VHT","70.00 GLD, 18.00 ITOT, -98.12 USD, 10.00 VEA, 18.00 VHT","-11.00 ITOT, 4881.44 USD, 14.00 VEA, 170.00 VHT","70.00 GLD, 17.00 ITOT, 5120.50 USD, 36.00 VEA, 294.00 VHT"
 
 # ** 8.
-$ hledger -f bcexample.hledger bal -T -Y assets.*etrade -3 -O tsv
+$ hledger -f bcexample.journal bal -T -Y assets.*etrade -3 -O tsv
 account	2012	2013	2014	total
 Assets:US:ETrade	10.00 ITOT, 337.18 USD, 12.00 VEA, 106.00 VHT	70.00 GLD, 18.00 ITOT, -98.12 USD, 10.00 VEA, 18.00 VHT	-11.00 ITOT, 4881.44 USD, 14.00 VEA, 170.00 VHT	70.00 GLD, 17.00 ITOT, 5120.50 USD, 36.00 VEA, 294.00 VHT
 Total:	10.00 ITOT, 337.18 USD, 12.00 VEA, 106.00 VHT	70.00 GLD, 18.00 ITOT, -98.12 USD, 10.00 VEA, 18.00 VHT	-11.00 ITOT, 4881.44 USD, 14.00 VEA, 170.00 VHT	70.00 GLD, 17.00 ITOT, 5120.50 USD, 36.00 VEA, 294.00 VHT
 
 # ** 9. Multicolumn balance report csv output with --layout=bare.
-$ hledger -f bcexample.hledger bal -T -Y assets.*etrade -3 -O csv --layout=bare
+$ hledger -f bcexample.journal bal -T -Y assets.*etrade -3 -O csv --layout=bare
 "account","commodity","2012","2013","2014","total"
 "Assets:US:ETrade","GLD","0","70.00","0","70.00"
 "Assets:US:ETrade","ITOT","10.00","18.00","-11.00","17.00"
@@ -97,7 +97,7 @@ $ hledger -f bcexample.hledger bal -T -Y assets.*etrade -3 -O csv --layout=bare
 "Total:","VHT","106.00","18.00","170.00","294.00"
 
 # ** 10.
-$ hledger -f bcexample.hledger bal -T -Y assets.*etrade -3 -O tsv --layout=bare
+$ hledger -f bcexample.journal bal -T -Y assets.*etrade -3 -O tsv --layout=bare
 account	commodity	2012	2013	2014	total
 Assets:US:ETrade	GLD	0	70.00	0	70.00
 Assets:US:ETrade	ITOT	10.00	18.00	-11.00	17.00
@@ -111,7 +111,7 @@ Total:	VEA	12.00	10.00	14.00	36.00
 Total:	VHT	106.00	18.00	170.00	294.00
 
 # ** 11. Multicolumn balance report with --layout=bare.
-$ hledger -f bcexample.hledger bal -Y assets.*etrade -3 --average --layout=bare --no-total
+$ hledger -f bcexample.journal bal -Y assets.*etrade -3 --average --layout=bare --no-total
 Balance changes in 2012-01-01..2014-12-31:
 
                   || Commodity    2012    2013     2014  Average 
@@ -123,7 +123,7 @@ Balance changes in 2012-01-01..2014-12-31:
  Assets:US:ETrade || VHT        106.00   18.00   170.00    98.00 
 
 # ** 12. Multicolumn balance report with --row-total, --average, and --summary-only
-$ hledger -f bcexample.hledger bal -Y assets.*etrade -3 --layout=bare --row-total --average --summary-only
+$ hledger -f bcexample.journal bal -Y assets.*etrade -3 --layout=bare --row-total --average --summary-only
 Balance changes in 2012-01-01..2014-12-31:
 
                   || Commodity    Total  Average 
@@ -141,7 +141,7 @@ Balance changes in 2012-01-01..2014-12-31:
                   || VHT         294.00    98.00 
 
 # ** 13. Multicolumn income statement with --row-total, --average, and --summary-only
-$ hledger -f bcexample.hledger is -Y income expenses:food -3 --layout=bare --row-total --average --summary-only
+$ hledger -f bcexample.journal is -Y income expenses:food -3 --layout=bare --row-total --average --summary-only
 Yearly Income Statement 2012-01-01..2014-12-31
 
                           || Commodity      Total    Average 
@@ -170,8 +170,28 @@ Yearly Income Statement 2012-01-01..2014-12-31
                           || USD        345982.46  115327.49 
                           || VACHR         337.26     112.42 
 
-# ** 14. Multicolumn budget report csv output with --layout=bare.
-$ hledger -f bcexample.hledger bal -Y assets.*etrade -3 -O csv --layout=bare --budget
+# ** 14. Multicolumn balance report with --layout=bare, --row-total, --average, and --summary-only, with csv output
+$ hledger -f bcexample.journal bal -Y assets.*etrade -3 -N --layout=bare --row-total --average --summary-only -O csv
+"account","commodity","total","average"
+"Assets:US:ETrade","GLD","70.00","23.33"
+"Assets:US:ETrade","ITOT","17.00","5.67"
+"Assets:US:ETrade","USD","5120.50","1706.83"
+"Assets:US:ETrade","VEA","36.00","12.00"
+"Assets:US:ETrade","VHT","294.00","98.00"
+
+# ** 15. Multicolumn income statement report with --layout=bare, --row-total, --average, and --summary-only, with csv output
+$ hledger -f bcexample.journal is income expenses:food -Y -2 -N --layout=bare --row-total --average --summary-only -O csv
+"Yearly Income Statement 2012-01-01..2014-12-31","","",""
+"Account","Commodity","Total","Average"
+"Revenues","","",""
+"Income:US","IRAUSD","52000.00","17333.33"
+"Income:US","USD","365071.44","121690.48"
+"Income:US","VACHR","337.26","112.42"
+"Expenses","","",""
+"Expenses:Food","USD","19088.98","6362.99"
+
+# ** 16. Multicolumn budget report csv output with --layout=bare.
+$ hledger -f bcexample.journal bal -Y assets.*etrade -3 -O csv --layout=bare --budget
 "Account","Commodity","2012","budget","2013","budget","2014","budget"
 "<unbudgeted>","GLD","0","0","70.00","0","0","0"
 "<unbudgeted>","ITOT","10.00","0","18.00","0","-11.00","0"
@@ -184,7 +204,7 @@ $ hledger -f bcexample.hledger bal -Y assets.*etrade -3 -O csv --layout=bare --b
 "Total:","VEA","12.00","0","10.00","0","14.00","0"
 "Total:","VHT","106.00","0","18.00","0","170.00","0"
 
-# ** 15. Multicolumn balance report with --layout=bare and null commodity
+# ** 17. Multicolumn balance report with --layout=bare and null commodity
 <
 2018/1/1
   (a)          1
@@ -206,8 +226,8 @@ Balance changes in 2018:
        || EUR           1 
 
 
-# ** 16. Multicolumn balance report with --layout=bare --transpose.
-$ hledger -f bcexample.hledger bal -Y assets.*etrade -1 --average --layout=bare --transpose
+# ** 18. Multicolumn balance report with --layout=bare --transpose.
+$ hledger -f bcexample.journal bal -Y assets.*etrade -1 --average --layout=bare --transpose
 Balance changes in 2012-01-01..2014-12-31:
 
            || Assets  Assets   Assets  Assets  Assets |                                       
@@ -218,7 +238,7 @@ Balance changes in 2012-01-01..2014-12-31:
  2014      ||      0  -11.00  4881.44   14.00  170.00 |     0  -11.00  4881.44  14.00  170.00 
  Average   ||  23.33    5.67  1706.83   12.00   98.00 | 23.33    5.67  1706.83  12.00   98.00 
 
-# ** 17. Multicolumn budget report with --layout=bare --transpose.
+# ** 19. Multicolumn budget report with --layout=bare --transpose.
 <
 ~ daily from 2016/1/1
     expenses:food     $10
@@ -260,8 +280,8 @@ Budget performance in 2016-12-01..2016-12-03:
  2016-12-03 || -51 [204% of -25]  51 [204% of 25]  11 [110% of 10]     0 [       15] 
    Total    || -75 [100% of -75]  75 [100% of 75]  30 [100% of 30]     5 [11% of 45] 
 
-# ** 18. Compound balance report output with --layout=bare.
-$ hledger -f bcexample.hledger bs -3 --layout=bare
+# ** 20. Compound balance report output with --layout=bare.
+$ hledger -f bcexample.journal bs -3 --layout=bare
 Balance Sheet 2014-10-11
 
                       || Commodity        2014-10-11 
@@ -303,8 +323,8 @@ Balance Sheet 2014-10-11
                       || VEA                   36.00 
                       || VHT                  294.00 
 
-# ** 19. Multicolumn balance report csv output with --layout=tidy
-$ hledger -f bcexample.hledger bal -T -Y assets.*etrade -3 -O csv --layout=tidy
+# ** 21. Multicolumn balance report csv output with --layout=tidy
+$ hledger -f bcexample.journal bal -T -Y assets.*etrade -3 -O csv --layout=tidy
 "account","period","start_date","end_date","commodity","value"
 "Assets:US:ETrade","2012","2012-01-01","2012-12-31","GLD","0"
 "Assets:US:ETrade","2012","2012-01-01","2012-12-31","ITOT","10.00"
@@ -322,8 +342,8 @@ $ hledger -f bcexample.hledger bal -T -Y assets.*etrade -3 -O csv --layout=tidy
 "Assets:US:ETrade","2014","2014-01-01","2014-12-31","VEA","14.00"
 "Assets:US:ETrade","2014","2014-01-01","2014-12-31","VHT","170.00"
 
-# ** 20.
-$ hledger -f bcexample.hledger bal -T -Y assets.*etrade -3 -O tsv --layout=tidy
+# ** 22.
+$ hledger -f bcexample.journal bal -T -Y assets.*etrade -3 -O tsv --layout=tidy
 account	period	start_date	end_date	commodity	value
 Assets:US:ETrade	2012	2012-01-01	2012-12-31	GLD	0
 Assets:US:ETrade	2012	2012-01-01	2012-12-31	ITOT	10.00
@@ -341,8 +361,8 @@ Assets:US:ETrade	2014	2014-01-01	2014-12-31	USD	4881.44
 Assets:US:ETrade	2014	2014-01-01	2014-12-31	VEA	14.00
 Assets:US:ETrade	2014	2014-01-01	2014-12-31	VHT	170.00
 
-# ** 21. Single column balance report csv output with --layout=tidy
-$ hledger -f bcexample.hledger bal -T assets.*etrade -3 -O csv --layout=tidy
+# ** 23. Single column balance report csv output with --layout=tidy
+$ hledger -f bcexample.journal bal -T assets.*etrade -3 -O csv --layout=tidy
 "account","period","start_date","end_date","commodity","value"
 "Assets:US:ETrade","2012-01-01..2014-10-11","2012-01-01","2014-10-11","GLD","70.00"
 "Assets:US:ETrade","2012-01-01..2014-10-11","2012-01-01","2014-10-11","ITOT","17.00"
@@ -350,8 +370,8 @@ $ hledger -f bcexample.hledger bal -T assets.*etrade -3 -O csv --layout=tidy
 "Assets:US:ETrade","2012-01-01..2014-10-11","2012-01-01","2014-10-11","VEA","36.00"
 "Assets:US:ETrade","2012-01-01..2014-10-11","2012-01-01","2014-10-11","VHT","294.00"
 
-# ** 22.
-$ hledger -f bcexample.hledger bal -T assets.*etrade -3 -O tsv --layout=tidy
+# ** 24.
+$ hledger -f bcexample.journal bal -T assets.*etrade -3 -O tsv --layout=tidy
 account	period	start_date	end_date	commodity	value
 Assets:US:ETrade	2012-01-01..2014-10-11	2012-01-01	2014-10-11	GLD	70.00
 Assets:US:ETrade	2012-01-01..2014-10-11	2012-01-01	2014-10-11	ITOT	17.00
@@ -359,7 +379,7 @@ Assets:US:ETrade	2012-01-01..2014-10-11	2012-01-01	2014-10-11	USD	5120.50
 Assets:US:ETrade	2012-01-01..2014-10-11	2012-01-01	2014-10-11	VEA	36.00
 Assets:US:ETrade	2012-01-01..2014-10-11	2012-01-01	2014-10-11	VHT	294.00
 
-# ** 23. Should omit commodity from totals row when the sum is zero with --layout=bare. (#1789)
+# ** 25. Should omit commodity from totals row when the sum is zero with --layout=bare. (#1789)
 <
 2021-01-01 Test
     Assets:Bank           INR 1.00
@@ -371,7 +391,7 @@ $ hledger -f - bal --layout=bare
  ----- 
      0                      
 
-# ** 24. The same with -M. (#1789)
+# ** 26. The same with -M. (#1789)
 $ hledger -f - bal --layout=bare -M
 Balance changes in 2021-01:
 
@@ -381,3 +401,24 @@ Balance changes in 2021-01:
  Equity:Opening || INR        -1.00 
 ----------------++------------------
                 ||                0 
+
+# ** 27. Balance report csv output with one column per commodity (--layout=barewide).
+$ hledger -f bcexample.journal bal assets.*etrade -3 -O csv --layout=barewide
+"account","GLD","ITOT","USD","VEA","VHT"
+"Assets:US:ETrade","  70.00","  17.00","5120.50","  36.00"," 294.00"
+"Total:","  70.00","  17.00","5120.50","  36.00"," 294.00"
+
+# ** 28. Multicolumn balance report csv output with one commodity per column.
+$ hledger -f bcexample.journal bal -T -Y assets.*etrade -3 -O csv --layout=barewide
+"","2012","","","","","2013","","","","","2014","","","","","total","","","",""
+"account","GLD","ITOT","USD","VEA","VHT","GLD","ITOT","USD","VEA","VHT","GLD","ITOT","USD","VEA","VHT","GLD","ITOT","USD","VEA","VHT"
+"Assets:US:ETrade","0","10.00","337.18","12.00","106.00","70.00","18.00","-98.12","10.00","18.00","0","-11.00","4881.44","14.00","170.00","70.00","17.00","5120.50","36.00","294.00"
+"Total:","0","10.00","337.18","12.00","106.00","70.00","18.00","-98.12","10.00","18.00","0","-11.00","4881.44","14.00","170.00","70.00","17.00","5120.50","36.00","294.00"
+
+# ** 29. Balance report with individual commodity columns.
+$ hledger -f bcexample.journal bal assets.*etrade -3 --layout=barewide
+                  || GLD      ITOT     USD      VEA      VHT     
+==================++=============================================
+ Assets:US:ETrade ||   70.00    17.00  5120.50    36.00   294.00 
+------------------++---------------------------------------------
+ Total:           ||   70.00    17.00  5120.50    36.00   294.00 

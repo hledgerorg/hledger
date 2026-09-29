@@ -1,0 +1,39 @@
+# Generic rules for Eternl V2 wallet's Universal CSV export, with UTC times and note field.
+# Include this rules file, and add more specific overrides.
+# Info not available in this CSV:
+#  time zone (UTC or local, selected at export)
+#  stake pool names
+#  addresses
+
+skip 1
+fields Date,Sent_Amount,Sent_Currency,Received_Amount,Received_Currency,Fee_Amount,Fee_Currency,Label,Description,TxHash,TxType,Note
+date-format %Y-%m-%d %H:%M:%S
+timezone UTC
+
+account1 assets:cardano:wallet
+
+if %TxType .
+ description %TxType
+if %Description . && %TxType .
+ description %TxType: %Description
+
+comment  \ndatetime: %Date
+if %Label . && ! %Label ^reward$
+ comment \ndatetime: %Date\nlabel: %Label
+if %Note .
+ comment \ndatetime: %Date\nnote: %Note
+if %Label . && %Note .
+ comment \ndatetime: %Date\nlabel: %Label\nnote: %Note
+
+if %Sent_Amount [1-9]
+ account3 expenses:unknown
+ amount3 %Sent_Amount %Sent_Currency
+if %Received_Amount .
+ account3 revenues:unknown
+ amount3 -%Received_Amount %Received_Currency
+if %Received_Amount . && %Label reward
+ account3 revenues:cardano:rewards
+
+if %Fee_Amount [1-9]
+ account2   expenses:fees:cardano
+ amount2    %Fee_Amount %Fee_Currency

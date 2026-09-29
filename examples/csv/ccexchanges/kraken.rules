@@ -1,0 +1,201 @@
+################################################################################
+# * hledger rules for Kraken's ledgers CSV
+# https://pro.kraken.com/app/settings/documents (History > Main > View statements) >
+#  Export statement > Ledger > date range, all, all, all, csv > Export > download icon > unzip
+# The pro history has an extra "wallet" field.
+#
+# We enrich this csv with krakencsv (see bin/), which adds:
+#  date                 the ISO date part of the time field
+#  netamount            amount - fee. (The name is half right; in trades, the amount field is fee-exclusive, in other txns it's fee-inclusive.)
+#  marketprice          for subclass=crypto rows, the market price, from a nearby hledger prices file
+#  marketpricecurrency  marketprice's currency
+#
+# These rules might not cover everything in your data, but they're a good start.
+#
+################################################################################
+# ** basics
+
+# Perhaps the full csv history is permanently here, as the master data.
+source ../data/archive/kraken-spot-ledgers-*.csv | krakencsv | gsed -E 's/\bUSD\b/$/g'
+
+# Or, it might be transiently in the data or Downloads directory, for import to a permanent journal.
+#source kraken-spot-ledgers-*.csv | krakencsv | gsed -E 's/\bUSD\b/$/g'
+
+skip         1
+# standard fields plus a few added by krakencsv:
+fields       txid, refid, time, type, subtype, aclass, subclass, asset, wallet, amount_, fee, balance_, amountusd, feeusd, balanceusd, feecurrency, isodate, netamount, marketprice, marketpricecurrency
+date         %time
+date-format  %Y-%m-%d %H:%M:%S
+timezone     UTC
+
+if ! %txid .
+ skip
+
+description Kraken | %type %asset
+if %type withdrawal
+ description Kraken | withdraw %asset
+comment time: %time, refid: %refid
+currency %asset 
+
+################################################################################
+# ** posting layout
+
+# Generally ordered credits, then debits (from, to).
+# posting 1: source of a deposit, transferred airdrop, earned rewards, other revenue, or a trade destination (trade destination goes here to infer conversion rate on the received amount)
+# posting 2: (extra kraken outflow for fee if needed)
+# posting 3: deposit/earned rewards/revenue/buy-side fee
+# posting 4: the kraken account (except in trades)
+# posting 5: (extra kraken outflow for fee if needed)
+# posting 6: withdrawal/expense/sell-side fee
+# posting 7: destination of a withdrawal, expense, or a trade source
+
+################################################################################
+# ** fees
+
+# some deposits, and all withdrawals and earned rewards, have a fee.
+# amount includes the fee.
+
+if
+%type deposit|earn && %fee [1-9]
+ account3  expenses:fees:kraken
+ currency3 %feecurrency 
+ amount3   %fee
+ # comment3  3
+
+if
+%type withdrawal && %fee [1-9]
+ account6  expenses:fees:kraken
+ currency6 %feecurrency
+ amount6   %fee
+ # comment6  6
+
+# basic buy trades (spend/receive) have a fee on the sell (fiat) side.
+# some pro buy trades have a fee on the sell (fiat) side, some one on the buy (crypto) side, and some have both.
+# amount excludes the fee.
+
+if
+%type spend && %fee [1-9]
+%type trade && %fee [1-9]
+ account2  assets:cc:kraken
+ currency2 %feecurrency 
+ amount2   -%fee
+ # comment2  2
+
+ account3  expenses:fees:kraken
+ currency3 %feecurrency 
+ amount3   %fee
+ # comment3  3
+
+if
+%type receive && %fee_2 [1-9]
+%type trade   && %fee_2 [1-9]
+ account5  assets:cc:kraken
+ currency5 %feecurrency_2 
+ amount5   -%fee_2
+ # comment5  5
+
+ account6  expenses:fees:kraken
+ currency6 %feecurrency_2 
+ amount6   %fee_2
+ # comment6  6
+
+################################################################################
+# ** deposit txns
+
+if %type deposit
+ account1 equity:transfer
+ amount1  -%amount_
+
+ account4 assets:cc:kraken
+ # crypto deposits that are a transfer from an untracked account will
+ # need an amount annotated with their cost basis; do that in the
+ # transaction hints at the end.
+ # But if it's a transfer from another account/wallet we know about,
+ # leave it unannotated, hledger will preserve the cost basis.
+ amount4  %netamount
+ balance4 %balance_
+
+
+################################################################################
+# ** withdrawal txns
+
+if %type withdrawal
+ account4 assets:cc:kraken
+ amount4  %netamount
+ balance4 %balance_
+ # comment4 4
+
+ account7 equity:transfer
+ comment7 7
+
+################################################################################
+# ** basic trade txns (spend/receive)
+# Buy/sell via the simple interface.
+# The spend record comes first; merge the following receive record (it gets a _2 suffix).
+# We put the receive as the first posting so it gets the automatic cost annotation.
+
+if %type spend
+ merge
+ description Kraken | spend %asset, receive %asset_2
+
+ account1 assets:cc:kraken
+ currency1 %asset_2 
+ amount1  %amount__2
+ balance1 %balance__2
+ # This leaves cost basis to be inferred from the automatically-added conversion price,
+ # which excludes fee. Better would be:
+ # amount1  %amount__2 {{%netamount}}
+
+ account7 assets:cc:kraken
+ amount7  %amount_
+ balance7 %balance_
+
+################################################################################
+# ** pro trade txns (trade/trade)
+# Trades via the pro interface.
+# sell record comes first; merge the following buy record.
+# put the receive as the first posting so it gets the cost annotation.
+
+if %type trade && %amount_ ^-
+ merge 
+ description Kraken | trade %asset for %asset_2
+
+ account1  assets:cc:kraken
+ currency1 %asset_2 
+ amount1   %amount__2
+
+ account7  assets:cc:kraken
+ amount7   %amount_
+ # comment7  7
+
+################################################################################
+# ** earn
+# A cost basis is required; set it to current market price.
+
+if %type earn
+ account1 revenues:cc:ada:rewards
+ amount1  -%amount_
+
+ account4 assets:cc:kraken
+ amount4  %netamount {%marketpricecurrency %marketprice}
+
+################################################################################
+# ** airdrop
+
+if %type transfer && %subtype airdrop
+ description Kraken | airdrop %asset
+ account1 revenues:cc:airdrop
+ amount1  -%amount_
+ account4 assets:cc:kraken
+ amount4  %netamount {%marketpricecurrency %marketprice}
+
+################################################################################
+# ** hints for specific transactions
+# for matching dates, use the UTC dates used in kraken csv.
+
+if 2021-01-01 && withdraw
+ account7 assets:bank:foo
+
+if 2022-02-02 && deposit
+ account7 assets:bank:bar
+

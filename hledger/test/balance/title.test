@@ -1,0 +1,51 @@
+# * --title option
+
+# ** 1. --title overrides a report's default title (none, in this case).
+<
+2024/1/1
+  (a)  1
+2024/2/1
+  (a)  1
+
+$ hledger -f- balance '--title=My monthly view'
+My monthly view
+
+                   2  a
+--------------------
+                   2  
+
+# ** 2. With an empty argument, it suppresses the title
+$ hledger -f- bs --title=
+             || 2024-02-01 
+=============++============
+ Assets      ||            
+-------------++------------
+-------------++------------
+             ||          0 
+=============++============
+ Liabilities ||            
+-------------++------------
+-------------++------------
+             ||          0 
+=============++============
+ Net:        ||          0 
+
+# ** 3. --title also affects csv or tsv output.
+$ hledger -f- balancesheet --quarterly --title=Hi -O csv
+"Hi",""
+"Account","2024-03-31"
+"Assets",""
+"Total:","0"
+"Liabilities",""
+"Total:","0"
+"Net:","0"
+
+# ** 4. And with a null argument, suppresses the title row.
+$ hledger -f- balancesheet --quarterly --title= -O csv
+"Account","2024-03-31"
+"Assets",""
+"Total:","0"
+"Liabilities",""
+"Total:","0"
+"Net:","0"
+

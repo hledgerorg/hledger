@@ -15,11 +15,12 @@ module Hledger.Cli.Commands.Codes (
  ,codes
 ) where
 
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 
 import Hledger
 import Hledger.Cli.CliOptions
+import Hledger.Cli.Utils (printTitle)
 
 
 -- | Command line options for this command.
@@ -33,6 +34,7 @@ codesmode = hledgerCommandMode
 -- | The codes command.
 codes :: CliOpts -> Journal -> IO ()
 codes CliOpts{reportspec_=rspec} j = do
+  printTitle $ _rsReportOpts rspec
   let ts = entriesReport rspec j
       codes' = (if empty_ (_rsReportOpts rspec) then id else filter (not . T.null)) $
               map tcode ts

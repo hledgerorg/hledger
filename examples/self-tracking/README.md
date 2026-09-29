@@ -227,11 +227,8 @@ $ hledger -f d.csv register sleep
 2023-06-27 Last_night_sleep_..  (body:sleep)                     1             3
 ```
 
-Current hledger has a csv tags parsing bug; reparse the conversion to work around:
 ```
 $ hledger -f d.csv tags
-
-$ hledger -f d.csv print | hledger -f- tags
 time
 value
 ```
@@ -240,7 +237,7 @@ hledger's data model doesn't include time, but we can pivot on the time tag
 and take advantage of the colon to summarise activities by hour each day (eg):
 
 ```
-$ hledger -f d.csv print | hledger -f- bal --pivot=time --depth 1 -DAE
+$ hledger -f d.csv bal --pivot=time --depth 1 -DAE
 
 Balance changes in 2023-06-27:
 

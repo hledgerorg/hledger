@@ -1,0 +1,17 @@
+diff --git a/budget/commodities.inc b/budget/commodities.inc
+index a7738bb..ee32731 100644
+--- a/budget/commodities.inc
++++ b/budget/commodities.inc
+@@ -20 +20,12 @@ commodity BRL
+    default
++
++commodity GBP
++   note British pound
++   format GBP 1,000.00
++   nomarket
++
++commodity ZAR
++   note South African rand
++   format ZAR 1,000.00
++   nomarket
++

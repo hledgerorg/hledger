@@ -10,22 +10,29 @@ Reference:
 {-# LANGUAGE OverloadedStrings    #-}
 
 module Hledger.Data.Currency (
+  CurrencyCode,
+  CurrencySymbol,
   currencies,
+  cryptocurrencies,
   currencySymbolToCode,
   currencyCodeToSymbol,
+  toCurrencyCode,
 )
 where
-import qualified Data.Map as M
+import Data.Map qualified as M
+import           Data.Maybe (fromMaybe)
 import           Data.Text (Text)
 
--- | An ISO 4217 currency code, like EUR. Usually three upper case letters.
+-- | An ISO 4217 currency code, like EUR.
+-- Generally used for fiat currencies, but may also use the X* convention for non-country currencies
+-- (eg XAU, XBT), or ISO 20022 cryptocurrency codes (eg ADA).
 type CurrencyCode = Text
 
--- | A traditional currency symbol, like $. Usually one character, sometimes more.
--- Different from hledger's more general "CommoditySymbol" type.
+-- | A traditional currency symbol like $ or ¥ (as opposed to a currency code like USD or JPY).
+-- Usually one character, sometimes more, like C$ or BZ$.
 type CurrencySymbol = Text
 
--- | Look for a ISO 4217 currency code corresponding to this currency symbol.
+-- | Look for a currency code corresponding to this currency symbol.
 --
 -- >>> currencySymbolToCode ""
 -- Nothing
@@ -34,12 +41,23 @@ type CurrencySymbol = Text
 currencySymbolToCode :: CurrencySymbol -> Maybe CurrencyCode
 currencySymbolToCode s = M.lookup s currencyCodesBySymbol
 
--- | Look for a currency symbol corresponding to this ISO 4217 currency code.
+-- | Look for a currency symbol corresponding to this currency code.
 --
 -- >>> currencyCodeToSymbol "CZK"  -- Just "Kč"
 -- Just "K\269"
 currencyCodeToSymbol :: CurrencyCode -> Maybe CurrencySymbol
 currencyCodeToSymbol c = M.lookup c currencySymbolsByCode
+
+-- | Like 'currencySymbolToCode', but return the input unchanged if no ISO
+-- code is known. Useful for normalising free-form commodity labels: known
+-- currency symbols become ISO codes, while tickers/abbreviations pass through.
+--
+-- >>> toCurrencyCode "$"
+-- "USD"
+-- >>> toCurrencyCode "BTC"
+-- "BTC"
+toCurrencyCode :: CurrencySymbol -> CurrencyCode
+toCurrencyCode s = fromMaybe s (currencySymbolToCode s)
 
 currencyCodesBySymbol = M.fromList [(s,c) | (_,c,s) <- currencies]
 currencySymbolsByCode = M.fromList [(c,s) | (_,c,s) <- currencies]
@@ -155,6 +173,24 @@ currencies = [
   ("Viet Nam Dong",                             "VND",  "₫"),
   ("Yemen Rial",                                "YER",  "﷼"),
   ("Zimbabwe Dollar",                           "ZWD",  "Z$")
+  ]
+
+-- | The top 100 cryptocurrencies by market capitalisation, as ticker
+-- symbols, in descending rank order. Snapshot taken from the CoinGecko
+-- public API on 2026-04-30:
+-- https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1
+cryptocurrencies :: [CurrencyCode]
+cryptocurrencies =
+  ["BTC","ETH","USDT","XRP","BNB","USDC","SOL","TRX","FIGR_HELOC","DOGE"
+  ,"WBT","USDS","HYPE","LEO","ADA","BCH","XMR","LINK","ZEC","CC"
+  ,"XLM","USD1","DAI","LTC","M","AVAX","USDE","HBAR","RAIN","SHIB"
+  ,"SUI","PYUSD","TON","CRO","USYC","XAUT","USDG","TAO","BUIDL","PAXG"
+  ,"MNT","UNI","DOT","WLFI","SKY","PI","USDF","OKB","NEAR","ASTER"
+  ,"PEPE","HTX","USDD","RLUSD","AAVE","BGB","ICP","USDY","JTRSY","BFUSD"
+  ,"ETC","ONDO","MORPHO","KCS","U","QNT","POL","EUTBL","ALGO","USTB"
+  ,"BCAP","ATOM","ENA","NEXO","KAS","RENDER","APT","GT","WLD","ARB"
+  ,"JST","STABLE","FIL","PUMP","FLR","PENGU","BDX","JUP","OUSG","VET"
+  ,"XDC","USDTB","GHO","HASH","USD0","TRUMP","BONK","NIGHT","DEXE","YLDS"
   ]
 
 -- tests_Currency = testGroup "Currency" []

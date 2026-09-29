@@ -1,0 +1,237 @@
+; * Example lot-tracking entries for hledger --lots.
+;
+; This file demonstrates common journal entry patterns for acquiring,
+; transferring, and disposing of lot-tracked commodities (stocks, cryptocurrency, etc.).
+; Use it as a starting point or reference for your own entries.
+;
+; To try it:  hledger -f lots.journal print --lots [--verbose-tags]
+;             hledger -f lots.journal bal --lots [-M]
+;
+; This journal is written so that both hledger1 and hledger2 accept it.
+; (Only hledger2 will calculate lot movements and capital gains correctly.)
+
+; Declare ETSY as lotful, so that we don't have to always write cost basis annotations.
+commodity ETSY  ; lots:
+
+; Declare this account as Gain type, so that lots mode will check/infer it,
+; and so that it doesn't disturb non-lots-mode transaction balancing.
+account revenue:gains  ; type: G
+
+; ============================================================================
+; ** 1. ACQUIRE - buying or receiving a lot-tracked commodity
+; ============================================================================
+
+; 1a. Buy with no fee.
+; {$50} records the per-unit cost basis.
+2025-01-01 buy shares
+    assets:cash     -$500
+    assets:broker      10 ETSY {$50}
+
+; 1b. Buy with a fee in the base currency ($).
+; The fee is a separate expense; the cost basis remains $60/share.
+2025-02-01 buy shares, $ fee
+    assets:cash     -$610
+    expenses:fees     $10
+    assets:broker      10 ETSY {$60}
+
+; 1c. Buy with a fee in the acquired commodity.
+; The broker takes 0.1 ETSY as a fee; you receive 9.9 ETSY.
+; The fee posting needs @ so the lot system knows it's a disposal, not a transfer.
+2025-03-01 buy shares, stock fee
+    assets:cash     -$700
+    expenses:fees     0.1 ETSY @ $70
+    assets:broker     9.9 ETSY @ $70
+
+; 1d. Buy with fees in both commodities.
+2025-04-01 buy shares, both fees
+    assets:cash    -$810
+    expenses:fees    $10
+    expenses:fees      0.1 ETSY @ $80
+    assets:broker      9.9 ETSY @ $80
+
+; ============================================================================
+; ** 2. TRANSFER - moving lots between accounts, preserving cost basis
+; ============================================================================
+
+; 2a. Transfer with no fee.
+; No transacted price or cost basis mentioned - the lots move with their original cost basis intact.
+; By default, lots are reduced FIFO, oldest lot first ({2025-01-01, $50}).
+2025-05-01 transfer to another broker
+    assets:broker     -10 ETSY
+    assets:broker2     10 ETSY
+
+; 2b. Transfer with a fee in the base currency.
+; FIFO selects the next oldest lot ({2025-02-01, $60}).
+2025-06-01 transfer, $ fee
+    assets:broker     -10 ETSY
+    assets:broker2     10 ETSY
+    assets:cash       -$5
+    expenses:fees      $5
+
+; 2c. Transfer with a fee in the transferred commodity.
+; The fee (0.1 ETSY) is the difference between the from and to amounts.
+; FIFO selects from the {2025-03-01, $70} lot (9.9 available).
+2025-07-01 transfer, stock fee
+    assets:broker    -5 ETSY
+    expenses:fees     0.1 ETSY
+    assets:broker2    4.9 ETSY
+
+; ============================================================================
+; ** 3. DISPOSE - selling or spending a lot-tracked commodity
+; ============================================================================
+
+; 3a. Sell with no fee, at a gain.
+; {$50} selects the lot; @ $90 is the selling price.
+; The gain posting balances the difference between cost and sale price:
+; the disposal balances at cost basis. See the manual's Gain postings.
+2025-08-01 sell at a gain, using specific identification
+    assets:broker2     -10 ETSY {$50} @ $90
+    assets:cash       $900
+    revenue:gains    -$400
+
+; 3b. Sell with no fee, at a loss.
+2025-09-01 sell at a loss
+    assets:broker2     -10 ETSY {$60} @ $55
+    assets:cash       $550
+    revenue:gains      $50
+
+; 3c. Sell with a $ fee.
+2025-10-01 sell with $ fee
+    assets:broker       -4.8 ETSY {$70} @ $90
+    assets:cash       $422
+    expenses:fees      $10
+    revenue:gains     -$96
+
+; 3d. Sell with a stock fee.
+; You sell 5 from the {$80} lot; the broker keeps 0.1 ETSY as a fee.
+2025-10-15 sell with stock fee
+    assets:broker       -5 ETSY {$80} @ $90
+    expenses:fees      0.1 ETSY {$80} @ $90
+    assets:cash       $441
+    revenue:gains     -$49
+
+; 3e. Sell using commodity's/account's reduction method —
+; {} chooses the most appropriate available lot(s) (FIFO by default).
+; The gain posting's amount is inferred.
+2025-11-01 sell using auto selection and inferred gain amount
+    assets:broker       -4.9 ETSY {} @ $90
+    assets:cash       $441
+    revenue:gains     $-50
+
+; 3f. Sell without writing a gain posting — it is added automatically,
+; using the first account of Gain type, otherwise revenues:gain.
+2025-12-01 sell, with inferred gain posting
+    assets:broker2      -4.9 ETSY {} @ $90
+    assets:cash       $441
+    ; both gains postings are inferred here
+
+; ============================================================================
+; ** 4. REVENUE & EXPENSES - lotful commodities in income/expense accounts
+; ============================================================================
+; Revenue and expense accounts don't get lot subaccounts;
+; only the asset account tracks the lot.
+
+; 4a. Receive stock as income (e.g. stock compensation or dividend).
+; A new lot is acquired; the income is recorded in $.
+2026-01-01 stock compensation
+    revenue:salary   -$900
+    assets:broker2      10 ETSY {$90}
+
+; 4b. Donate stock to charity.
+; A disposal at market price; the difference from cost basis is recorded as a gain/loss.
+2026-03-01 charitable donation
+    assets:broker2        -5 ETSY {$90} @ $100
+    expenses:donations  $500
+    revenue:gains       -$50
+
+; 4c. Pay a contractor in stock. Similar to the above.
+2026-04-01 pay contractor
+    assets:broker2          -5 ETSY {$90} @ $100
+    expenses:contractors  $500
+    revenue:gains         -$50
+
+; ============================================================================
+; ** 5. MARKET PRICES
+; ============================================================================
+
+; Recording an occasional market price allows reports to show current
+; market value and unrealised gain. Eg try:
+;   hledger -f lots.journal holdings
+P 2026-05-01 ETSY $95
+
+
+comment
+
+###############################################################################
+Comparing roi and holdings with this journal.
+(Some notes below generated by claude fable.)
+For a minimal comparison that reconciles exactly, see irr.journal.
+
+$ hledger -f lots.journal roi --inv assets:broker --pnl revenue:gains -e 2026-03-31 --value=end,$ --infer-market-prices
++---++------------+------------++---------------+----------+-------------+------++--------++------------+----------+
+|   ||      Begin |        End || Value (begin) | Cashflow | Value (end) |  PnL ||    IRR || TWR/period | TWR/year |
++===++============+============++===============+==========+=============+======++========++============+==========+
+| 1 || 2025-01-01 | 2026-03-30 ||             0 |    $-245 |        $510 | $755 || 48.55% ||      7.15% |    5.71% |
++---++------------+------------++---------------+----------+-------------+------++--------++------------+----------+
+
+$ hledger -f lots.journal holdings -e 2026-04-01 --infer-market-prices
+Holdings on 2026-03-31
+
+                ||       Date   Age     Units  Avg cost  Price  Cost  Value  Weight  UGain  UGain%  RGain    XIRR
+================++================================================================================================
+ assets:broker  || 2025-04-01  364d  0.1 ETSY       $80   $100    $8    $10    2.0%     $2   25.0%   $196   17.9%
+ assets:broker2 || 2026-01-01   89d  5.0 ETSY       $90   $100  $450   $500   98.0%    $50   11.1%   $498  144.2%
+----------------++------------------------------------------------------------------------------------------------
+                ||                                              $458   $510  100.0%    $52   11.4%   $694   47.8%
+
+
+These agree as closely as the two reports can on this journal:
+
+Measure      holdings (totals row)           roi
+-----------  ------------------------------  ---------------------
+Value        $510                            $510   (exact match)
+Total gain   UGain $52 + RGain $694 = $746   PnL $755  (~$9 apart)
+Return       XIRR 47.8%                      IRR 48.55%  (0.75pp apart)
+
+1. -e 2026-04-01 (holdings) and -e 2026-03-31 (roi): the one-day
+offset makes both reports value and discount to the same date,
+2026-03-31 (before the 2026-04-01 transaction). It's also chosen so
+both broker accounts are still open - after 2026-04-01, broker2 is
+fully disposed and drops out of holdings, so its $547 of realised
+gains would vanish from holdings' totals while staying in roi's
+PnL. That coverage gap is the biggest divergence and can't be
+bridged by flags, only avoided by the date. More generally, on
+journals with closed positions, "holdings RGain" and "roi PnL"
+answer different questions: holdings reports on what you still
+hold, roi on the whole investment's history.
+
+2. --pnl revenue:gains: counts the realised gain postings as profit
+rather than as external cashflows in and out of the investment
+(which would distort the result).
+
+3. --infer-market-prices: there's no P directive before 2026-05-01,
+so both reports infer the price from the latest transaction cost
+($100), giving the identical $510 valuation.
+
+4. --inv assets:broker matches both broker accounts, so the
+inter-broker lot transfers are internal for roi, just as holdings'
+totals cancel them (transfer out and in at the same basis). A
+single-account roi is not comparable with holdings' per-account
+XIRR: with --inv 'assets:broker$', roi shows IRR 183.54% vs
+holdings' 17.9%, because the lot transfers to broker2 become
+external flows for roi, valued at the end price rather than at
+their cost basis on the transfer dates as holdings values them
+(which is arguably right for this purpose).
+
+5. The remaining ~$9 PnL gap is the stock fees: roi values the
+0.1 ETSY amounts that left the investment as fees at the end price
+($100 each), while the actual transaction-time values were
+$70-90. That difference in flows also accounts for the remaining
+0.75pp of IRR spread. This is a known roi/--value=end
+characteristic, not a lots bug.
+
+One more caveat: even with the right --pnl, roi's TWR can look
+distorted on lots journals (eg on irr.journal's clean two-entry
+case it shows TWR -1.39% despite a +$210 gain); the cause is not
+yet understood (it is not the gain postings: the figure is the same
+with no gain postings involved).

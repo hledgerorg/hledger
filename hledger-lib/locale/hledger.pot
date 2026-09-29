@@ -1,0 +1,1082 @@
+# Translation template for hledger.
+# This file is distributed under the same license as hledger.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: hledger\n"
+"Report-Msgid-Bugs-To: https://github.com/simonmichael/hledger/issues\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#. stand-alone (nominative) month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:174
+msgctxt "month"
+msgid "January"
+msgstr ""
+
+#. stand-alone (nominative) month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:174
+msgctxt "month"
+msgid "February"
+msgstr ""
+
+#. stand-alone (nominative) month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:174
+msgctxt "month"
+msgid "March"
+msgstr ""
+
+#. stand-alone (nominative) month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:175
+msgctxt "month"
+msgid "April"
+msgstr ""
+
+#. stand-alone (nominative) month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:175
+msgctxt "month"
+msgid "May"
+msgstr ""
+
+#. stand-alone (nominative) month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:175
+msgctxt "month"
+msgid "June"
+msgstr ""
+
+#. stand-alone (nominative) month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:176
+msgctxt "month"
+msgid "July"
+msgstr ""
+
+#. stand-alone (nominative) month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:176
+msgctxt "month"
+msgid "August"
+msgstr ""
+
+#. stand-alone (nominative) month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:176
+msgctxt "month"
+msgid "September"
+msgstr ""
+
+#. stand-alone (nominative) month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:177
+msgctxt "month"
+msgid "October"
+msgstr ""
+
+#. stand-alone (nominative) month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:177
+msgctxt "month"
+msgid "November"
+msgstr ""
+
+#. stand-alone (nominative) month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:177
+msgctxt "month"
+msgid "December"
+msgstr ""
+
+#. short stand-alone month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:181
+msgctxt "month abbrev"
+msgid "Jan"
+msgstr ""
+
+#. short stand-alone month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:181
+msgctxt "month abbrev"
+msgid "Feb"
+msgstr ""
+
+#. short stand-alone month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:181
+msgctxt "month abbrev"
+msgid "Mar"
+msgstr ""
+
+#. short stand-alone month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:182
+msgctxt "month abbrev"
+msgid "Apr"
+msgstr ""
+
+#. short stand-alone month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:182
+msgctxt "month abbrev"
+msgid "May"
+msgstr ""
+
+#. short stand-alone month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:182
+msgctxt "month abbrev"
+msgid "Jun"
+msgstr ""
+
+#. short stand-alone month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:183
+msgctxt "month abbrev"
+msgid "Jul"
+msgstr ""
+
+#. short stand-alone month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:183
+msgctxt "month abbrev"
+msgid "Aug"
+msgstr ""
+
+#. short stand-alone month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:183
+msgctxt "month abbrev"
+msgid "Sep"
+msgstr ""
+
+#. short stand-alone month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:184
+msgctxt "month abbrev"
+msgid "Oct"
+msgstr ""
+
+#. short stand-alone month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:184
+msgctxt "month abbrev"
+msgid "Nov"
+msgstr ""
+
+#. short stand-alone month names, as used in a column heading.
+#: hledger-lib/Hledger/Utils/I18n.hs:184
+msgctxt "month abbrev"
+msgid "Dec"
+msgstr ""
+
+#. the report title, eg "Monthly Balance Sheet 2024 (Historical Ending Balances), valued at period ends". {clarification} brings its own leading space when present.
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:151
+#, python-brace-format
+msgid "{report} {dates}{clarification}{valuation}"
+msgstr ""
+
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:174
+msgid "(Period-End Value Changes)"
+msgstr ""
+
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:175
+msgid "(Cumulative Period-End Value Changes)"
+msgstr ""
+
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:176
+msgid "(Incremental Gain)"
+msgstr ""
+
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:177
+msgid "(Cumulative Gain)"
+msgstr ""
+
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:178
+msgid "(Historical Gain)"
+msgstr ""
+
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:179
+msgid "(Balance Changes)"
+msgstr ""
+
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:180
+msgid "(Cumulative Ending Balances)"
+msgstr ""
+
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:181
+msgid "(Historical Ending Balances)"
+msgstr ""
+
+#. the budget report title, eg "Budget performance in 2024, valued at period ends:".
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:186 hledger/Hledger/Cli/Commands/Balance.hs:903 hledger/Hledger/Cli/Commands/Balance.hs:1111
+msgid ", converted to cost"
+msgstr ""
+
+#. the budget report title, eg "Budget performance in 2024, valued at period ends:".
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:189 hledger/Hledger/Cli/Commands/Balance.hs:906 hledger/Hledger/Cli/Commands/Balance.hs:1114
+msgid ", valued at posting date"
+msgstr ""
+
+#. the budget report title, eg "Budget performance in 2024, valued at period ends:".
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:191 hledger/Hledger/Cli/Commands/Balance.hs:908 hledger/Hledger/Cli/Commands/Balance.hs:1115
+msgid ", valued at period ends"
+msgstr ""
+
+#. the budget report title, eg "Budget performance in 2024, valued at period ends:".
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:192 hledger/Hledger/Cli/Commands/Balance.hs:909 hledger/Hledger/Cli/Commands/Balance.hs:1116
+msgid ", current value"
+msgstr ""
+
+#. the budget report title, eg "Budget performance in 2024, valued at period ends:".
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:193 hledger/Hledger/Cli/Commands/Balance.hs:910 hledger/Hledger/Cli/Commands/Balance.hs:1117
+#, python-brace-format
+msgid ", valued at {date}"
+msgstr ""
+
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:308
+msgid "Net:"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:413
+msgid "Budget Report"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:426
+msgid "Multi-period Balance Report"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:438
+msgid "Balance Report"
+msgstr ""
+
+#. the multi-period balance report title, eg "Balance changes in 2024, valued at period ends:".
+#: hledger/Hledger/Cli/Commands/Balance.hs:889
+#, python-brace-format
+msgid "{report} in {dates}{valuation}:"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:893
+msgid "Period-end value changes"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:894
+msgid "Cumulative period-end value changes"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:895
+msgid "Incremental gain"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:896
+msgid "Cumulative gain"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:897
+msgid "Historical gain"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:898
+msgid "Balance changes"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:899
+msgid "Ending balances (cumulative)"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:900
+msgid "Ending balances (historical)"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:961 hledger/Hledger/Cli/Commands/Balance.hs:1151
+msgctxt "column heading"
+msgid "Commodity"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:971 hledger/Hledger/Cli/Commands/Balance.hs:1153 hledger-web/Hledger/Web/Handler/RegisterR.hs:58
+msgctxt "column heading"
+msgid "Total"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs:972 hledger/Hledger/Cli/Commands/Balance.hs:1154
+msgctxt "column heading"
+msgid "Average"
+msgstr ""
+
+#. the budget report title, eg "Budget performance in 2024, valued at period ends:".
+#: hledger/Hledger/Cli/Commands/Balance.hs:1107
+#, python-brace-format
+msgid "Budget performance in {dates}{valuation}:"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:28
+msgid "Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:29
+msgid "Daily Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:30
+msgid "Weekly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:31
+msgid "Biweekly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:32
+msgid "Monthly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:33
+msgid "Bimonthly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:34
+msgid "Quarterly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:35
+msgid "Half-yearly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:36
+msgid "Yearly Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:37
+msgid "Biennial Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:38
+msgid "Periodic Balance Sheet"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:41 hledger/Hledger/Cli/Commands/Balancesheetequity.hs:42
+msgid "Assets"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs:48 hledger/Hledger/Cli/Commands/Balancesheetequity.hs:49
+msgid "Liabilities"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:29
+msgid "Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:30
+msgid "Daily Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:31
+msgid "Weekly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:32
+msgid "Biweekly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:33
+msgid "Monthly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:34
+msgid "Bimonthly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:35
+msgid "Quarterly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:36
+msgid "Half-yearly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:37
+msgid "Yearly Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:38
+msgid "Biennial Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:39
+msgid "Periodic Balance Sheet With Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:56
+msgid "Equity"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:32
+msgid "Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:33
+msgid "Daily Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:34
+msgid "Weekly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:35
+msgid "Biweekly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:36
+msgid "Monthly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:37
+msgid "Bimonthly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:38
+msgid "Quarterly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:39
+msgid "Half-yearly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:40
+msgid "Yearly Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:41
+msgid "Biennial Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:42
+msgid "Periodic Cashflow Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Cashflow.hs:45
+msgid "Cash flows"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:28
+msgid "Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:29
+msgid "Daily Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:30
+msgid "Weekly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:31
+msgid "Biweekly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:32
+msgid "Monthly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:33
+msgid "Bimonthly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:34
+msgid "Quarterly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:35
+msgid "Half-yearly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:36
+msgid "Yearly Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:37
+msgid "Biennial Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:38
+msgid "Periodic Income Statement"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:41
+msgid "Revenues"
+msgstr ""
+
+#. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs:48
+msgid "Expenses"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Register.hs:115
+msgid "Register"
+msgstr ""
+
+#: hledger-ui/Hledger/UI/AccountsScreen.hs:68
+msgid "account balances"
+msgstr ""
+
+#: hledger-ui/Hledger/UI/AccountsScreen.hs:69
+msgid "account changes"
+msgstr ""
+
+#: hledger-ui/Hledger/UI/AccountsScreen.hs:70
+msgid "cash balances"
+msgstr ""
+
+#: hledger-ui/Hledger/UI/AccountsScreen.hs:71
+msgid "balance sheet balances"
+msgstr ""
+
+#: hledger-ui/Hledger/UI/AccountsScreen.hs:72
+msgid "income statement changes"
+msgstr ""
+
+#. the menu screen's entries; translated when drawn.
+#: hledger-ui/Hledger/UI/UIScreens.hs:93
+msgid "Cash accounts"
+msgstr ""
+
+#. the menu screen's entries; translated when drawn.
+#: hledger-ui/Hledger/UI/UIScreens.hs:94
+msgid "Balance sheet accounts"
+msgstr ""
+
+#. the menu screen's entries; translated when drawn.
+#: hledger-ui/Hledger/UI/UIScreens.hs:95
+msgid "Income statement accounts"
+msgstr ""
+
+#. the menu screen's entries; translated when drawn.
+#: hledger-ui/Hledger/UI/UIScreens.hs:96
+msgid "All accounts"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/AddR.hs:65
+msgid "Transaction added."
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs:38 hledger-web/Hledger/Web/Handler/JournalR.hs:30 hledger-web/Hledger/Web/Handler/RegisterR.hs:39
+#, python-brace-format
+msgid "{title}, filtered"
+msgstr ""
+
+#. the browser tab title of this page.
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs:48
+msgid "balance - hledger-web"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs:54 hledger-web/Hledger/Web/Handler/BalanceR.hs:99
+msgid "Balance report"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs:56
+msgid "Could not parse the period expression:"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/EditR.hs:44 hledger-web/Hledger/Web/Handler/UploadR.hs:57
+#, python-brace-format
+msgid "Failed to load journal: {error}"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/EditR.hs:47
+#, python-brace-format
+msgid "Saved journal {file}"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/EditR.hs:52 hledger-web/Hledger/Web/Handler/MiscR.hs:56
+msgid "Edit journal"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/JournalR.hs:27
+msgid "General Journal"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/JournalR.hs:28
+#, python-brace-format
+msgid "Transactions in {account}"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/JournalR.hs:29
+#, python-brace-format
+msgid "Transactions in {account} (excluding subaccounts)"
+msgstr ""
+
+#. the browser tab title of this page.
+#: hledger-web/Hledger/Web/Handler/JournalR.hs:40
+msgid "journal - hledger-web"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs:36
+msgid "all accounts"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs:38
+#, python-brace-format
+msgid "{account} (excluding subaccounts)"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs:56
+msgctxt "column heading"
+msgid "Historical Total"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs:57
+msgctxt "column heading"
+msgid "Period Total"
+msgstr ""
+
+#. the browser tab title of this page.
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs:62
+msgid "register - hledger-web"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/UploadR.hs:52
+#, python-brace-format
+msgid "Encoding error: '{error}'. If your file is not UTF-8 encoded, try the 'edit form', where the transcoding should be handled by the browser."
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/UploadR.hs:60
+#, python-brace-format
+msgid "File {file} uploaded successfully"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/UploadR.hs:65
+msgid "Upload journal"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Widget/AddForm.hs:39 hledger-web/templates/default-layout.hamlet:69
+msgid "Close"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Widget/AddForm.hs:40 hledger-web/templates/journal.hamlet:7
+msgid "Add a transaction"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Widget/AddForm.hs:53
+#, python-brace-format
+msgid "Account {n}"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Widget/AddForm.hs:54
+#, python-brace-format
+msgid "Amount {n}"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Widget/AddForm.hs:60
+msgid "Invalid date format"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Widget/AddForm.hs:62
+msgctxt "placeholder"
+msgid "Date"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Widget/AddForm.hs:63
+msgctxt "placeholder"
+msgid "Description"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Widget/AddForm.hs:117
+msgid "Missing amount"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Widget/AddForm.hs:118
+msgid "Missing account"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Widget/AddForm.hs:148
+#, python-brace-format
+msgid "Invalid value: {error}"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Widget/AddForm.hs:173
+msgid "Postings validation failed"
+msgstr ""
+
+#. the label before the balance page's report links.
+#: hledger-web/Hledger/Web/Widget/Common.hs:101
+msgid "Report:"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:108
+msgid "Balance"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:108
+msgid "Show the balance report"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:109
+msgid "Yearly"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:109
+msgid "Show the yearly balance report"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:110
+msgid "Quarterly"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:110
+msgid "Show the quarterly balance report"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:111
+msgid "Monthly"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:111
+msgid "Show the monthly balance report"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:112
+msgid "Weekly"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:112
+msgid "Show the weekly balance report"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:113
+msgid "Daily"
+msgstr ""
+
+#. the balance page's report links: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs:113
+msgid "Show the daily balance report"
+msgstr ""
+
+#: hledger-web/templates/add-form.hamlet:11
+msgid "Pick a date"
+msgstr ""
+
+#: hledger-web/templates/add-form.hamlet:39
+msgid "Add to:"
+msgstr ""
+
+#: hledger-web/templates/add-form.hamlet:46 hledger-web/templates/edit-form.hamlet:17
+msgid "Save"
+msgstr ""
+
+#: hledger-web/templates/balance-report.hamlet:4
+msgid "Show general journal entries, most recent first"
+msgstr ""
+
+#: hledger-web/templates/balance-report.hamlet:5
+msgid "Journal"
+msgstr ""
+
+#: hledger-web/templates/balance-report.hamlet:15
+msgid "Show transactions affecting this account and subaccounts"
+msgstr ""
+
+#: hledger-web/templates/balance-report.hamlet:19
+msgid "Show transactions affecting this account but not subaccounts"
+msgstr ""
+
+#: hledger-web/templates/balance-report.hamlet:19
+msgid "only"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:49
+msgctxt "search box"
+msgid "Search"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:50
+msgid "Enter hledger search patterns to filter the data below"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:55
+msgid "Clear search terms"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:57
+msgid "Apply search terms"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:60
+msgid "Manage journal files"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:63
+msgid "Show search and general help"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:71
+msgid "Help"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:77
+msgid "Keyboard shortcuts"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:79
+msgid "or maybe"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:79
+msgid "view this help (escape or click to exit)"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:80
+msgid "go to the Journal view (home)"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:81
+msgid "add a transaction (escape to cancel)"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:82
+msgid "toggle sidebar"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:83
+msgid "focus search form"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:84
+msgid "hide empty accounts in sidebar"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:86
+msgid "General"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:88
+msgid "The Journal view shows general journal entries, representing zero-sum movements of money (or other commodity) between hierarchical accounts"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:89
+msgid "The sidebar shows the resulting accounts and their final balances"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:90
+msgid "Parent account balances include subaccount balances"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:91
+msgid "Multiple currencies in balances are displayed one above the other"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:92
+msgid "Click account name links to see transactions affecting that account, with running balance"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:93
+msgid "Click date links to see journal entries on that date"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:96
+msgctxt "help heading"
+msgid "Search"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:98
+msgid "Search patterns with spaces should be enclosed in quotes."
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:99
+msgid "match account names"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:100
+msgid "match account types"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:101
+msgid "match dates"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:102
+msgid "match status"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:103
+msgid "match transaction codes"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:104
+msgid "or"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:104
+msgid "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:105
+msgid "match transaction descriptions"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:106
+msgid "match payee part of descriptions"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:107
+msgid "match note part of descriptions"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:108
+msgid "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:109
+msgid "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:110
+msgid "match tags, or tag and value"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:111
+msgid "match postings' realness/virtualness"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:112
+msgid "prepend not: to negate a search term"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:113
+msgid "match with a boolean query (and, or, not, (..))"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:114
+msgid "match transactions where any posting matches"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:115
+msgid "match transactions where all postings match"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet:116
+msgid "clip account names at this depth"
+msgstr ""
+
+#: hledger-web/templates/edit-form.hamlet:3
+msgid "Edit file"
+msgstr ""
+
+#: hledger-web/templates/edit-form.hamlet:6 hledger-web/templates/upload-form.hamlet:5
+msgid "Are you sure? This will overwrite your journal!"
+msgstr ""
+
+#: hledger-web/templates/edit-form.hamlet:14
+msgid "File format help"
+msgstr ""
+
+#: hledger-web/templates/edit-form.hamlet:16
+msgid "Go back"
+msgstr ""
+
+#: hledger-web/templates/journal.hamlet:6
+msgid "Add a new transaction to the journal"
+msgstr ""
+
+#: hledger-web/templates/journal.hamlet:12 hledger-web/templates/register.hamlet:12
+msgctxt "column heading"
+msgid "Date"
+msgstr ""
+
+#: hledger-web/templates/journal.hamlet:13 hledger-web/templates/register.hamlet:14
+msgctxt "column heading"
+msgid "Description"
+msgstr ""
+
+#: hledger-web/templates/journal.hamlet:14
+msgctxt "column heading"
+msgid "Account"
+msgstr ""
+
+#: hledger-web/templates/journal.hamlet:15
+msgctxt "column heading"
+msgid "Amount"
+msgstr ""
+
+#: hledger-web/templates/manage.hamlet:2
+msgid "Your journal's files"
+msgstr ""
+
+#: hledger-web/templates/manage.hamlet:9
+msgctxt "column heading"
+msgid "File"
+msgstr ""
+
+#: hledger-web/templates/manage.hamlet:18
+msgid "Edit"
+msgstr ""
+
+#: hledger-web/templates/manage.hamlet:20 hledger-web/templates/upload-form.hamlet:12
+msgid "Upload"
+msgstr ""
+
+#: hledger-web/templates/manage.hamlet:22
+msgid "Download"
+msgstr ""
+
+#: hledger-web/templates/register.hamlet:15
+msgctxt "column heading"
+msgid "To/From Account(s)"
+msgstr ""
+
+#: hledger-web/templates/register.hamlet:16
+msgctxt "column heading"
+msgid "Amount Out/In"
+msgstr ""
+
+#: hledger-web/templates/upload-form.hamlet:2
+msgid "Upload to file"
+msgstr ""
+
+#: hledger-web/templates/upload-form.hamlet:9
+msgid "Select file"
+msgstr ""

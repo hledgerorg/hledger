@@ -7,16 +7,21 @@ by overriding methods in the Yesod typeclass in App.hs.
 
 {-# LANGUAGE CPP               #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module Hledger.Web.Settings where
 
+import Control.Monad (unless)
 import Data.Default (def)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Yaml
-import Language.Haskell.TH.Syntax (Q, Exp)
+import Language.Haskell.TH.Syntax (Q, Exp, runIO)
+import System.Directory (doesFileExist)
+import System.FilePath ((</>))
 import Text.Hamlet
+import Yesod.Core.Types (Route(WaiSubsiteRoute))
 import Yesod.Default.Config
 import Yesod.Default.Util
 
@@ -78,6 +83,16 @@ staticDir = "static"
 staticRoot :: AppConfig DefaultEnv Extra -> Text
 staticRoot conf = fromMaybe (appRoot conf <> "/static") . extraStaticRoot $ appExtra conf
 
+-- | Make a type-safe URL for a file within the static directory,
+-- given its path relative to that directory (using / separators).
+-- Checks at compile time that the file exists.
+staticFileRoute :: FilePath -> Q Exp
+staticFileRoute f = do
+  let path = staticDir </> f
+  exists <- runIO $ doesFileExist path
+  unless exists . fail $ "staticFileRoute: " ++ path ++ " not found"
+  [| WaiSubsiteRoute (T.splitOn (T.singleton '/') (T.pack f)) [] |]
+
 -- | Settings for 'widgetFile', such as which template languages to support and
 -- default Hamlet settings.
 widgetFileSettings :: WidgetFileSettings
@@ -97,12 +112,10 @@ widgetFile = (if development then widgetFileReload
 
 data Extra = Extra
     { extraCopyright  :: Text
-    , extraAnalytics  :: Maybe Text -- ^ Google Analytics
     , extraStaticRoot :: Maybe Text
     } deriving Show
 
 parseExtra :: DefaultEnv -> Object -> Parser Extra
 parseExtra _ o = Extra
     <$> o .:  "copyright"
-    <*> o .:? "analytics"
     <*> o .:? "staticRoot"

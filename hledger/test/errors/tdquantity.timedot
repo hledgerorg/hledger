@@ -1,0 +1,4 @@
+#!/usr/bin/env -S hledger check -f
+
+2022-01-01
+a  1.x

@@ -1,0 +1,15 @@
+# Extra search config for ripgrep and VS Code search (not read by git).
+# These take precedence over .gitignore, letting searches from the top level
+# find matches in the site repo's main docs (if site/ is checked out here),
+# while git continues to ignore site/ entirely.
+!/site/
+/site/*
+!/site/src/
+/site/src/*
+!/site/src/*.md
+# also the archived manuals in the versioned dirs (site/src/1.52/ etc).
+# The dir must be un-ignored first: a file can't be re-included if its
+# parent dir is excluded.
+!/site/src/[0-9]*/
+/site/src/[0-9]*/*
+!/site/src/[0-9]*/*.md

@@ -33,11 +33,14 @@ module Hledger.Data.Transaction
 , transactionMapPostings
 , transactionMapPostingAmounts
 , transactionAmounts
+, transactionCommodityStyles
+, transactionCommodityStylesWith
 , transactionNegate
 , partitionAndCheckConversionPostings
 , transactionAddTags
 , transactionAddHiddenAndMaybeVisibleTag
   -- * helpers
+, TransactionBalancingPrecision(..)
 , payeeAndNoteFromDescription
 , payeeAndNoteFromDescription'
   -- nonzerobalanceerror
@@ -50,7 +53,9 @@ module Hledger.Data.Transaction
   -- payeeAndNoteFromDescription
   -- * rendering
 , showTransaction
+, showTransactionWithLayout
 , showTransactionOneLineAmounts
+, showTransactionOneLine
 , showTransactionLineFirstPart
 , transactionFile
   -- * transaction errors
@@ -62,13 +67,13 @@ module Hledger.Data.Transaction
 import Control.Monad.Trans.State (StateT(..), evalStateT)
 import Data.Bifunctor (first, second)
 import Data.Foldable (foldlM)
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
 import Data.Semigroup (Endo(..))
 import Data.Text (Text)
-import qualified Data.Map as M
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.Builder as TB
+import Data.Map qualified as M
+import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
+import Data.Text.Lazy.Builder qualified as TB
 import Data.Time.Calendar (Day, fromGregorian)
 
 import Hledger.Utils
@@ -77,11 +82,27 @@ import Hledger.Data.Dates
 import Hledger.Data.Posting
 import Hledger.Data.Amount
 import Hledger.Data.Valuation
-import Data.Decimal (normalizeDecimal, decimalPlaces)
+import Data.Decimal (normalizeDecimal, decimalPlaces, roundTo)
 import Data.Functor ((<&>))
 import Data.Function ((&))
 import Data.List (union)
 
+
+-- | How to determine the precision used for checking that transactions are balanced. See #2402.
+data TransactionBalancingPrecision =
+    TBPOld
+    -- ^ Legacy behaviour, as in hledger <1.50, included to ease upgrades.
+    -- use precision inferred from the whole journal, overridable by commodity directive or -c.
+    -- Display precision is also transaction balancing precision; increasing it can break journal reading.
+    -- Some valid journals are rejected until commodity directives are added.
+    -- Small unbalanced remainders can be hidden, and in accounts that are never reconciled, can accumulate over time.
+  | TBPExact
+    -- ^ Simpler, more robust behaviour, like (I thought) Ledger: use precision inferred from the transaction.
+    -- Display precision and transaction balancing precision are independent; display precision never affects journal reading.
+    -- Valid journals from ledger or beancount are accepted without needing commodity directives.
+    -- Every imbalance in a transaction is visibly accounted for in that transaction's journal entry.
+
+  deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 instance HasAmounts Transaction where
   styleAmounts styles t = t{tpostings=styleAmounts styles $ tpostings t}
@@ -151,28 +172,47 @@ are displayed as multiple similar postings, one per commodity.
 (Normally does not happen with this function).
 -}
 showTransaction :: Transaction -> Text
-showTransaction = TL.toStrict . TB.toLazyText . showTransactionHelper False
+showTransaction = TL.toStrict . TB.toLazyText . showTransactionHelper False defaultPostingLayout
+
+-- | Like 'showTransaction', but with an explicit posting layout
+-- (e.g. to support @print --layout=hledger1@).
+showTransactionWithLayout :: PostingLayout -> Transaction -> Text
+showTransactionWithLayout layout = TL.toStrict . TB.toLazyText . showTransactionHelper False layout
 
 -- | Like showTransaction, but explicit multi-commodity amounts
 -- are shown on one line, comma-separated. In this case the output will
 -- not be parseable journal syntax.
 showTransactionOneLineAmounts :: Transaction -> Text
-showTransactionOneLineAmounts = TL.toStrict . TB.toLazyText . showTransactionHelper True
+showTransactionOneLineAmounts = TL.toStrict . TB.toLazyText . showTransactionHelper True defaultPostingLayout
+
+-- | Show only a transaction's first line: date, status, code, description,
+-- and same-line comment, without any comment lines or postings. Used by the transactions command.
+-- (Distinct from 'showTransactionOneLineAmounts', which shows the whole transaction
+-- but with multi-commodity amounts on one line.)
+showTransactionOneLine :: Transaction -> Text
+showTransactionOneLine t = transactionFirstLine t <> "\n"
 
 -- | Helper for showTransaction*.
-showTransactionHelper :: Bool -> Transaction -> TB.Builder
-showTransactionHelper onelineamounts t =
-      TB.fromText descriptionline <> newline
+-- Any preceding comment lines (tprecedingcomment, already newline-terminated) are shown first.
+showTransactionHelper :: Bool -> PostingLayout -> Transaction -> TB.Builder
+showTransactionHelper onelineamounts layout t =
+      TB.fromText (tprecedingcomment t)
+    <> TB.fromText (transactionFirstLine t) <> newline
     <> foldMap ((<> newline) . TB.fromText) newlinecomments
-    <> foldMap ((<> newline) . TB.fromText) (postingsAsLines onelineamounts $ tpostings t)
+    <> foldMap ((<> newline) . TB.fromText) (postingsAsLinesWithLayout defaultFmt onelineamounts layout $ tpostings t)
     <> newline
   where
-    descriptionline = T.stripEnd $ showTransactionLineFirstPart t <> T.concat [desc, samelinecomment]
-    desc = if T.null d then "" else " " <> d where d = tdescription t
-    (samelinecomment, newlinecomments) =
-      case renderCommentLines (tcomment t) of []   -> ("",[])
-                                              c:cs -> (c,cs)
+    newlinecomments = drop 1 $ renderCommentLines (tcomment t)
     newline = TB.singleton '\n'
+
+-- | Render a transaction's first line: date, status, code, description, and
+-- same-line comment (the part after @;@ on the date line), with trailing whitespace stripped.
+transactionFirstLine :: Transaction -> Text
+transactionFirstLine t = T.stripEnd $ showTransactionLineFirstPart t <> T.concat [desc, samelinecomment]
+  where
+    desc = if T.null d then "" else " " <> d where d = tdescription t
+    samelinecomment = case renderCommentLines (tcomment t) of []  -> ""
+                                                              c:_ -> c
 
 -- Useful when rendering error messages.
 showTransactionLineFirstPart t = T.concat [date, status, code]
@@ -241,10 +281,32 @@ transactionToCost :: ConversionOp -> Transaction -> Transaction
 transactionToCost cost t = t{tpostings = mapMaybe (postingToCost cost) $ tpostings t}
 
 -- | For any costs in this 'Transaction' which don't have associated equity conversion postings,
--- generate and add those.
+-- generate and add those. Generated amounts are rounded to the transaction's local display
+-- precision to avoid arithmetic artifacts (e.g. 9.216 * 1801.215277778 = 16600.000000002 -> 16600.00).
 transactionInferEquityPostings :: Bool -> AccountName -> Transaction -> Transaction
 transactionInferEquityPostings verbosetags equityAcct t =
-  t{tpostings=concatMap (postingAddInferredEquityPostings verbosetags equityAcct) $ tpostings t}
+  t{tpostings = map roundGenerated $ go $ tpostings t}
+  where
+    -- The consecutive per-lot fragments of one posting (lotsplit-tagged and
+    -- sharing poriginal, as in Lots.mergeLotSplits) get one set of conversion
+    -- postings after the last fragment, so collapsing lot detail can still merge them.
+    go [] = []
+    go (p:ps) = postingsAddInferredEquityPostings verbosetags equityAcct (p:run) ++ go rest
+      where
+        (run, rest)
+          | isLotSplit p = span (\q -> isLotSplit q && poriginal q == poriginal p) ps
+          | otherwise    = ([], ps)
+    isLotSplit = postingHasTag lotsplitPostingTagName
+    -- Round generated equity conversion posting amounts (quantities, not just display)
+    -- to the transaction's local display precision, avoiding arithmetic artifacts
+    -- (e.g. 9.216 * 1801.215277778 = 16600.000000002 -> 16600.00).
+    styles = transactionCommodityStyles t
+    roundGenerated p
+      | generatedPostingTagName `elem` map fst (ptags p) = p{pamount = mapMixedAmount roundAmount (pamount p)}
+      | otherwise = p
+    roundAmount a = case M.lookup (acommodity a) styles of
+      Just s@AmountStyle{asprecision=Precision p} -> a{aquantity = roundTo p (aquantity a), astyle = s}
+      _ -> a
 
 type IdxPosting = (Int, Posting)
 
@@ -264,7 +326,7 @@ transactionAddTags t@Transaction{ttags} tags = t{ttags=ttags `union` tags}
 -- If the transaction already has these tags (with any value), do nothing.
 transactionAddHiddenAndMaybeVisibleTag :: Bool -> HiddenTag -> Transaction -> Transaction
 transactionAddHiddenAndMaybeVisibleTag verbosetags ht t@Transaction{tcomment=c, ttags} =
-  (t `transactionAddTags` ([ht] <> [vt|verbosetags]))
+  (t `transactionAddTags` ([ht] <> [ vt|verbosetags]))
   {tcomment=if verbosetags && not hadtag then c `commentAddTagNextLine` vt else c}
   where
     vt@(vname,_) = toVisibleTag ht
@@ -282,7 +344,10 @@ transactionAddHiddenAndMaybeVisibleTag verbosetags ht t@Transaction{tcomment=c, 
 -- The name reflects the complexity of this and its helpers; clarification is ongoing.
 --
 transactionTagCostsAndEquityAndMaybeInferCosts :: Bool -> Bool -> [AccountName] -> Transaction -> Either String Transaction
-transactionTagCostsAndEquityAndMaybeInferCosts verbosetags1 addcosts conversionaccts t = first (annotateErrorWithTransaction t . T.unpack) $ do
+transactionTagCostsAndEquityAndMaybeInferCosts verbosetags1 addcosts conversionaccts t
+  -- Without conversion postings there is nothing to tag or infer, so skip the work (and the rebuild) below.
+  | not $ any ((`elem` conversionaccts) . paccount) $ tpostings t = Right t
+  | otherwise = first (annotateErrorWithTransaction t . T.unpack) $ do
   -- number the postings
   let npostings = zip [0..] $ tpostings t
 
@@ -349,8 +414,8 @@ transactionTagCostsAndEquityAndMaybeInferCosts verbosetags1 addcosts conversiona
 
         -- A function that adds a cost and/or tag to a numbered posting if appropriate.
         postingAddCostAndOrTag np costp (n,p) =
-          (n, if | n == np            -> costp & postingAddHiddenAndMaybeVisibleTag verbosetags (costPostingTagName,"")        -- if it's the specified posting number, replace it with the costful posting, and tag it
-                 | n == n1 || n == n2 -> p     & postingAddHiddenAndMaybeVisibleTag verbosetags (conversionPostingTagName,"")  -- if it's one of the equity conversion postings, tag it
+          (n, if | n == np            -> costp & postingAddHiddenAndMaybeVisibleTag False verbosetags (costPostingTagName,"")        -- if it's the specified posting number, replace it with the costful posting, and tag it
+                 | n == n1 || n == n2 -> p     & postingAddHiddenAndMaybeVisibleTag False verbosetags (conversionPostingTagName,"")  -- if it's one of the equity conversion postings, tag it
                  | otherwise          -> p)
 
       -- Annotate any errors with the conversion posting pair
@@ -387,10 +452,23 @@ transactionTagCostsAndEquityAndMaybeInferCosts verbosetags1 addcosts conversiona
     costfulPostingIfMatchesBothAmounts a1 a2 costfulp = do
         a@Amount{acost=Just _} <- postingSingleAmount costfulp
         if
-           | dbgamtmatch 1 a1 a (amountsMatch (-a1) a)  &&  dbgcostmatch 2 a2 a (amountsMatch a2 (amountCost a)) -> Just costfulp
-           | dbgamtmatch 2 a2 a (amountsMatch (-a2) a)  &&  dbgcostmatch 1 a1 a (amountsMatch a1 (amountCost a)) -> Just costfulp
+           | dbgamtmatch 1 a1 a (amountsMatch (-a1) a)  &&  dbgcostmatch 2 a2 a (costMatches a2 a) -> Just costfulp
+           | dbgamtmatch 2 a2 a (amountsMatch (-a2) a)  &&  dbgcostmatch 1 a1 a (costMatches a1 a) -> Just costfulp
            | otherwise -> Nothing
            where
+            -- A conversion posting's amount matches the costful amount's cost
+            -- when it equals the transacted cost; or the cost basis (a lot
+            -- disposal, whose conversion postings record what the units cost,
+            -- the difference from the proceeds being in the gain posting); or,
+            -- when a cost basis is written but not yet known (an unspecified
+            -- {} basis, filled in by lot matching later), when it is in the
+            -- cost's commodity. The balancer and the post-lot gain check
+            -- verify the amounts afterwards.
+            costMatches c a =
+                 amountsMatch c (amountCost a)
+              || amountsMatch c (amountCostBasis a)
+              || (hasUnspecifiedBasis a && acommodity c == acommodity (amountCost a))
+            hasUnspecifiedBasis a = maybe False (isNothing . cbCost) (acostbasis a)
             dbgamtmatch  n a b = dbg7 ("conversion posting "     <>show n<>" "<>showAmount a<>" balances amount "<>showAmountWithoutCost b <>" of costful posting "<>showAmount b<>" at precision "<>dbgShowAmountPrecision a<>" ?")
             dbgcostmatch n a b = dbg7 ("and\nconversion posting "<>show n<>" "<>showAmount a<>" matches cost "   <>showAmount (amountCost b)<>" of costful posting "<>showAmount b<>" at precision "<>dbgShowAmountPrecision a<>" ?") 
 
@@ -426,7 +504,7 @@ transactionTagCostsAndEquityAndMaybeInferCosts verbosetags1 addcosts conversiona
     deleteUniqueMatch p (x:xs) | p x       = if any p xs then Nothing else Just xs
                                | otherwise = (x:) <$> deleteUniqueMatch p xs
     deleteUniqueMatch _ []                 = Nothing
-    annotateWithPostings xs str = T.unlines $ str : postingsAsLines False xs
+    annotateWithPostings xs str = T.unlines $ str : postingsAsLines defaultFmt False xs
 
 dbgShowAmountPrecision a =
   case asprecision $ astyle a of
@@ -483,6 +561,20 @@ transactionMapPostingAmounts f  = transactionMapPostings (postingTransformAmount
 transactionAmounts :: Transaction -> [MixedAmount]
 transactionAmounts = map pamount . tpostings
 
+-- | Get this transaction's local styles - the commodity styles inferred from
+-- its explicitly-written (or generated from balance assignments) posting amounts.
+-- Inferred balancing amounts are excluded so that they can't confusingly increase
+-- the entry's local balancing precision.
+transactionCommodityStyles :: Transaction -> M.Map CommoditySymbol AmountStyle
+transactionCommodityStyles =
+  either (const mempty) id .  -- ignore style problems, commodityStylesFromAmounts doesn't report them currently
+  commodityStylesFromAmounts . concatMap (amountsRaw . pamount) . filter isExplicitAmount . tpostings
+
+-- | Like transactionCommodityStyles, but attach a particular rounding strategy to the styles,
+-- affecting how they will affect display precisions when applied.
+transactionCommodityStylesWith :: Rounding -> Transaction -> M.Map CommoditySymbol AmountStyle
+transactionCommodityStylesWith r = amountStylesSetRounding r . transactionCommodityStyles
+
 -- | Flip the sign of this transaction's posting amounts (and balance assertion amounts).
 transactionNegate :: Transaction -> Transaction
 transactionNegate = transactionMapPostings postingNegate
@@ -505,7 +597,7 @@ tests_Transaction =
   testGroup "Transaction" [
 
       testGroup "showPostingLines" [
-          testCase "null posting" $ showPostingLines nullposting @?= ["                   0"]
+          testCase "null posting" $ showPostingLines nullposting @?= ["                                                   0"]
         , testCase "non-null posting" $
            let p =
                 posting
@@ -513,14 +605,14 @@ tests_Transaction =
                   , paccount = "a"
                   , pamount = mixed [usd 1, hrs 2]
                   , pcomment = "pcomment1\npcomment2\n  tag3: val3  \n"
-                  , ptype = RegularPosting
+                  , preal = RealPosting
                   , ptags = [("ptag1", "val1"), ("ptag2", "val2")]
                   }
            in showPostingLines p @?=
-              [ "    * a         $1.00  ; pcomment1"
+              [ "    * a                                           $1.00  ; pcomment1"
               , "    ; pcomment2"
               , "    ;   tag3: val3  "
-              , "    * a         2.00h  ; pcomment1"
+              , "    * a                                            2.00h  ; pcomment1"
               , "    ; pcomment2"
               , "    ;   tag3: val3  "
               ]
@@ -542,28 +634,28 @@ tests_Transaction =
         -- unbalanced amounts when precision is limited (#931)
         -- t4 = nulltransaction {tpostings = ["a" `post` usd (-0.01), "b" `post` usd (0.005), "c" `post` usd (0.005)]}
       in testGroup "postingsAsLines" [
-              testCase "null-transaction" $ postingsAsLines False (tpostings nulltransaction) @?= []
-            , testCase "implicit-amount" $ postingsAsLines False (tpostings timp) @?=
-                  [ "    a           $1.00"
+              testCase "null-transaction" $ postingsAsLines defaultFmt False (tpostings nulltransaction) @?= []
+            , testCase "implicit-amount" $ postingsAsLines defaultFmt False (tpostings timp) @?=
+                  [ "    a                                             $1.00"
                   , "    b" -- implicit amount remains implicit
                   ]
-            , testCase "explicit-amounts" $ postingsAsLines False (tpostings texp) @?=
-                  [ "    a           $1.00"
-                  , "    b          $-1.00"
+            , testCase "explicit-amounts" $ postingsAsLines defaultFmt False (tpostings texp) @?=
+                  [ "    a                                             $1.00"
+                  , "    b                                            $-1.00"
                   ]
-            , testCase "one-explicit-amount" $ postingsAsLines False (tpostings texp1) @?=
-                  [ "    (a)           $1.00"
+            , testCase "one-explicit-amount" $ postingsAsLines defaultFmt False (tpostings texp1) @?=
+                  [ "    (a)                                           $1.00"
                   ]
-            , testCase "explicit-amounts-two-commodities" $ postingsAsLines False (tpostings texp2) @?=
-                  [ "    a             $1.00"
-                  , "    b    -1.00h @ $1.00"
+            , testCase "explicit-amounts-two-commodities" $ postingsAsLines defaultFmt False (tpostings texp2) @?=
+                  [ "    a                                             $1.00"
+                  , "    b                                             -1.00h @ $1.00"
                   ]
-            , testCase "explicit-amounts-not-explicitly-balanced" $ postingsAsLines False (tpostings texp2b) @?=
-                  [ "    a           $1.00"
-                  , "    b          -1.00h"
+            , testCase "explicit-amounts-not-explicitly-balanced" $ postingsAsLines defaultFmt False (tpostings texp2b) @?=
+                  [ "    a                                             $1.00"
+                  , "    b                                             -1.00h"
                   ]
-            , testCase "implicit-amount-not-last" $ postingsAsLines False (tpostings t3) @?=
-                  ["    a           $1.00", "    b", "    c          $-1.00"]
+            , testCase "implicit-amount-not-last" $ postingsAsLines defaultFmt False (tpostings t3) @?=
+                  ["    a                                             $1.00", "    b", "    c                                            $-1.00"]
             -- , testCase "ensure-visibly-balanced" $
             --    in postingsAsLines False (tpostings t4) @?=
             --       ["    a          $-0.01", "    b           $0.005", "    c           $0.005"]
@@ -587,7 +679,7 @@ tests_Transaction =
                       , paccount = "a"
                       , pamount = mixed [usd 1, hrs 2]
                       , pcomment = "\npcomment2\n"
-                      , ptype = RegularPosting
+                      , preal = RealPosting
                       , ptags = [("ptag1", "val1"), ("ptag2", "val2")]
                       }
                   ]
@@ -595,9 +687,9 @@ tests_Transaction =
           T.unlines
             [ "2012-05-14=2012-05-15 (code) desc  ; tcomment1"
             , "    ; tcomment2"
-            , "    * a         $1.00"
+            , "    * a                                           $1.00"
             , "    ; pcomment2"
-            , "    * a         2.00h"
+            , "    * a                                            2.00h"
             , "    ; pcomment2"
             , ""
             ]
@@ -620,8 +712,8 @@ tests_Transaction =
             in showTransaction t) @?=
           (T.unlines
              [ "2007-01-28 coopportunity"
-             , "    expenses:food:groceries          $47.18"
-             , "    assets:checking                 $-47.18"
+             , "    expenses:food:groceries                      $47.18"
+             , "    assets:checking                             $-47.18"
              , ""
              ])
         , testCase "show an unbalanced transaction, should not elide" $
@@ -643,8 +735,8 @@ tests_Transaction =
                 ])) @?=
           (T.unlines
              [ "2007-01-28 coopportunity"
-             , "    expenses:food:groceries          $47.18"
-             , "    assets:checking                 $-47.19"
+             , "    expenses:food:groceries                      $47.18"
+             , "    assets:checking                             $-47.19"
              , ""
              ])
         , testCase "show a transaction with one posting and a missing amount" $
@@ -680,6 +772,6 @@ tests_Transaction =
                 [ posting {paccount = "a", pamount = mixedAmount $ num 1 `at` (usd 2 `withPrecision` Precision 0)}
                 , posting {paccount = "b", pamount = missingmixedamt}
                 ])) @?=
-          (T.unlines ["2010-01-01 x", "    a          1 @ $2", "    b", ""])
+          (T.unlines ["2010-01-01 x", "    a                                              1 @ $2", "    b", ""])
         ]
     ]

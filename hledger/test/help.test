@@ -1,0 +1,129 @@
+# * help command
+# The help command shows documentation, dispatching on its first argument.
+
+# ** 1. Bare help shows the quick reference card (like plain hledger).
+$ hledger help
+> /HLEDGER QUICK REFERENCE/
+
+# ** 2. help commands shows the commands list (with addons).
+$ hledger help commands
+> /OTHER ADDONS/
+
+# ** 3. help usage shows general command-line usage.
+$ hledger help usage
+> /hledger's main command line interface/
+
+# ** 4. help usage CMD shows that command's usage.
+$ hledger help usage balance
+> /^balance \[OPTIONS\]/
+
+# ** 5. help manual TOPIC shows the manual.
+$ hledger help manual journal
+> /hledger User Manuals/
+
+# ** 6. An unrecognised help argument is treated as a manual topic.
+$ hledger help journal
+> /hledger User Manuals/
+
+# ** 7. A manual topic matching no heading shows a note (not an error, and not the manual).
+$ hledger help nosuchtopic
+>2 /does not match any manual section heading/
+
+# ** 8. A unique case-insensitive prefix of a heading resolves to that section.
+$ hledger help "text enc"
+> /hledger User Manuals/
+
+# ** 9. A unique infix (substring) match resolves to that section.
+$ hledger help periods
+> /hledger User Manuals/
+
+# ** 10. An ambiguous topic (matching several headings) lists them, so one can be chosen.
+$ hledger help Text
+> /matches several manual sections/
+
+# ** 11. A multi-word TOPIC must be quoted.
+$ hledger help 'time periods'
+> /hledger User Manuals/
+
+# ** 12. The empty topic lists all manual topics.
+$ hledger help ''
+> /^HLEDGER MANUAL TOPICS/
+
+# ** 13. help manual with no topic lists all manual topics.
+$ hledger help manual
+> /^HLEDGER MANUAL TOPICS/
+
+# ** 14. The manual title (HLEDGER, with the (1) stripped) can be matched.
+$ hledger help hledger
+> /hledger User Manuals/
+
+# ** 15. help -l TOPIC just lists the matching topics (instead of showing the manual).
+$ hledger help -l text
+>
+manual topics matching "text":
+  Text encoding
+  Text output
+
+# ** 16. help examples errors clearly when a command has no examples.
+$ hledger help examples nosuchcommand
+>2 /there are no examples for hledger-nosuchcommand/
+>=1
+
+# ** 17. help quickref shows the quick reference card.
+$ hledger help quickref
+> /HLEDGER QUICK REFERENCE/
+
+# ** 18. help commands --builtins shows only the builtin commands (no addons).
+$ hledger help commands --builtins
+> !/OTHER ADDONS/
+
+# ** 19. The hledger-ui manual's title opens that manual.
+$ hledger help hledger-ui
+> /HLEDGER-UI/
+
+# ** 20. A topic unique to the hledger-web manual resolves to it.
+$ hledger help permissions
+> /HLEDGER-WEB/
+
+# ** 21. A section name shared across manuals gets a -ui/-web suffix, which is matchable.
+$ hledger help OPTIONS-ui
+> /HLEDGER-UI/
+
+# ** 22. The -ui/-web suffixed names are listed too.
+$ hledger help -l options
+> /OPTIONS-ui/
+
+# ** 23. Listing all topics indents each by its manual heading level: a
+# top-level (all-caps column-0) heading by one space.
+$ hledger help manual
+> /^ PART 1: USER INTERFACE/
+
+# ** 24. ...and a fourth-level (column-3) heading by three spaces.
+$ hledger help manual
+> /^   Text encoding/
+
+# ** 25. Listing just the matching topics indents them all equally instead.
+$ hledger help -l text
+> /^  Text encoding/
+
+# ** 26. An all-caps heading that is really a subsection (CSV) is level 3
+# (two spaces), like its sibling Journal, not level 2.
+$ hledger help manual
+> /^  CSV/
+
+# ** 27. help commands --addons shows only the addon commands, not the builtin ones.
+$ hledger help commands --addons
+> !/show account names/
+
+# ** 28. help commands --addons still shows the other addons section.
+$ hledger help commands --addons
+> /OTHER ADDONS/
+
+# ** 29. help commands --aliases shows only the command aliases, not the builtin commands.
+# (See also cli/command-aliases.test.)
+$ hledger help commands --aliases
+> !/show account names/
+
+# ** 30. The category flags can be combined.
+$ hledger help commands --builtins --addons
+> /show account names/

@@ -1,0 +1,33 @@
+export:
+    #!/usr/bin/env bash
+
+    # export just VCEB transactions, and some market prices, to a hledger/ledger journal
+    #hledger prices   cur:VCEB > prices.j
+    #printf 'include prices.j\n\n' > vceb.j
+    #hledger print -x cur:VCEB >> vceb.j
+    # use my aliases
+    source ~/.bashrc
+    years 4 prices cur:VCEB > prices.j
+    printf 'include prices.j\n\n' > vceb.j
+    years 4 print -x cur:VCEB not:tag:clopen not:tag:assert --alias '/^..:/=' >> vceb.j
+
+    # disable balance assertions
+    sed -i -E -e 's/ =/  ;=/' vceb*.j
+
+    # add expenses:rounding postings
+    awk '/^[0-9]/,/^$/{if(/^$/)print "    expenses:rounding"}1' vceb.j > vceb-tmp.j && mv vceb-tmp.j vceb.j
+
+    # make a version without lot accounts
+    printf 'include prices.j\n\n' > vceb-lotless.j
+    hledger -f vceb.j print --alias '/:2.*/=' >> vceb-lotless.j
+
+    # make beancount/rledger versions
+    sed -E -e 's/^P ([0-9-]+) (\w+) \$ (.*)/\1 price \2 \3 USD/' prices.j > prices.beancount
+    printf 'include "prices.beancount"\n\n' > vceb.beancount
+    hledger -f vceb.j         print --alias revenues=Income -O beancount >> vceb.beancount
+    printf 'include "prices.beancount"\n\n' > vceb-lotless.beancount
+    hledger -f vceb-lotless.j print --alias revenues=Income -O beancount >> vceb-lotless.beancount
+
+    # convert @ COST to {COST} notation (assumes all are lot costs)
+    sed -i -Ee 's/^ (.+) @ ([^;]+)/ \1 {\2}/'      vceb*.beancount
+    sed -i -Ee 's/^ (.+) @@ ([^;]+)/ \1 \{\{\2}}/' vceb*.beancount

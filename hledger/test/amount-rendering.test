@@ -7,10 +7,10 @@
     c         ; a euro and a dollar
 $ hledger -f - print --explicit
 2010-01-01
-    a           EUR 1  ; a euro
-    b           USD 1  ; a dollar
-    c          EUR -1  ; a euro and a dollar
-    c          USD -1  ; a euro and a dollar
+    a                                          EUR 1  ; a euro
+    b                                          USD 1  ; a dollar
+    c                                         EUR -1  ; a euro and a dollar
+    c                                         USD -1  ; a euro and a dollar
 
 >= 0
 
@@ -46,15 +46,15 @@ $ hledger -f - balance -N
   b
 $ hledger -f- print --explicit --empty
 2010-03-01 x
-    a    $0.00 @ 3EUR
-    b            0EUR
+    a                                             $0.00 @ 3EUR
+    b                                              0EUR
 
 >= 0
 
 # ** 5.
 # When preserving a zero amount's commodity, we should also preserve
 # the amount style, such as where to place the symbol.
-# https://github.com/simonmichael/hledger/issues/230
+# https://github.com/hledgerorg/hledger/issues/230
 <
 D 1000,00€
 

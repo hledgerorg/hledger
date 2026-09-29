@@ -1,0 +1,60 @@
+# * Cost basis ({}) on lot postings.
+# Acquisitions in lotful commodities/accounts require explicit {} cost basis annotation.
+# Transacted cost (@ @@) is inferred from cost basis for acquire postings, to help transaction balancing.
+
+# ** 1. Explicit cost basis on lotful commodity is shown; transacted cost is inferred.
+<
+commodity AAPL   ; lots:
+
+2024-01-01 buy stock
+    assets:brokerage    10 AAPL {$100}
+    assets:cash
+
+$ hledger -f - print
+2024-01-01 buy stock
+    assets:brokerage                              10 AAPL {$100}
+    assets:cash
+
+>=
+
+# ** 2. Cost basis is not inferred without lots: tag.
+<
+commodity AAPL
+
+2024-01-01 buy stock
+    assets:brokerage    10 AAPL @ $100
+    assets:cash
+
+$ hledger -f - print
+2024-01-01 buy stock
+    assets:brokerage                              10 AAPL @ $100
+    assets:cash
+
+>=
+
+# ** 3. A dispose in a lotful commodity without a prior acquire errors at load time.
+<
+commodity AAPL   ; lots:
+
+2024-01-01 sell stock
+    assets:brokerage    -10 AAPL @ $150
+    assets:cash
+
+$ hledger -f - print
+>2 /no AAPL lots available for disposal/
+>= 1
+
+# ** 4. Without explicit cost basis, a lotful commodity posting with @ is classified as acquire.
+<
+commodity AAPL   ; lots:
+
+2024-01-01 buy stock
+    assets:brokerage    10 AAPL @@ $1000
+    assets:cash
+
+$ hledger -f - print --verbose-tags
+2024-01-01 buy stock
+    assets:brokerage                              10 AAPL {$100} @@ $1000  ; ptype: acquire
+    assets:cash
+
+>=

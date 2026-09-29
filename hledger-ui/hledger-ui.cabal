@@ -1,11 +1,11 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.38.0.
+-- This file has been generated from package.yaml by hpack version 0.39.6.
 --
 -- see: https://github.com/sol/hpack
 
 name:           hledger-ui
-version:        1.43.99
+version:        1.99
 synopsis:       Terminal interface for the hledger accounting system
 description:    A simple terminal user interface for the hledger accounting system.
                 It can be a more convenient way to browse your accounts than the CLI.
@@ -26,7 +26,7 @@ license:        GPL-3.0-or-later
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    ghc==8.10.7, ghc==9.0.2, ghc==9.2.8, ghc==9.4.8, ghc==9.6.7, ghc==9.8.4, ghc==9.10.2, ghc==9.12.1
+    ghc==9.6.7, ghc==9.8.4, ghc==9.10.3, ghc==9.12.4, ghc==9.14.1
 extra-source-files:
     CHANGES.md
     README.md
@@ -36,84 +36,78 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/simonmichael/hledger
+  location: https://github.com/hledgerorg/hledger
 
 flag debug
-  description: Build with GHC 9.10+'s stack traces enabled
+  description: Build with GHC 9.10+ stack traces enabled
   manual: True
   default: False
-
-flag threaded
-  description: Build with support for multithreaded execution
-  manual: False
-  default: True
 
 library
   exposed-modules:
       Hledger.UI
-      Hledger.UI.Main
-      Hledger.UI.Theme
-      Hledger.UI.UIOptions
-  other-modules:
       Hledger.UI.AccountsScreen
-      Hledger.UI.BalancesheetScreen
-      Hledger.UI.CashScreen
       Hledger.UI.Editor
       Hledger.UI.ErrorScreen
-      Hledger.UI.IncomestatementScreen
+      Hledger.UI.Main
       Hledger.UI.MenuScreen
       Hledger.UI.RegisterScreen
+      Hledger.UI.Theme
       Hledger.UI.TransactionScreen
+      Hledger.UI.UIOptions
       Hledger.UI.UIScreens
       Hledger.UI.UIState
       Hledger.UI.UITypes
       Hledger.UI.UIUtils
+  other-modules:
       Paths_hledger_ui
   autogen-modules:
       Paths_hledger_ui
   hs-source-dirs:
       ./
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind
-  cpp-options: -DVERSION="1.43.99" -DVERSION="1.43.99"
+  cpp-options: -DVERSION="1.99"
   build-depends:
       ansi-terminal >=0.9
     , async
-    , base >=4.14 && <4.22
-    , brick >=2.1.1 && <2.3.2 || >2.3.2 && <2.10
+    , base >=4.18 && <4.23
+    , brick >=2.1.1 && <2.3.2 || >=2.4 && <3.1
     , cmdargs >=0.8
     , containers >=0.5.9
     , data-default
     , directory
-    , doclayout >=0.3 && <0.6
+    , doclayout >=0.3 && <0.7
     , extra >=1.7.11
     , filepath
     , fsnotify >=0.4.2.0 && <0.5
     , githash >=0.1.6.2
-    , hledger >=1.43.99 && <1.44
-    , hledger-lib >=1.43.99 && <1.44
-    , megaparsec >=7.0.0 && <9.8
+    , hledger ==1.99.*
+    , hledger-lib ==1.99.*
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , microlens-platform >=0.2.3.1
     , mtl >=2.2.1
     , process >=1.2
     , safe >=0.3.20
     , split >=0.1
+    , stm
     , text >=1.2.4.1
     , text-zipper >=0.4
     , time >=1.5
     , transformers
     , vector
-    , vty >=6.1 && <6.5
-    , vty-crossplatform >=0.4.0.0 && <0.5.0.0
-  default-language: Haskell2010
+    , vty >=6.1
+    , vty-crossplatform >=0.4.0.0
+  default-language: GHC2021
   if (flag(debug))
     cpp-options: -DDEBUG
   if os(windows)
     build-depends:
-        vty-windows >=0.2.0.1 && <0.3.0.0
+        vty-windows >=0.2.0.1
   else
     build-depends:
         unix
+      , vty-unix >=0.2.0.0
 
 executable hledger-ui
   main-is: hledger-ui.hs
@@ -123,13 +117,45 @@ executable hledger-ui
       Paths_hledger_ui
   hs-source-dirs:
       app
-  ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -with-rtsopts=-T
-  cpp-options: -DVERSION="1.43.99"
+  ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -threaded -rtsopts
+  cpp-options: -DVERSION="1.99"
   build-depends:
-      base >=4.14 && <4.22
+      base >=4.18 && <4.23
     , hledger-ui
-  default-language: Haskell2010
+  default-language: GHC2021
   if (flag(debug))
     cpp-options: -DDEBUG
-  if flag(threaded)
-    ghc-options: -threaded
+
+test-suite unittest
+  type: exitcode-stdio-1.0
+  main-is: UITest.hs
+  other-modules:
+      UITestUtils
+      Paths_hledger_ui
+  autogen-modules:
+      Paths_hledger_ui
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -threaded
+  cpp-options: -DVERSION="1.99"
+  build-depends:
+      base >=4.18 && <4.23
+    , brick >=2.1.1 && <2.3.2 || >=2.4 && <3.1
+    , cmdargs >=0.8
+    , directory
+    , filepath
+    , hledger ==1.99.*
+    , hledger-lib ==1.99.*
+    , hledger-ui
+    , mtl >=2.2.1
+    , stm
+    , tasty >=1.2.3
+    , tasty-hunit >=0.10
+    , text >=1.2.4.1
+    , time >=1.5
+    , vector
+    , vty >=6.1
+    , vty-crossplatform >=0.4.0.0
+  default-language: GHC2021
+  if (flag(debug))
+    cpp-options: -DDEBUG

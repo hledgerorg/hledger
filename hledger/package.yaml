@@ -1,13 +1,13 @@
 name:          hledger
-version: 1.43.99
+version: 1.99
 license:       GPL-3.0-or-later
 maintainer:    Simon Michael <simon@joyful.com>
 author:        Simon Michael <simon@joyful.com>
 stability:     stable
-tested-with:   ghc==8.10.7, ghc==9.0.2, ghc==9.2.8, ghc==9.4.8, ghc==9.6.7, ghc==9.8.4, ghc==9.10.2, ghc==9.12.1
+tested-with:   ghc==9.6.7, ghc==9.8.4, ghc==9.10.3, ghc==9.12.4, ghc==9.14.1
 homepage:      http://hledger.org
 bug-reports:   http://bugs.hledger.org
-github:        simonmichael/hledger
+github:        hledgerorg/hledger
 category:      Finance, Console
 synopsis:      Command-line interface for the hledger accounting system
 description: |
@@ -25,14 +25,9 @@ description: |
 extra-source-files:
 - CHANGES.md
 - README.md
-- bench/10000x1000x10.journal
+- quickref.txt
 - shell-completion/hledger-completion.bash
 - test/unittest.hs
-
-- embeddedfiles/add.cast
-- embeddedfiles/balance.cast
-- embeddedfiles/install.cast
-- embeddedfiles/print.cast
 
 - embeddedfiles/hledger-accounts.md
 - embeddedfiles/hledger-add.md
@@ -67,13 +62,13 @@ extra-source-files:
 - Hledger/Cli/Commands/Check.txt
 - Hledger/Cli/Commands/Close.txt
 - Hledger/Cli/Commands/Codes.txt
-- Hledger/Cli/Commands/Commands.txt
 - Hledger/Cli/Commands/Commodities.txt
-- Hledger/Cli/Commands/Demo.txt
 - Hledger/Cli/Commands/Descriptions.txt
 - Hledger/Cli/Commands/Diff.txt
 - Hledger/Cli/Commands/Files.txt
+- Hledger/Cli/Commands/Get.txt
 - Hledger/Cli/Commands/Help.txt
+- Hledger/Cli/Commands/Holdings.txt
 - Hledger/Cli/Commands/Import.txt
 - Hledger/Cli/Commands/Incomestatement.txt
 - Hledger/Cli/Commands/Notes.txt
@@ -89,14 +84,11 @@ extra-source-files:
 - Hledger/Cli/Commands/Stats.txt
 - Hledger/Cli/Commands/Tags.txt
 - Hledger/Cli/Commands/Test.txt
+- Hledger/Cli/Commands/Transactions.txt
 
 flags:
-  threaded:
-    description: Build with support for multithreaded execution
-    default: true
-    manual:  false
   debug:
-    description: Build with GHC 9.10+'s stack traces enabled
+    description: Build with GHC 9.10+ stack traces enabled
     default: false
     manual:  true
 #  ghcdebug:
@@ -104,28 +96,10 @@ flags:
 #    default: false
 #    manual:  true
 
-ghc-options:
-- -Wall
-- -Wno-incomplete-uni-patterns
-- -Wno-missing-signatures
-- -Wno-orphans
-- -Wno-type-defaults
-- -Wno-unused-do-bind
-# avoid stack's "non-portable path" warning/error on mac, https://github.com/commercialhaskell/stack/issues/3918
-- -optP-Wno-nonportable-include-path
-
-when:
-- condition: (flag(debug))
-  cpp-options: -DDEBUG
-# - condition: (flag(ghcdebug))
-#   cpp-options: -DGHCDEBUG
-#   dependencies:
-#   - ghc-debug-stub >=0.6.0.0 && <0.7
-
 dependencies:
-- base >=4.14 && <4.22
-- hledger-lib >=1.43.99 && <1.44
-- aeson >=1 && <2.3
+- base >=4.18 && <4.23
+- hledger-lib >=1.99 && <1.100
+- aeson >=2.2.5.1 && <2.4  # avoid https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html
 - ansi-terminal >=0.9
 - bytestring
 - cmdargs >=0.10
@@ -136,17 +110,23 @@ dependencies:
 - extra >=1.7.11
 - filepath
 - githash >=0.1.6.2
+# https://github.com/hledgerorg/hledger/issues/2410
+# haskeline 0.8.4.0+ is needed to fix ANSI display by add on MS Windows (https://github.com/haskell/haskeline/issues/130).
+# But most stackage snapshots have an older haskeline, that can't be upgraded because it's a GHC core lib.
+# Dev builds and the github release builds force the newer haskeline (by using a recent stackage snapshot, or cabal), so are free of the bug.
+# But for older (or older-GHC) stackage snapshots, we must still allow builds with older haskeline,
+# even though they will have the add display bug on Windows. I think this is the best we can do for now.
 - haskeline >=0.6
 - http-client
 - http-types
-- megaparsec >=7.0.0 && <9.8
 - microlens >=0.4
+- megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9   # avoid https://github.com/mrkkrp/megaparsec/issues/572; 9.8.3+ is ~10% faster (#612)
 - mtl >=2.2.1
+- open-browser >=0.5
 - process
 - regex-tdfa
 - req
 - safe >=0.3.20
-- shakespeare >=2.0.2.2
 - split >=0.1
 - math-functions >=0.3.3.0
 - tabular >=0.2
@@ -162,65 +142,95 @@ dependencies:
 - utility-ht >=0.0.13
 - wizards >=1.0
 
+cpp-options: -DVERSION="1.99"
+
+language: GHC2021
+
+ghc-options:
+- -Wall
+- -Wno-incomplete-uni-patterns
+- -Wno-missing-signatures
+- -Wno-orphans
+- -Wno-type-defaults
+- -Wno-unused-do-bind
+# avoid stack's "non-portable path" warning/error on mac, https://github.com/commercialhaskell/stack/issues/3918
+- -optP-Wno-nonportable-include-path
+
+when:
+
+- condition: (flag(debug))
+  cpp-options: -DDEBUG
+
+# - condition: (flag(ghcdebug))
+#   cpp-options: -DGHCDEBUG
+#   dependencies:
+#   - ghc-debug-stub >=0.6.0.0 && <0.7
+
 library:
-  cpp-options: -DVERSION="1.43.99"
-  exposed-modules:
-  - Hledger.Cli
-  - Hledger.Cli.Anchor
-  - Hledger.Cli.Anon
-  - Hledger.Cli.CliOptions
-  - Hledger.Cli.Commands
-  - Hledger.Cli.Commands.Accounts
-  - Hledger.Cli.Commands.Activity
-  - Hledger.Cli.Commands.Add
-  - Hledger.Cli.Commands.Aregister
-  - Hledger.Cli.Commands.Balance
-  - Hledger.Cli.Commands.Balancesheet
-  - Hledger.Cli.Commands.Balancesheetequity
-  - Hledger.Cli.Commands.Cashflow
-  - Hledger.Cli.Commands.Check
-  - Hledger.Cli.Commands.Close
-  - Hledger.Cli.Commands.Codes
-  - Hledger.Cli.Commands.Commodities
-  - Hledger.Cli.Commands.Demo
-  - Hledger.Cli.Commands.Descriptions
-  - Hledger.Cli.Commands.Diff
-  - Hledger.Cli.Commands.Help
-  - Hledger.Cli.Commands.Files
-  - Hledger.Cli.Commands.Import
-  - Hledger.Cli.Commands.Incomestatement
-  - Hledger.Cli.Commands.Notes
-  - Hledger.Cli.Commands.Payees
-  - Hledger.Cli.Commands.Prices
-  - Hledger.Cli.Commands.Print
-  - Hledger.Cli.Commands.Register
-  - Hledger.Cli.Commands.Rewrite
-  - Hledger.Cli.Commands.Roi
-  - Hledger.Cli.Commands.Run
-  - Hledger.Cli.Commands.Setup
-  - Hledger.Cli.Commands.Stats
-  - Hledger.Cli.Commands.Tags
-  - Hledger.Cli.CompoundBalanceCommand
-  - Hledger.Cli.Conf
-  - Hledger.Cli.DocFiles
-  - Hledger.Cli.Script
-  - Hledger.Cli.Utils
-  - Hledger.Cli.Version
+  source-dirs: .
+  # default: All modules in source-dirs less other-modules less modules mentioned in when
+  # exposed-modules:
+  # - Hledger.Cli
+  # - Hledger.Cli.Anchor
+  # - Hledger.Cli.Anon
+  # - Hledger.Cli.CliOptions
+  # - Hledger.Cli.Commands
+  # - Hledger.Cli.Commands.Accounts
+  # - Hledger.Cli.Commands.Activity
+  # - Hledger.Cli.Commands.Add
+  # - Hledger.Cli.Commands.Aregister
+  # - Hledger.Cli.Commands.Balance
+  # - Hledger.Cli.Commands.Balancesheet
+  # - Hledger.Cli.Commands.Balancesheetequity
+  # - Hledger.Cli.Commands.Cashflow
+  # - Hledger.Cli.Commands.Check
+  # - Hledger.Cli.Commands.Close
+  # - Hledger.Cli.Commands.Codes
+  # - Hledger.Cli.Commands.Commodities
+  # - Hledger.Cli.Commands.Descriptions
+  # - Hledger.Cli.Commands.Diff
+  # - Hledger.Cli.Commands.Help
+  # - Hledger.Cli.Commands.Files
+  # - Hledger.Cli.Commands.Get
+  # - Hledger.Cli.Commands.Import
+  # - Hledger.Cli.Commands.Incomestatement
+  # - Hledger.Cli.Commands.Notes
+  # - Hledger.Cli.Commands.Payees
+  # - Hledger.Cli.Commands.Prices
+  # - Hledger.Cli.Commands.Print
+  # - Hledger.Cli.Commands.Register
+  # - Hledger.Cli.Commands.Rewrite
+  # - Hledger.Cli.Commands.Roi
+  # - Hledger.Cli.Commands.Run
+  # - Hledger.Cli.Commands.Setup
+  # - Hledger.Cli.Commands.Stats
+  # - Hledger.Cli.Commands.Tags
+  # - Hledger.Cli.Commands.Transactions
+  # - Hledger.Cli.CompoundBalanceCommand
+  # - Hledger.Cli.Conf
+  # - Hledger.Cli.DocFiles
+  # - Hledger.Cli.Script
+  # - Hledger.Cli.Utils
+  # - Hledger.Cli.Version
+  other-modules:
+  - Hledger.Cli.Commands.Balance.Internal
+  generated-other-modules:
+  - Paths_hledger
   dependencies:
-  - Diff >=0.2
+  - Diff >=1.0  # for Data.Algorithm.DiffContext's context-diff API
   - hashable >=1.2.4
-  - lucid
+  - pretty
+  - blaze-html
   - modern-uri >=0.3
 
 executables:
   hledger:
     source-dirs: app
     main: hledger-cli.hs
-    cpp-options: -DVERSION="1.43.99"
-    ghc-options: -with-rtsopts=-T  # for stats command
-    when:
-    - condition: flag(threaded)
-      ghc-options: -threaded
+    # -threaded is needed for runPager, at least
+    # -T is for the stats command
+    # -rtsopts lets users set GHC runtime options, eg +RTS -M2G -RTS to limit memory, or -s to show GC stats
+    ghc-options: -threaded -rtsopts -with-rtsopts=-T
     dependencies:
     - hledger
 
@@ -229,7 +239,6 @@ tests:
     source-dirs: test
     main: unittest.hs
     other-modules: []  # prevent double compilation, https://github.com/sol/hpack/issues/188
-    cpp-options: -DVERSION="1.43.99"
     dependencies:
     - hledger
 

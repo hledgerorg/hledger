@@ -46,14 +46,14 @@ Balance changes in 2016-11-01..2017-01-31:
 # ** 2. print forecasted transactions, with status and description.
 $ hledger print -b 2016-11 -e 2017-02 -f - --forecast
 2016-12-31
-    expenses:housing            $600
+    expenses:housing                            $600
     assets:cash
 
 2017-01-01 * marked cleared, and with a description
-    income                    $-1000
-    expenses:food                $20
-    expenses:leisure             $15
-    expenses:grocery             $30
+    income                                    $-1000
+    expenses:food                                $20
+    expenses:leisure                             $15
+    expenses:grocery                             $30
     assets:cash
 
 >=0
@@ -170,13 +170,13 @@ Balance changes in 2016-10-01..2017-01-31:
 # ** 9. Parse error in malformed forecast period expression
 $ hledger bal -M -b 2016-10 -e 2017-02 -f - --forecast=20160801-foobar
 >
->2 /Error: could not parse forecast period : 1:10:
+>2 /Error: could not parse forecast period: 1:10:
   \|
 1 \| 20160801-foobar
   \|          \^
 unexpected 'f'
 expecting end of input
- \(use -h to see usage\)
+\(use -h to see usage\)
 /
 >=1
 # XXX regex needed for error tests with ghc 9.10, https://gitlab.haskell.org/ghc/ghc/-/issues/25116
@@ -212,18 +212,18 @@ $ hledger -f - reg --forecast date:202001
 # ** 11. Forecast transactions work with balance assignments
 $ hledger -f - print -x --forecast -e 2021-11 --verbose-tags
 2021-09-01 Normal Balance Assertion Works
-    Checking             -60 = -60
-    Costs                 60
+    Checking                                     -60 = -60
+    Costs                                         60
 
 2021-10-01 explicit forecasted assertion
     ; generated-transaction: ~ 2021-10-01
-    Checking             -40 = -100
-    Costs                 40
+    Checking                                     -40 = -100
+    Costs                                         40
 
 2021-10-02 auto-deduced forecasted assertion
     ; generated-transaction: ~ 2021-10-02
-    Checking             -20 = -120
-    Costs                 20
+    Checking                                     -20 = -120
+    Costs                                         20
 
 >=0
 

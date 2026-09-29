@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# hledger-timedothm TIMEDOTHMFILE CMD [ARGS]
+#  run a hledger command on a timedot file which also supports H:M syntax,
+#  and report all time amounts in H:M format.
+
+# convert H:M to decimal numbers
+hm2dec() { perl -pe 's#(\d+):(\d{2})#sprintf("%.2f", $1 + ($2 / 60))#ge'; }
+
+# convert decimal numbers to H:M
+dec2hm() { perl -pe 's/(\d+\.\d+)/sprintf("%d:%02d", int($1), ($1 - int($1)) * 60 + 0.5)/ge'; }
+
+hm2dec <"$1" | hledger -f timedot:- "${@:2}" | dec2hm
+
+
+# Example:
+#
+# $ cat sample.timedothm
+# 2025-09-27
+# time  ..
+# time  0.5
+# time  30m
+# time  0:30  ; new H:M syntax
+#
+# $ hledger timedothm sample.timedothm reg -w80
+# 2025-09-27                      (time)                        0:30          0:30
+#                                 (time)                        0:30          1:00
+#                                 (time)                        0:30          1:30
+#                                 (time)                        0:30          2:00
+
+# Dev notes:
+# If useful, there's no reason we couldn't
+# 1. add H:M syntax to timedot format
+# 2. add a general --hm output flag, affecting display of amounts with
+# no commodity,
+# or a commodity that looks like a time unit (eg timedot's: s, m, h, d, w, mo, y),
+# or a commodity that has a display:time tag.

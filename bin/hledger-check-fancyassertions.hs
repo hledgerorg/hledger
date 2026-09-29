@@ -111,18 +111,18 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Time.Calendar (toGregorian)
 import Data.Time.Calendar.OrdinalDate (mondayStartWeek, sundayStartWeek, toOrdinalDate)
 import Data.Text (Text, isPrefixOf, pack, unpack)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import qualified Hledger.Data as H
-import qualified Hledger.Query as H
-import qualified Hledger.Read as H
-import qualified Hledger.Utils.Parse as H
-import Lens.Micro (set)
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
+import Hledger.Data qualified as H
+import Hledger.Query qualified as H
+import Hledger.Read qualified as H
+import Hledger.Utils.Parse qualified as H
+import Lens.Micro ((&), (.~))
 import Options.Applicative
 import System.Exit (exitFailure)
 import System.FilePath (FilePath)
-import qualified Text.Megaparsec as P
-import qualified Text.Megaparsec.Char as P
+import Text.Megaparsec qualified as P
+import Text.Megaparsec.Char qualified as P
 
 -- Don't know how to preserve newlines yet.
 helptxt = unlines [
@@ -168,7 +168,7 @@ main :: IO ()
 main = do
     opts <- execParser args
     journalFile <- maybe H.defaultJournalPath pure (file opts)
-    ejournal    <- runExceptT $ H.readJournalFile (set H.ignore_assertions (ignoreAssertions opts) H.definputopts) journalFile
+    ejournal    <- runExceptT $ H.readJournalFile (H.definputopts & H.ignore_assertions .~ (ignoreAssertions opts) & H.strict .~ (strict opts)) journalFile
     case ejournal of
       Right j -> do
         (journal, starting) <- fixupJournal opts j
@@ -225,7 +225,7 @@ checkAssertions balances0 asserts0 postingss
               -- Restrict to accounts mentioned in the predicate, and pretty-print balances
               balances' = filter (flip inAssertion p . fst) balances
               maxalen   = maximum $ map (T.length . fst) balances'
-              accounts = [ a <> padding <> T.pack (show m)
+              accounts = [ a <> padding <> T.pack (H.showMixedAmount m)
                          | (a,m) <- balances'
                          , let padding = T.replicate (2 + maxalen - T.length a) " "
                          ]
@@ -286,12 +286,13 @@ inAssertion account = inAssertion'
 -------------------------------------------------------------------------------
 -- Journals
 
--- | Apply account aliases and restrict to the date range, return the
--- starting balance of every account.
+-- | Apply account aliases, sort transactions by date, and restrict to
+-- the date range; return the starting balance of every account.
 fixupJournal :: Opts -> H.Journal -> IO (H.Journal, [(H.AccountName, H.MixedAmount)])
 fixupJournal opts j = do
     today <- H.getCurrentDay
-    let j' = (if cleared   opts then H.filterJournalTransactions (H.StatusQ H.Cleared)  else id)
+    let j' = sortTransactions
+           . (if cleared   opts then H.filterJournalTransactions (H.StatusQ H.Cleared)  else id)
            . (if pending   opts then H.filterJournalTransactions (H.StatusQ H.Pending)  else id)
            . (if unmarked  opts then H.filterJournalTransactions (H.StatusQ H.Unmarked) else id)
            . (if real      opts then H.filterJournalTransactions (H.Real   True)       else id)
@@ -306,6 +307,7 @@ fixupJournal opts j = do
 
   where
     fixDay today dayf = H.fixSmartDate today <$> dayf opts
+    sortTransactions j'' = j''{H.jtxns = sortOn H.tdate (H.jtxns j'')}
 
 -- | Get the closing balances of every account in the journal.
 closingBalances :: H.Journal -> [(H.AccountName, H.MixedAmount)]
@@ -386,6 +388,8 @@ data Opts = Opts
     -- ^ Include only unmarked postings/txns.
     , real :: Bool
     -- ^ Include only non-virtual postings.
+    , strict :: Bool
+    -- ^ Use strict requirements in journal parsing.
     , sunday :: Bool
     -- ^ Week starts on Sunday.
     , assertionsDaily :: [(Text, Predicate)]
@@ -429,6 +433,8 @@ args = info (helper <*> parser) $ mconcat
                         (arg 'U' "unmarked" "include only unmarked postings/txns")
                   <*> switch
                         (arg 'R' "real" "include only non-virtual postings")
+                  <*> switch
+                        (arg 's' "strict" "use strict mode checking")
                   <*> switch
                         (arg' "sunday" "weeks start on Sunday")
                   <*> (many . popt predicatep)

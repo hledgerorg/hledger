@@ -28,149 +28,102 @@ envsubst '$REL' <<'END'
 
 </summary>
 
+The [hledger Install page](https://hledger.org/install) lists the easiest ways to install a recent release,
+such as `brew` on macos, `choco`/`scoop`/`winget` on Windows, or `eget` on all platforms.
 
-For all install options, see [hledger.org: Install](https://hledger.org/install).
-You can install hledger from most package managers (but check for a green badge indicating it's up to date).
-Or you can build it from source yourself.
+Or, follow these instructions to install the specific release binaries below:
 
-Or you can install up to date binaries from this page, by following the appropriate instructions below.
-If you find problems with these instructions, please [let us know](https://hledger.org/support).
 
 <!--
 Updates to binaries:
-- YYYY-MM-DD: description. [#NNNN](https://github.com/simonmichael/hledger/issues/NNNN)
+- YYYY-MM-DD: ...
 -->
 
-<xdetails>
-<summary>
+<!--
+If github releases are immutable, they can be verified as follows:
 
-### All platforms
-
-</summary>
-
-If you have [eget](https://github.com/zyedidia/eget), that's a convenient way to download the right binaries for your machine:
 ```
-eget simonmichael/hledger --all
+gh --version  # ensure you have github CLI 2.81.0+
+gh release verify $REL  # check the $REL github release is immutable
+curl -fLO https://github.com/hledgerorg/hledger/releases/download/$REL/hledger-linux-x64.tar.gz  # eg
+gh release verify-asset $REL ./hledger-linux-x64.tar.gz  # check the tarball is correct
+tar xzv -f hledger-linux-x64.tar.gz -C/usr/local/bin hledger hledger-ui hledger-web
 ```
-
-Otherwise:
-
-</xdetails>
-<xdetails>
-<summary>
+-->
 
 ### GNU/Linux, 64-bit Intel
-
-</summary>
 
 At the command line:
 
 ```
-cd /usr/local/bin
-curl -fLOC- https://github.com/simonmichael/hledger/releases/download/$REL/hledger-linux-x64.tar.gz
-tar xzf hledger-linux-x64.tar.gz
-cd
+curl -fL https://github.com/hledgerorg/hledger/releases/download/$REL/hledger-linux-x64.tar.gz | tar -xzv -f- -C/usr/local/bin hledger hledger-ui hledger-web
 hledger --version; hledger-ui --version; hledger-web --version    # should show $REL
 ```
 
-</xdetails>
-<xdetails>
-<summary>
+Prefix `tar` with `sudo` if `/usr/local/bin` is not writable.
 
 ### Mac, 64-bit ARM or Intel
 
-</summary>
-
-In a terminal window (don't use your web browser to download, it won't authorise the binaries):
-<!--
-(Hopefully these commands are all installed by default; 
-if not, install [XCode Command Line Tools](https://mac.install.guide/commandlinetools/) 
-and/or [Homebrew](https://brew.sh), and let me know.)
--->
+Open a terminal window.
+(Don't download these binaries with your web browser - they won't get authorised.)
 
 On ARM macs:
 ```
-cd /usr/local/bin
-curl -fLOC- https://github.com/simonmichael/hledger/releases/download/$REL/hledger-mac-arm64.tar.gz
-tar xzf hledger-mac-arm64.tar.gz
-cd
+sudo mkdir -p /usr/local/bin
+curl -fL https://github.com/hledgerorg/hledger/releases/download/$REL/hledger-mac-arm64.tar.gz | sudo tar -xzv -f- -C/usr/local/bin hledger hledger-ui hledger-web
 hledger --version; hledger-ui --version; hledger-web --version    # should show $REL
 ```
 
 On Intel macs:
 ```
-cd /usr/local/bin
-curl -fLOC- https://github.com/simonmichael/hledger/releases/download/$REL/hledger-mac-x64.tar.gz
-tar xzf hledger-mac-x64.tar.gz
-cd
+sudo mkdir -p /usr/local/bin
+curl -fL https://github.com/hledgerorg/hledger/releases/download/$REL/hledger-mac-x64.tar.gz | sudo tar -xzv -f- -C/usr/local/bin hledger hledger-ui hledger-web
 hledger --version; hledger-ui --version; hledger-web --version    # should show $REL
 ```
 
-</xdetails>
-<xdetails>
-<summary>
+If the version check shows an older version, you have another hledger earlier in `$PATH`; `which -a hledger` will find it.
 
 ### Windows, 64-bit ARM or Intel
 
-</summary>
+In a powershell window (press `WINDOWS-R`, `powershell`, `ENTER`).
+(Don't download the zip with your web browser - programs downloaded that way may be blocked when you run them.)
 
-In a powershell window (press `WINDOWS-R`, `powershell`, `ENTER`):
+```
+cd ~
+curl.exe -fLO https://github.com/hledgerorg/hledger/releases/download/$REL/hledger-windows-x64.zip
+Expand-Archive hledger-windows-x64.zip -Force -DestinationPath "$env:LOCALAPPDATA\Programs\hledger"
+```
 
-1. Make a place to keep installed binaries. You only need to do this once, not for every release:
-    ```
-    mkdir -force $HOME\bin >$null
-    $ENV:PATH += ";"+$HOME+"\bin"
-    [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User)+";"+$HOME+"\bin", [EnvironmentVariableTarget]::User)
-    ```
+`$env:LOCALAPPDATA\Programs\hledger` (ie `C:\Users\YOURNAME\AppData\Local\Programs\hledger`) is not in `$env:Path` by default,
+so if `$env:Path` doesn't show it, add it once:
+```
+[Environment]::SetEnvironmentVariable('Path', "$env:LOCALAPPDATA\Programs\hledger;" + [Environment]::GetEnvironmentVariable('Path','User'), 'User')
+$env:Path = "$env:LOCALAPPDATA\Programs\hledger;$env:Path"    # for this window; new windows will pick it up automatically
+```
 
-2. Download and install the release binaries:
-    ```
-    cd $HOME\bin
-    curl https://github.com/simonmichael/hledger/releases/download/$REL/hledger-windows-x64.zip -OutFile hledger-windows-x64.zip
-    Expand-Archive hledger-windows-x64.zip -DestinationPath . -Force
-    cd $HOME
-    hledger --version; hledger-ui --version; hledger-web --version    # should show $REL; if not, check why: where.exe hledger
-    ```
+Then:
+```
+hledger --version; hledger-ui --version; hledger-web --version    # should show $REL
+```
 
-3. Ensure a default journal file exists, and without a problematic encoding (I'm not sure if/why "ascii" was needed here).
+If the version check shows an older version, you have another hledger earlier in `$env:Path`; `where.exe hledger` will find it.
+
+These are 64-bit Intel binaries; they also run on ARM machines (emulated).
+
+They may also work on Windows 7:
+use Windows Explorer to extract `hledger-windows-x64.zip` into a folder of your choice,
+then open a command window (`WINDOWS-R`, `cmd`, `ENTER`) and run the hledger programs.
+
+<!--
+And ensure a default journal file exists, and without a problematic encoding (I'm not sure if/why "ascii" was needed here).
 This will allow you to start hledger-web by double-clicking on its icon if you wish.
-    ```
-    out-file -append -encoding ascii $HOME/.hledger.journal
-    ```
-
-</xdetails>
-<xdetails>
-<summary>
-
-### Windows 7, 64-bit Intel
-
-</summary>
-
-These instructions have not been tested recently, please [let us know](https://hledger.org/support) if they work for you:
-
-- click hledger-windows-x64.zip below
-- choose Open with Windows Explorer, OK
-- click Extract all files
-- choose a destination folder - ideally one that appears in `echo %PATH%`, like `C:\Windows` (though that one will require administrator permission); otherwise, your home directory (`C:\Users\YOURNAME`)
-- check "Show extracted files when complete"
-- click Extract, wait for the destination folder to open
-- find the hledger, hledger-web icons (if you extracted to `\Windows`, you'll need to scroll down)
-- for each icon: double-click, uncheck "Always ask before opening this file", click Run
-- close those Explorer windows
-- open a command window (press Windows-r, type CMD, press enter)
-- `hledger --version; hledger-ui --version; hledger-web --version`    should show $REL
-- `echo # >> .hledger.journal` to ensure a default journal file exists. (Important: the doubled **>>** is needed to avoid overwriting existing data.)
-
-Problems:
-- Starting hledger by double-clicking its icon won't work because it needs arguments; run it from the command window instead.
-- Starting hledger-web by double-clicking its icon may fail eg because Explorer's command window is too small;
-  configure that to be larger, or run hledger-web from a command window instead.
-- hledger or hledger-web may fail to run if there is not enough memory available.
-
-</xdetails>
+```
+out-file -append -encoding ascii $HOME/.hledger.journal
+```
+-->
 
 ### Next steps
-Once installed, run `hledger`, and perhaps read [hledger.org: Quick start](https://hledger.org/#quick-start).
+Once installed, run `hledger`, and see the [Docs](https://hledger.org/doc.html).
 
 </details>
 END

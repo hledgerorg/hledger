@@ -111,6 +111,7 @@ paths:
                               required:
                               - acommodity
                               - acost
+                              - acostbasis
                               - aquantity
                               - astyle
                               properties:
@@ -126,11 +127,13 @@ paths:
                                         required:
                                         - acommodity
                                         - acost
+                                        - acostbasis
                                         - aquantity
                                         - astyle
                                         properties:
                                           acommodity: {}
                                           acost: {}
+                                          acostbasis: {}
                                           aquantity:
                                             required:
                                             - decimalMantissa
@@ -156,6 +159,7 @@ paths:
                                               asprecision: {}
                                               asrounding: {}
                                       tag: {}
+                                acostbasis: {}
                                 aquantity:
                                   required:
                                   - decimalMantissa
@@ -276,171 +280,190 @@ paths:
                 items:
                   required:
                   - aboring
+                  - adata
                   - adeclarationinfo
-                  - aebalance
-                  - aibalance
                   - aname
-                  - anumpostings
                   - aparent_
                   - asubs
                   - asubs_
                   properties:
                     aname: {}
                     adeclarationinfo: {}
-                    aebalance:
-                      items:
-                        required:
-                        - acommodity
-                        - acost
-                        - aquantity
-                        - astyle
-                        properties:
-                          acommodity: {}
-                          acost:
-                            anyOf:
-                            - {}
-                            - required:
-                              - contents
-                              - tag
-                              properties:
-                                contents:
-                                  required:
-                                  - acommodity
-                                  - acost
-                                  - aquantity
-                                  - astyle
-                                  properties:
-                                    acommodity: {}
-                                    acost: {}
-                                    aquantity:
-                                      required:
-                                      - decimalMantissa
-                                      - decimalPlaces
-                                      - floatingPoint
-                                      properties:
-                                        decimalMantissa: {}
-                                        decimalPlaces: {}
-                                        floatingPoint: {}
-                                    astyle:
-                                      required:
-                                      - ascommodityside
-                                      - ascommodityspaced
-                                      - asdecimalmark
-                                      - asdigitgroups
-                                      - asprecision
-                                      - asrounding
-                                      properties:
-                                        ascommodityside: {}
-                                        ascommodityspaced: {}
-                                        asdecimalmark: {}
-                                        asdigitgroups: {}
-                                        asprecision: {}
-                                        asrounding: {}
-                                tag: {}
-                          aquantity:
-                            required:
-                            - decimalMantissa
-                            - decimalPlaces
-                            - floatingPoint
-                            properties:
-                              decimalMantissa: {}
-                              decimalPlaces: {}
-                              floatingPoint: {}
-                          astyle:
-                            required:
-                            - ascommodityside
-                            - ascommodityspaced
-                            - asdecimalmark
-                            - asdigitgroups
-                            - asprecision
-                            - asrounding
-                            properties:
-                              ascommodityside: {}
-                              ascommodityspaced: {}
-                              asdecimalmark: {}
-                              asdigitgroups: {}
-                              asprecision: {}
-                              asrounding: {}
-                    aibalance:
-                      items:
-                        required:
-                        - acommodity
-                        - acost
-                        - aquantity
-                        - astyle
-                        properties:
-                          acommodity: {}
-                          acost:
-                            anyOf:
-                            - {}
-                            - required:
-                              - contents
-                              - tag
-                              properties:
-                                contents:
-                                  required:
-                                  - acommodity
-                                  - acost
-                                  - aquantity
-                                  - astyle
-                                  properties:
-                                    acommodity: {}
-                                    acost: {}
-                                    aquantity:
-                                      required:
-                                      - decimalMantissa
-                                      - decimalPlaces
-                                      - floatingPoint
-                                      properties:
-                                        decimalMantissa: {}
-                                        decimalPlaces: {}
-                                        floatingPoint: {}
-                                    astyle:
-                                      required:
-                                      - ascommodityside
-                                      - ascommodityspaced
-                                      - asdecimalmark
-                                      - asdigitgroups
-                                      - asprecision
-                                      - asrounding
-                                      properties:
-                                        ascommodityside: {}
-                                        ascommodityspaced: {}
-                                        asdecimalmark: {}
-                                        asdigitgroups: {}
-                                        asprecision: {}
-                                        asrounding: {}
-                                tag: {}
-                          aquantity:
-                            required:
-                            - decimalMantissa
-                            - decimalPlaces
-                            - floatingPoint
-                            properties:
-                              decimalMantissa: {}
-                              decimalPlaces: {}
-                              floatingPoint: {}
-                          astyle:
-                            required:
-                            - ascommodityside
-                            - ascommodityspaced
-                            - asdecimalmark
-                            - asdigitgroups
-                            - asprecision
-                            - asrounding
-                            properties:
-                              ascommodityside: {}
-                              ascommodityspaced: {}
-                              asdecimalmark: {}
-                              asdigitgroups: {}
-                              asprecision: {}
-                              asrounding: {}
-                    anumpostings: {}
-                    aboring: {}
                     aparent_: {}
                     asubs_:
                       items: {}
-                    asubs: {}
+                    asubs:
+                      items: {}
+                    aboring: {}
+                    adata:
+                      required:
+                      - pdpre
+                      - pdperiods
+                      properties:
+                        pdpre:
+                          required:
+                          - bdexcludingsubs
+                          - bdincludingsubs
+                          - bdnumpostings
+                          properties:
+                            bdexcludingsubs:
+                              items:
+                                required:
+                                - acommodity
+                                - acost
+                                - acostbasis
+                                - aquantity
+                                - astyle
+                                properties:
+                                  acommodity: {}
+                                  acost:
+                                    anyOf:
+                                    - {}
+                                    - required:
+                                      - contents
+                                      - tag
+                                      properties:
+                                        contents:
+                                          required:
+                                          - acommodity
+                                          - acost
+                                          - acostbasis
+                                          - aquantity
+                                          - astyle
+                                          properties:
+                                            acommodity: {}
+                                            acost: {}
+                                            acostbasis: {}
+                                            aquantity:
+                                              required:
+                                              - decimalMantissa
+                                              - decimalPlaces
+                                              - floatingPoint
+                                              properties:
+                                                decimalMantissa: {}
+                                                decimalPlaces: {}
+                                                floatingPoint: {}
+                                            astyle:
+                                              required:
+                                              - ascommodityside
+                                              - ascommodityspaced
+                                              - asdecimalmark
+                                              - asdigitgroups
+                                              - asprecision
+                                              - asrounding
+                                              properties:
+                                                ascommodityside: {}
+                                                ascommodityspaced: {}
+                                                asdecimalmark: {}
+                                                asdigitgroups: {}
+                                                asprecision: {}
+                                                asrounding: {}
+                                        tag: {}
+                                  acostbasis: {}
+                                  aquantity:
+                                    required:
+                                    - decimalMantissa
+                                    - decimalPlaces
+                                    - floatingPoint
+                                    properties:
+                                      decimalMantissa: {}
+                                      decimalPlaces: {}
+                                      floatingPoint: {}
+                                  astyle:
+                                    required:
+                                    - ascommodityside
+                                    - ascommodityspaced
+                                    - asdecimalmark
+                                    - asdigitgroups
+                                    - asprecision
+                                    - asrounding
+                                    properties:
+                                      ascommodityside: {}
+                                      ascommodityspaced: {}
+                                      asdecimalmark: {}
+                                      asdigitgroups: {}
+                                      asprecision: {}
+                                      asrounding: {}
+                            bdincludingsubs:
+                              items:
+                                required:
+                                - acommodity
+                                - acost
+                                - acostbasis
+                                - aquantity
+                                - astyle
+                                properties:
+                                  acommodity: {}
+                                  acost:
+                                    anyOf:
+                                    - {}
+                                    - required:
+                                      - contents
+                                      - tag
+                                      properties:
+                                        contents:
+                                          required:
+                                          - acommodity
+                                          - acost
+                                          - acostbasis
+                                          - aquantity
+                                          - astyle
+                                          properties:
+                                            acommodity: {}
+                                            acost: {}
+                                            acostbasis: {}
+                                            aquantity:
+                                              required:
+                                              - decimalMantissa
+                                              - decimalPlaces
+                                              - floatingPoint
+                                              properties:
+                                                decimalMantissa: {}
+                                                decimalPlaces: {}
+                                                floatingPoint: {}
+                                            astyle:
+                                              required:
+                                              - ascommodityside
+                                              - ascommodityspaced
+                                              - asdecimalmark
+                                              - asdigitgroups
+                                              - asprecision
+                                              - asrounding
+                                              properties:
+                                                ascommodityside: {}
+                                                ascommodityspaced: {}
+                                                asdecimalmark: {}
+                                                asdigitgroups: {}
+                                                asprecision: {}
+                                                asrounding: {}
+                                        tag: {}
+                                  acostbasis: {}
+                                  aquantity:
+                                    required:
+                                    - decimalMantissa
+                                    - decimalPlaces
+                                    - floatingPoint
+                                    properties:
+                                      decimalMantissa: {}
+                                      decimalPlaces: {}
+                                      floatingPoint: {}
+                                  astyle:
+                                    required:
+                                    - ascommodityside
+                                    - ascommodityspaced
+                                    - asdecimalmark
+                                    - asdigitgroups
+                                    - asprecision
+                                    - asrounding
+                                    properties:
+                                      ascommodityside: {}
+                                      ascommodityspaced: {}
+                                      asdecimalmark: {}
+                                      asdigitgroups: {}
+                                      asprecision: {}
+                                      asrounding: {}
+                            bdnumpostings: {}
+                        pdperiods: {}
       security:
       - apikey_cookie__session: []
       - apikey_header_cookie: []
@@ -473,11 +496,13 @@ paths:
                         required:
                         - acommodity
                         - acost
+                        - acostbasis
                         - aquantity
                         - astyle
                         properties:
                           acommodity: {}
                           acost: {}
+                          acostbasis: {}
                           aquantity:
                             required:
                             - decimalMantissa
@@ -542,11 +567,13 @@ paths:
                                   required:
                                   - acommodity
                                   - acost
+                                  - acostbasis
                                   - aquantity
                                   - astyle
                                   properties:
                                     acommodity: {}
                                     acost: {}
+                                    acostbasis: {}
                                     aquantity:
                                       required:
                                       - decimalMantissa

@@ -4,6 +4,7 @@ Options common to most hledger reports.
 
 -}
 
+{-# LANGUAGE BangPatterns          #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
@@ -31,6 +32,8 @@ module Hledger.Reports.ReportOptions (
   AccountListMode(..),
   ValuationType(..),
   Layout(..),
+  PeriodTitles(..),
+  effectiveTitle,
   defreportopts,
   rawOptsToReportOpts,
   defreportspec,
@@ -40,6 +43,7 @@ module Hledger.Reports.ReportOptions (
   updateReportSpec,
   updateReportSpecWith,
   rawOptsToReportSpec,
+  reportSpecExpandCurQueries,
   balanceAccumulationOverride,
   flat_,
   tree_,
@@ -52,12 +56,16 @@ module Hledger.Reports.ReportOptions (
   journalApplyValuationFromOptsWith,
   mixedAmountApplyValuationAfterSumFromOptsWith,
   valuationAfterSum,
+  requiresHistorical,
   intervalFromRawOpts,
+  intervalFromQueryOpts,
   queryFromFlags,
   transactionDateFn,
   postingDateFn,
   reportSpan,
   reportSpanBothDates,
+  reportSpanLazy,
+  reportSpanBothDatesLazy,
   reportStartDate,
   reportEndDate,
   reportPeriodStart,
@@ -70,19 +78,20 @@ where
 
 import Prelude hiding (Applicative(..))
 import Control.Applicative (Applicative(..), Const(..), (<|>))
-import Control.Monad ((<=<), guard, join)
+import Control.Monad (guard, join)
 import Data.Char (toLower)
 import Data.Either (fromRight)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Functor.Identity (Identity(..))
 import Data.List (partition)
 import Data.List.Extra (find, isPrefixOf, nubSort, stripPrefix)
-import Data.Maybe (fromMaybe, isJust, isNothing)
-import qualified Data.Text as T
+import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
+import Data.Text qualified as T
 import Data.Time.Calendar (Day, addDays)
 import Data.Default (Default(..))
-import Safe (headMay, lastDef, lastMay, maximumMay, readMay)
+import Safe (lastDef, lastMay, maximumMay, readMay)
 
+import Hledger.Utils.I18n (Translations, noTranslations, trTimeLocale)
 import Hledger.Data
 import Hledger.Query
 import Hledger.Utils
@@ -119,8 +128,14 @@ instance Default AccountListMode where def = ALFlat
 data Layout = LayoutWide (Maybe Int)
             | LayoutTall
             | LayoutBare
+            | LayoutBareWide
             | LayoutTidy
   deriving (Eq, Show)
+
+-- | How to render period column headings in periodic reports.
+data PeriodTitles = PTCompact | PTDates deriving (Eq, Show)
+
+instance Default PeriodTitles where def = PTCompact
 
 -- | Standard options for customising report filtering and output.
 -- Most of these correspond to standard hledger command-line options
@@ -138,6 +153,7 @@ data ReportOpts = ReportOpts {
     ,date2_            :: Bool
     ,empty_            :: Bool
     ,no_elide_         :: Bool
+    ,full_names_       :: Bool
     ,real_             :: Bool
     ,format_           :: StringFormat
     ,balance_base_url_ :: Maybe T.Text
@@ -182,6 +198,18 @@ data ReportOpts = ReportOpts {
       --   TERM and existence of NO_COLOR environment variables.
     ,transpose_        :: Bool
     ,layout_           :: Layout
+    ,period_titles_  :: PeriodTitles
+    -- | Explicit --title value if given (possibly empty to
+    -- suppress); otherwise Nothing, in which case each report falls
+    -- back to its own default heading. Resolved via effectiveTitle.
+    ,title_   :: Maybe T.Text
+    -- | Explicit --subreport-titles value, a |-separated list of
+    -- subreport titles to use in compound reports. An empty string
+    -- means "suppress all default subreport titles".
+    ,subreport_titles_ :: Maybe T.Text
+    -- | Translations for the report's structural text (titles, headings,
+    -- month names), selected by --lang. English by default.
+    ,translations_     :: Translations
  } deriving (Show)
 
 instance Default ReportOpts where def = defreportopts
@@ -198,6 +226,7 @@ defreportopts = ReportOpts
     , date2_            = False
     , empty_            = False
     , no_elide_         = False
+    , full_names_       = False
     , real_             = False
     , format_           = def
     , balance_base_url_ = Nothing
@@ -224,6 +253,10 @@ defreportopts = ReportOpts
     , color_            = False
     , transpose_        = False
     , layout_           = LayoutWide Nothing
+    , period_titles_  = PTCompact
+    , title_   = Nothing
+    , subreport_titles_ = Nothing
+    , translations_     = noTranslations
     }
 
 -- | Generate a ReportOpts from raw command-line input, given a day and whether to use ANSI colour/styles in standard output.
@@ -235,39 +268,54 @@ defreportopts = ReportOpts
 rawOptsToReportOpts :: Day -> Bool -> RawOpts -> ReportOpts
 rawOptsToReportOpts d usecoloronstdout rawopts =
 
+    -- Bang-let-bind the results of every option parser that can call usageError.
+    -- This forces validation eagerly, so a malformed argument is rejected even
+    -- when the current command would not otherwise read the corresponding field.
+    -- Note: layoutopt is intentionally left lazy because the print command
+    -- defines its own --layout flag with different semantics (column number or
+    -- "hledger1"), reusing the same raw "layout" key.
     let formatstring = T.pack <$> maybestringopt "format" rawopts
         querystring  = map T.pack $ listofstringopt "args" rawopts  -- doesn't handle an arg like "" right
-        pretty = fromMaybe False $ ynopt "pretty" rawopts
 
-        format = case parseStringFormat <$> formatstring of
+        !format = case parseStringFormat <$> formatstring of
             Nothing         -> defaultBalanceLineFormat
             Just (Right x)  -> x
             Just (Left err) -> usageError $ "could not parse format option: " ++ err
+        !pretty           = fromMaybe False $ ynopt "pretty" rawopts
+        !period           = periodFromRawOpts d rawopts
+        !interval         = intervalFromRawOpts rawopts
+        !conversionop     = conversionOpFromRawOpts rawopts
+        !value            = valuationTypeFromRawOpts rawopts
+        !depth            = depthFromRawOpts rawopts
+        !sortspec         = getSortSpec rawopts
+        !drop_n           = posintopt "drop" rawopts
+        !periodTitles     = periodTitlesOpt rawopts
 
     in defreportopts
-          {period_           = periodFromRawOpts d rawopts
-          ,interval_         = intervalFromRawOpts rawopts
+          {period_           = period
+          ,interval_         = interval
           ,statuses_         = statusesFromRawOpts rawopts
-          ,conversionop_     = conversionOpFromRawOpts rawopts
-          ,value_            = valuationTypeFromRawOpts rawopts
+          ,conversionop_     = conversionop
+          ,value_            = value
           ,infer_prices_     = boolopt "infer-market-prices" rawopts
-          ,depth_            = depthFromRawOpts rawopts
+          ,depth_            = depth
           ,date2_            = boolopt "date2" rawopts
           ,empty_            = boolopt "empty" rawopts
           ,no_elide_         = boolopt "no-elide" rawopts
+          ,full_names_       = boolopt "full-names" rawopts
           ,real_             = boolopt "real" rawopts
           ,format_           = format
           ,balance_base_url_ = T.pack <$> maybestringopt "base-url" rawopts
           ,querystring_      = querystring
           ,average_          = boolopt "average" rawopts
           ,related_          = boolopt "related" rawopts
-          ,sortspec_         = getSortSpec rawopts
+          ,sortspec_         = sortspec
           ,txn_dates_        = boolopt "txn-dates" rawopts
           ,balancecalc_      = balancecalcopt rawopts
           ,balanceaccum_     = balanceaccumopt rawopts
           ,budgetpat_        = maybebudgetpatternopt rawopts
           ,accountlistmode_  = accountlistmodeopt rawopts
-          ,drop_             = posintopt "drop" rawopts
+          ,drop_             = drop_n
           ,declared_         = boolopt "declared" rawopts
           ,row_total_        = boolopt "row-total" rawopts
           ,no_total_         = boolopt "no-total" rawopts
@@ -278,8 +326,11 @@ rawOptsToReportOpts d usecoloronstdout rawopts =
           ,invert_           = boolopt "invert" rawopts
           ,pretty_           = pretty
           ,color_            = usecoloronstdout
-          ,transpose_        = boolopt "transpose" rawopts
+          ,transpose_        = toggleopt "transpose" rawopts
           ,layout_           = layoutopt rawopts
+          ,period_titles_  = periodTitles
+          ,title_   = unescapeNewlines . T.pack <$> maybestringopt "title" rawopts
+          ,subreport_titles_ = unescapeNewlines . T.pack <$> maybestringopt "subreport-titles" rawopts
           }
 
 -- | A fully-determined set of report parameters 
@@ -319,6 +370,23 @@ accountlistmodeopt =
       "tree" -> Just ALTree
       "flat" -> Just ALFlat
       _      -> Nothing
+
+periodTitlesOpt :: RawOpts -> PeriodTitles
+periodTitlesOpt rawopts = case maybestringopt "period-titles" rawopts of
+  Nothing        -> PTCompact
+  Just "compact" -> PTCompact
+  Just "dates"   -> PTDates
+  Just s         -> usageError $ "--period-titles's argument should be \"compact\" or \"dates\", not " ++ show s
+
+-- | Resolve the effective report heading: if --title was given
+-- on the command line, use that value (which may be empty to suppress
+-- the heading); otherwise return the supplied per-report default.
+effectiveTitle :: ReportOpts -> T.Text -> T.Text
+effectiveTitle ropts dflt = fromMaybe dflt (title_ ropts)
+
+-- | Replace the literal two-character sequence "\n" with a real newline.
+unescapeNewlines :: T.Text -> T.Text
+unescapeNewlines = T.replace "\\n" "\n"
 
 -- Get the argument of the --budget option if any, or the empty string.
 maybebudgetpatternopt :: RawOpts -> Maybe T.Text
@@ -373,6 +441,7 @@ layoutopt rawopts = fromMaybe (LayoutWide Nothing) $ layout <|> column
                      , ("tall", LayoutTall)
                      , ("bare", LayoutBare)
                      , ("tidy", LayoutTidy)
+                     , ("barewide", LayoutBareWide)
                      ]
         -- For `--layout=elided,n`, elide to the given width
         (s,n) = break (==',') $ map toLower opt
@@ -381,7 +450,7 @@ layoutopt rawopts = fromMaybe (LayoutWide Nothing) $ layout <|> column
               c | Just w' <- readMay c -> Just w'
               _ -> usageError "width in --layout=wide,WIDTH must be an integer"
 
-        err = usageError "--layout's argument should be \"wide[,WIDTH]\", \"tall\", \"bare\", or \"tidy\""
+        err = usageError "--layout's argument should be \"wide[,WIDTH]\", \"tall\", \"bare\", \"barewide\", or \"tidy\""
 
 -- Get the period specified by any -b/--begin, -e/--end and/or -p/--period
 -- options appearing in the command line.
@@ -415,7 +484,7 @@ beginDatesFromRawOpts d = collectopts (begindatefromrawopt d)
       | n == "period" =
         case
           either (\e -> usageError $ "could not parse period option: "++customErrorBundlePretty e) id $
-          parsePeriodExpr d' (stripquotes $ T.pack v)
+          parsePeriodExpr d' (textStripQuotes $ T.pack v)
         of
           (_, DateSpan (Just b) _) -> Just b
           _                        -> Nothing
@@ -433,7 +502,7 @@ endDatesFromRawOpts d = collectopts (enddatefromrawopt d)
       | n == "period" =
         case
           either (\e -> usageError $ "could not parse period option: "++customErrorBundlePretty e) id $
-          parsePeriodExpr d' (stripquotes $ T.pack v)
+          parsePeriodExpr d' (textStripQuotes $ T.pack v)
         of
           (_, DateSpan _ (Just e)) -> Just e
           _                        -> Nothing
@@ -452,7 +521,7 @@ intervalFromRawOpts = lastDef NoInterval . collectopts intervalfromrawopt
             extractIntervalOrNothing $
             parsePeriodExpr
               (error' "intervalFromRawOpts: did not expect to need today's date here")  -- PARTIAL: should not happen; we are just getting the interval, which does not use the reference date
-              (stripquotes $ T.pack v)
+              (textStripQuotes $ T.pack v)
       | n == "daily"     = Just $ Days 1
       | n == "weekly"    = Just $ Weeks 1
       | n == "monthly"   = Just $ Months 1
@@ -465,6 +534,14 @@ intervalFromRawOpts = lastDef NoInterval . collectopts intervalfromrawopt
 extractIntervalOrNothing :: (Interval, DateSpan) -> Maybe Interval
 extractIntervalOrNothing (NoInterval, _) = Nothing
 extractIntervalOrNothing (interval, _) = Just interval
+
+-- | Get the last interval specified in query opts, if any.
+-- date: queries can specify a reporting interval.
+intervalFromQueryOpts :: [QueryOpt] -> Maybe Interval
+intervalFromQueryOpts = lastMay . mapMaybe getInterval
+  where
+    getInterval (QueryOptInterval i) = Just i
+    getInterval _ = Nothing
 
 -- | Get any statuses to be matched, as specified by -U/--unmarked,
 -- -P/--pending, -C/--cleared flags. -UPC is equivalent to no flags,
@@ -512,13 +589,13 @@ valuationTypeFromRawOpts rawopts = case (balancecalcopt rawopts, directval) of
       | n == "value" = valueopt v
       | otherwise    = Nothing
     valueopt v
-      | t `elem` ["cost","c"]  = AtEnd . Just <$> mc  -- keep supporting --value=cost,COMM for now
+      | t `elem` ["cost","c","transacted"] = AtEnd . Just <$> mc  -- keep supporting --value=cost,COMM for now
       | t `elem` ["then" ,"t"] = Just $ AtThen mc
       | t `elem` ["end" ,"e"]  = Just $ AtEnd  mc
       | t `elem` ["now" ,"n"]  = Just $ AtNow  mc
       | otherwise = case parsedate t of
             Just d  -> Just $ AtDate d mc
-            Nothing -> usageError $ "could not parse \""++t++"\" as valuation type, should be: then|end|now|t|e|n|YYYY-MM-DD"
+            Nothing -> usageError $ "could not parse \""++t++"\" as valuation type, should be: cost|transacted|then|end|now|c|t|e|n|YYYY-MM-DD"
       where
         -- parse --value's value: TYPE[,COMM]
         (t,c') = break (==',') v
@@ -539,6 +616,7 @@ conversionOpFromRawOpts rawopts
     conversionopfromrawopt (n,v)  -- option name, value
       | n == "B"                                    = Just ToCost
       | n == "value", takeWhile (/=',') v `elem` ["cost", "c"] = Just ToCost  -- keep supporting --value=cost for now
+      | n == "value", takeWhile (/=',') v == "transacted" = Just ToTransactedCost
       | otherwise                                   = Nothing
 
 -- | Parse the depth arguments. This can be either a flat depth that applies to
@@ -553,7 +631,7 @@ depthFromRawOpts rawopts = lastDef mempty flats <> mconcat regexps
     (flats, regexps) = partition (\(DepthSpec f rs) -> isJust f && null rs) depthSpecs
     depthSpecs = case mapM (parseDepthSpec . T.pack) depths of
       Right d -> d
-      Left err -> usageError $ "Unable to parse depth specification: " ++ err
+      Left err -> usageError err
     depths = listofstringopt "depth" rawopts
 
 -- | Select the Transaction date accessor based on --date2.
@@ -614,8 +692,8 @@ journalValueAndFilterPostingsWith = _journalValueAndFilterPostingsWith1431
 --   where
 --     -- with -r, replace each posting with its sibling postings
 --     filterJournalPostings' = if related_ ropts then filterJournalRelatedPostings else filterJournalPostings
---     amtsymq = dbg1 "amtsymq" $ filterQuery queryIsAmtOrSym q
---     reportq = dbg1 "reportq" $ filterQuery (not . queryIsAmtOrSym) q
+--     amtsymq = dbg1 "amtsymq" $ filterQuery queryIsAmtOrCurOrSym q
+--     reportq = dbg1 "reportq" $ filterQuery (not . queryIsAmtOrCurOrSym) q
 
 -- 1.43
 -- XXX #2396 This goes wrong with cur:. filterJournal*Postings keep all postings containing the matched commodity,
@@ -630,7 +708,7 @@ _journalValueAndFilterPostingsWith1431 rspec@ReportSpec{_rsQuery = q, _rsReportO
   journalApplyValuationFromOptsWith rspec . filterjournal q
   where
     filterjournal q2 =
-      filterJournalAmounts (filterQuery queryIsAmtOrSym q2) .  -- an extra amount filtering pass for #2396
+      filterJournalAmounts (filterQuery queryIsAmtOrCurOrSym q2) .  -- an extra amount filtering pass for #2396
       (if related_ ropts then filterJournalRelatedPostings q2 else filterJournalPostings q2)
 
 -- | Convert this journal's postings' amounts to cost and/or to value, if specified
@@ -664,34 +742,34 @@ journalApplyValuationFromOptsWith rspec@ReportSpec{_rsReportOpts=ropts} j priceo
       CalcGain -> id
       _        -> journalToCost costop where costop = fromMaybe NoConversionOp $ conversionop_ ropts
 
-    -- Find the end of the period containing this posting
-    postingperiodend  = addDays (-1) . fromMaybe err . mPeriodEnd . postingDateOrDate2 (whichDate ropts)
-    mPeriodEnd = case interval_ ropts of
-        NoInterval -> const . spanEnd . fst $ reportSpan j rspec
-        _          -> spanEnd <=< latestSpanContaining (historical : spans)
-    historical = DateSpan Nothing $ (fmap Exact . spanStart) =<< headMay spans
-    spans = snd $ reportSpanBothDates j rspec
+    -- Find the "end" valuation date for this posting.
+    -- With a report interval, this is the last day of the report subperiod containing this posting;
+    -- with no interval it's the last date of the overall report period
+    -- (which for an end value report may have been extended to include the latest non-future P directive).
+    -- To get the period's last day, we subtract one from the (exclusive) period end date.
+    postingperiodend = postingPeriodEnd . postingDateOrDate2 (whichDate ropts)
+      where
+        postingPeriodEnd d = fromMaybe err $ case interval_ ropts of
+          NoInterval -> fmap (snd . dayPartitionStartEnd)    . snd $ reportSpan j rspec
+          _          -> fmap (snd . dayPartitionFind d) . snd $ reportSpanBothDates j rspec
+        -- Should never happen, because there are only invalid dayPartitions
+        -- when there are no transactions, in which case this function is never called
+        err = error' "journalApplyValuationFromOpts: expected all spans to have an end date"
+
+
     styles = journalCommodityStyles j
-    err = error' "journalApplyValuationFromOpts: expected all spans to have an end date"
 
 -- | Select the Account valuation functions required for performing valuation after summing
 -- amounts. Used in MultiBalanceReport to value historical and similar reports.
 mixedAmountApplyValuationAfterSumFromOptsWith :: ReportOpts -> Journal -> PriceOracle
-                                              -> (DateSpan -> MixedAmount -> MixedAmount)
+                                              -> (Day -> MixedAmount -> MixedAmount)
 mixedAmountApplyValuationAfterSumFromOptsWith ropts j priceoracle =
-    case valuationAfterSum ropts of
-        Just mc -> case balancecalc_ ropts of
-            CalcGain -> gain mc
-            _        -> \spn -> valuation mc spn . costing
-        Nothing      -> const id
-  where
-    valuation mc spn = mixedAmountValueAtDate priceoracle styles mc (maybe err (addDays (-1)) $ spanEnd spn)
-    gain mc spn = mixedAmountGainAtDate priceoracle styles mc (maybe err (addDays (-1)) $ spanEnd spn)
-    costing = case fromMaybe NoConversionOp $ conversionop_ ropts of
-        NoConversionOp -> id
-        ToCost         -> styleAmounts styles . mixedAmountCost
-    styles = journalCommodityStyles j
-    err = error' "mixedAmountApplyValuationAfterSumFromOptsWith: expected all spans to have an end date"
+  case valuationAfterSum ropts of
+    Nothing -> const id
+    Just mc -> case balancecalc_ ropts of
+      CalcGain -> mixedAmountGainAtDate  priceoracle styles mc
+      _        -> mixedAmountValueAtDate priceoracle styles mc
+  where styles = journalCommodityStyles j
 
 -- | If the ReportOpts specify that we are performing valuation after summing amounts,
 -- return Just of the commodity symbol we're converting to, Just Nothing for the default,
@@ -699,12 +777,15 @@ mixedAmountApplyValuationAfterSumFromOptsWith ropts j priceoracle =
 -- Used for example with historical reports with --value=end.
 valuationAfterSum :: ReportOpts -> Maybe (Maybe CommoditySymbol)
 valuationAfterSum ropts = case value_ ropts of
-    Just (AtEnd mc) | valueAfterSum -> Just mc
-    _                               -> Nothing
-  where valueAfterSum = balancecalc_  ropts == CalcValueChange
-                     || balancecalc_  ropts == CalcGain
-                     || balanceaccum_ ropts /= PerPeriod
+    Just (AtEnd mc) | requiresHistorical ropts -> Just mc
+    _                                          -> Nothing
 
+-- | If the ReportOpts specify that we will need to consider historical
+-- postings, either because this is a historical report, or because the
+-- valuation strategy requires historical amounts.
+requiresHistorical :: ReportOpts -> Bool
+requiresHistorical ReportOpts{balanceaccum_ = accum, balancecalc_ = calc} =
+    accum == Historical || calc == CalcValueChange || calc == CalcGain
 
 -- | Convert report options to a query, ignoring any non-flag command line arguments.
 queryFromFlags :: ReportOpts -> Query
@@ -763,49 +844,91 @@ sortKeysDescription = "date, desc, account, amount, absamount"  -- 'description'
 
 -- Report dates.
 
--- | The effective report span is the start and end dates specified by
--- options or queries, or otherwise the earliest and latest transaction or
--- posting dates in the journal. If no dates are specified by options/queries
--- and the journal is empty, returns the null date span.
--- Also return the intervals if they are requested.
-reportSpan :: Journal -> ReportSpec -> (DateSpan, [DateSpan])
+-- | The effective report span is the start and end dates requested by options or queries.
+-- If the start date is unspecified, the earliest transaction or posting date is used.
+-- If the end date is unspecified, the latest transaction or posting date
+-- (or non-future market price date, when doing an end value report) is used.
+-- If none of these things are present, the null date span is returned.
+-- The report sub-periods caused by a report interval, if any, are also returned.
+reportSpan :: Journal -> ReportSpec -> (DateSpan, Maybe DayPartition)
 reportSpan = reportSpanHelper False
+-- Note: In end value reports, the report end date and valuation date are the same.
+-- If valuation date ever needs to be different, journalApplyValuationFromOptsWith is the place.
 
--- | Like reportSpan, but uses both primary and secondary dates when calculating
--- the span.
-reportSpanBothDates :: Journal -> ReportSpec -> (DateSpan, [DateSpan])
+-- | Like reportSpan, but considers both primary and secondary dates, not just one or the other.
+reportSpanBothDates :: Journal -> ReportSpec -> (DateSpan, Maybe DayPartition)
 reportSpanBothDates = reportSpanHelper True
 
--- | A helper for reportSpan, which takes a Bool indicating whether to use both
--- primary and secondary dates.
-reportSpanHelper :: Bool -> Journal -> ReportSpec -> (DateSpan, [DateSpan])
-reportSpanHelper bothdates j ReportSpec{_rsQuery=query, _rsReportOpts=ropts} =
-    (reportspan, intervalspans)
+reportSpanHelper :: Bool -> Journal -> ReportSpec -> (DateSpan, Maybe DayPartition)
+reportSpanHelper bothdates j rspec@ReportSpec{_rsReportOpts=ropts} =
+    (enlargedreportspan, intervalspans)
   where
-    -- The date span specified by -b/-e/-p options and query args if any.
-    requestedspan  = dbg3 "requestedspan" $ if bothdates then queryDateSpan' query else queryDateSpan (date2_ ropts) query
-    -- If we are requesting period-end valuation, the journal date span should
-    -- include price directives after the last transaction
-    journalspan = dbg3 "journalspan" $ if bothdates then journalDateSpanBothDates j else journalDateSpan (date2_ ropts) j
-    pricespan = dbg3 "pricespan" . DateSpan Nothing $ case value_ ropts of
-        Just (AtEnd _) -> fmap (Exact . addDays 1) . maximumMay . map pddate $ jpricedirectives j
-        _              -> Nothing
-    -- If the requested span is open-ended, close it using the journal's start and end dates.
-    -- This can still be the null (open) span if the journal is empty.
-    requestedspan' = dbg3 "requestedspan'" $ requestedspan `spanDefaultsFrom` (journalspan `spanExtend` pricespan)
+    (reportspan, adjust) = reportSpanAndAdjust bothdates j rspec
+
     -- The list of interval spans enclosing the requested span.
     -- This list can be empty if the journal was empty,
     -- or if hledger-ui has added its special date:-tomorrow to the query
     -- and all txns are in the future.
-    intervalspans  = dbg3 "intervalspans" $ splitSpan adjust (interval_ ropts) requestedspan'
-      where
-        -- When calculating report periods, we will adjust the start date back to the nearest interval boundary
-        -- unless a start date was specified explicitly.
-        adjust = isNothing $ spanStart requestedspan
+    intervalspans = dbg3 "intervalspans" $ splitSpan adjust (interval_ ropts) reportspan
+
     -- The requested span enlarged to enclose a whole number of intervals.
     -- This can be the null span if there were no intervals.
-    reportspan = dbg3 "reportspan" $ DateSpan (fmap Exact . spanStart =<< headMay intervalspans)
-                                              (fmap Exact . spanEnd =<< lastMay intervalspans)
+    enlargedreportspan = dbg3 "enlargedreportspan" $
+        maybe (DateSpan Nothing Nothing) (mkSpan . dayPartitionStartEnd) intervalspans
+      where mkSpan (s, e) = DateSpan (Just $ Exact s) (Just . Exact $ addDays 1 e)
+
+-- | Like 'reportSpan', but returns the report periods as a lazily generated list
+-- of 'DateSpan's rather than a 'DayPartition', so that a report which traverses them once
+-- uses constant memory however many periods there are (#1683).
+-- The list is a single unbounded span if there are no periods, like 'maybeDayPartitionToDateSpans'.
+reportSpanLazy :: Journal -> ReportSpec -> (DateSpan, [DateSpan])
+reportSpanLazy = reportSpanHelperLazy False
+
+-- | Like 'reportSpanLazy', but considers both primary and secondary dates. Used by the postings report.
+reportSpanBothDatesLazy :: Journal -> ReportSpec -> (DateSpan, [DateSpan])
+reportSpanBothDatesLazy = reportSpanHelperLazy True
+
+reportSpanHelperLazy :: Bool -> Journal -> ReportSpec -> (DateSpan, [DateSpan])
+reportSpanHelperLazy bothdates j rspec@ReportSpec{_rsReportOpts=ropts} =
+    (enlargedreportspan, intervalspans)
+  where
+    (reportspan, adjust) = reportSpanAndAdjust bothdates j rspec
+    intervalspans = case splitSpanToDateSpans adjust (interval_ ropts) reportspan of
+      [] -> [DateSpan Nothing Nothing]
+      ss -> ss
+    -- Found with a separate traversal of the periods, so the list above need not be kept in memory.
+    enlargedreportspan = dbg3 "enlargedreportspan" $
+        maybe (DateSpan Nothing Nothing) mkSpan $ splitSpanStartEnd adjust (interval_ ropts) reportspan
+      where mkSpan (s, e) = DateSpan (Just $ Exact s) (Just $ Exact e)
+
+-- | The report span before enlarging it to whole intervals, filled in with defaults from the journal,
+-- and whether the report periods should be adjusted back to natural interval boundaries.
+reportSpanAndAdjust :: Bool -> Journal -> ReportSpec -> (DateSpan, Bool)
+reportSpanAndAdjust bothdates j ReportSpec{_rsQuery=query, _rsReportOpts=ropts, _rsDay=today} =
+    (reportspan, adjust)
+  where
+    -- The date span specified by -b/-e/-p options and query args if any.
+    requestedspan = dbg3 "requestedspan" $
+      if bothdates then queryDateSpan' query else queryDateSpan (date2_ ropts) query
+
+    -- If the requested span has open ends, fill them with defaults.
+    reportspan = dbg3 "reportspan" $ requestedspan `spanValidDefaultsFrom` txnsorpricespan
+      where
+        txnsorpricespan = dbg3 "txnsorpricespan" $ DateSpan mfirsttxn mlatesttxnorprice
+          where
+            DateSpan mfirsttxn mlasttxn = dbg3 "txnsspan" $
+              if bothdates then journalDateSpanBothDates j else journalDateSpan (date2_ ropts) j
+            mlatesttxnorprice =
+              case value_ ropts of
+                Just (AtEnd _) -> mlasttxn `max` mlatestnonfutureprice
+                _              -> mlasttxn
+              where
+                mlatestnonfutureprice = dbg3 "latestnonfutureprice" $ -- #2445
+                  fmap (Exact . addDays 1) . maximumMay . filter (not . (> today)) . map pddate $ jpricedirectives j
+
+    -- When calculating report periods, we will adjust the start date back to the nearest interval boundary
+    -- unless a start date was specified explicitly.
+    adjust = isNothing $ spanStart requestedspan
 
 reportStartDate :: Journal -> ReportSpec -> Maybe Day
 reportStartDate j = spanStart . fst . reportSpan j
@@ -855,14 +978,16 @@ reportPeriodOrJournalLastDay rspec j = reportPeriodLastDay rspec <|> journalOrPr
 -- - ending-balance reports: the period's end date
 --
 -- - balance change reports where the periods are months and all in the same year:
---   the short month name in the current locale
+--   the short month name, translated according to --lang
 --
 -- - all other balance change reports: a description of the datespan,
 --   abbreviated to compact form if possible (see showDateSpan).
-reportPeriodName :: BalanceAccumulation -> [DateSpan] -> DateSpan -> T.Text
-reportPeriodName balanceaccumulation spans =
-  case balanceaccumulation of
-    PerPeriod -> if multiyear then showDateSpan else showDateSpanAbbrev
+reportPeriodName :: ReportOpts -> [DateSpan] -> DateSpan -> T.Text
+reportPeriodName ReportOpts{period_titles_, balanceaccum_, translations_} spans =
+  case balanceaccum_ of
+    PerPeriod -> case period_titles_ of
+      PTDates   -> showDateSpanFull
+      PTCompact -> if multiyear then showDateSpan else showDateSpanAbbrevWith (trTimeLocale translations_)
       where
         multiyear = (>1) $ length $ nubSort $ map spanStartYear spans
     _ -> maybe "" (showDate . prevday) . spanEnd
@@ -915,7 +1040,7 @@ makeHledgerClassyLenses ''ReportSpec
 -- >>> _rsQuery <$> setEither querystring ["assets"] defreportspec
 -- Right (Acct (RegexpCI "assets"))
 -- >>> _rsQuery <$> setEither querystring ["(assets"] defreportspec
--- Left "This regular expression is invalid or unsupported, please correct it:\n(assets"
+-- Left "This regular expression is invalid or unsupported, please correct it: (assets"
 -- >>> _rsQuery $ set querystring ["assets"] defreportspec
 -- Acct (RegexpCI "assets")
 -- >>> _rsQuery $ set period (MonthPeriod 2021 08) defreportspec
@@ -970,10 +1095,14 @@ instance HasReportOpts ReportSpec where
 reportOptsToSpec :: Day -> ReportOpts -> Either String ReportSpec
 reportOptsToSpec day ropts = do
     (argsquery, queryopts) <- parseQueryList day $ querystring_ ropts
+    -- If there's an interval in the query opts, it overrides the interval from -p/--period/etc
+    let ropts' = case intervalFromQueryOpts queryopts of
+                   Just i  -> ropts{interval_=i}
+                   Nothing -> ropts
     return ReportSpec
-      { _rsReportOpts = ropts
+      { _rsReportOpts = ropts'
       , _rsDay        = day
-      , _rsQuery      = simplifyQuery $ And [queryFromFlags ropts, argsquery]
+      , _rsQuery      = simplifyQuery $ And [queryFromFlags ropts', argsquery]
       , _rsQueryOpts  = queryopts
       }
 
@@ -992,3 +1121,18 @@ updateReportSpecWith = overEither reportOpts
 -- string if there are regular expression errors.
 rawOptsToReportSpec :: Day -> Bool -> RawOpts -> Either String ReportSpec
 rawOptsToReportSpec day coloronstdout = reportOptsToSpec day . rawOptsToReportOpts day coloronstdout
+
+-- | Associate this journal with this ReportSpec, returning a refreshed
+-- ReportSpec whose @_rsQuery@ is rebuilt from the user's @querystring_@
+-- and has any @cur:@ terms expanded against the journal's current
+-- commodity-alias declarations.
+--
+-- This is the canonical way to (re)attach a journal to a ReportSpec:
+-- @querystring_@ is the source of truth, and @_rsQuery@ is a derived
+-- cache that goes stale whenever the journal's commodity/alias
+-- declarations change. Long-lived sessions (hledger-ui watch,
+-- hledger-web) should call this on every reload.
+reportSpecExpandCurQueries :: Journal -> ReportSpec -> Either String ReportSpec
+reportSpecExpandCurQueries j rs = do
+  rs' <- reportOptsToSpec (_rsDay rs) (_rsReportOpts rs)
+  Right rs'{_rsQuery = queryExpandCurAliases j (_rsQuery rs')}

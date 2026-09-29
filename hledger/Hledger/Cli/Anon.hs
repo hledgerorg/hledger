@@ -4,7 +4,7 @@ Instances for obfuscating sensitive data (mainly text, not numbers) in various t
 
 Currently this is deterministic and does not provide much privacy.
 It has been moved to a hidden --obfuscate flag, with the old --anon flag
-now raising an error. See https://github.com/simonmichael/hledger/issues/2133 .
+now raising an error. See https://github.com/hledgerorg/hledger/issues/2133 .
 
 -}
 
@@ -18,7 +18,7 @@ import Control.Arrow (first)
 import Data.Hashable (hash)
 import Data.Word (Word32)
 import Numeric (showHex)
-import qualified Data.Text as T
+import Data.Text qualified as T
 
 import Hledger.Data
 import Data.Map (mapKeys)
@@ -30,6 +30,7 @@ class Anon a where
 instance Anon Journal where
     -- Apply the anonymisation transformation on a journal after finalisation
     anon j = j { jtxns = map anon . jtxns $ j
+               , jitems = []  -- verbatim source text, may contain anything
                , jparseparentaccounts  = map anonAccount $ jparseparentaccounts j
                , jparsealiases         = []  -- already applied
                , jdeclaredaccounts     = map (first anon) $ jdeclaredaccounts j
@@ -49,6 +50,7 @@ instance Anon Transaction where
                                 , tdescription = anon . tdescription $ txn
                                 , tcode = anon . tcode $ txn
                                 , tcomment = T.empty
+                                , tprecedingcomment = T.empty
                                 }
 
 -- | Anonymize account name preserving hierarchy

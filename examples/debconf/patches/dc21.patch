@@ -1,0 +1,25 @@
+diff --git a/budget/expenses.ledger b/budget/expenses.ledger
+index 717cb42..5808031 100644
+--- a/budget/expenses.ledger
++++ b/budget/expenses.ledger
+@@ -1,11 +1,11 @@
+ 2019-11-28 Budget
+-  expenses:dormitories	21560 USD
+-  expenses:meals:regular	26740 USD
+-  expenses:meals:conference dinner	8100 USD
+-  expenses:daycare	2781.54 USD
+-  expenses:security guards	2892.24 USD
+-  expenses:daytrip:buses	1296 USD
+-  expenses:swags:all	8100 USD
+-  expenses:video:equipment	2700 USD
+-  expenses:travel sponsorship	27000 USD
++  expenses:dormitorie 	1560 USD
++  expenses:meals:regula 	6740 USD
++  expenses:meals:conference dinne 	100 USD
++  expenses:daycar 	781.54 USD
++  expenses:security guard 	892.24 USD
++  expenses:daytrip:buse 	296 USD
++  expenses:swags:al 	100 USD
++  expenses:video:equipmen 	700 USD
++  expenses:travel sponsorshi 	7000 USD
+   assets:SPI

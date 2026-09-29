@@ -1,0 +1,16 @@
+# for experimental build tool https://github.com/arcanist-sh/hx
+
+[project]
+name = "hledger"
+
+[toolchain]
+ghc = "9.14"
+
+[build]
+optimization = 1   # match stack's -O1 release binaries (--release would force -O2, much slower to compile)
+
+[dependencies]
+aeson = "2.3.0.0"
+text-iso8601 = "0.2.0.0"
+haskeline = "0.8.4.1"
+yesod-core = "1.7.0.0"

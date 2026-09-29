@@ -1,0 +1,8 @@
+# coinbase.csv.rules
+skip         1
+fields       Timestamp,Transaction_Type,Asset,Quantity_Transacted,Spot_Price_Currency,Spot_Price_at_Transaction,Subtotal,Total,Fees_Spread,Notes
+date         %Timestamp
+date-format  %Y-%m-%dT%T%Z
+description  %Notes
+account1     assets:coinbase:cc
+amount       %Quantity_Transacted %Asset @ %Spot_Price_at_Transaction %Spot_Price_Currency

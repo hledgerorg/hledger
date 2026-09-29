@@ -1,18 +1,19 @@
-# check payees succeeds when all payees are declared:
+# * check payees
+# ** 1. check payees succeeds when all payees are declared:
 <
 payee foo
 2020-01-01 foo
 2020-01-02 foo | some description
 $ hledger -f - check payees
 
-# and otherwise fails:
+# ** 2. and otherwise fails:
 <
 2020-01-01 foo
 $ hledger -f - check payees
 >2 /payee "foo" has not been declared/
 >=1
 
-# or:
+# ** 3. or:
 <
 payee foo
 2020-01-01 the payee | foo

@@ -1,49 +1,72 @@
 # Pull requests
 
-<div class=pagetoc>
+Last updated: 2026-07
 
-<!-- toc -->
-</div>
+## Guidelines
 
-Shortcut urls:
+<!-- keep synced -->
+From <https://github.com/hledgerorg/hledger/blob/main/.github/pull_request_template.md?plain=1>:
 
-- <http://prs.hledger.org>
-- <http://draftprs.hledger.org>
-- <http://readyprs.hledger.org>
-- <http://assignedprs.hledger.org>
-- <http://unassignedprs.hledger.org>
+We welcome help, but we must also balance the cost and benefit of pull requests,
+with available maintainer/reviewer time, and with our [AI policy](https://hledger.org/AI.html).
+Thanks for your understanding! Here are the current hledger PR guidelines:
 
-<!--
-Misc. PR queries:
+1. PRs are processed only when a maintainer/reviewer has the time and motivation.
+   Submitting a pull request does not guarantee a review or a response.
 
-- ...
--->
+2. PRs that minimise work for maintainers/reviewers get processed more quickly.
+   Eg, PRs that are small, clear, high quality, following guidelines, passing tests,
+   non-conflicting, well researched, mindful of impact, responsive to feedback.
 
+3. You can have one hledger PR open at a time (unless you have collaborator access).
 
-Most contributed hledger code (and some of the project maintainer's code)
-is submitted and reviewed via Github pull requests.
-Here are some tips for contributing PRs to hledger.
+4. First-time hledger contributors must not use AI to generate PRs.
+   New-contributor PRs that seem AI-generated will be closed.
+
+5. Code intended for the legacy hledger1 branch (hledger 1.x) must not use AI.
+   (Maintainers may make rare exceptions, for security fixes.)
+
+6. You must not use OpenAI's models (GPT series, o-series, etc).
+
+7. Otherwise, you can use AI assistance. For any non-trivial use,
+   you must disclose the provider, model(s), and a rough estimate of output tokens used.
+   Eg, in your main commit: "AI usage: Claude Opus 4.8, ~50k output tokens."
+
+8. Review your work before submitting it.
+
+9. Begin commit messages with one of our standard prefixes.
+   (And optionally a semicolon to mark commits that don't need costly CI tests.)
+   Examples:
+ 
+   - feat: a user-visible new feature
+   - imp: a user-visible improvement to existing features
+   - fix: a user-visible bugfix
+   - dev: a less visible/internal improvement
+   - ;doc: a documentation update
+   - ;pkg: stack: something relating to packaging/dependencies and stack
+   - ;tools: bin/bashrc: updates to our bash scripts
+
+See also:
+- <https://hledger.org/AI.html>
+- <https://hledger.org/COMMITS.html>
+- <https://hledger.org/PULLREQUESTS.html>
+
 
 ## Code review is important
 
 We aim to improve and sustain hledger's quality and maintainability over the long term.
 
-Many PRs, especially small ones, and even some big ones, can be merged quickly. 
-We love merging PRs quickly.
-
-Some bigger or more risky PRs can require substantial review, discussion, changes, or re-submission. 
-Sometimes this is a bigger task than the coding.
+Ideally, we like to merge PRs quickly.
+But some PRs can require substantial review, discussion, changes, or re-submission. 
+Sometimes this is much more work than the coding.
 Much valuable design, quality control, and knowledge sharing happens at this time. 
-
 Some PRs ultimately get rejected, but their discussion and exploration can still be a useful contribution.
-We very much want to avoid wasted work, but it occasionally happens. 
-Our process is evolving and imperfect.
+We want to avoid wasted work, but it occasionally happens. 
 All of this is a normal part of software development.
-
-We hope you'll see it as a golden opportunity to collaborate with experts,
+We hope you'll see it as an opportunity to collaborate,
 share and receive knowledge, refine your design/documentation/code,
 and practice real-world development and communication skills.
-Patience and persistence pays.
+Patience and persistence will pay off.
 
 ## The pull request
 
@@ -54,9 +77,9 @@ Smaller/more focussed PRs can be reviewed quicker and accepted (or rejected) qui
 
 Consider showing a draft of documentation first (more on this below).
 
-When you are not ready for the PR to be merged, please make it a Draft PR.
-(Non-draft means "I think this is ready, you can merge any time".)
-And use a normal PR title, ie don't write "WIP:" or "Draft:" in the title.
+If you are not ready for the PR to be merged, please make it a Draft PR.
+(But don't write "WIP:" or "Draft:" in the title, just use a normal title.)
+
 
 ## The commit(s)
 
@@ -64,20 +87,15 @@ Commits should be easy to review.
 Ideally each commit is complete, and has a single clear purpose,
 which should be documented in the summary (and long description, if needed).
 \#ISSUENOs can be mentioned in summary/description too when appropriate.
+If these constraints are satisfied, then fewer, larger commits are preferred.
 
-Within the above constraint, fewer, larger commits are preferred.
-
-Keep in mind that commit messages are valuable documentation 
-for future developers and troubleshooters. 
+Commit messages are valuable documentation for future developers and troubleshooters.
 They are also the starting point for package changelogs and hledger release notes.
 High-quality commit messages makes the release process quicker, and the resulting docs better. 
 
-User-impacting commits should mention the user-visible changes, 
-and be described in user-relevant language.
-Library-user-impacting commits, eg API changes, ideally will also
-be called out, and can described in more technical language.
-Commits affecting hledger internals are less important, 
-but you may notice some adhoc conventions if you browse the history.
+User-impacting commits should mention the user-visible changes, and be described in user-relevant language.
+Library-user-impacting commits, eg API changes, ideally will also be called out, and can described in more technical language.
+Commits affecting hledger internals are less important, but you may notice some adhoc conventions if you browse the history.
 In particular, you can optionally prefix the summary with short component codes (cf [Issues](#issues))
 to facilitate history reading and changelog/release note production.
 
@@ -86,7 +104,7 @@ Unless we decide to squash the PR into one commit,
 your commits will become part of hledger's history "for all time", 
 so think about future developers trying to understand them, git bisect, etc.   
 
-Rebase your commits against latest master for easiest review. Especially if they start to conflict.
+Rebase your commits against latest main for easiest review. Especially if they start to conflict.
 
 We like to use some conventions in commit messages when it makes sense. These aren't mandatory, but appreciated:
 
@@ -94,6 +112,8 @@ We like to use some conventions in commit messages when it makes sense. These ar
 - prepend a semicolon (`;`) to indicate commits that 
   - need not trigger a CI workflows, reducing wasteful carbon emissions
   - and probably need not be mentioned in changelogs/release notes
+
+More detail: [COMMITS](COMMITS.md)
 
 ## The docs
 
@@ -115,29 +135,22 @@ Updating rendered manuals (hledger.{1,info,txt,md,html}) is not required, and pr
 Updating other docs such as tutorials, how-tos, examples, or screenshots is not required,
 though it's welcome (may be in a different repo).
 
-## Documentation first
+## Documentation-driven development
 
-hledger follows documentation-driven design.
-It is in fact highly effective, and highly recommended,
-to write the new docs (help text/user manual/haddocks/developer README..) before writing any code.
-You can share a rough draft on IRC, on the mail list, in an issue comment,
-or in a "WIP" PR starting with just the proposed docs commit.
+hledger follows documentation-driven design. 
+It is highly effective, and recommended, to write a draft of new docs or doc changes
+(in help text, user manual, haddocks, READMEs, ..) before writing any code.
 
+Sharing a rough draft in the chat room, in an issue comment, or in a draft PR will speed up the discussion.
 This is often the quickest road to getting something merged into hledger.
 hledger's many parts interact in surprisingly complex ways.
-The documentation-driven working style lets us discuss, clarify and reach a good-enough consensus economically,
-after which coding/review/acceptance can go quicker.
-<!--
-changes can impact past and future users,
-ease of contribution,
-long-term maintenance costs,
-product architecture,
-compatibility with the larger plain text accounting ecosystem,
-etc.
--->
+The documentation-driven working style lets us discuss, clarify and reach a good-enough consensus more quickly.
 
-## Related ideas
+## Shortcut urls
 
-[Neil Mitchell’s Blog - The One PR Per Day Rule](https://neilmitchell.blogspot.com/2019/06/the-one-pr-per-day-rule.html)
-
+- <https://prs.hledger.org>
+- <https://draftprs.hledger.org>
+- <https://readyprs.hledger.org>
+- <https://assignedprs.hledger.org>
+- <https://unassignedprs.hledger.org>
 

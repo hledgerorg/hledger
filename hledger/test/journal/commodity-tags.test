@@ -1,0 +1,47 @@
+# * commodity directive tags
+# Tags on commodity directives should propagate to postings with amounts of that commodity.
+
+# ** 1. A tag on the commodity directive propagages to postings using that commodity (as a queryable hidden tag).
+<
+commodity $           ; type:currency
+
+2024-01-01 test
+  assets:bank   $100
+  income
+
+$ hledger -f - register tag:type=currency
+2024-01-01 test                 assets:bank                   $100          $100
+                                income                       $-100             0
+
+# ** 2. An account tag overrides a commodity tag of the same name.
+<
+commodity $           ; source:commodity
+account assets:bank   ; source:account
+
+2024-01-01 test
+  assets:bank   $100
+  income
+
+$ hledger -f - register tag:source=account
+2024-01-01 test                 assets:bank                   $100          $100
+
+# ** 3. A posting tag overrides both of those.
+<
+commodity $           ; source:commodity
+account assets:bank   ; source:account
+
+2024-01-01 test
+  assets:bank   $100  ; source:posting
+  income
+
+$ hledger -f - register tag:source=posting
+2024-01-01 test                 assets:bank                   $100          $100
+
+# ** 4. Commodity tags can be queried with the commodities command.
+<
+commodity AAPL   ; lots:
+commodity $
+
+$ hledger -f - commodities tag:lots
+AAPL
+

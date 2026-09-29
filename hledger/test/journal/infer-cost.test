@@ -1,0 +1,42 @@
+# * Infer transacted cost (@ ...) from cost basis ({...}).
+
+# ** 1. Transacted cost is inferred from cost basis when amount is positive.
+# print shows the original form by default.
+<
+2024-01-01 buy stock
+    assets:brokerage    10 AAPL {$100}
+    assets:cash
+
+$ hledger -f - print
+2024-01-01 buy stock
+    assets:brokerage                              10 AAPL {$100}
+    assets:cash
+
+>=
+
+# ** 2. With -x the inferred transacted cost is shown,
+# and --lots adds the lot subaccount.
+<
+2024-01-01 buy stock
+    assets:brokerage    10 AAPL {$100}
+    assets:cash
+
+$ hledger -f - print -x --lots
+2024-01-01 buy stock
+    assets:brokerage:{2024-01-01, $100}           10 AAPL {$100} @ $100
+    assets:cash                               $-1000
+
+>=
+
+# ** 3. Transacted cost is not inferred for negative amounts (dispose postings):
+# a posting with only `{$100}` and no explicit `@` is not priced by its basis.
+# Instead the elided counterpart is read as a lot transfer destination;
+# here, with no lots previously acquired, that errors at load time.
+<
+2024-01-01 sell stock
+    assets:brokerage    -10 AAPL {$100}
+    assets:cash
+
+$ hledger -f - print
+>2 /no AAPL lots available for transfer from account assets:brokerage/
+>= 1

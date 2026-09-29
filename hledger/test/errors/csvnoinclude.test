@@ -1,4 +1,0 @@
-$$$ hledger check -f  csvnoinclude.j
->>>2 /Error: sorry, CSV files can't be included yet
-/
->>>= 1

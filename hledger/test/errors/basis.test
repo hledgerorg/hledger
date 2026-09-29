@@ -1,0 +1,10 @@
+$ hledger check -f basis.j
+>2 /hledger: Error: .*basis\.j:4:
+  \| 2022-01-01 buy
+4 \|     assets:stocks +10 AAPL \{\$60\} @ \$50
+  \|     \^{13}
+  \|     assets:checking
+
+This acquire posting's cost basis \(\$60\) differs from its transacted cost \(\$50\)\.
+/
+>= 1

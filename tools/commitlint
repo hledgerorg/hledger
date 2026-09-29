@@ -15,7 +15,7 @@
 # commitlint HEAD^!                       # last commit
 # commitlint d5d19f841^!                  # this commit
 # commitlint -20                          # last 20 commits
-# commitlint master..                     # commits in this branch
+# commitlint main..                       # commits in this branch
 # commitlint 1.21..1.22 | grep -F [FAIL]  # bad commits in 1.22 release cycle
 # commitlint                              # unpushed commits
 
@@ -127,7 +127,7 @@ The subject line should have a type: prefix. Common types:
 
 It can additionally have a topic prefix (and optionally subtopics), such as:
  bin examples install cli ui web print reg bal bs balcmds journal csv ...
- (see https://hledger.org/CONTRIBUTING.html#open-issues -> COMPONENT)
+ (see https://hledger.org/ISSUES.html#open-issues -> COMPONENT)
 Space, comma and slash are also tolerated inside topics for now. Eg:
  imp: bs, cf, is: cli/doc: blah blah blah
 
@@ -137,7 +137,7 @@ Mention any related issues, usually parenthesised at end of summary: (#1234)
 
 These conventions are evolving. In practice, any type or topic will do.
 Use your best judgement and we'll polish during code review.
-More context: https://hledger.org/CONTRIBUTING.html#commit-messages
+More context: https://hledger.org/COMMITS.html
 
 You can set up this script to check your commit messages locally:
 1. before committing:

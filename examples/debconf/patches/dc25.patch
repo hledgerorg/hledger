@@ -1,0 +1,19 @@
+diff --git a/budget/budget.ledger b/budget/budget.ledger
+index c02a5e2..a6c1466 100644
+--- a/budget/budget.ledger
++++ b/budget/budget.ledger
+@@ -42,8 +42,8 @@ include accounts.inc
+     ; Estimated total attendees: 400
+-    ; Breakfast Rate DebCamp	50.00% of 253 accommodated attendees
+-    ; Breakfast Rate DebConf	95.00% of 253 accommodated attendees
+-    ; Lunch Rate DebCamp	40.00%
+-    ; Lunch Rate DebConf	85.00%
+-    ; Dinner Rate DebCamp	40.00%
+-    ; Dinner Rate DebConf	75.00%
++    ; Breakfast Rate DebCam 	0.00% of 253 accommodated attendees
++    ; Breakfast Rate DebCon 	5.00% of 253 accommodated attendees
++    ; Lunch Rate DebCam 	0.00%
++    ; Lunch Rate DebCon 	5.00%
++    ; Dinner Rate DebCam 	0.00%
++    ; Dinner Rate DebCon 	5.00%
+     expenses:incidental                                            3,000 EUR

@@ -7,72 +7,99 @@ workflows of the hledger project - "the machine that makes the machine".
 These mostly are kept in doc/ in the main hledger repo,
 and then symlinked into the hledger_site repo for rendering on hledger.org.
 
-- [Contributor Quick Start](CONTRIBUTING.md)
-- [Developer FAQ](DEVFAQ.md)
-- [Project README](dev-README.md)
-- [ROADMAP](ROADMAP.md)
-<!-- - [TODO](TODO.md) -->
-- [ACHIEVEMENTS](ACHIEVEMENTS.md)
-- [BENCHMARKS](BENCHMARKS.md)
-- [CHANGELOGS](CHANGELOGS.md)
-- [CLIMATE](CLIMATE.md)
-- [CODE](CODE.md)
-- [COMMITS](COMMITS.md)
-- [CREDITS](CREDITS.md)
-- [DECISIONS](DECISIONS.md)
-- [DEVWORKFLOWS](DEVWORKFLOWS.md)
-- [DOCS](DOCS.md)
-- [ERRORS](ERRORS.md)
-- [EXAMPLES](EXAMPLES.md)
-- [FILES](FILES.md)
-- [FINANCE](FINANCE.md)
-- [Investment Accounting Feature Ladder](investment-accounting-features.md)
-- [ISSUES](ISSUES.md)
-- [JUST-MAKE-SHAKE](JUST-MAKE-SHAKE.md)
-- [LINKS](LINKS.md)
-- [MOCKUPS](MOCKUPS.md)
-- [PULLREQUESTS](PULLREQUESTS.md)
-- [REGRESSIONS](REGRESSIONS.md)
-- [RELEASING](RELEASING.md)
-- [REPOS](REPOS.md)
-- [TESTS](TESTS.md)
-- [VERSIONNUMBERS](VERSIONNUMBERS.md)
+**Start here**
 
-## Dev links
+- [CONTRIBUTING](CONTRIBUTING.md) - ways to help, by role
+- [DEVFAQ](DEVFAQ.md) - developer FAQ
+- [DEVWORKFLOWS](DEVWORKFLOWS.md) - tools, building, testing, GHCI, working on docs
+- [RULES](RULES.md) - the repo's policies, on one page
+- [AI](AI.md) - AI usage policy
+- [README](dev-README.md) - the project README
+
+**Code and tests**
+
+- [CODE](CODE.md) - architecture and package overview
+- [FILES](FILES.md) - repo and working copy layout
+- [TESTS](TESTS.md) - test suites and how to run them
+- [ERRORS](ERRORS.md) - error message standards and examples
+- [PERFORMANCE](PERFORMANCE.md) - performance across releases, how to measure it, lessons learned
+
+**Specs**
+
+- [SPEC-journal](SPEC-journal.md) - journal syntax
+- [SPEC-finalising](SPEC-finalising.md) - the journal finalisation pipeline
+- [SPEC-special-postings](SPEC-special-postings.md) - inferred postings and their rules
+- [SPEC-lots](SPEC-lots.md) - lot tracking
+- [SPEC-holdings](SPEC-holdings.md) - the holdings command
+- [SPEC-print](SPEC-print.md) - print behaviour
+
+**Process**
+
+- [COMMITS](COMMITS.md) - commit message conventions
+- [PULLREQUESTS](PULLREQUESTS.md) - pull request guidelines
+- [ISSUES](ISSUES.md) - issue tracker conventions and views
+- [REGRESSIONS](REGRESSIONS.md) - regression tracking
+- [RELEASING](RELEASING.md) - release process
+- [VERSIONNUMBERS](VERSIONNUMBERS.md) - version numbering policy
+- [DOCS](DOCS.md) - documentation structure and maintenance
+- [TRANSLATING](TRANSLATING.md) - contributing a language
+
+**Project**
+
+- [ROADMAP](ROADMAP.md) - where the project is going
+- [DECISIONS](DECISIONS.md) - notable design decisions
+- [ACHIEVEMENTS](ACHIEVEMENTS.md) - achievements to unlock
+- [IMPACT](IMPACT.md) - the project's intended impact
+- [CLIMATE](CLIMATE.md) - environmental cost and benefit
+- [FINANCE](FINANCE.md) - project finances
+- [CREDITS](CREDITS.md) - contributors
+- [This Week In Hledger 2023-2024](news.md) - a weekly project news digest, archived
+
+See also:
+
+- <https://deepwiki.com/hledgerorg/hledger> - an AI-generated presentation of hledger's user and dev docs.
+  Use with caution, but they look rather useful, as an alternate overview / map.
+  Also you can ask it questions.
+
+Dev notes on joyful.com:
+
+- <https://joyful.com/hledger>
+- <https://joyful.com/PTA+transaction+balancing>
+- <https://joyful.com/PTA+lot+tracking>
+- <https://joyful.com/hledger+lot+tracking>
+- <https://joyful.com/hledger+workflow+2025>
+- <https://joyful.com/hledger+project+report+2024>
+
+## Links
 
 **Discussion:**
 <https://hledger.org/support>\
 \
 **Github:**\
-<http://code.hledger.org>,
-<http://site.hledger.org>,
-<http://finance.hledger.org>\
-[commits](https://github.com/simonmichael/hledger/commits),
-[COMMITS!](https://starlogs.net/#simonmichael/hledger)\
-<http://ci.hledger.org>\
-<http://bugs.hledger.org>,
-<http://wishes.hledger.org>,
-more: [ISSUES](ISSUES.md)\
-<http://prs.hledger.org>,
-<http://draftprs.hledger.org>,
-<http://readyprs.hledger.org>,
-<http://assignedprs.hledger.org>,
-<http://unassignedprs.hledger.org>,
-more: [PULLREQUESTS](PULLREQUESTS.md)\
-[projects.hledger.org](http://projects.hledger.org)\
-[star-history.com](https://star-history.com/#simonmichael/hledger&ledger/ledger&beancount/beancount&Date) PTA apps' github star history\
-[stars.hledger.org](http://stars.hledger.org) our rank among github-starred haskell projects:
+main repo: <https://code.hledger.org>
 
-|      |     |
-|------|-----|
-| 2025 | #22 |
-| 2023 | #32 |
-| 2022 | #34 |
-| 2020 | #36 |
-| 2018 | #53 |
-| 2017 | #54 |
-| 2016 | #71 |
+[commits](https://github.com/hledgerorg/hledger/commits),
+<https://ci.hledger.org>,
+<https://nightly.hledger.org>,
+<https://release.hledger.org>
 
+<https://bugs.hledger.org>,
+<https://wishes.hledger.org>,
+<https://regressions.hledger.org>,
+[ISSUES](ISSUES.md)
+
+<https://prs.hledger.org>,
+<https://draftprs.hledger.org>,
+<https://readyprs.hledger.org>,
+<https://assignedprs.hledger.org>,
+<https://unassignedprs.hledger.org>,
+[PULLREQUESTS](PULLREQUESTS.md)
+
+site repo: <https://site.hledger.org>
+
+finance repo: <https://finance.hledger.org>
+
+related repos:\
 [![Github topic: #hledger](https://img.shields.io/badge/Github_topic-%23hledger-green)](https://github.com/topics/hledger?o=desc&s=updated)\
 [![Github topic: #plaintext-accounting](https://img.shields.io/badge/Github_topic-%23plaintext--accounting-green)](https://github.com/topics/plaintext-accounting?o=desc&s=updated)\
 [![Github topics: *accounting*](https://img.shields.io/badge/Github_topics-%2Aaccounting%2A-green)](https://github.com/search?type=topics&q=accounting)\
@@ -88,16 +115,6 @@ packages:
 [hledger-interest](https://hackage.haskell.org/package/hledger-interest),
 [hledger-irr](https://hackage.haskell.org/package/hledger-irr),
 [\*hledger\*](https://hackage.haskell.org/packages/search?terms=hledger)\
-diffs:
-[hledger-lib](https://hdiff.luite.com/cgit/hledger-lib/diff),
-[hledger](https://hdiff.luite.com/cgit/hledger/diff),
-[hledger-ui](https://hdiff.luite.com/cgit/hledger-ui/diff),
-[hledger-web](https://hdiff.luite.com/cgit/hledger-web/diff)\
-build status:
-[hledger-lib](https://matrix.hackage.haskell.org/package/hledger-lib),
-[hledger](https://matrix.hackage.haskell.org/package/hledger),
-[hledger-ui](https://matrix.hackage.haskell.org/package/hledger-ui),
-[hledger-web](https://matrix.hackage.haskell.org/package/hledger-web)\
 reverse deps:
 [hledger-lib](https://packdeps.haskellers.com/reverse/hledger-lib),
 [hledger](https://packdeps.haskellers.com/reverse/hledger),
@@ -130,7 +147,7 @@ versions:
 **Homebrew:**\
 [hledger](https://formulae.brew.sh/formula/hledger)\
 our [homebrew requested installs in last 365 days](https://formulae.brew.sh/analytics/install-on-request/365d):\
-2025: #1872 of 26k, top 7%\
+2025: #1632 of 28k, top 6%\
 2023: #1821 of 24k, top 8%\
 2020: #1520 of 10k, top 15%
 <!--
@@ -189,14 +206,12 @@ binary packages:
 [\*hledger\*](https://packages.ubuntu.com/search?suite=all&searchon=names&keywords=hledger)\
 \
 **Gentoo:**
-[hledger](https://gpo.zugaina.org/dev-haskell/hledger),
-[hledger-web](https://gpo.zugaina.org/dev-haskell/hledger-web),
-[\*hledger\*](https://gpo.zugaina.org/Search?search=hledger)\
+[\*hledger\*](https://packages.gentoo.org/packages/search?q=hledger),
+[\*hledger\* overlays](https://gpo.zugaina.org/Search?search=hledger)\
 \
 **Fedora:**
-[hledger](https://apps.fedoraproject.org/packages/hledger),
-[\*hledger\*](https://apps.fedoraproject.org/packages/s/hledger),
-[hledger (package db)](https://admin.fedoraproject.org/pkgdb/package/hledger/),
+[hledger](https://packages.fedoraproject.org/pkgs/hledger/hledger/),
+[\*hledger\*](https://packages.fedoraproject.org/search?query=hledger),
 [Haskell SIG](https://fedoraproject.org/wiki/Haskell_SIG)\
 \
 **Void Linux:** [package search](https://voidlinux.org/packages/)->hledger\
@@ -205,7 +220,7 @@ binary packages:
 \
 **Sandstorm:**
 [hledger web app & reviews](https://apps.sandstorm.io/app/8x12h6p0x0nrzk73hfq6zh2jxtgyzzcty7qsatkg7jfg2mzw5n90),
-[issues](https://github.com/simonmichael/hledger/issues?utf8=✓&q=label%3A%22platform%3A%20sandstorm%22%20)\
+[issues](https://github.com/hledgerorg/hledger/issues?utf8=✓&q=label%3A%22platform%3A%20sandstorm%22%20)\
 \
 **Reference:** [fosskers GHC compatibility chart](https://www.fosskers.ca/en/blog/base)\
 \
@@ -219,7 +234,7 @@ hledger-api demo
 [api-demo.hledger.org/api/v1/accounts](https://api-demo.hledger.org/api/v1/accounts),
 [api-demo.hledger.org/swagger.json](https://api-demo.hledger.org/swagger.json),
 [in swagger editor](https://editor2.swagger.io/#/?import=api-demo.hledger.org/swagger.json&no-proxy)\
-[unfinished angular sample app](https://api-demo.hledger.org) ([code](https://github.com/simonmichael/hledger/tree/master/hledger-api/examples/angular))
+[unfinished angular sample app](https://api-demo.hledger.org) ([code](https://github.com/hledgerorg/hledger/tree/main/hledger-api/examples/angular))
 -->
 
 <!-- The Debian packages:

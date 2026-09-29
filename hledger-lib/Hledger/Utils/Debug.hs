@@ -39,6 +39,9 @@ Or if you prefer you can ignore the numbered variants and write an extra argumen
 > dbgIO    LEVEL  STR    VAL
 >
 > dbgWith  LEVEL  SHOWFN VAL
+>
+> dbgTime   LEVEL  STR    VAL  -- trace/log a phase timing: STR, and the time and memory allocated since the previous one, after deep-forcing VAL
+> dbgTimeIO LEVEL  STR    VAL  -- the same, in IO
 
 Haskell values will be pretty-printed by default, using pretty-simple.
 
@@ -66,7 +69,7 @@ The meaning of debug levels is up to you. Eg hledger uses them as follows:
 Debug level:  What to show:
 ------------  ---------------------------------------------------------
 0             normal program output only
-1             useful warnings, most common troubleshooting info
+1             useful warnings, most common troubleshooting info, phase timings
 2             common troubleshooting info, more detail
 3             report options selection
 4             report generation
@@ -195,6 +198,11 @@ module Hledger.Utils.Debug (
   ,dbg8With
   ,dbg9With
 
+  -- * Trace/log phase timings
+  ,dbgTime
+  ,dbgTimeIO
+  ,dbgTimeResetIO
+
   -- * Utilities
   ,lbl_
   ,progName
@@ -213,11 +221,15 @@ module Hledger.Utils.Debug (
   )
 where
 
-import Control.DeepSeq (force)
+import Control.DeepSeq (NFData, force)
 import Control.Exception (evaluate)
 import Control.Monad.IO.Class (MonadIO, liftIO)
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Data.Int (Int64)
 import Data.List hiding (uncons)
 import Debug.Trace (trace, traceIO, traceShowId)
+import GHC.Clock (getMonotonicTime)
+import GHC.Conc (getAllocationCounter)
 #ifdef GHCDEBUG
 import GHC.Debug.Stub (pause, withGhcDebug)
 #endif
@@ -225,6 +237,7 @@ import Safe (readDef)
 import System.Environment (getProgName)
 -- import System.Exit (exitFailure)
 import System.IO.Unsafe (unsafePerformIO)
+import Text.Printf (printf)
 
 import Hledger.Utils.IO (progArgs, pshow, pshow')
 
@@ -561,6 +574,58 @@ dbg8With = dbgWith 8
 
 dbg9With :: (a -> String) -> a -> a
 dbg9With = dbgWith 9
+
+
+-- | Wall clock seconds (from a monotonic clock), and the current thread's allocation counter
+-- (which counts downwards, so bytes allocated = earlier reading - later reading).
+type TimeReadings = (Double, Int64)
+
+timeReadings :: IO TimeReadings
+timeReadings = (,) <$> getMonotonicTime <*> getAllocationCounter
+
+-- | The sum of the phase times reported so far (since program start, or the last dbgTimeResetIO),
+-- and the readings taken at the most recent phase timing (or at first use).
+{-# NOINLINE dbgTimeState #-}
+dbgTimeState :: IORef (Double, TimeReadings)
+dbgTimeState = unsafePerformIO $ timeReadings >>= \r -> newIORef (0, r)
+
+-- | Reset the baseline for phase timings (see dbgTime) to now.
+-- hledger calls this at program start, so that the first timing line includes startup time.
+dbgTimeResetIO :: MonadIO m => m ()
+dbgTimeResetIO = liftIO $ timeReadings >>= \r -> writeIORef dbgTimeState (0, r)
+
+-- | Trace or log a phase timing line, if the program debug level is at or above the specified level:
+-- the label, the wall clock time and megabytes allocated since the previous phase timing
+-- (or since program start), and the sum of the phase times reported so far; then return the value.
+-- The value is deep-forced first, so that the work of producing it is charged to this phase;
+-- the cost of the deep-forcing itself (traversing the whole value) is measured and excluded.
+-- When the debug level is lower, the value is returned unforced.
+-- Uses unsafePerformIO; in IO code, prefer dbgTimeIO.
+dbgTime :: NFData a => Int -> String -> a -> a
+dbgTime level lbl x
+  | level > 0 && debugLevel < level = x
+  | otherwise = unsafePerformIO $ dbgTimeIO level lbl x
+{-# NOINLINE dbgTime #-}
+
+-- | Like dbgTime, but sequences properly in IO.
+dbgTimeIO :: (MonadIO m, NFData a) => Int -> String -> a -> m a
+dbgTimeIO level lbl x
+  | level > 0 && debugLevel < level = return x
+  | otherwise = liftIO $ do
+      _ <- readIORef dbgTimeState  -- initialise the baseline now, if this is the first use
+      x' <- evaluate (force x)
+      (total, (tprev, aprev)) <- readIORef dbgTimeState  -- (the latest timing may have happened during the forcing)
+      (t1, a1) <- timeReadings
+      -- Deep-forcing a large value costs something even when it is already evaluated;
+      -- measure that by traversing it once more, and exclude it from this phase's figures.
+      _ <- evaluate (force x')
+      (t2, a2) <- timeReadings
+      let dt = max 0 $ (t1 - tprev) - (t2 - t1)
+          da = max 0 $ (aprev - a1) - (a1 - a2)
+          total' = total + dt
+      writeIORef dbgTimeState (total', (t2, a2))
+      dbgMsgIO level $ printf "%-44s %7.3fs %9.1f MB  (%.3fs so far)" lbl dt (fromIntegral da / 1e6 :: Double) total'
+      return x'
 
 -- | Helper for producing debug messages:
 -- concatenates a name (eg a function name),

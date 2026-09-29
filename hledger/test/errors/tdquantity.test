@@ -1,0 +1,8 @@
+$ hledger check -f tdquantity.timedot
+>2 /hledger: Error: .*tdquantity\.timedot:4:6:
+  \|
+4 \| a  1\.x
+  \|      \^
+unexpected 'x'
+/
+>= 1

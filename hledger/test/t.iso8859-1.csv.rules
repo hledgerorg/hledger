@@ -1,0 +1,3 @@
+source t.iso8859-1.csv
+encoding iso8859-1
+fields date, description, amount

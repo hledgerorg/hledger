@@ -1,0 +1,275 @@
+# * commodity directive alias: tag
+
+# ** 1. A 1:1 price directive is injected for each declared alias,
+#       so values can chain across symbol/code variants.
+<
+commodity USD1.00
+    ; alias: $
+
+P 2024-01-01 EUR 1.10 USD
+
+2024-06-01
+    a   100 EUR @ $1.10
+    b
+
+$ hledger -f- prices
+P 0000-01-01 $ USD1
+P 2024-01-01 EUR USD1.10
+
+# ** 2. The bridge lets `bal -X EUR` value $-amounts in EUR via $ -> USD -> EUR.
+<
+commodity USD1.00
+    ; alias: $
+
+P 2024-01-01 EUR 1.10 USD
+
+2024-06-01
+    a   100 EUR @ $1.10
+    b
+
+$ hledger -f- bal -X EUR --no-total
+             100 EUR  a
+            -100 EUR  b
+
+# ** 3. Multiple aliases can be declared on a single commodity, space-separated.
+#       Quoted symbols (with internal spaces or special chars) are preserved as one.
+<
+commodity USD1.00
+    ; alias: $ "US$" USDOLLAR
+
+2024-06-01
+    a   100 USDOLLAR
+    b   "US$"-50
+    c
+
+$ hledger -f- prices
+P 0000-01-01 $ USD1
+P 0000-01-01 US$ USD1
+P 0000-01-01 USDOLLAR USD1
+
+# ** 4. Aliases are materialised as price directives even if not used
+#       in any posting.
+<
+commodity USD1.00
+    ; alias: $ UNUSED
+
+2024-06-01
+    a   $100
+    b
+
+$ hledger -f- prices
+P 0000-01-01 $ USD1
+P 0000-01-01 UNUSED USD1
+
+# ** 5. The same alias declared on two different canonicals is a finalization
+#       error with a verbose message including both source positions.
+<
+commodity USD1.00
+    ; alias: $
+
+commodity AUD1.00
+    ; alias: $
+
+2024-01-01
+    a   $100
+    b
+
+$ hledger -f- bal
+>2 /Alias '\$' is declared on more than one commodity/
+>=1
+
+# ** 6. An alias matching another separately declared canonical is silently
+#       allowed (a 1:1 bridge is added; the canonical commodity remains too).
+<
+commodity USD1.00
+    ; alias: EUR
+
+commodity EUR1.00
+
+2024-01-01
+    a   USD100
+    b   EUR-100
+
+$ hledger -f- prices
+P 0000-01-01 EUR USD1
+
+# ** 7. A self-alias (matching the directive's own symbol) is silently ignored.
+<
+commodity USD1.00
+    ; alias: USD $
+
+2024-01-01
+    a   USD100
+    b   $-100
+
+$ hledger -f- prices
+P 0000-01-01 $ USD1
+
+# ** 8. With a commodity alias declared, valuation can convert between the
+# alias and canonical symbols at a 1:1 rate.
+<
+commodity USD 1.00  ; alias: $
+
+P 2024-01-01 USD 0.9 EUR
+
+2024-06-01
+    assets:cash       $100
+    equity:opening
+
+$ hledger -f- bal -X EUR --no-total
+            90.0 EUR  assets:cash
+           -90.0 EUR  equity:opening
+
+# ** 9. cur:CANONICAL also matches postings written with the canonical's aliases.
+<
+commodity $1000.00  ; alias: USD U$
+
+2024-01-01
+    assets:cash         USD10
+    equity:opening
+
+$ hledger -f- bal cur:'\$' --no-total
+               USD10  assets:cash
+              USD-10  equity:opening
+
+# ** 10. cur:ALIAS also matches postings written in the canonical commodity.
+<
+commodity $1000.00  ; alias: USD U$
+
+2024-01-01
+    assets:cash         $10
+    equity:opening
+
+$ hledger -f- bal cur:USD --no-total
+              $10.00  assets:cash
+             $-10.00  equity:opening
+
+# ** 11. cur:OTHER_ALIAS also matches the whole group.
+$ hledger -f- bal cur:'U\$' --no-total
+              $10.00  assets:cash
+             $-10.00  equity:opening
+
+# ** 12. cur:REGEX is group-aware: if the regex matches any group member,
+#        the whole group is matched.
+$ hledger -f- bal cur:'U.*' --no-total
+              $10.00  assets:cash
+             $-10.00  equity:opening
+
+# ** 13. sym:COMM matches only COMM, ignoring its alias group.
+$ hledger -f- bal sym:USD --no-total
+
+# ** 14. Separate alias groups don't bleed into each other.
+<
+commodity $1000.00
+    ; alias: USD
+
+commodity €1000.00
+    ; alias: EUR
+
+2024-01-01
+    assets:cash         $10
+    equity:opening      €-10
+    assets:other        €10
+    equity:opening      $-10
+
+$ hledger -f- bal cur:USD --no-total
+              $10.00  assets:cash
+             $-10.00  equity:opening
+
+# ** 15. not:cur: excludes the entire alias group.
+<
+commodity $1000.00
+    ; alias: USD
+
+2024-01-01
+    a   $10
+    b   $-10
+
+2024-01-02
+    a   USD20
+    b   USD-20
+
+$ hledger -f- bal not:cur:USD --no-total
+
+# ** 16. cur: in auto posting rules is also alias-aware.
+<
+commodity $1000.00  ; alias: USD
+
+= expenses cur:'\$'
+    (fees)  $1
+
+2024-01-01
+    expenses:food      USD10
+    assets:cash
+
+$ hledger -f- bal --auto fees
+               $1.00  fees
+--------------------
+               $1.00  
+
+# ** 17. An alias which also has its own commodity directive (typically to
+#        set its display style independently) is merged into one alias
+#        group. Queries are symmetric regardless of which symbol is used.
+<
+commodity USD1,000.00
+    ; alias: $
+
+commodity $1,000.00
+
+2024-01-01
+    a   USD10
+    b   $-10
+
+$ hledger -f- bal cur:USD --no-total
+            USD10.00  a
+             $-10.00  b
+
+# ** 18. Same scenario but querying via the alias symbol: still matches both.
+<
+commodity USD1,000.00
+    ; alias: $
+
+commodity $1,000.00
+
+2024-01-01
+    a   USD10
+    b   $-10
+
+$ hledger -f- bal 'cur:\$' --no-total
+            USD10.00  a
+             $-10.00  b
+
+# ** 19. The merge is symmetric under reversed declaration order: declaring
+#        $ as canonical (with USD as alias) plus a standalone USD directive
+#        yields the same group.
+<
+commodity $1,000.00
+    ; alias: USD
+
+commodity USD1,000.00
+
+2024-01-01
+    a   USD10
+    b   $-10
+
+$ hledger -f- bal cur:USD --no-total
+            USD10.00  a
+             $-10.00  b
+
+# ** 20. Chained alias declarations form one transitively-closed group:
+#        USD -> $ -> USDOLLAR are all interchangeable for queries.
+<
+commodity USD1,000.00
+    ; alias: $
+
+commodity $1,000.00
+    ; alias: USDOLLAR
+
+2024-01-01
+    a   USD10
+    b   USDOLLAR-10
+
+$ hledger -f- bal cur:USD --no-total
+            USD10.00  a
+         USDOLLAR-10  b
+

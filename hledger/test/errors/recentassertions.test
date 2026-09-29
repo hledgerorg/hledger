@@ -1,11 +1,12 @@
-$$$ hledger check recentassertions -f recentassertions.j
->>>2 /Error: .*recentassertions.j:18:
+$ hledger check recentassertions -f recentassertions.j
+>2 /hledger: Error: .*recentassertions\.j:18:
    \| 2022-01-09 bad1
-18 \|     a               0
+18 \|     a                                              0
    \|     \^
 
-The recentassertions check is enabled, so accounts with balance assertions
-must have a recent one, not more than 7 days older than their latest posting.
+.*
+.*
 In account: a
-the last assertion was on 20/
->>>= 1
+the last assertion was on 2022-01-01, 8 days before this latest posting.
+/
+>= 1

@@ -1,0 +1,343 @@
+# * include directive
+# Here be dragons.
+
+# ** 1. The old !include spelling still works.
+<
+!include a.j
+$ hledger -f- print
+2025-01-01 a
+
+>=
+
+# ** 2. journal, timeclock, and timedot files can be included.
+# Trailing whitespace or comments are ignored.
+# The order of includes is respected.
+<
+include b.j  
+include b.timeclock ; comment
+include b.timedot
+ ; comment
+
+$ hledger -f - print
+2016-01-01
+    (b)                                            1
+
+2016-01-01 * 12:00-16:00
+    (b:bb)                                         4.00h
+
+2016-01-01 *
+    (b.bb)                                         1.00
+
+>=
+
+# ** 3. A leading tilde is expanded to $HOME.
+<
+include ~/a.j
+$  HOME="$PWD" hledger -f - print
+2025-01-01 a
+
+>=
+
+# ** 4. include followed by whitespace and/or comment -> missing argument error
+<
+include  ;just a comment
+$ hledger -f- print
+>2 /include needs a.*argument/
+>=1
+
+# ** 5. include followed by nothing at all -> missing argument error
+<
+include
+$ hledger -f- print
+>2 /include needs a.*argument/
+>=1
+
+# ** 6. include a nonexistent file -> no files matched error
+<
+include nosuchfile
+$ hledger -f- print
+>2 /No files were matched/
+>=1
+
+# ** 7. Including a directory literally -> no files matched error
+<
+include glob-deep
+$ hledger -f- print
+>2 /No files were matched/
+>=1
+
+# ** 8. Include invalid glob patterns -> invalid glob error
+<
+include [.journal
+$ hledger -f - print
+>2 /Invalid glob/
+>= 1
+
+# ** 9. Three or more *'s -> invalid glob error
+<
+include ***
+$ hledger -f- files
+>2 /Invalid glob/
+>=1
+
+# ** 10. Including the current file literally -> harmless, current file is ignored.
+$ hledger -f self.j files | sed -E 's|.*/||'
+self.j
+
+# ** 11. Including a multi-file cycle, all literally -> cycle error.
+$ hledger -f cycle/cycle.j files
+>2 /included file forms a cycle/
+>=1
+
+# ** 12. Including the current file via glob -> harmless, globs ignore current file.
+$ hledger -f glob-self.j files | sed -E 's|.*/||'
+glob-self.j
+
+# ** 13. Including a cycle, involving globs -> cycle error
+$ hledger -f cycle/globcycle.j files
+>2 /cycle/
+>=1
+
+# ** 14. Old-style deep glob **/*.j -> all non-dot .j files in current dir or subdirs,
+# excluding top-level dot dirs.
+<
+include glob-deep/**/*.j
+
+$ hledger -f - files | sed -E 's|.*/glob-deep/|glob-deep/|'
+-
+glob-deep/a.j
+glob-deep/b/b.j
+glob-deep/b/bb/.dotdir/dotdirbb.j
+glob-deep/b/bb/bb.j
+glob-deep/c/c.j
+glob-deep/b/.dotdir/dotdirb.j
+glob-deep/b/b.j
+glob-deep/b/bb/.dotdir/dotdirbb.j
+glob-deep/b/bb/bb.j
+glob-deep/c/c.j
+
+# ** 15. Simpler deep glob **.j -> same as above.
+$ hledger -f - files | sed -E 's|.*/glob-deep/|glob-deep/|'
+-
+glob-deep/a.j
+glob-deep/b/b.j
+glob-deep/b/bb/.dotdir/dotdirbb.j
+glob-deep/b/bb/bb.j
+glob-deep/c/c.j
+glob-deep/b/.dotdir/dotdirb.j
+glob-deep/b/b.j
+glob-deep/b/bb/.dotdir/dotdirbb.j
+glob-deep/b/bb/bb.j
+glob-deep/c/c.j
+
+# ** 16. A glob follows a symlink to a regular file. (And shows the symlink's path.)
+$ hledger -f glob-symlinked-file/a.j files | sed -E 's|.*/glob-symlinked-file/||'
+a.j
+b.j
+
+# ** 17. A glob follows a symlink to a regular dir.
+$ hledger -f glob-symlinked-dir/a.j files | sed -E 's|.*/glob-symlinked-dir/||'
+a.j
+b/c.j
+
+# ** 18. A glob follows a symlink to a dot file.
+$ hledger -f glob-symlinked-dotfile/a.j files | sed -E 's|.*/glob-symlinked-dotfile/||'
+a.j
+b.j
+
+# ** 19. A glob follows a symlink to a dot dir.
+$ hledger -f glob-symlinked-dotdir/a.j files | sed -E 's|.*/glob-symlinked-dotdir/||'
+a.j
+b/c.j
+# ** 20. Reading an unreadable file directly says permission denied.
+# (Keep this out of the source tree to avoid breaking shelltest and other things.)
+$  touch /tmp/unreadable.$$ && chmod -r /tmp/unreadable.$$ && hledger -f /tmp/unreadable.$$ files; rm -f /tmp/unreadable.$$
+>2 /Error:.*permission denied/
+
+# ** 0. A symlink to an unreadable file also says permission denied.
+#$  touch /tmp/unreadable.$$ && chmod -r /tmp/unreadable.$$ && ln -s /tmp/unreadable.$$ /tmp/symlink.$$ && hledger -f /tmp/symlink.$$ files; rm -f /tmp/{unreadable,symlink}.$$
+#>2 /Error:.*permission denied/
+
+# ** 0. A symlink to a readable file in an unsearchable dir says file not found. Fair enough I suppose.
+
+# ** 0. #2499 describes this failure with 1.50.3 which I have not been able to reproduce:
+# In ~/.hledger.journal I have: !include doc/private/money/hledger.journal
+#
+# That worked with versions up to 1.32.3, but not with hledger 1.50.3 (linux-x86_64):
+# joey@darkstar:~>hledger bal
+# hledger: Error: /home/joey/.hledger.journal:3:2:
+# |
+# 3 | !include doc/private/money/hledger.journal
+# | ^
+# No files were matched by glob pattern: doc/private/money/hledger.journal
+#
+# To get it to work I had to prefix the path with "~/".
+#
+# --old-glob does not change this behavior.
+#
+# My ~/.hledger.journal is a symlink to .etc/.hledger.journal
+
+# ** 21. But I did find this possibly related regression in 1.50.4 & 1.51 [#2503].
+$ hledger -f symlink-to-relative-include.j files
+> //
+
+# ** 22. CSV (or SSV/TSV) files can be included. The rules file is FILE.rules, as usual.
+# The CSV's transactions are placed as if inlined, and finalised along with the rest of the journal.
+<
+2016-01-01 before
+  (x)  1
+include b.csv
+2016-01-04 after
+  (x)  1
+$ hledger -f - print
+2016-01-01 before
+    (x)                                            1
+
+2016-01-02 b csv one
+    assets:b                                       1
+    income:b                                      -1
+
+2016-01-03 b csv two
+    assets:b                                       2
+    income:b                                      -2
+
+2016-01-04 after
+    (x)                                            1
+
+>=
+
+# ** 23. CSV rules files can be included. Their data comes from the file specified by their source rule.
+<
+include c.csv.rules
+$ hledger -f - print
+2016-01-02 b csv one
+    assets:b                                       1
+    income:b                                      -1
+
+2016-01-03 b csv two
+    assets:b                                       2
+    income:b                                      -2
+
+>=
+
+# ** 24. files lists the included CSV/rules files (but not the rules files used by a CSV file).
+<
+include b.csv
+include c.csv.rules
+$ hledger -f - files | sed 's|.*/||'
+-
+b.csv
+c.csv.rules
+
+# ** 25. A file type prefix works with include, as usual.
+<
+include csv:b.dat
+$ hledger -f - print
+2016-01-02 b csv one
+    assets:b                                       1
+    income:b                                      -1
+
+2016-01-03 b csv two
+    assets:b                                       2
+    income:b                                      -2
+
+>=
+
+# ** 26. Account aliases in effect (from alias directives, or --alias) are applied to included CSV data.
+<
+alias assets:b = assets:bank
+include b.csv
+$ hledger -f - print --alias income:b=income:cli
+2016-01-02 b csv one
+    assets:bank                                    1
+    income:cli                                    -1
+
+2016-01-03 b csv two
+    assets:bank                                    2
+    income:cli                                    -2
+
+>=
+
+# ** 27. Other parse-affecting directives, like apply account, do not affect included CSV data.
+<
+apply account top
+include b.csv
+$ hledger -f - print
+2016-01-02 b csv one
+    assets:b                                       1
+    income:b                                      -1
+
+2016-01-03 b csv two
+    assets:b                                       2
+    income:b                                      -2
+
+>=
+
+# ** 28. Balance assertions generated from included CSV data are checked, like any others.
+# They pass when the journal provides the right opening balance..
+<
+2016-01-01 opening
+  assets:b  100
+  equity
+include bal.csv
+$ hledger -f - print
+2016-01-01 opening
+    assets:b                                     100
+    equity
+
+2016-01-02 bal csv
+    assets:b                                       1 = 101
+    income:b                                      -1
+
+>=
+
+# ** 29. ..and fail otherwise (unlike when reading the CSV file directly, where they are ignored).
+# The error cites the CSV file and record line.
+<
+include bal.csv
+$ hledger -f - print 2>&1 | sed 's|/.*/||' | grep -E '^hledger: Error|assertion failed'
+hledger: Error: bal.csv:1:1:
+Balance assertion failed in assets:b
+
+# ** 30. The --rules option does not affect included CSV files.
+<
+include b.csv
+$ hledger -f - print --rules bad.csv.rules
+2016-01-02 b csv one
+    assets:b                                       1
+    income:b                                      -1
+
+2016-01-03 b csv two
+    assets:b                                       2
+    income:b                                      -2
+
+>=
+
+# ** 31. An encoding rule is respected when including a CSV file.
+<
+include latin1.csv
+$ hledger -f - print
+2016-01-06 café
+    assets:latin1                                  6
+    income:unknown                                -6
+
+>=
+
+# ** 32. An error in an included CSV file's rules shows the include file stack, like other errors.
+<
+include nested/sub.j
+$ hledger -f - print 2>&1 | sed 's|/.*/||'
+hledger: Error: in file included from -,
+in file included from sub.j,
+bad.csv.rules:2:6:
+  |
+2 | skip badval
+  |      ^
+skip's argument should be a number of lines, or nothing (not "badval")
+
+# ** 33. A missing rules file for an included CSV file is an error.
+<
+include norules.csv
+$ hledger -f - print 2>&1 | sed 's|/.*/||'
+hledger: Error: in file included from -,
+norules.csv.rules: openFile: does not exist (No such file or directory)

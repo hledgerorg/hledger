@@ -1,11 +1,11 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.38.0.
+-- This file has been generated from package.yaml by hpack version 0.39.6.
 --
 -- see: https://github.com/sol/hpack
 
 name:           hledger-web
-version:        1.43.99
+version:        1.99
 synopsis:       Web user interface for the hledger accounting system
 description:    A simple web user interface for the hledger accounting system,
                 providing a more modern UI than the command-line or terminal interfaces.
@@ -28,7 +28,7 @@ license:        GPL-3.0-or-later
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    ghc==8.10.7, ghc==9.0.2, ghc==9.2.8, ghc==9.4.8, ghc==9.6.7, ghc==9.8.4, ghc==9.10.2, ghc==9.12.1
+    ghc==9.6.7, ghc==9.8.4, ghc==9.10.3, ghc==9.12.4, ghc==9.14.1
 extra-source-files:
     CHANGES.md
     README.md
@@ -38,7 +38,6 @@ extra-source-files:
     config/robots.txt
     config/routes
     config/settings.yml
-    static/css/bootstrap-datepicker.standalone.min.css
     static/css/bootstrap-theme.css
     static/css/bootstrap-theme.min.css
     static/css/bootstrap.css
@@ -51,51 +50,18 @@ extra-source-files:
     static/fonts/glyphicons-halflings-regular.woff
     static/hledger.css
     static/hledger.js
-    static/js/bootstrap-datepicker.min.js
-    static/js/bootstrap.js
-    static/js/bootstrap.min.js
-    static/js/excanvas.js
-    static/js/excanvas.min.js
-    static/js/jquery.cookie.js
-    static/js/jquery.flot.canvas.js
-    static/js/jquery.flot.canvas.min.js
-    static/js/jquery.flot.categories.js
-    static/js/jquery.flot.categories.min.js
-    static/js/jquery.flot.crosshair.js
-    static/js/jquery.flot.crosshair.min.js
-    static/js/jquery.flot.errorbars.js
-    static/js/jquery.flot.errorbars.min.js
-    static/js/jquery.flot.fillbetween.js
-    static/js/jquery.flot.fillbetween.min.js
-    static/js/jquery.flot.image.js
-    static/js/jquery.flot.image.min.js
     static/js/jquery.flot.js
     static/js/jquery.flot.min.js
-    static/js/jquery.flot.navigate.js
-    static/js/jquery.flot.navigate.min.js
-    static/js/jquery.flot.pie.js
-    static/js/jquery.flot.pie.min.js
-    static/js/jquery.flot.resize.js
-    static/js/jquery.flot.resize.min.js
     static/js/jquery.flot.selection.js
     static/js/jquery.flot.selection.min.js
-    static/js/jquery.flot.stack.js
-    static/js/jquery.flot.stack.min.js
-    static/js/jquery.flot.symbol.js
-    static/js/jquery.flot.symbol.min.js
-    static/js/jquery.flot.threshold.js
-    static/js/jquery.flot.threshold.min.js
     static/js/jquery.flot.time.js
     static/js/jquery.flot.time.min.js
     static/js/jquery.flot.tooltip.js
     static/js/jquery.flot.tooltip.min.js
-    static/js/jquery.hotkeys.js
     static/js/jquery.js
     static/js/jquery.min.js
-    static/js/jquery.url.js
-    static/js/typeahead.bundle.js
-    static/js/typeahead.bundle.min.js
     templates/add-form.hamlet
+    templates/balance-links.hamlet
     templates/balance-report.hamlet
     templates/chart.hamlet
     templates/default-layout-wrapper.hamlet
@@ -111,60 +77,57 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/simonmichael/hledger
+  location: https://github.com/hledgerorg/hledger
 
 flag debug
-  description: Build with GHC 9.10+'s stack traces enabled
+  description: Build with GHC 9.10+ stack traces enabled
   manual: True
   default: False
 
 flag dev
   description: Turn on development settings, like auto-reload templates.
-  manual: False
+  manual: True
   default: False
 
 flag library-only
   description: Build for use with "yesod devel"
-  manual: False
+  manual: True
   default: False
-
-flag threaded
-  description: Build with support for multithreaded execution.
-  manual: False
-  default: True
 
 library
   exposed-modules:
       Hledger.Web
-      Hledger.Web.Main
-      Hledger.Web.WebOptions
-      Hledger.Web.Application
-      Hledger.Web.Import
-      Hledger.Web.Test
-  other-modules:
       Hledger.Web.App
+      Hledger.Web.Application
       Hledger.Web.Handler.AddR
+      Hledger.Web.Handler.BalanceR
       Hledger.Web.Handler.EditR
       Hledger.Web.Handler.JournalR
       Hledger.Web.Handler.MiscR
       Hledger.Web.Handler.RegisterR
       Hledger.Web.Handler.UploadR
+      Hledger.Web.Import
+      Hledger.Web.Main
       Hledger.Web.Settings
       Hledger.Web.Settings.StaticFiles
+      Hledger.Web.Test
+      Hledger.Web.WebOptions
       Hledger.Web.Widget.AddForm
       Hledger.Web.Widget.Common
+  other-modules:
       Paths_hledger_web
   autogen-modules:
       Paths_hledger_web
   hs-source-dirs:
       ./
-  ghc-options: -Wall -Wredundant-constraints -Wincomplete-record-updates -Wincomplete-uni-patterns
-  cpp-options: -DVERSION="1.43.99"
+  ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -threaded
+  cpp-options: -DVERSION="1.99"
   build-depends:
       Decimal >=0.5.1
-    , aeson >=1 && <2.3
-    , base >=4.14 && <4.22
-    , base64
+    , aeson >=2.2.5.1 && <2.4
+    , async
+    , base >=4.18 && <4.23
+    , base64-bytestring
     , blaze-html
     , blaze-markup
     , bytestring
@@ -176,22 +139,23 @@ library
     , containers >=0.5.9
     , data-default
     , directory >=1.2.3.0
+    , entropy
     , extra >=1.7.11
     , file-embed >=0.0.16.0
     , filepath
     , githash >=0.1.6.2
-    , hjsmin
-    , hledger >=1.43.99 && <1.44
-    , hledger-lib >=1.43.99 && <1.44
+    , hledger ==1.99.*
+    , hledger-lib ==1.99.*
     , hspec
     , http-client
     , http-conduit
     , http-types
-    , megaparsec >=7.0.0 && <9.8
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , mtl >=2.2.1
     , network
     , safe >=0.3.20
     , shakespeare >=2.0.2.2
+    , streaming-commons
     , template-haskell
     , text >=1.2.4.1
     , time >=1.5
@@ -200,19 +164,16 @@ library
     , unordered-containers
     , utf8-string
     , wai
+    , wai-app-static >=3.1
     , wai-cors
     , wai-extra
-    , wai-handler-launch >=3.0.3
     , warp
     , yaml
     , yesod >=1.4 && <1.7
-    , yesod-core >=1.4 && <1.7
+    , yesod-core >=1.4 && <1.8
     , yesod-form >=1.4 && <1.8
-    , yesod-static >=1.4 && <1.7
     , yesod-test
-  default-language: Haskell2010
-  if flag(threaded)
-    ghc-options: -threaded
+  default-language: GHC2021
   if (flag(dev)) || (flag(library-only))
     cpp-options: -DDEVELOPMENT
   if flag(dev)
@@ -228,14 +189,12 @@ executable hledger-web
       Paths_hledger_web
   hs-source-dirs:
       app
-  ghc-options: -Wall -Wredundant-constraints -Wincomplete-record-updates -Wincomplete-uni-patterns -with-rtsopts=-T
-  cpp-options: -DVERSION="1.43.99"
+  ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -threaded -rtsopts
+  cpp-options: -DVERSION="1.99"
   build-depends:
-      base >=4.14 && <4.22
+      base >=4.18 && <4.23
     , hledger-web
-  default-language: Haskell2010
-  if flag(threaded)
-    ghc-options: -threaded
+  default-language: GHC2021
   if (flag(dev)) || (flag(library-only))
     cpp-options: -DDEVELOPMENT
   if flag(dev)
@@ -245,19 +204,17 @@ executable hledger-web
   if flag(library-only)
     buildable: False
 
-test-suite test
+test-suite apptest
   type: exitcode-stdio-1.0
   main-is: test.hs
   hs-source-dirs:
       test
-  ghc-options: -Wall -Wredundant-constraints -Wincomplete-record-updates -Wincomplete-uni-patterns
-  cpp-options: -DVERSION="1.43.99"
+  ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -threaded
+  cpp-options: -DVERSION="1.99"
   build-depends:
-      base >=4.14 && <4.22
+      base >=4.18 && <4.23
     , hledger-web
-  default-language: Haskell2010
-  if flag(threaded)
-    ghc-options: -threaded
+  default-language: GHC2021
   if (flag(dev)) || (flag(library-only))
     cpp-options: -DDEVELOPMENT
   if flag(dev)

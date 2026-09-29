@@ -1,0 +1,7 @@
+# Common rules for SimpleFIN CSV files (produced by simplefinjson + simplefincsv).
+
+archive
+skip     2
+fields   date,amount,payee,description,memo,id
+currency $
+description %payee | %description

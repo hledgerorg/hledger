@@ -70,3 +70,71 @@ $ hledger -f - register --depth 0 --daily a b
 2010-01-01   ...                                                 6             6
 2010-01-02   ...                                                 3             9
 
+# ** 6. --drop removes leading account name segments
+<
+2010/1/1 x
+  assets:bank:checking      1
+  expenses:food:groceries  -1
+
+$ hledger -f - register --drop 1
+2010-01-01 x                    bank:checking                    1             1
+                                food:groceries                  -1             0
+
+# ** 7. --drop and --depth together: depth clips first, then drop removes leading segments
+<
+2010/1/1 x
+  assets:bank:checking:savings      1
+  expenses:food:groceries:organic  -1
+
+$ hledger -f - register --drop 1 --depth 2
+2010-01-01 x                    bank                             1             1
+                                food                            -1             0
+
+# ** 8. Account-specific depth limits also work with a report interval. (#2423)
+<
+2025-01-01 rent
+  expenses:rent             800
+  assets:bank
+
+2025-01-04 shopping
+  expenses:food:groceries   200
+  expenses:household         50
+  assets:bank
+
+$ hledger -f - register expenses --depth 1 --depth food=2 -M
+2025-01   expenses                                             850           850
+          expenses:food                                        200          1050
+
+# ** 9. An account-specific depth rule can match a part of the name that gets clipped away.
+# Account names are clipped only once, so the global depth doesn't clip them further.
+$ hledger -f - register expenses --depth 1 --depth groceries=2
+2025-01-01 rent                 expenses                       800           800
+2025-01-04 shopping             expenses:food                  200          1000
+                                expenses                        50          1050
+
+# ** 10. The same with a report interval.
+$ hledger -f - register expenses --depth 1 --depth groceries=2 -M
+2025-01   expenses                                             850           850
+          expenses:food                                        200          1050
+
+# ** 11. The depth: query works the same way. Here with CSV output.
+$ hledger -f - register expenses --depth 1 depth:food=2 -M -O csv
+"txnidx","date","code","description","account","amount","total"
+"0","2025-01-01","","","expenses","850","850"
+"0","2025-01-01","","","expenses:food","200","1050"
+
+# ** 12. Depth 0 with a report interval shows "..." in empty periods too.
+$ hledger -f - register expenses --depth 0 -M -E -p 2025-01..2025-03
+2025-01   ...                                                 1050          1050
+2025-02   ...                                                    0          1050
+
+# ** 13. With a report interval, clipped accounts are sorted by their clipped names.
+<
+2025-01-01
+  expenses1:aa    10
+  expenses:bb     20
+  assets
+
+$ hledger -f - register expenses --depth 1 -M
+2025-01   expenses                                              20            20
+          expenses1                                             10            30

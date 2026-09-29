@@ -1,13 +1,10 @@
 m4_dnl _commands_
 m4_dnl Used in the hledger manual to include all command docs.
-m4_dnl Keep synced with Hledger.Cli.Commands.commandsList, hledger.m4.md.
-m4_dnl The spaced colons avoid anchor/link collisions with similarly-named sections.
+m4_dnl Keep synced with Hledger.Cli.Commands.commandsListSections, hledger.m4.md.
 m4_define({{_commands_}}, 
 {{
 # Help commands
 
-_command_({{Commands}})
-_command_({{Demo}})
 _command_({{Help}})
 
 # User interface commands
@@ -17,11 +14,11 @@ _command_({{Run}})
 
 ## ui
 
-Runs [hledger-ui](hledger-ui.md) (if installed).
+Runs [hledger-ui](hledger-ui.md), a terminal UI (if installed).
 
 ## web
 
-Runs [hledger-web](hledger-web.md) (if installed).
+Runs [hledger-web](hledger-web.md), a web UI (if installed).
 
 
 # Data entry commands
@@ -41,6 +38,7 @@ _command_({{Payees}})
 _command_({{Prices}})
 _command_({{Stats}})
 _command_({{Tags}})
+_command_({{Transactions}})
 
 # Standard report commands
 
@@ -55,6 +53,7 @@ _command_({{Incomestatement}})
 # Advanced report commands
 
 _command_({{Balance}})
+_command_({{Holdings}})
 _command_({{Roi}})
 
 # Chart commands
@@ -64,6 +63,7 @@ _command_({{Activity}})
 # Data generation commands
 
 _command_({{Close}})
+_command_({{Get}})
 _command_({{Rewrite}})
 
 # Maintenance commands

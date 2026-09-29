@@ -1,14 +1,11 @@
-$$$ hledger check -f  csvbalanceparse.csv
->>>2 /Error: could not parse "badbalance" as balance1 amount
-record: 2022-01-03,badbalance
-the balance rule is: %2
-the date rule is: %1
+$ hledger check -f csvbalanceparse.csv
+>2 /hledger: Error: .*csvbalanceparse\.csv:3:
+3 \| 2022-01-03,badbalance
 
-the parse error is:      1:11:
-  \|
-1 \| badbalance
-  \|           \^
-unexpected end of input
-expecting '\+', '-', or number
+could not parse "badbalance" as balance1 amount
+record: 2022-01-03,badbalance
+(.*
+)*hledger field assignment rules:
+  balance: +%2 +\(.*rules:3\)
 /
->>>= 1
+>= 1

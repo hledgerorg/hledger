@@ -1,6 +1,22 @@
 # Some hledger/PTA-related bash scripts. See also Justfile.
 
+export FIRSTYEAR="${FIRSTYEAR:-2020}"
+export YEAR="${YEAR:-$(date +%Y)}"
+export FINDIR=~/finance
+export LEDGER_FILE=$FINDIR/$YEAR/$YEAR.journal
+
 alias hl='hledger'
+alias hlc='hledger --conf=~/.hledger.conf'
+
+alias all='hledger -f $FINDIR/all.journal'
+alias 2020='hledger -f $FINDIR/2020/2020.journal'
+alias 2021='hledger -f $FINDIR/2021/2021.journal'
+alias 2022='hledger -f $FINDIR/2022/2022.journal'
+alias 2023='hledger -f $FINDIR/2023/2023.journal'
+alias 2024='hledger -f $FINDIR/2024/2024.journal'
+alias 2025='hledger -f $FINDIR/2024/2025.journal'
+alias 2026='hledger -f $FINDIR/2024/2026.journal'
+
 alias accounts='hledger accounts'
 alias activity='hledger activity'
 alias add='hledger add'
@@ -17,6 +33,7 @@ alias codes='hledger codes'
 alias commodities='hledger commodities'
 alias desc='hledger descriptions'
 alias files='hledger files'
+alias get='hledger get'
 alias iadd='hledger-iadd'
 alias interest='hledger interest'
 alias import='hledger import'
@@ -34,31 +51,12 @@ alias roi='hledger roi'
 alias run='hledger run'
 alias stats='hledger stats'
 alias tags='hledger tags'
+alias tx='hledger tx'
 alias ui='hledger ui'
 alias web='hledger web'
 
-export FINDIR=~/finance
-export LEDGER_FILE=$FINDIR/2024/2024.journal
-alias f=$FINDIR/justfile
 alias bser='hledger -f $LEDGER_FILE -f <(hledger close --retain) bse'
-alias all='hledger -f $FINDIR/all.journal'
-alias 2020='hledger -f $FINDIR/2020/2020.journal'
-alias 2021='hledger -f $FINDIR/2021/2021.journal'
-alias 2022='hledger -f $FINDIR/2022/2022.journal'
-alias 2023='hledger -f $FINDIR/2023/2023.journal'
-alias 2024='hledger -f $FINDIR/2024/2024.journal'
-alias jan="hledger -p jan"
-alias feb="hledger -p feb"
-alias mar="hledger -p mar"
-alias apr="hledger -p apr"
-alias may="hledger -p may"
-alias jun="hledger -p jun"
-alias jul="hledger -p jul"
-alias aug="hledger -p aug"
-alias sep="hledger -p sep"
-alias oct="hledger -p oct"
-alias nov="hledger -p nov"
-alias dec="hledger -p dec"
+alias f=$FINDIR/Justfile
 
 # query hledger with sqlite
 hq() {
@@ -72,10 +70,7 @@ hledgerfiles() {
 
 # helpers for working with yearly files.
 
-# yearfiles [N] - print the paths of all or the last N yearly journals.
-# Adjust to suit your files.
-yearfiles() {
-    FIRSTYEAR=2006
+yearfiles() {  # yearfiles [N] - list all or the last N yearly journal files
     N="$1"; shift
     YEAR=$(date +%Y)
     if [[ -n "$N" ]]; then
@@ -83,11 +78,12 @@ yearfiles() {
     else
 	START=$FIRSTYEAR
     fi
-    for ((y="$START"; y<="$YEAR"; y++)); do echo "$FINDIR/$y/$y.journal"; done
+    for ((y="$START"; y<="$YEAR"; y++)); do
+        echo "$FINDIR/$y/$y.journal"
+    done
 }
 
-# yearopts [N] - print -f options for all or the last N yearly journals
-yearopts() {
+yearfileopts() {  # yearfileopts [N] - print -f options for all or the last N yearly journals
     for y in $(yearfiles "$1"); do
 	echo -f"$y"
     done
@@ -105,13 +101,8 @@ years() {
 	N=
     fi
     # shellcheck disable=SC2046
-    hledger $(yearopts "$N" | xargs) "$@"
+    hledger $(yearfileopts "$N" | xargs) "$@"
 }
-
-alias 10y='years 10'
-alias 9y='years 9'
-alias 5y='years 5'
-alias 2y='years 2'
 
 # eachyear [N] [n|p|P] "SHELLCMD" - run SHELLCMD with $LEDGER_FILE set,
 # for each or just the last N yearly journals,
@@ -173,55 +164,3 @@ alias sephours="hours -p sep"
 alias octhours="hours -p oct"
 alias novhours="hours -p nov"
 alias dechours="hours -p dec"
-
-# old ledger 2.6 scripts
-
-BalanceSheet() {
-    echo "Balance sheet as of `date`"
-    echo "totals include sub-accounts"
-    echo
-    ledger -n --balance-format '%10T  %2_%-a\n' --display "l<=3" --basis --subtotal $* balance assets
-    echo
-    ledger -n --balance-format '%10T  %2_%-a\n' --display "l<=3" --basis --subtotal $* balance liabilities
-    echo
-    ledger -nE --balance-format '%10T  %2_%-a\n' --display "l<=4" --basis --subtotal $* balance equity
-    echo
-    echo "`ledger --balance-format '%10T  %2_%-a\n' --basis $* balance liabilities equity | tail -1`liabilities + equity"
-    echo
-    ledger --balance-format '%10T  %2_%-a\n' --basis $* balance assets liabilities | tail -2
-}
-
-IncomeStatement() {
-    echo "Income statement for `date +%Y` as of `date`"
-    echo "totals include sub-accounts"
-    echo
-    ledger -n --balance-format '%10(-T)  %2_%-a\n' --display "l<=3" --basis --subtotal $* balance income
-    echo
-    ledger -n --balance-format '%10(-T)  %2_%-a\n' --display "l<=2" --basis --subtotal $* balance expenses -equity
-    echo
-    ledger --balance-format '%10(-T)  %2_%-a\n' --basis $* balance income expenses -equity | tail -2
-}
-
-# function CashflowStatement () {
-#     echo "Cashflow statement for `date +%Y`"
-#     #echo "(totals include sub-accounts)"
-#     echo
-#     cat <<EOF
-# cash flows from operating activities
-#   net income as on income statement
-#   add: depreciation
-#   add: allowance for doubtful accounts
-#   deduct: increase in inventory
-#   deduct: increase in prepaid expenses
-#   deduct: decrease in accounts payable
-# cash flows from investing activities
-#   cash received from investments sold
-#   less: cash paid for store equipment
-# cash flows from financing activities
-#   cash paid for dividends
-#
-# Increase in cash: 
-# Cash at the beginning of the year:
-# Cash at the end of the year:
-# EOF
-# }

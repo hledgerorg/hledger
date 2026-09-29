@@ -1,4 +1,8 @@
-$$$ hledger check -f  csvskipvalue.csv
->>>2 /Error: could not parse skip value: badval
+$ hledger check -f csvskipvalue.csv
+>2 /hledger: Error: .*csvskipvalue\.csv\.rules:2:6:
+  \|
+2 \| skip badval
+  \|      \^
+skip's argument should be a number of lines, or nothing \(not "badval"\)
 /
->>>= 1
+>= 1

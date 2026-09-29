@@ -5,7 +5,6 @@ and then Application.hs completes the job.
 -}
 
 {-# OPTIONS_GHC -fno-warn-orphans  #-}
-{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -21,31 +20,31 @@ module Hledger.Web.App where
 import Control.Applicative ((<|>))
 import Control.Monad (join, when, unless)
 -- import Control.Monad.Except (runExceptT)  -- now re-exported by Hledger
-import qualified Data.ByteString.Char8 as BC
+import Data.ByteString.Base64 qualified as B64
+import Data.ByteString.Char8 qualified as BC
+import Data.Foldable (for_)
+import Data.Map qualified as M
 import Data.Traversable (for)
 import Data.IORef (IORef, readIORef, writeIORef)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import Data.Time.Calendar (Day)
 import Network.HTTP.Conduit (Manager)
 import Network.HTTP.Types (status403)
 import Network.Wai (requestHeaders)
 import System.Directory (XdgDirectory (..), createDirectoryIfMissing,
                          getXdgDirectory)
+import System.Entropy (getEntropy)
 import System.FilePath (takeFileName, (</>))
 import Text.Blaze (Markup)
 import Text.Hamlet (hamletFile)
 import Yesod
-import Yesod.Static
 import Yesod.Default.Config
+import Yesod.Form.I18n.German (germanFormMessage)
 
-#ifndef DEVELOPMENT
-import Hledger.Web.Settings (staticDir)
-import Text.Jasmine (minifym)
-import Yesod.Default.Util (addStaticContentExternal)
-#endif
-
+import Hledger.Utils.I18n (Translations(..), langTagCandidates, resolveLang, tr, trc)
 import Hledger
 import Hledger.Cli (CliOpts(..), journalReloadIfChanged)
 import Hledger.Web.Settings (Extra(..), widgetFile)
@@ -60,13 +59,16 @@ import Data.List (isPrefixOf)
 -- access to the data present here.
 data App = App
     { settings :: AppConfig DefaultEnv Extra
-    , getStatic :: Static -- ^ Settings for static file serving.
+    , getStatic :: WaiSubsite -- ^ The static file serving site (see StaticFiles.hs).
     , httpManager :: Manager
       --
     , appOpts    :: WebOpts
     , appJournal :: IORef Journal
         -- ^ the current journal, filtered by the initial command line query
         --   but ignoring any depth limit.
+    , appTranslations :: M.Map Text Translations
+        -- ^ the translation catalogs available to viewers, by language tag
+        --   (built-in and from the user's config directory), loaded at startup.
     }
 
 
@@ -132,9 +134,26 @@ instance Yesod App where
 
     master <- getYesod
     here <- fromMaybe RootR <$> getCurrentRoute
-    VD{opts, j, qparam, q, qopts, perms} <- getViewData
+    VD{opts, j, qparam, q, qopts, perms, trs} <- getViewData
     msg <- getMessage
+    -- An explicit ?_LANG= choice is remembered in a cookie, which Yesod's
+    -- languages reads on later requests; only a tag naming an available
+    -- catalog is accepted. And since the page varies by language, say so
+    -- for any cache in front of a shared server.
+    mlangparam <- lookupGetParam "_LANG"
+    for_ (mlangparam >>= \l -> resolveLang (M.keys $ appTranslations master) [l]) $ \l ->
+      addHeader "Set-Cookie" $ "_LANG=" <> l <> "; Path=/; Max-Age=31536000; SameSite=Lax"
+    addHeader "Vary" "Cookie, Accept-Language"
+    let lang = trLang trs
     showSidebar <- shouldShowSidebar
+    -- The policy is sent from here rather than from a middleware, so that
+    -- the header and the page's script tags always carry the same nonce;
+    -- error pages come through here too, in a handler state of their own.
+    nonce <- liftIO newCspNonce
+    addHeader "Content-Security-Policy" $ cspHeader nonce
+    -- In browse mode the page pings the server while it is open (hledger.js);
+    -- the body attribute this sets is how the page knows to.
+    let browsemode = server_mode_ opts == ServeBrowse
 
     let rspec = reportspec_ (cliopts_ opts)
         ropts = _rsReportOpts rspec
@@ -144,12 +163,18 @@ instance Yesod App where
           }
         rspec' = rspec{_rsQuery=q,_rsReportOpts=ropts'}
 
+    -- The balance page's period parameter, which its search form and the
+    -- form's clear button keep.
+    periodParams <- case here of
+      BalanceR -> maybe [] (\p -> [("period", p)]) <$> lookupGetParam "period"
+      _        -> pure []
+
     hideEmptyAccts <- if empty_ ropts
                          then return True
                          else (== Just "1") . lookup "hideemptyaccts" . reqCookies <$> getRequest
 
     let accounts =
-          balanceReportAsHtml (JournalR, RegisterR) here hideEmptyAccts j qparam qopts $
+          balanceReportAsHtml (JournalR, RegisterR) here hideEmptyAccts trs j qparam qopts $
           styleAmounts (journalCommodityStylesWith HardRounding j) $
           balanceReport rspec' j
 
@@ -167,42 +192,87 @@ instance Yesod App where
     -- you to use normal widget features in default-layout.
     pc <- widgetToPageContent $ do
       addStylesheet $ StaticR css_bootstrap_min_css
-      addStylesheet $ StaticR css_bootstrap_datepicker_standalone_min_css
       -- load these things early, in HEAD:
+      -- jquery is here only because flot (the register chart) needs it.
       toWidgetHead [hamlet|
         <script type="text/javascript" src="@{StaticR js_jquery_min_js}">
-        <script type="text/javascript" src="@{StaticR js_typeahead_bundle_min_js}">
       |]
-      addScript $ StaticR js_bootstrap_min_js
-      addScript $ StaticR js_bootstrap_datepicker_min_js
-      addScript $ StaticR js_jquery_url_js
-      addScript $ StaticR js_jquery_cookie_js
-      addScript $ StaticR js_jquery_hotkeys_js
       addScript $ StaticR js_jquery_flot_min_js
       addScript $ StaticR js_jquery_flot_selection_min_js
       addScript $ StaticR js_jquery_flot_time_min_js
       addScript $ StaticR js_jquery_flot_tooltip_min_js
-      toWidget [hamlet| \<!--[if lte IE 8]> <script type="text/javascript" src="@{StaticR js_excanvas_min_js}"></script> <![endif]--> |]
       addStylesheet $ StaticR hledger_css
       addScript $ StaticR hledger_js
       $(widgetFile "default-layout")
 
     withUrlRenderer $(hamletFile "templates/default-layout-wrapper.hamlet")
 
--- XXX why disabled during development ? Affects ghci, ghcid, tests, #2139 ?
-#ifndef DEVELOPMENT
-  -- This function creates static content files in the static folder
-  -- and names them based on a hash of their content. This allows
-  -- expiration dates to be set far in the future without worry of
-  -- users receiving stale content.
-  addStaticContent = addStaticContentExternal minifym base64md5 staticDir (StaticR . flip StaticRoute [])
-#endif
+----------------------------------------------------------------------
+-- translations
 
--- This instance is required to use forms. You can modify renderMessage to
--- achieve customized and internationalized form validation messages.
+-- | The translations for a viewer (as listed
+-- by Yesod's 'languages': the _LANG query parameter, cookie and session
+-- variable, then the Accept-Language header): the first available one,
+-- trying each preference with its subtags dropped before moving on to the
+-- next. Falls back to the server's --lang.
+translationsFor :: App -> [Lang] -> Translations
+translationsFor App{appOpts, appTranslations} langs =
+  fromMaybe serverdefault $ (`M.lookup` appTranslations) =<< resolveLang (M.keys appTranslations) langs
+  where serverdefault = translations_ $ _rsReportOpts $ reportspec_ $ cliopts_ appOpts
+
+-- | The translations for the current request's language.
+requestTranslations :: Handler Translations
+requestTranslations = translationsFor <$> getYesod <*> languages
+
+-- | A translatable text, for @_{HMsg "..."}@ in templates and 'setMessageI'.
+newtype HMsg = HMsg Text
+
+instance RenderMessage App HMsg where
+  renderMessage app langs (HMsg s) = tr (translationsFor app langs) s
+
+-- | Like 'HMsg', with a context disambiguating a short text used in
+-- more than one sense, eg @_{HMsgc "column heading" "Total"}@.
+data HMsgc = HMsgc Text Text
+
+instance RenderMessage App HMsgc where
+  renderMessage app langs (HMsgc ctx s) = trc (translationsFor app langs) ctx s
+
+-- | yesod-form's validation messages, in the request's language when
+-- yesod-form ships that language.
 instance RenderMessage App FormMessage where
-    renderMessage _ _ = defaultFormMessage
+  renderMessage app langs = fromMaybe defaultFormMessage $ listToMaybe
+    [ m | c <- langTagCandidates (trLang $ translationsFor app langs), Just m <- [lookup c formMessages] ]
+    where formMessages = [("de", germanFormMessage)]
 
+
+----------------------------------------------------------------------
+-- content security policy
+
+-- | The Content-Security-Policy sent with every HTML page. Everything loads
+-- from our own origin, and the only inline scripts allowed are the ones
+-- carrying this response's nonce: the two in default-layout.hamlet and its
+-- wrapper. The templates have no inline styles or event handlers, and flot
+-- sets its styles through the CSSOM, which the policy does not govern.
+-- frame-ancestors stops the pages being framed by another origin
+-- (clickjacking of the add and edit forms); the other responses get
+-- X-Frame-Options instead, see Application.hs.
+--
+-- 'self' assumes the static files come from our own origin. If --file-url
+-- (extraStaticRoot, #2139) is ever re-enabled, that origin has to be added
+-- to default-src as well, or every page will lose its styles and scripts.
+cspHeader :: Text -> Text
+cspHeader nonce = T.intercalate "; "
+  [ "default-src 'self'"
+  , "script-src 'self' 'nonce-" <> nonce <> "'"
+  , "object-src 'none'"
+  , "base-uri 'self'"
+  , "form-action 'self'"
+  , "frame-ancestors 'self'"
+  ]
+
+-- | A nonce for the policy above: 16 random bytes, base64 encoded.
+newCspNonce :: IO Text
+newCspNonce = TE.decodeUtf8 . B64.encode <$> getEntropy 16
 
 ----------------------------------------------------------------------
 -- template and handler utilities
@@ -219,6 +289,7 @@ data ViewData = VD
   , q     :: Query      -- ^ a query parsed from the q parameter
   , qopts :: [QueryOpt] -- ^ query options parsed from the q parameter
   , perms :: [Permission]  -- ^ permissions enabled for this request (by --allow and/or X-Sandstorm-Permissions)
+  , trs   :: Translations  -- ^ translations for this request's language
   } deriving (Show)
 
 instance Show Text.Blaze.Markup where show _ = "<blaze markup>"
@@ -227,10 +298,14 @@ instance Show Text.Blaze.Markup where show _ = "<blaze markup>"
 getViewData :: Handler ViewData
 getViewData = do
   App{
-    appOpts=opts@WebOpts{ cliopts_=copts@CliOpts{ reportspec_=rspec@ReportSpec{_rsReportOpts, _rsQuery} } },
+    appOpts=opts0@WebOpts{ cliopts_=copts@CliOpts{ reportspec_=rspec@ReportSpec{_rsReportOpts, _rsQuery} } },
     appJournal
   } <- getYesod
   let today = _rsDay rspec
+  -- the request's language, applied to the options too so that any
+  -- report text rendered by hledger-lib matches the page
+  trs <- requestTranslations
+  let opts = opts0{cliopts_ = copts{reportspec_ = rspec{_rsReportOpts = _rsReportOpts{translations_ = trs}}}}
 
   -- try to read the latest journal content, keeping the old content
   -- if there's an error
@@ -246,9 +321,12 @@ getViewData = do
       Right (q0, qopts) -> return (q0, qopts, Nothing)
       Left err         -> return (Any, [], Just err)
   -- To this, add any depth limit from the initial startup query, preserving that.
+  -- Also expand cur: terms against this request's current journal so the
+  -- per-request query is commodity-alias-aware (and reflects any commodity directive
+  -- changes since startup).
   let
     initialdepthq = filterQuery queryIsDepth _rsQuery
-    q = simplifyQuery $ And [q1, initialdepthq]
+    q = simplifyQuery $ queryExpandCurAliases j $ And [q1, initialdepthq]
 
   -- if either of the above gave an error, display it
   maybe (pure ()) (setMessage . toHtml) $ mjerr <|> mqerr
@@ -265,7 +343,7 @@ getViewData = do
     -- otherwise take them from the access level specified by --allow's access level
     cliaccess -> pure $ accessLevelToPermissions cliaccess
 
-  return VD{opts, today, j, qparam, q, qopts, perms}
+  return VD{opts, today, j, qparam, q, qopts, perms, trs}
 
 checkServerSideUiEnabled :: Handler ()
 checkServerSideUiEnabled = do

@@ -1,0 +1,12 @@
+$ hledger check -f lots-name.j
+>2 /hledger: Error: .*lots-name\.j:4:
+  \| 2022-01-01 buy
+4 \|     assets:stocks:\{not a lot\} +10 AAPL
+  \|     \^{25}
+  \|     assets:checking +\$-500
+
+invalid lot name: not a lot
+
+A final account name part enclosed in \{ \} must be a valid lot subaccount name\.
+/
+>= 1

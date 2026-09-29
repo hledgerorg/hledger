@@ -52,3 +52,14 @@ $ hledger -f - balance --tree --no-total --output-format=csv --drop 1
 "  q","1"
 "...","1"
 >=
+
+# ** 5. Drop does not affect the total row's heading. (#2688)
+$ hledger -f - balance --flat --output-format=csv --drop 1
+"account","balance"
+"k","1"
+"i:p","1"
+"j","1"
+"j:q","1"
+"...","1"
+"Total:","5"
+>=

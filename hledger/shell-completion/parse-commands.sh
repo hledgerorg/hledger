@@ -5,7 +5,7 @@
 set -euo pipefail
 declare commands_help
 commands_help=$(hledger)
-# Keep synced with `hledger` output and known add-ons (+-prefixed commands in Hledger.Cli.Commands.commandsList):
+# Keep synced with `hledger` output and known add-ons (+-prefixed commands in Hledger.Cli.Commands.commandsListSections):
 {
     sed -rn 's/^[[:space:]]([a-z][-a-z]+)[[:space:]]+.*/\1/p; /OTHER ADDONS/q' <<< "$commands_help"
     sed -rn 's/^[[:space:]][a-z][-a-z]+[[:space:]]+\(([a-z][ ,a-z]+)\).*/\1/p' <<< "$commands_help"

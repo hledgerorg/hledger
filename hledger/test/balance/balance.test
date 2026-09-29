@@ -161,7 +161,6 @@ $ hledger -f - balance -N --output-format=csv
 
 # ** 10. --declared includes all declared leaf accounts, even if they have no postings.
 # They are filtered, depth-clipped, and form trees like the others.
-# (XXX Here a:ac is not declared and so not shown, even though normally a balance report clipped to depth 2 would show it. Wrong ?)
 <
 account a
 account a:aa
@@ -172,27 +171,17 @@ $ hledger -f - balance -NE --declared --tree --depth 2 a
                    0  a
                    0    aa
                    0    ab
+                   0    ac
 
-# ** 11. In list mode we can see that non-leaf declared accounts are excluded.
-<
-account a
-account a:aa
-account a:ab
-account a:ac:aca
-account b
+# ** 11. In list mode we can see that declared accounts are included, even if they have no postings.
 $ hledger -f - balance -NE --declared --flat
+                   0  a
                    0  a:aa
                    0  a:ab
                    0  a:ac:aca
                    0  b
 
 # ** 12. not:ACCT queries work with declared accounts.
-<
-account a
-account a:aa
-account a:ab
-account a:ac:aca
-account b
 $ hledger -f - balance -NE --declared not:a
                    0  b
 
@@ -212,8 +201,85 @@ $ hledger -f- bal -MT -O html
   a      10
   a:aa   20
   b
+$ hledger -f- bal --count
+                   1  a
+                   1  a:aa
+                   1  b
+--------------------
+                   3  
+
+# ** 16. --count counts clipped postings.
 $ hledger -f- bal --count -1
                    2  a
                    1  b
 --------------------
                    3  
+
+# ** 17. --count counts inclusive postings with --tree.
+$ hledger -f- bal --count --tree
+                   2  a
+                   1    aa
+                   1  b
+--------------------
+                   3  
+
+# ** 18. Make sure that balance --flat --empty does not display implied
+# accounts (i.e. those with no postings, like "assets", here), but does show
+# accounts that have postings with zero balance (like "assets:bank:checking"
+# here).
+$ hledger -f sample.journal balance --flat --empty
+                   0  assets:bank:checking
+                  $1  assets:bank:saving
+                 $-2  assets:cash
+                  $1  expenses:food
+                  $1  expenses:supplies
+                 $-1  income:gifts
+                 $-1  income:salary
+                  $1  liabilities:debts
+--------------------
+                   0  
+
+# ** 19. Shows zero if period starts after all transactions
+$ hledger -f sample.journal balance -b 3000-01-01
+--------------------
+                   0  
+
+# ** 20. Shows zero if period ends before all transactions
+$ hledger -f sample.journal balance -e 1000-01-01
+--------------------
+                   0  
+
+# ** 20. Shows zero if period starts and ends before all transactions
+$ hledger -f sample.journal balance -b 1000-01-01 -e 1000-01-02
+--------------------
+                   0  
+
+# ** 19. Shows zero on empty journal
+<
+$ hledger -f- balance
+--------------------
+                   0  
+
+# ** 21. Ordering of accounts with no postings is preserved when --declared and --empty are used
+<
+account a
+account b
+account c
+
+2025-01-01 txn
+    a       1
+    c      -1
+$ hledger -f - balance --empty --declared
+                   1  a
+                   0  b
+                  -1  c
+--------------------
+                   0  
+
+# ** 22. Single-period balance HTML output respects -c commodity style (#2584).
+<
+2025-01-01
+    assets:bank      1000 USD
+    equity:start
+$ hledger -f- bal -c '1,000. USD' -O html
+> /1,000 USD/

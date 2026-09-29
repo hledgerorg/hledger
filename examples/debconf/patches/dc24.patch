@@ -1,0 +1,9 @@
+diff --git a/budget/commodities.inc b/budget/commodities.inc
+index 932f659..3be38ba 100644
+--- a/budget/commodities.inc
++++ b/budget/commodities.inc
+@@ -17,3 +17,3 @@ commodity KRW
+    note Korean Won
+-   format KRW 1,000
++   format KRW 1,000.00
+    nomarket

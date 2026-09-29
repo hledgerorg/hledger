@@ -123,6 +123,7 @@ account a:aa:aaa  ; type:L
     (a:aa)                                         1
     (a:aa:aaa)                                     1
 
+
 # ** 6. bs will detect proper accounts even with an intervening parent account (#1921)
 $ hledger -f- bs -N
 Balance Sheet 2021-01-01
@@ -136,3 +137,63 @@ Balance Sheet 2021-01-01
 -------------++------------
  a           ||         -1 
  a:aa:aaa    ||         -1 
+
+# ** 7. Gains accounts appear in income statement as revenue subtype
+<
+account revenues  ; type:R
+account gains     ; type:G
+account expenses  ; type:X
+
+2020-01-01
+  revenues  -100
+  gains     -50
+  expenses   150
+
+$ hledger -f- is
+Income Statement 2020-01-01
+
+          || 2020-01-01 
+==========++============
+ Revenues ||            
+----------++------------
+ revenues ||        100 
+ gains    ||         50 
+----------++------------
+          ||        150 
+==========++============
+ Expenses ||            
+----------++------------
+ expenses ||        150 
+----------++------------
+          ||        150 
+==========++============
+ Net:     ||          0 
+
+# ** 8. Gain accounts are auto-detected from common naming patterns
+<
+2020-01-01
+  income:gains              -50
+  revenue:capital-gains     -30
+  income:losses             -20
+  expenses                  100
+
+$ hledger -f- is
+Income Statement 2020-01-01
+
+                       || 2020-01-01 
+=======================++============
+ Revenues              ||            
+-----------------------++------------
+ income:gains          ||         50 
+ income:losses         ||         20 
+ revenue:capital-gains ||         30 
+-----------------------++------------
+                       ||        100 
+=======================++============
+ Expenses              ||            
+-----------------------++------------
+ expenses              ||        100 
+-----------------------++------------
+                       ||        100 
+=======================++============
+ Net:                  ||          0 

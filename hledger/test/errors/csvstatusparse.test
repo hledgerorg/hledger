@@ -1,10 +1,8 @@
-$$$ hledger print -f  csvstatusparse.csv
->>>2 /Error: could not parse status value "badstatus" \(should be \*, ! or empty\)
+$ hledger print -f csvstatusparse.csv
+>2 /hledger: Error: .*csvstatusparse\.csv:7:
+7 \| 2022-01-04,badstatus
+
+could not parse status value "badstatus" \(should be \*, ! or empty\)
 the parse error is:      1:1:
-  \|
-1 \| badstatus
-  \| \^
-unexpected 'b'
-expecting '!', '\*', or end of input
 /
->>>= 1
+>= 1

@@ -1,0 +1,158 @@
+# Tests for the account lots: NONE tag, which opts an account (and its
+# subaccounts) out of lot tracking - eg for tax-sheltered accounts where
+# cost basis is irrelevant. Precedence is by specificity: a posting's
+# explicit cost basis annotation beats the account opt-out, which beats
+# the commodity's lots: tag.
+
+# ** 1. An account with a lots: NONE tag is not lot-tracked: no lot
+# subaccounts, no gain postings, no lot errors; other accounts are
+# tracked as usual.
+<
+commodity AAPL  ; lots:
+account assets:ira  ; lots: NONE
+
+2026-01-15 buy in taxable account
+    assets:broker    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 buy in IRA: not lot-tracked
+    assets:ira       10 AAPL @ $60
+    assets:checking
+
+2026-03-01 sell in IRA: no lots consumed, no gain calculated
+    assets:ira       -5 AAPL @ $80
+    assets:checking   $400
+$ hledger -f- bal --lots
+              5 AAPL  assets:ira
+             10 AAPL  assets:broker:{2026-01-15, $50}
+               $-700  assets:checking
+--------------------
+               $-700
+             15 AAPL  
+
+# ** 2. Moving units in kind from a tracked account into an opted-out
+# account is a disposal (the units leave lot tracking), priceless here so
+# no gain is calculated; add a transacted price to realise a gain.
+<
+commodity AAPL  ; lots:
+account assets:ira  ; lots: NONE
+
+2026-01-15 buy in taxable account
+    assets:broker    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 move in kind to the IRA
+    assets:broker   -10 AAPL
+    assets:ira       10 AAPL
+$ hledger -f- print --lots -x --verbose-tags date:2026-02
+2026-02-01 move in kind to the IRA
+    assets:broker:{2026-01-15, $50}              -10 AAPL {2026-01-15, $50}  ; ptype: dispose
+    assets:ira                                    10 AAPL
+
+>=
+
+# ** 3. Moving units in kind from an opted-out account into a tracked
+# account requires a cost basis or price on the receiving posting (a lot
+# must be created).
+<
+commodity AAPL  ; lots:
+account assets:ira  ; lots: NONE
+
+2026-01-15 buy in IRA
+    assets:ira       10 AAPL @ $50
+    assets:checking
+
+2026-02-01 move in kind out of the IRA
+    assets:ira      -10 AAPL
+    assets:broker    10 AAPL
+$ hledger -f- bal --lots
+>2 /AAPL is declared lotful \(commodity lots: tag\) but this posting was not classified/
+>=1
+
+# ** 4. A posting with an explicit cost basis annotation is lot-tracked
+# even in an opted-out account (the more specific declaration wins), and
+# subaccounts inherit the opt-out.
+<
+commodity AAPL  ; lots:
+account assets:ira  ; lots: NONE
+
+2026-01-15 explicit cost basis in the IRA is still tracked
+    assets:ira       10 AAPL {$50}
+    assets:checking
+
+2026-02-01 buy in an IRA subaccount: inherits the opt-out
+    assets:ira:cash   -$600
+    assets:ira:stocks  10 AAPL @ $60
+$ hledger -f- bal --lots -N
+               $-600  assets:ira:cash
+             10 AAPL  assets:ira:stocks
+             10 AAPL  assets:ira:{2026-01-15, $50}
+               $-500  assets:checking
+
+# ** 5. A subaccount can re-enable lot tracking with its own lots: method
+# tag (the nearest declaration wins). The tag value is case insensitive.
+<
+commodity AAPL  ; lots:
+account assets:ira  ; lots: none
+account assets:ira:active  ; lots: LIFO
+
+2026-01-15 buy in re-enabled subaccount
+    assets:ira:active    10 AAPL @ $50
+    assets:checking
+
+2026-02-01 buy in opted-out parent
+    assets:ira           10 AAPL @ $55
+    assets:checking
+$ hledger -f- bal --lots -N
+             10 AAPL  assets:ira
+             10 AAPL  assets:ira:active:{2026-01-15, $50}
+              $-1050  assets:checking
+
+# ** 6. lots: NONE is not allowed on commodity declarations (commodities
+# are untracked by default; NONE is a per-account opt-out).
+<
+commodity AAPL  ; lots: NONE
+
+2026-01-15 buy
+    assets:broker    10 AAPL {$50}
+    assets:checking
+$ hledger -f- bal
+>2 /lots: NONE is not supported on commodity declarations/
+>=1
+
+# ** 7. An opted-out account holding a commodity with a global (*ALL)
+# method does not trigger the method coherence check.
+<
+commodity AAPL  ; lots: FIFOALL
+account assets:ira  ; lots: NONE
+
+2026-01-15 buy tracked
+    assets:broker    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 buy in IRA
+    assets:ira       10 AAPL @ $60
+    assets:checking
+$ hledger -f- bal --lots -N
+             10 AAPL  assets:ira
+             10 AAPL  assets:broker:{2026-01-15, $50}
+              $-1100  assets:checking
+
+# ** 8. An unpriced disposal with an explicit lot selector, balanced by an
+# elided opted-out account posting, stays a disposal (the opt-out excludes
+# the elided posting from being read as a transfer destination), and errors
+# for lack of a selling price.
+<
+account assets:vault  ; lots: NONE
+
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 move out of tracking
+    assets:stocks    -5 AAPL {$50}
+    assets:vault
+
+$ hledger -f- bal --lots
+>2 /dispose posting has no transacted price/
+>=1

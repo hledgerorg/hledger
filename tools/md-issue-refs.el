@@ -7,7 +7,7 @@
    at the end, pointing to the corresponding github issues.
    Removes any pre-existing #NUM link reference definitions from the region.
    This is useful eg for maintaining link reference definitions in release notes.
-   XXX Currently hardcoded for the simonmichael/hledger repo.
+   XXX Currently hardcoded for the hledgerorg/hledger repo.
    XXX Does not work if parts of region are collapsed as with TAB in markdown-mode.
    "
   (interactive "r")
@@ -33,7 +33,7 @@
 
         ;; Generate link reference definitions, with urls aligned
         (goto-char (point-max))
-        (let ((fmt (concat "%-" (number-to-string (+ 4 max-length)) "s https://github.com/simonmichael/hledger/issues/%s\n")))
+        (let ((fmt (concat "%-" (number-to-string (+ 4 max-length)) "s https://github.com/hledgerorg/hledger/issues/%s\n")))
           (dolist (num nums)
             (insert
              (format fmt (format "[#%s]:" num) num))))

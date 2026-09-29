@@ -25,6 +25,7 @@ module Hledger.Query (
   parseAccountType,
   parseDepthSpec,
   -- * modifying
+  transformQuery,
   simplifyQuery,
   filterQuery,
   filterQueryOrNotQuery,
@@ -39,12 +40,13 @@ module Hledger.Query (
   queryIsDesc,
   queryIsTag,
   queryIsAcct,
+  queryIsFind,
   queryIsType,
   queryIsDepth,
   queryIsReal,
   queryIsAmt,
-  queryIsSym,
-  queryIsAmtOrSym,
+  queryIsCurOrSym,
+  queryIsAmtOrCurOrSym,
   queryIsStartDateOnly,
   queryIsTransactionRelated,
   -- * accessors
@@ -58,8 +60,7 @@ module Hledger.Query (
   -- * matching things with queries
   matchesTransaction,
   matchesTransactionExtra,
-  matchesDescription,
-  matchesPayeeWIP,
+  matchesPayee,
   matchesPosting,
   matchesPostingExtra,
   matchesAccount,
@@ -67,8 +68,11 @@ module Hledger.Query (
   matchesMixedAmount,
   matchesAmount,
   matchesCommodity,
-  matchesTags,
+  matchesCommodityExtra,
+  matchesTag,
+  -- patternsMatchTags,
   matchesPriceDirective,
+  queryExpandCurForAliases,
   words'',
   queryprefixes,
   -- * tests
@@ -76,13 +80,14 @@ module Hledger.Query (
 )
 where
 
-import Control.Applicative ((<|>), many, optional)
+import Control.Applicative
 import Data.Default (Default(..))
 import Data.Either (partitionEithers)
 import Data.List (partition, intercalate)
+import Data.List.Extra (nubOrd)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Time.Calendar (Day, fromGregorian )
 import Safe (headErr, readMay, maximumByMay, maximumMay, minimumMay)
 import Text.Megaparsec (between, noneOf, sepBy, try, (<?>), notFollowedBy)
@@ -92,7 +97,8 @@ import Text.Megaparsec.Char (char, string, string')
 import Hledger.Utils hiding (words')
 import Hledger.Data.Types
 import Hledger.Data.AccountName
-import Hledger.Data.Amount (amountsRaw, mixedAmount, nullamt, usd)
+import Hledger.Data.AccountType
+import Hledger.Data.Amount (amountsRaw, mixedAmount, nullamt, showMixedAmountOneLine, usd)
 import Hledger.Data.Dates
 import Hledger.Data.Posting
 import Hledger.Data.Transaction
@@ -118,15 +124,20 @@ data Query =
   | DepthAcct Regexp Int      -- ^ match if the account matches and account depth is less than or equal to this value (usually used as a display option)
   | Real Bool                 -- ^ match postings with this "realness" value
   | Amt OrdPlus Quantity      -- ^ match if the amount's numeric quantity is less than/greater than/equal to/unsignedly equal to some value
-  | Sym Regexp                -- ^ match if the commodity symbol is fully-matched by this regexp
+  | Sym Regexp           -- ^ match if the commodity symbol is fully matched by this regexp.
+  | Cur Regexp                -- ^ match if the commodity symbol, or any symbol in its alias group, is fully matched by this regexp. Alias awareness is applied by 'queryExpandCurForAliases' once a Journal is available.
+  | Find Regexp (Maybe DateSpan) -- ^ match if any visible text field (account, amount, comment, description, code) is infix-matched by this regexp, or if the date is within this span (present when the pattern also parses as a period expression)
   -- compound queries (expr:)
   | Not Query                 -- ^ negate this match
   | And [Query]               -- ^ match if all of these match
   | Or  [Query]               -- ^ match if any of these match
-  -- compound queries for transactions (any:, all:)
-  -- If used in a non transaction-matching context, these are equivalent to And.
+  -- compound queries selecting whole transactions (any:, all:).
+  -- When matching a posting, these look at the postings of its parent
+  -- transaction, so a posting can be matched because of its siblings.
+  -- In contexts with neither a transaction nor sibling postings available
+  -- (matching an account name, a commodity symbol...), they are equivalent to And.
   | AnyPosting  [Query]       -- ^ match if any one posting is matched by all of these
-  | AllPostings [Query]       -- ^ match if all postings are matched by all of these
+  | AllPostings [Query]       -- ^ match if all of one or more postings are matched by all of these
   deriving (Eq,Show)
 
 instance Default Query where def = Any
@@ -151,6 +162,7 @@ data OrdPlus = Lt | LtEq | Gt | GtEq | Eq | AbsLt | AbsLtEq | AbsGt | AbsGtEq | 
 -- | A query option changes a query's/report's behaviour and output in some way.
 data QueryOpt = QueryOptInAcctOnly AccountName  -- ^ show an account register focussed on this account
               | QueryOptInAcct AccountName      -- ^ as above but include sub-accounts in the account register
+              | QueryOptInterval Interval       -- ^ report interval extracted from a date: query
            -- | QueryOptCostBasis      -- ^ show amounts converted to cost where possible
            -- | QueryOptDate2  -- ^ show secondary dates instead of primary dates
     deriving (Show, Eq)
@@ -239,11 +251,11 @@ words'' prefixes = fromparse . parsewith maybePrefixedQuotedPhrases -- XXX
         let prefix :: T.Text
             prefix = not' <> next
         p <- singleQuotedPattern <|> doubleQuotedPattern
-        return $ prefix <> stripquotes p
+        return $ prefix <> textStripQuotes p
       singleQuotedPattern :: SimpleTextParser T.Text
-      singleQuotedPattern = stripquotes . T.pack <$> between (char '\'') (char '\'') (many $ noneOf ("'" :: [Char]))
+      singleQuotedPattern = textStripQuotes . T.pack <$> between (char '\'') (char '\'') (many $ noneOf ("'" :: [Char]))
       doubleQuotedPattern :: SimpleTextParser T.Text
-      doubleQuotedPattern = stripquotes . T.pack <$> between (char '"') (char '"') (many $ noneOf ("\"" :: [Char]))
+      doubleQuotedPattern = textStripQuotes . T.pack <$> between (char '"') (char '"') (many $ noneOf ("\"" :: [Char]))
       patterns :: SimpleTextParser T.Text
       patterns = T.pack <$> many (noneOf (" \n\r" :: [Char]))
 
@@ -262,6 +274,7 @@ queryprefixes = map (<>":") [
     ,"date"
     ,"date2"
     ,"status"
+    ,"sym"
     ,"cur"
     ,"real"
     ,"empty"
@@ -271,7 +284,9 @@ queryprefixes = map (<>":") [
     ,"expr"
     ,"any"
     ,"all"
+    ,"find"
     ]
+    ++ ["::"]  -- short form of find:
 
 defaultprefix :: T.Text
 defaultprefix = "acct"
@@ -300,12 +315,15 @@ parseQueryTerm _ (T.stripPrefix "desc:" -> Just s) = (,[]) . Desc <$> toRegexCI 
 parseQueryTerm _ (T.stripPrefix "payee:" -> Just s) = (,[]) <$> payeeTag (Just s)
 parseQueryTerm _ (T.stripPrefix "note:" -> Just s) = (,[]) <$> noteTag (Just s)
 parseQueryTerm _ (T.stripPrefix "acct:" -> Just s) = (,[]) . Acct <$> toRegexCI s
+parseQueryTerm d (T.stripPrefix "find:" -> Just s) = (,[]) <$> parseFindQuery d s
+parseQueryTerm d (T.stripPrefix "::" -> Just s) = (,[]) <$> parseFindQuery d s
 parseQueryTerm d (T.stripPrefix "date2:" -> Just s) =
-        case parsePeriodExpr d s of Left e         -> Left $ "\"date2:"++T.unpack s++"\" gave a "++showDateParseError e
-                                    Right (_,spn) -> Right (Date2 spn, [])
+        case parsePeriodExpr d s of Left e                   -> Left $ "could not parse \"date2:"++T.unpack s++"\": "++customErrorBundlePretty e
+                                    Right (_         , spn)  -> Right (Date2 spn, [])
 parseQueryTerm d (T.stripPrefix "date:" -> Just s) =
-        case parsePeriodExpr d s of Left e         -> Left $ "\"date:"++T.unpack s++"\" gave a "++showDateParseError e
-                                    Right (_,spn) -> Right (Date spn, [])
+        case parsePeriodExpr d s of Left e                   -> Left $ "could not parse \"date:"++T.unpack s++"\": "++customErrorBundlePretty e
+                                    Right (NoInterval, spn)  -> Right (Date spn, [])
+                                    Right (interval  , spn)  -> Right (Date spn, [QueryOptInterval interval])
 parseQueryTerm _ (T.stripPrefix "status:" -> Just s) =
         case parseStatus s of Left e   -> Left $ "\"status:"++T.unpack s++"\" gave a parse error: " ++ e
                               Right st -> Right (StatusQ st, [])
@@ -314,7 +332,8 @@ parseQueryTerm _ (T.stripPrefix "amt:" -> Just s) = case parseAmountQueryTerm s 
   Right (ord, q) -> Right (Amt ord q, [])
   Left err       -> Left err
 parseQueryTerm _ (T.stripPrefix "depth:" -> Just s) = (,[]) <$> parseDepthSpecQuery s
-parseQueryTerm _ (T.stripPrefix "cur:" -> Just s) = (,[]) . Sym <$> toRegexCI ("^" <> s <> "$") -- support cur: as an alias
+parseQueryTerm _ (T.stripPrefix "sym:" -> Just s) = (,[]) . Sym <$> toRegexCI ("^" <> s <> "$")
+parseQueryTerm _ (T.stripPrefix "cur:" -> Just s) = (,[]) . Cur <$> toRegexCI ("^" <> s <> "$") -- support cur: as an alias
 parseQueryTerm _ (T.stripPrefix "tag:" -> Just s) = (,[]) <$> parseTag s
 parseQueryTerm _ (T.stripPrefix "type:" -> Just s) = (,[]) <$> parseTypeCodes s
 parseQueryTerm d (T.stripPrefix "expr:" -> Just s) = parseBooleanQuery d s
@@ -424,14 +443,25 @@ parseBooleanQuery d t =
                             -- if it is not one of the keywords "not", "and", "or".
                             queryArgP :: SimpleTextParser T.Text
                             queryArgP = choice'
-                              [ stripquotes . T.pack <$> between (char '\'') (char '\'') (many $ noneOf ("'" :: [Char])),
-                                stripquotes . T.pack <$> between (char '"') (char '"') (many $ noneOf ("\"" :: [Char])),
+                              [ textStripQuotes . T.pack <$> between (char '\'') (char '\'') (many $ noneOf ("'" :: [Char])),
+                                textStripQuotes . T.pack <$> between (char '"') (char '"') (many $ noneOf ("\"" :: [Char])),
                                 T.pack <$> (notFollowedBy keywordP >> (many $ noneOf (") \n\r" :: [Char]))) ]
 
                               where
                                 -- Any of the combinator keywords used above (not/and/or), terminated by a space.
                                 keywordP :: SimpleTextParser T.Text
                                 keywordP = choice' (string' <$> ["not ", "and ", "or "])
+
+-- | Parse the argument of a find: (or ::) query: a case-insensitive regexp
+-- to be matched against any text field, and, if the argument also parses
+-- as a period expression with a start or end date, a date span to be
+-- matched against dates.
+parseFindQuery :: Day -> T.Text -> Either RegexError Query
+parseFindQuery d s = Find <$> toRegexCI s <*> pure mspan
+  where
+    mspan = case parsePeriodExpr d s of
+      Right (_, spn) | spn /= nulldatespan -> Just spn
+      _                                    -> Nothing
 
 -- | Parse the argument of an amt query term ([OP][SIGN]NUM), to an
 -- OrdPlus and a Quantity, or if parsing fails, an error message. OP
@@ -488,7 +518,8 @@ parseDepthSpec s = do
     let depthString = T.unpack $ if T.null b then a else T.tail b
     depth <- case readMay depthString of
         Just d | d >= 0 -> Right d
-        _ -> Left $ "depth: should be a positive number, but received " ++ depthString
+        _ -> Left $ "could not parse depth \"" ++ T.unpack s ++ "\": "
+               ++ "it should be a whole number, 0 or more, optionally preceded by ACCTREGEX="
     regexp <- mapM toRegexCI $ if T.null b then Nothing else Just a
     return $ case regexp of
       Nothing -> DepthSpec (Just depth) []
@@ -510,14 +541,14 @@ parseTypeCodes s =
     ([],[])   -> Left help
     ([],ts)   -> Right $ Type ts
   where
-    help = "type:'s argument should be one or more of " ++ accountTypeChoices False ++ " (case insensitive)."
+    help = "type:'s argument should be one or more of " ++ accountTypeChoices False
 
 accountTypeChoices :: Bool -> String
-accountTypeChoices allowlongform = 
-  intercalate ", " 
+accountTypeChoices allowlongform =
+  intercalate ", "
     -- keep synced with parseAccountType
-    $ ["A","L","E","R","X","C","V"]
-    ++ if allowlongform then ["Asset","Liability","Equity","Revenue","Expense","Cash","Conversion"] else []
+    $ ["A","L","E","R","X","C","V","G"]
+    ++ if allowlongform then ["Asset","Liability","Equity","Revenue","Expense","Cash","Conversion","Gain"] else []
 
 -- | Case-insensitively parse one single-letter code, or one long-form word if permitted, to an account type.
 -- On failure, returns the unparseable text.
@@ -532,6 +563,7 @@ parseAccountType allowlongform s =
     "x"                          -> Right Expense
     "c"                          -> Right Cash
     "v"                          -> Right Conversion
+    "g"                          -> Right Gain
     "asset"      | allowlongform -> Right Asset
     "liability"  | allowlongform -> Right Liability
     "equity"     | allowlongform -> Right Equity
@@ -539,6 +571,7 @@ parseAccountType allowlongform s =
     "expense"    | allowlongform -> Right Expense
     "cash"       | allowlongform -> Right Cash
     "conversion" | allowlongform -> Right Conversion
+    "gain"       | allowlongform -> Right Gain
     _                            -> Left $ T.unpack s
 
 -- | Parse the value part of a "status:" query, or return an error.
@@ -557,6 +590,22 @@ truestrings :: [T.Text]
 truestrings = ["1"]
 
 -- * modifying
+
+-- | Bottom-up rewrite of a Query tree: recursively transform the
+-- children of each compound query (Not, And, Or, AnyPosting,
+-- AllPostings), then apply f to the resulting node. Leaf queries (Cur,
+-- Acct, Date, ...) are passed straight to f. Use this when you want to
+-- write a single-node rewrite rule and have it applied throughout the
+-- tree without re-doing the structural recursion by hand.
+transformQuery :: (Query -> Query) -> Query -> Query
+transformQuery f = go
+  where
+    go (Not q)          = f (Not (go q))
+    go (And qs)         = f (And  (map go qs))
+    go (Or  qs)         = f (Or   (map go qs))
+    go (AnyPosting qs)  = f (AnyPosting  (map go qs))
+    go (AllPostings qs) = f (AllPostings (map go qs))
+    go q                = f q
 
 simplifyQuery :: Query -> Query
 simplifyQuery q0 =
@@ -613,6 +662,29 @@ filterQueryOrNotQuery p0 = simplifyQuery . filterQueryOrNotQuery' p0
     filterQueryOrNotQuery' p (Not q) | p q = Not $ filterQueryOrNotQuery p q
     filterQueryOrNotQuery' p q = if p q then q else Any
 
+-- | Rewrite Cur terms in a query so they also match the alias-group
+-- siblings of any declared commodity symbol matched by the original
+-- regex. The first argument is the list of declared commodity symbols
+-- to consider (including aliases). The second maps each such symbol
+-- to its alias group (canonical + aliases).
+--
+-- In more detail:
+-- a Cur r is expanded to @Or [Cur r, Cur ^a$, Cur ^b$, ...]@ where
+-- a, b, ... are the alias-group siblings of any declared symbol matched
+-- by r that are not themselves matched by r. The original Cur r is kept
+-- so non-declared symbols still match if r matches them.
+queryExpandCurForAliases :: [CommoditySymbol] -> (CommoditySymbol -> [CommoditySymbol]) -> Query -> Query
+queryExpandCurForAliases declared groupOf = transformQuery expandSym
+  where
+    expandSym (Cur r) =
+      let matched  = filter (regexMatchText r) declared
+          siblings = concatMap groupOf matched
+          extras   = [s | s <- nubOrd siblings, not (regexMatchText r s)]
+      in if null extras
+         then Cur r
+         else Or (Cur r : [Cur (toRegexCI' ("^" <> regexEscape s <> "$")) | s <- extras])
+    expandSym q = q
+
 -- * predicates
 
 -- | Does this simple query predicate match any part of this possibly compound query ?
@@ -665,6 +737,10 @@ queryIsAcct :: Query -> Bool
 queryIsAcct (Acct _) = True
 queryIsAcct _ = False
 
+queryIsFind :: Query -> Bool
+queryIsFind (Find _ _) = True
+queryIsFind _ = False
+
 queryIsType :: Query -> Bool
 queryIsType (Type _) = True
 queryIsType _ = False
@@ -682,12 +758,13 @@ queryIsAmt :: Query -> Bool
 queryIsAmt (Amt _ _) = True
 queryIsAmt _         = False
 
-queryIsSym :: Query -> Bool
-queryIsSym (Sym _) = True
-queryIsSym _ = False
+queryIsCurOrSym :: Query -> Bool
+queryIsCurOrSym (Cur _)      = True
+queryIsCurOrSym (Sym _) = True
+queryIsCurOrSym _ = False
 
-queryIsAmtOrSym :: Query -> Bool
-queryIsAmtOrSym = liftA2 (||) queryIsAmt queryIsSym
+queryIsAmtOrCurOrSym :: Query -> Bool
+queryIsAmtOrCurOrSym = liftA2 (||) queryIsAmt queryIsCurOrSym
 
 -- | Does this query specify a start date and nothing else (that would
 -- filter postings prior to the date) ?
@@ -712,7 +789,7 @@ queryIsTransactionRelated = matchesQuery (
   ||| queryIsDesc
   ||| queryIsReal
   ||| queryIsAmt
-  ||| queryIsSym
+  ||| queryIsCurOrSym
   )
 
 (|||) :: (a->Bool) -> (a->Bool) -> (a->Bool)
@@ -798,6 +875,7 @@ inAccount :: [QueryOpt] -> Maybe (AccountName,Bool)
 inAccount [] = Nothing
 inAccount (QueryOptInAcctOnly a:_) = Just (a,False)
 inAccount (QueryOptInAcct a:_) = Just (a,True)
+inAccount (QueryOptInterval _:rest) = inAccount rest
 
 -- | A query for the account(s) we are currently focussed on, if any.
 -- Just looks at the first query option.
@@ -805,6 +883,7 @@ inAccountQuery :: [QueryOpt] -> Maybe Query
 inAccountQuery [] = Nothing
 inAccountQuery (QueryOptInAcctOnly a : _) = Just . Acct $ accountNameToAccountOnlyRegex a
 inAccountQuery (QueryOptInAcct a     : _) = Just . Acct $ accountNameToAccountRegex a
+inAccountQuery (QueryOptInterval _   : rest) = inAccountQuery rest
 
 -- -- | Convert a query to its inverse.
 -- negateQuery :: Query -> Query
@@ -813,8 +892,27 @@ inAccountQuery (QueryOptInAcct a     : _) = Just . Acct $ accountNameToAccountRe
 -- matching things with queries
 
 matchesCommodity :: Query -> CommoditySymbol -> Bool
-matchesCommodity (Sym r) = regexMatchText r
-matchesCommodity _ = const True
+matchesCommodity (Cur r)          s = regexMatchText r s
+matchesCommodity (Sym r)     s = regexMatchText r s
+matchesCommodity (Find r _)       s = regexMatchText r s
+matchesCommodity (Any)            _ = True
+matchesCommodity (None)           _ = False
+matchesCommodity (Or qs)          s = any (`matchesCommodity` s) qs
+matchesCommodity (And qs)         s = all (`matchesCommodity` s) qs
+matchesCommodity (AnyPosting qs)  s = all (`matchesCommodity` s) qs
+matchesCommodity (AllPostings qs) s = all1 (`matchesCommodity` s) qs
+matchesCommodity _                _ = False
+
+-- | Like matchesCommodity, but also supporting Tag queries,
+-- using the provided function to look up a commodity's tags.
+matchesCommodityExtra :: (CommoditySymbol -> [Tag]) -> Query -> CommoditySymbol -> Bool
+matchesCommodityExtra ctags (Not q)           c = not $ matchesCommodityExtra ctags q c
+matchesCommodityExtra ctags (Or  qs)          c = any (\q -> matchesCommodityExtra ctags q c) qs
+matchesCommodityExtra ctags (And qs)          c = all (\q -> matchesCommodityExtra ctags q c) qs
+matchesCommodityExtra ctags (AnyPosting  qs)  c = all (\q -> matchesCommodityExtra ctags q c) qs
+matchesCommodityExtra ctags (AllPostings qs)  c = all1 (\q -> matchesCommodityExtra ctags q c) qs
+matchesCommodityExtra ctags (Tag npat vpat)   c = patternsMatchTags npat vpat $ ctags c
+matchesCommodityExtra _     q                 c = matchesCommodity q c
 
 -- | Does the match expression match this (simple) amount ?
 matchesAmount :: Query -> Amount -> Bool
@@ -824,8 +922,9 @@ matchesAmount (None) _ = False
 matchesAmount (Or qs) a = any (`matchesAmount` a) qs
 matchesAmount (And qs) a = all (`matchesAmount` a) qs
 matchesAmount (AnyPosting  qs) a = all (`matchesAmount` a) qs
-matchesAmount (AllPostings qs) a = all (`matchesAmount` a) qs
+matchesAmount (AllPostings qs) a = all1 (`matchesAmount` a) qs
 matchesAmount (Amt ord n) a = compareAmount ord n a
+matchesAmount (Cur r) a = matchesCommodity (Cur r) (acommodity a)
 matchesAmount (Sym r) a = matchesCommodity (Sym r) (acommodity a)
 matchesAmount _ _ = True
 
@@ -848,19 +947,23 @@ matchesMixedAmount q ma = case amountsRaw ma of
     as -> any (q `matchesAmount`) as
 
 -- | Does the query match this account name ?
--- A matching in: clause is also considered a match.
+-- Only acct: and depth: terms can match; any other term (a date:, desc: etc.)
+-- fails to match, since an account name on its own has no such properties.
+-- (For matching type: and tag: terms against an account's other data,
+-- see matchesAccountExtra.)
 matchesAccount :: Query -> AccountName -> Bool
+matchesAccount (Any) _ = True
 matchesAccount (None) _ = False
 matchesAccount (Not m) a = not $ matchesAccount m a
 matchesAccount (Or ms) a = any (`matchesAccount` a) ms
 matchesAccount (And ms) a = all (`matchesAccount` a) ms
 matchesAccount (AnyPosting  qs) a = all (`matchesAccount` a) qs
-matchesAccount (AllPostings qs) a = all (`matchesAccount` a) qs
+matchesAccount (AllPostings qs) a = all1 (`matchesAccount` a) qs
 matchesAccount (Acct r) a = regexMatchText r a
+matchesAccount (Find r _) a = regexMatchText r a
 matchesAccount (Depth d) a = accountNameLevel a <= d
 matchesAccount (DepthAcct r d) a = accountNameLevel a <= d || not (regexMatchText r a)
-matchesAccount (Tag _ _) _ = False
-matchesAccount _ _ = True
+matchesAccount _ _ = False
 
 -- | Like matchesAccount, but with optional extra matching features:
 --
@@ -875,10 +978,33 @@ matchesAccountExtra atypes atags (Not q  ) a = not $ matchesAccountExtra atypes 
 matchesAccountExtra atypes atags (Or  qs ) a = any (\q -> matchesAccountExtra atypes atags q a) qs
 matchesAccountExtra atypes atags (And qs ) a = all (\q -> matchesAccountExtra atypes atags q a) qs
 matchesAccountExtra atypes atags (AnyPosting  qs ) a = all (\q -> matchesAccountExtra atypes atags q a) qs
-matchesAccountExtra atypes atags (AllPostings qs ) a = all (\q -> matchesAccountExtra atypes atags q a) qs
+matchesAccountExtra atypes atags (AllPostings qs ) a = all1 (\q -> matchesAccountExtra atypes atags q a) qs
 matchesAccountExtra atypes _     (Type ts) a = maybe False (\t -> any (t `isAccountSubtypeOf`) ts) $ atypes a
-matchesAccountExtra _      atags (Tag npat vpat) a = matchesTags npat vpat $ atags a
+matchesAccountExtra _      atags (Tag npat vpat) a = patternsMatchTags npat vpat $ atags a
 matchesAccountExtra _      _     q         a = matchesAccount q a
+
+-- | Test a posting against the subqueries of an any: or all: query, with the
+-- given posting matcher. The subqueries are tested against the postings of
+-- this posting's parent transaction, so that a posting can be matched because
+-- of its siblings. The selector function selects the any: or all: sense, ie whether
+-- any one of those postings must match, or all of them (requiring at least one).
+-- Postings generated by hledger may have no parent transaction; for those,
+-- only the posting itself is tested, making any: and all: behave like expr:.
+matchesSiblingPostings
+  :: ((Posting -> Bool) -> [Posting] -> Bool)
+     -- ^ selector fn: which sibling postings (including p) must match: 'any' for any:, or 'all1' for all:
+  -> (Query -> Posting -> Bool)
+     -- ^ match fn: how to test one subquery against one posting: 'matchesPosting',
+     --   or 'matchesPostingExtra' with its account type lookup applied
+  -> [Query]
+     -- ^ qs: the any:/all: subqueries, which must all match the same posting
+  -> Posting
+     -- ^ p: the posting being tested
+  -> Bool
+matchesSiblingPostings selector matchfn qs p =
+  selector (\p' -> all (`matchfn` p') qs) postingandsiblings
+  where
+    postingandsiblings = maybe [p] tpostings $ ptransaction p
 
 -- | Does the match expression match this posting ?
 -- When matching account name, and the posting has been transformed
@@ -889,11 +1015,12 @@ matchesPosting (Any) _ = True
 matchesPosting (None) _ = False
 matchesPosting (Or qs) p = any (`matchesPosting` p) qs
 matchesPosting (And qs) p = all (`matchesPosting` p) qs
-matchesPosting (AnyPosting  qs) p = all (`matchesPosting` p) qs
-matchesPosting (AllPostings qs) p = all (`matchesPosting` p) qs
+matchesPosting (AnyPosting  qs) p = matchesSiblingPostings any  matchesPosting qs p
+matchesPosting (AllPostings qs) p = matchesSiblingPostings all1 matchesPosting qs p
 matchesPosting (Code r) p = maybe False (regexMatchText r . tcode) $ ptransaction p
 matchesPosting (Desc r) p = maybe False (regexMatchText r . tdescription) $ ptransaction p
 matchesPosting (Acct r) p = matches p || maybe False matches (poriginal p) where matches = regexMatchText r . paccount
+matchesPosting (Find r mspan) p = findMatchesPosting r mspan p
 matchesPosting (Date spn) p = spn `spanContainsDate` postingDate p
 matchesPosting (Date2 spn) p = spn `spanContainsDate` postingDate2 p
 matchesPosting (StatusQ s) p = postingStatus p == s
@@ -901,11 +1028,12 @@ matchesPosting (Real v) p = v == isReal p
 matchesPosting q@(Depth _) Posting{paccount=a} = q `matchesAccount` a
 matchesPosting q@(DepthAcct _ _) Posting{paccount=a} = q `matchesAccount` a
 matchesPosting q@(Amt _ _) Posting{pamount=as} = q `matchesMixedAmount` as
+matchesPosting (Cur r) Posting{pamount=as} = any (matchesCommodity (Cur r) . acommodity) $ amountsRaw as
 matchesPosting (Sym r) Posting{pamount=as} = any (matchesCommodity (Sym r) . acommodity) $ amountsRaw as
 matchesPosting (Tag n v) p = case (reString n, v) of
   ("payee", Just v') -> maybe False (regexMatchText v' . transactionPayee) $ ptransaction p
   ("note", Just v') -> maybe False (regexMatchText v' . transactionNote) $ ptransaction p
-  (_, mv) -> matchesTags n mv $ postingAllTags p
+  (_, mv) -> patternsMatchTags n mv $ postingAllTags p
 matchesPosting (Type _) _ = False
 
 -- | Like matchesPosting, but if the posting's account's type is provided,
@@ -915,8 +1043,8 @@ matchesPostingExtra :: (AccountName -> Maybe AccountType) -> Query -> Posting ->
 matchesPostingExtra atype (Not q )  p = not $ matchesPostingExtra atype q p
 matchesPostingExtra atype (Or  qs)  p = any (\q -> matchesPostingExtra atype q p) qs
 matchesPostingExtra atype (And qs)  p = all (\q -> matchesPostingExtra atype q p) qs
-matchesPostingExtra atype (AnyPosting  qs)  p = all (\q -> matchesPostingExtra atype q p) qs
-matchesPostingExtra atype (AllPostings qs)  p = all (\q -> matchesPostingExtra atype q p) qs
+matchesPostingExtra atype (AnyPosting  qs)  p = matchesSiblingPostings any  (matchesPostingExtra atype) qs p
+matchesPostingExtra atype (AllPostings qs)  p = matchesSiblingPostings all1 (matchesPostingExtra atype) qs p
 matchesPostingExtra atype (Type ts) p =
   -- does posting's account's type, if we can detect it, match any of the given types ?
   (maybe False (\t -> any (t `isAccountSubtypeOf`) ts) . atype $ paccount p)
@@ -937,10 +1065,11 @@ matchesTransaction (None) _ = False
 matchesTransaction (Or qs) t = any (`matchesTransaction` t) qs
 matchesTransaction (And qs) t = all (`matchesTransaction` t) qs
 matchesTransaction (AnyPosting  qs) t = any (\p -> all (`matchesPosting` p) qs) $ tpostings t
-matchesTransaction (AllPostings qs) t = all (\p -> all (`matchesPosting` p) qs) $ tpostings t
+matchesTransaction (AllPostings qs) t = all1 (\p -> all (`matchesPosting` p) qs) $ tpostings t
 matchesTransaction (Code r) t = regexMatchText r $ tcode t
 matchesTransaction (Desc r) t = regexMatchText r $ tdescription t
 matchesTransaction q@(Acct _) t = any (q `matchesPosting`) $ tpostings t
+matchesTransaction (Find r mspan) t = findMatchesTransaction r mspan t
 matchesTransaction (Date spn) t = spanContainsDate spn $ tdate t
 matchesTransaction (Date2 spn) t = spanContainsDate spn $ transactionDate2 t
 matchesTransaction (StatusQ s) t = tstatus t == s
@@ -948,11 +1077,12 @@ matchesTransaction (Real v) t = v == hasRealPostings t
 matchesTransaction q@(Amt _ _) t = any (q `matchesPosting`) $ tpostings t
 matchesTransaction q@(Depth _) t = any (q `matchesPosting`) $ tpostings t
 matchesTransaction q@(DepthAcct _ _) t = any (q `matchesPosting`) $ tpostings t
+matchesTransaction q@(Cur _) t = any (q `matchesPosting`) $ tpostings t
 matchesTransaction q@(Sym _) t = any (q `matchesPosting`) $ tpostings t
 matchesTransaction (Tag n v) t = case (reString n, v) of
   ("payee", Just v') -> regexMatchText v' $ transactionPayee t
   ("note", Just v') -> regexMatchText v' $ transactionNote t
-  (_, v') -> matchesTags n v' $ transactionAllTags t
+  (_, v') -> patternsMatchTags n v' $ transactionAllTags t
 matchesTransaction (Type _) _ = False
 
 -- | Like matchesTransaction, but if the journal's account types are provided,
@@ -963,36 +1093,77 @@ matchesTransactionExtra atype (Not  q) t = not $ matchesTransactionExtra atype q
 matchesTransactionExtra atype (Or  qs) t = any (\q -> matchesTransactionExtra atype q t) qs
 matchesTransactionExtra atype (And qs) t = all (\q -> matchesTransactionExtra atype q t) qs
 matchesTransactionExtra atype (AnyPosting  qs) t = any (\p -> all (\q -> matchesPostingExtra atype q p) qs) $ tpostings t
-matchesTransactionExtra atype (AllPostings qs) t = all (\p -> all (\q -> matchesPostingExtra atype q p) qs) $ tpostings t
+matchesTransactionExtra atype (AllPostings qs) t = all1 (\p -> all (\q -> matchesPostingExtra atype q p) qs) $ tpostings t
 matchesTransactionExtra atype q@(Type _) t = any (matchesPostingExtra atype q) $ tpostings t
 matchesTransactionExtra _ q t = matchesTransaction q t
 
--- | Does the query match this transaction description ?
--- Tests desc: terms, any other terms are ignored.
-matchesDescription :: Query -> Text -> Bool
-matchesDescription (Not q) d          = not $ q `matchesDescription` d
-matchesDescription (Any) _            = True
-matchesDescription (None) _           = False
-matchesDescription (Or qs) d          = any (`matchesDescription` d) $ filter queryIsDesc qs
-matchesDescription (And qs) d         = all (`matchesDescription` d) $ filter queryIsDesc qs
-matchesDescription (AnyPosting  qs) d = all (`matchesDescription` d) $ filter queryIsDesc qs
-matchesDescription (AllPostings qs) d = all (`matchesDescription` d) $ filter queryIsDesc qs
-matchesDescription (Code _) _         = False
-matchesDescription (Desc r) d         = regexMatchText r d
-matchesDescription _ _                = False
+-- | Does the query match this payee ?
+-- Only payee: terms can match; any other term (a desc:, date:, acct: etc.)
+-- fails to match, since a payee on its own has no such properties.
+matchesPayee :: Query -> Payee -> Bool
+matchesPayee (Not q) p          = not $ q `matchesPayee` p
+matchesPayee (Any) _            = True
+matchesPayee (None) _           = False
+matchesPayee (Or qs) p          = any (`matchesPayee` p) qs
+matchesPayee (And qs) p         = all (`matchesPayee` p) qs
+matchesPayee (AnyPosting  qs) p = all (`matchesPayee` p) qs
+matchesPayee (AllPostings qs) p = all1 (`matchesPayee` p) qs
+matchesPayee (Tag n (Just v)) p | reString n == "payee" = regexMatchText v p  -- handles payee: and tag:payee= queries
+matchesPayee (Find r _) p       = regexMatchText r p
+matchesPayee _ _                = False
 
--- | Does the query match this transaction payee ?
--- Tests desc: (and payee: ?) terms, any other terms are ignored.
--- XXX Currently an alias for matchDescription. I'm not sure if more is needed,
--- There's some shenanigan with payee: and "payeeTag" to figure out.
-matchesPayeeWIP :: Query -> Payee -> Bool
-matchesPayeeWIP = matchesDescription
+-- | Does a find: query match this posting ? It does if its regexp matches any of
+-- the posting's text fields or its parent transaction's text fields (see
+-- 'postingFindTexts', 'transactionFindTexts'), or if its date span, if any,
+-- contains the posting's date.
+findMatchesPosting :: Regexp -> Maybe DateSpan -> Posting -> Bool
+findMatchesPosting r mspan p =
+  maybe False (`spanContainsDate` postingDate p) mspan
+  || any (regexMatchText r) (postingFindTexts p ++ maybe [] transactionFindTexts (ptransaction p))
 
--- | Does the query match the name and optionally the value of any of these tags ?
-matchesTags :: Regexp -> Maybe Regexp -> [Tag] -> Bool
-matchesTags namepat valuepat = any (matches namepat valuepat)
+-- | Does a find: query match this transaction ? It does if its regexp matches any of
+-- the transaction's text fields or any of its postings' text fields (see
+-- 'transactionFindTexts', 'postingFindTexts'), or if its date span, if any,
+-- contains the transaction's date.
+findMatchesTransaction :: Regexp -> Maybe DateSpan -> Transaction -> Bool
+findMatchesTransaction r mspan t =
+  maybe False (`spanContainsDate` tdate t) mspan
+  || any (regexMatchText r) (transactionFindTexts t ++ concatMap postingFindTexts (tpostings t))
+
+-- | The text fields of a posting which a find: query searches:
+-- the account name (and the original account name, if the posting has been transformed),
+-- the comment, and the amount as displayed on one line.
+-- These are the posting's visible texts; tags are searched only as part of the comment,
+-- so hidden tags and tags inherited from account declarations are not matched.
+-- The amount is last, since rendering it costs the most.
+postingFindTexts :: Posting -> [Text]
+postingFindTexts p =
+  paccount p : maybe [] (pure . paccount) (poriginal p)
+  ++ [pcomment p, T.pack $ showMixedAmountOneLine $ pamount p]
+
+-- | The text fields of a transaction (not including its postings) which a find: query searches:
+-- the description, code and comment.
+transactionFindTexts :: Transaction -> [Text]
+transactionFindTexts t = [tdescription t, tcode t, tcomment t]
+
+-- | Do this name regex and optional value regex match the name and value of any of these tags ?
+patternsMatchTags :: Regexp -> Maybe Regexp -> [Tag] -> Bool
+patternsMatchTags namepat valuepat = any (matches namepat valuepat)
   where
     matches npat vpat (n,v) = regexMatchText npat n && maybe (const True) regexMatchText vpat v
+
+-- | Does the query match the name and optionally the value of this tag ?
+-- Non-tag: query terms are ignored (this might disrupt some boolean queries).
+matchesTag :: Query -> Tag -> Bool
+matchesTag (Not q)          t = not $ q `matchesTag` t
+matchesTag (Any)            _ = True
+matchesTag (None)           _ = False
+matchesTag (Or qs)          t = any (`matchesTag` t) $ filter queryIsTag qs
+matchesTag (And qs)         t = all (`matchesTag` t) $ filter queryIsTag qs
+matchesTag (AnyPosting qs)  t = all (`matchesTag` t) $ filter queryIsTag qs
+matchesTag (AllPostings qs) t = all1 (`matchesTag` t) $ filter queryIsTag qs
+matchesTag (Tag npat mvpat) t = patternsMatchTags npat mvpat [t]
+matchesTag _                _ = False
 
 -- | Does the query match this market price ?
 matchesPriceDirective :: Query -> PriceDirective -> Bool
@@ -1001,9 +1172,10 @@ matchesPriceDirective (Not q) p          = not $ matchesPriceDirective q p
 matchesPriceDirective (Or qs) p          = any (`matchesPriceDirective` p) qs
 matchesPriceDirective (And qs) p         = all (`matchesPriceDirective` p) qs
 matchesPriceDirective (AnyPosting  qs) p = all (`matchesPriceDirective` p) qs
-matchesPriceDirective (AllPostings qs) p = all (`matchesPriceDirective` p) qs
+matchesPriceDirective (AllPostings qs) p = all1 (`matchesPriceDirective` p) qs
 matchesPriceDirective q@(Amt _ _) p      = matchesAmount q (pdamount p)
-matchesPriceDirective q@(Sym _) p        = matchesCommodity q (pdcommodity p)
+matchesPriceDirective q@(Cur _) p        = matchesCommodity q (pdcommodity p)
+matchesPriceDirective q@(Sym _) p   = matchesCommodity q (pdcommodity p)
 matchesPriceDirective (Date spn) p       = spanContainsDate spn (pddate p)
 matchesPriceDirective _ _                = True
 
@@ -1029,6 +1201,10 @@ tests_Query = testGroup "Query" [
      parseQuery nulldate "desc:'x x'"                                  @?= Right (Desc $ toRegexCI' "x x", [])
      parseQuery nulldate "'a a' 'b"                                    @?= Right (Or [Acct $ toRegexCI' "a a",Acct $ toRegexCI' "'b"], [])
      parseQuery nulldate "\""                                          @?= Right (Acct $ toRegexCI' "\"", [])
+     parseQuery nulldate "find:a"                                      @?= Right (Find (toRegexCI' "a") Nothing, [])
+     parseQuery nulldate "::a ::b"                                     @?= Right (And [Find (toRegexCI' "a") Nothing, Find (toRegexCI' "b") Nothing], [])
+     parseQuery nulldate "not:::'a b'"                                 @?= Right (Not $ Find (toRegexCI' "a b") Nothing, [])
+     parseQuery nulldate "::2024" @?= Right (Find (toRegexCI' "2024") (Just $ DateSpan (Just $ Flex $ fromGregorian 2024 1 1) (Just $ Flex $ fromGregorian 2025 1 1)), [])
 
   ,testCase "parseBooleanQuery" $ do
      parseBooleanQuery nulldate "(tag:'atag=a')"     @?= Right (Tag (toRegexCI' "atag") (Just $ toRegexCI' "a"), [])
@@ -1121,8 +1297,8 @@ tests_Query = testGroup "Query" [
      assertBool "" $ Depth 2 `matchesAccount` "a"
      assertBool "" $ Depth 2 `matchesAccount` "a:b"
      assertBool "" $ not $ Depth 2 `matchesAccount` "a:b:c"
-     assertBool "" $ Date nulldatespan `matchesAccount` "a"
-     assertBool "" $ Date2 nulldatespan `matchesAccount` "a"
+     assertBool "" $ not $ Date nulldatespan `matchesAccount` "a"
+     assertBool "" $ not $ Date2 nulldatespan `matchesAccount` "a"
      assertBool "" $ not $ Tag (toRegex' "a") Nothing `matchesAccount` "a"
 
   ,testCase "matchesAccountExtra" $ do
@@ -1141,9 +1317,9 @@ tests_Query = testGroup "Query" [
       assertBool "" $ not $ (Not $ StatusQ Unmarked) `matchesPosting` nullposting{pstatus=Unmarked}
     ,testCase "positive match on true posting status acquired from transaction" $
       assertBool "" $ (StatusQ Cleared) `matchesPosting` nullposting{pstatus=Unmarked,ptransaction=Just nulltransaction{tstatus=Cleared}}
-    ,testCase "real:1 on real posting" $ assertBool "" $ (Real True) `matchesPosting` nullposting{ptype=RegularPosting}
-    ,testCase "real:1 on virtual posting fails" $ assertBool "" $ not $ (Real True) `matchesPosting` nullposting{ptype=VirtualPosting}
-    ,testCase "real:1 on balanced virtual posting fails" $ assertBool "" $ not $ (Real True) `matchesPosting` nullposting{ptype=BalancedVirtualPosting}
+    ,testCase "real:1 on real posting" $ assertBool "" $ (Real True) `matchesPosting` nullposting{preal=RealPosting}
+    ,testCase "real:1 on virtual posting fails" $ assertBool "" $ not $ (Real True) `matchesPosting` nullposting{preal=VirtualPosting}
+    ,testCase "real:1 on balanced virtual posting fails" $ assertBool "" $ not $ (Real True) `matchesPosting` nullposting{preal=BalancedVirtualPosting}
     ,testCase "acct:" $ assertBool "" $ (Acct $ toRegex' "'b") `matchesPosting` nullposting{paccount="'b"}
     ,testCase "tag:" $ do
       assertBool "" $ not $ (Tag (toRegex' "a") (Just $ toRegex' "r$")) `matchesPosting` nullposting
@@ -1160,6 +1336,50 @@ tests_Query = testGroup "Query" [
       assertBool "" $ (toSym "\\$") `matchesPosting` nullposting{pamount=mixedAmount $ usd 1} -- have to quote $ for regexpr
       assertBool "" $ (toSym "shekels") `matchesPosting` nullposting{pamount=mixedAmount nullamt{acommodity="shekels"}}
       assertBool "" $ not $ (toSym "shek") `matchesPosting` nullposting{pamount=mixedAmount nullamt{acommodity="shekels"}}
+    ,testCase "sym:" $ do
+      let toSymE = fst . either error' id . parseQueryTerm (fromGregorian 2000 01 01) . ("sym:"<>)
+      -- sym: parses to a Sym constructor (matches a specific commodity symbol)
+      case toSymE "USD" of
+        Sym _ -> return ()
+        q          -> assertFailure $ "expected Sym, got " <> show q
+      -- and matches its target like Cur would
+      assertBool "" $ (toSymE "shekels") `matchesPosting` nullposting{pamount=mixedAmount nullamt{acommodity="shekels"}}
+      assertBool "" $ not $ (toSymE "shek") `matchesPosting` nullposting{pamount=mixedAmount nullamt{acommodity="shekels"}}
+    ,testCase "any: and all: match a posting by looking at its siblings" $ do
+      let foodp = nullposting{paccount="expenses:food"}
+          tie ps = txnTieKnot nulltransaction{tpostings=ps}
+          cashtxn = tie [foodp, nullposting{paccount="assets:cash"}]
+          cardtxn = tie [foodp, nullposting{paccount="liabilities:card"}]
+          anycash = AnyPosting [Acct $ toRegex' "cash"]
+          -- does the query match the food posting of this transaction ?
+          -- all1, not all, so that an empty selection can't pass vacuously
+          matchesFoodPostingOf q = all1 (matchesPosting q) . filter ((=="expenses:food").paccount) . tpostings
+      -- expenses:food is selected by any:cash only in the transaction which also posts to cash
+      assertBool "" $ matchesFoodPostingOf anycash cashtxn
+      assertBool "" $ not $ matchesFoodPostingOf anycash cardtxn
+      -- all: requires every sibling posting to match
+      assertBool "" $ all1 (matchesPosting $ AllPostings [Acct $ toRegex' "expenses|assets"]) $ tpostings cashtxn
+      assertBool "" $ not $ all1 (matchesPosting $ AllPostings [Acct $ toRegex' "assets"]) $ tpostings cashtxn
+      -- a posting with no parent transaction, eg one generated by a report, is tested on its own
+      assertBool "" $ (AnyPosting [Acct $ toRegex' "food"]) `matchesPosting` foodp
+      assertBool "" $ not $ anycash `matchesPosting` foodp
+    ,testCase "queryExpandCurForAliases" $ do
+      -- A group lookup where $ has aliases USD and U$.
+      let group s | s `elem` ["$","USD","U$"] = ["$","USD","U$"]
+                  | otherwise                 = [s]
+          declared = ["$","USD","U$"]
+          curUSD = Cur (toRegexCI' "^USD$")
+      -- Cur matching USD gets expanded to Or including the canonical and other alias.
+      case queryExpandCurForAliases declared group curUSD of
+        Or qs -> assertBool "expansion includes original Cur" (curUSD `elem` qs)
+              >> assertEqual "expansion has 3 disjuncts" 3 (length qs)
+        q     -> assertFailure $ "expected Or expansion, got " <> show q
+      -- Sym is untouched even when its regex matches a declared alias.
+      let exactUSD = Sym (toRegexCI' "^USD$")
+      assertEqual "" exactUSD (queryExpandCurForAliases declared group exactUSD)
+      -- No expansion when the regex matches a non-declared symbol with no aliases.
+      let curJPY = Cur (toRegexCI' "^JPY$")
+      assertEqual "" curJPY (queryExpandCurForAliases declared group curJPY)
   ]
 
   ,testCase "matchesTransaction" $ do

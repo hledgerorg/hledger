@@ -1,9 +1,13 @@
 add
 
-Record new transactions with interactive prompting in the console.
+Add new transactions to a journal file, with interactive prompting.
 
 Flags:
      --no-new-accounts      don't allow creating new accounts
+     --layout=hledger1|COL  how should posting amounts be aligned ?
+                            hledger1 - right-align amounts, as in hledger 1
+                            COL      - align decimal marks at column COL
+                            (default: 53)
 
 Many hledger users edit their journals directly with a text editor, or
 generate them from CSV. For more interactive data entry, there is the
@@ -20,8 +24,8 @@ control-d or control-c to exit.
 Features:
 
 - add tries to provide useful defaults, using the most similar (by
-  description) recent transaction (filtered by the query, if any) as a
-  template.
+  description) and nearest-dated transaction (filtered by the query, if
+  any) as a template.
 - You can also set the initial defaults with command line arguments.
 - Readline-style edit keys can be used during data entry.
 - The tab key will auto-complete whenever possible - accounts,
@@ -40,6 +44,13 @@ Notes:
   this symbol for you. It does not do this; we assume that if you are
   using a D directive you prefer not to see the commodity symbol
   repeated on amounts in the journal.
+- add creates entries in journal format; it won't work with timeclock or
+  timedot files.
+- There is a known issue on Windows if this hledger version is built
+  from stackage: the prompts will show ANSI junk instead of colours
+  (#2410). You can avoid this by using official hledger release binaries
+  or by building it with haskeline >=0.8.4; or by running add with
+  --color=no, perhaps configured in your config file.
 
 Examples:
 
@@ -57,3 +68,27 @@ Examples:
   hledger add today 'best buy' expenses:supplies '$20'
 
 There is a detailed tutorial at https://hledger.org/add.html.
+
+add and balance assertions
+
+You can add a balance assertion by writing AMOUNT = BALANCE when asked
+for an amount. Eg 100 = 500.
+
+Also, each time you enter a new amount, hledger re-checks all balance
+assertions in the journal and rejects the new amount if it would make
+any of them fail. You can run add with -I or --ignore-assertions to
+disable balance assertion checking.
+
+add and balance assignments
+
+Adding a new balance assignment
+When entering a posting amount, you can write a = BALANCEAMOUNT balance
+assignment (or ==, =*, ==*) instead. The posting amount required to
+produce this balance will be calculated automatically. (Since 1.51)
+
+Adding a posting dated before an existing balance assignment
+add won't let you add a posting dated earlier than an existing balance
+assignment in that account. (Because it calculates balance assignments
+only once at startup, converting them to assertions, so adding the new
+amount causes an assertion failure.) To work around this, run add with
+balance assertions ignored: hledger add -I.

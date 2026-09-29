@@ -1,0 +1,223 @@
+# * check lots
+
+# ** 1. succeeds with valid buy-only lot data
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+$ hledger -f - check lots
+
+# ** 2. succeeds with valid buy and sell
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 sell
+    assets:stocks    -10 AAPL {$50} @ $55
+    assets:cash       $550
+
+$ hledger -f - check lots
+
+# ** 3. fails with invalid lots: tag value on commodity declaration
+<
+commodity AAPL ; lots: BADMETHOD
+
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+$ hledger -f - check lots
+>2 /unrecognised lots: tag value/
+>=1
+
+# ** 4. check lots fails when selling more lots than available (strict mode)
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 sell
+    assets:stocks    -15 AAPL {$50} @ $55
+    assets:cash       $825
+
+$ hledger -f - check lots
+>2 /Insufficient lots/
+>=1
+
+# ** 5. check lots fails when the written realised gain doesn't match the cost-basis residual
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 sell
+    assets:stocks    -10 AAPL {$50} @ $55
+    assets:cash       $550
+    revenues:gains    $-999
+
+$ hledger -f - check lots
+>2 /realised gain amount is wrong/
+>=1
+
+# ** 6. --ignore-lots suppresses lot errors, journal loads
+<
+commodity AAPL ; lots: BADMETHOD
+
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50} @ $50
+    assets:checking
+
+$ hledger -f - --ignore-lots print
+2026-01-15 buy
+    assets:stocks                                 10 AAPL {$50} @ $50
+    assets:checking
+
+>=
+
+# ** 7. -I also suppresses lot errors (implies --ignore-lots)
+$ hledger -f - -I print
+2026-01-15 buy
+    assets:stocks                                 10 AAPL {$50} @ $50
+    assets:checking
+
+>=
+
+# ** 8. -s/--strict overrides -I, restoring lot checks
+$ hledger -f - -I -s print
+>2 /unrecognised lots: tag value/
+>=1
+
+# ** 9. hledger check lots overrides --ignore-lots in config (simulated via -I here)
+$ hledger -f - -I check lots
+>2 /unrecognised lots: tag value/
+>=1
+
+# ** 10. fails with a valueless lots: tag on an account declaration
+# (account lots: tags set only the reduction method; lotfulness is declared
+# on commodities)
+<
+account assets:stocks  ; lots:
+
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+$ hledger -f - check lots
+>2 /An account lots: tag sets the disposal order for lot-tracked commodities there,/
+>=1
+
+# ** 11. --ignore-lots disables lot checking but not basic lot inference,
+# so entries which balance with lots enabled still balance: here the
+# user-written gain posting is still set aside by the balancer.
+<
+2026-01-15 buy
+    assets:checking  $-500
+    assets:stocks    10 AAPL {$50}
+
+2026-02-01 sell
+    assets:stocks    -5 AAPL {$50} @ $55
+    assets:cash       $275
+    revenues:gains    $-25
+
+$ hledger -f - print -I
+2026-01-15 buy
+    assets:checking                            $-500
+    assets:stocks                                 10 AAPL {$50}
+
+2026-02-01 sell
+    assets:stocks                                 -5 AAPL {$50} @ $55
+    assets:cash                                 $275
+    revenues:gains                              $-25
+
+>=
+
+# ** 12. With --ignore-lots, a lot transfer with a priced fee still balances:
+# the fee outflow is still auto-split into transfer and dispose parts.
+<
+commodity ETH ; lots:
+
+2026-01-01 buy
+    assets:cash      $-20000
+    assets:wallet1   10 ETH {$2000}
+
+2026-02-01 transfer with fee
+    assets:wallet1          -10 ETH
+    expenses:fees           0.01 ETH @ $2100
+    assets:wallet2          9.99 ETH
+
+$ hledger -f - print -I -x
+2026-01-01 buy
+    assets:cash                              $-20000
+    assets:wallet1                                10 ETH {$2000} @ $2000
+
+2026-02-01 transfer with fee
+    assets:wallet1                                -9.99 ETH
+    assets:wallet1                                -0.01 ETH @ $2100
+    expenses:fees                                  0.01 ETH @ $2100
+    assets:wallet2                                 9.99 ETH
+
+>=
+
+# ** 13. With --ignore-lots, an acquisition with a cost basis and an elided
+# counterpart still infers the transacted cost from the basis, so the
+# counterpart is inferred as money, not as the lot commodity.
+<
+commodity gold ; lots:
+
+2026-04-25 buy gold
+    assets:cash
+    assets:gold   5 gold {$10.6}
+
+$ hledger -f - print -I -x
+2026-04-25 buy gold
+    assets:cash                                 $-53.0
+    assets:gold                                    5 gold {$10.6} @ $10.6
+
+>=
+
+# ** 14. With --ignore-lots, a transfer whose lot commodity quantities don't
+# add up (eg an unrecorded fee) loads, with a balancing conversion cost
+# inferred; with lots enabled it is an error (see lots-errors.test).
+<
+commodity ABC ; lots:
+
+2021-01-01 buy
+    equity:opening   $-50
+    assets:broker1    5 ABC {$10}
+
+2021-06-01 transfer with unrecorded fee
+    assets:broker1   -5 ABC
+    assets:broker2   4.9 ABC
+    expenses:fees    $1
+
+$ hledger -f - print -I -x
+2021-01-01 buy
+    equity:opening                              $-50
+    assets:broker1                                 5 ABC {$10} @@ $50
+
+2021-06-01 transfer with unrecorded fee
+    assets:broker1                                -5 ABC @ $10.00
+    assets:broker2                                 4.9 ABC @ $10.00
+    expenses:fees                                 $1
+
+>=
+
+# ** 15. --ignore-lots silences lot state errors (here, selling more than
+# was acquired), letting the journal load for troubleshooting; balance
+# reports show the (negative) base account balances.
+<
+2026-01-15 buy
+    assets:stocks    10 AAPL {$50}
+    assets:checking
+
+2026-02-01 sell
+    assets:stocks    -15 AAPL {$50} @ $55
+    assets:cash       $825
+
+$ hledger -f - bal -N -I
+                $825  assets:cash
+               $-500  assets:checking
+             -5 AAPL  assets:stocks
+

@@ -22,3 +22,83 @@ $ hledger -f - bal
 --------------------
                    0  
 >=0
+
+# ** 3. A number where the declared decimal mark appears more than once
+# (and so looks like a digit group mark) is probably a typo, and is rejected. (#1985)
+<
+decimal-mark .
+2023-01-01
+    (a)    1.2.34
+$ hledger -f - check
+>2 /3 \|     \(a\)    1\.2\.34
+  \|            \^\^\^\^\^\^
+
+invalid number: the decimal mark is declared to be '\.', so it can appear only once/
+>=1
+
+# ** 4. This applies to all amounts, eg balance assertions. (#1904)
+<
+decimal-mark .
+2022-08-02
+    assets:example     = 10.999.99 €
+    equity:adjustments
+$ hledger -f - check
+>2 /decimal mark is declared to be '\.'/
+>=1
+
+# ** 5. And to amounts parsed with a decimal-mark CSV rule. (#1985)
+<
+2023-01-01,-0.0.66962
+$ hledger -f csv:- --rules-file csv-decimal-mark.rules print
+>2 /decimal mark is declared to be '\.'/
+>=1
+
+# ** 6. With a decimal-mark directive, numbers using a different decimal mark are rejected,
+# even if unambiguous.
+<
+decimal-mark ,
+2023-01-01
+    (a)    1,000.00 EUR
+$ hledger -f - check
+>2 /decimal mark is declared to be ',', but this number's decimal mark is '\.'/
+>=1
+
+# ** 7. Also with a decimal-mark CSV rule. (#1985)
+<
+2023-01-01,"1,000.50"
+$ hledger -f csv:- --rules-file csv-decimal-mark-comma.rules print
+>2 /decimal mark is declared to be ',', but this number's decimal mark is '\.'/
+>=1
+
+# ** 8. But commodity directives can declare a display style with a different decimal mark.
+# And digit group marks different from the declared decimal mark are fine.
+<
+decimal-mark ,
+commodity 1,000.00 EUR
+2023-01-01
+    (a)    1.000.000 EUR
+    (b)    1.000,5 EUR
+$ hledger -f - bal -N
+    1,000,000.00 EUR  a
+        1,000.50 EUR  b
+
+# ** 9. Without a decimal-mark directive, commodity and D directives' decimal marks
+# are used to interpret ambiguous numbers, but are not enforced (as in hledger 1).
+<
+commodity 1 000.00 €
+D 1,000.00 EUR
+2023-01-01
+    (a)    10.999.99 €
+    (b)    1.000,5 €
+    (c)    10.999.99
+$ hledger -f - bal -N
+      1 099 999.00 €  a
+          1 000.50 €  b
+    1,099,999.00 EUR  c
+
+# ** 10. Without a declared decimal mark, a repeated period is still read as a digit group mark.
+<
+2023-01-01
+    (a)    1.000.000
+$ hledger -f - bal -N
+           1.000.000  a

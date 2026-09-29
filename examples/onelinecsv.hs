@@ -6,7 +6,7 @@
 {- example of generating one CSV line per txn. assumes hledger-lib 1.0+ -}
 
 import Control.Monad
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.List
 import Hledger
 

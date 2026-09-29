@@ -1,0 +1,6 @@
+fields date,desc,amount
+skip 1
+account1 assets:bank
+amount %3
+description %2
+source /no/such/disabled.csv

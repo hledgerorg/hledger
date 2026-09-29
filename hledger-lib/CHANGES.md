@@ -5,21 +5,294 @@
 | | | |_) |
 |_|_|_.__/
 
+Item order: security fixes first, then breaking changes, then the rest.
+Section headings: "Security" first if any, then "Breaking changes"
+if any; then topic headings,
+or a suitable generic heading (eg Fixes, Improvements), as needed.
+
+-->
+
+API/developer-ish changes in hledger-lib.
+For user-visible changes, see the hledger package changelog.
+
+
+# 1.99.4 2026-09-10
+
+Breaking changes
+
+- `Journal`'s derived JSON instance no longer includes its transient
+  `jparse*` parser-state fields (`jincludefilestack` is renamed to
+  `jparseincludefilestack`, for consistency with the others, and then
+  dropped along with them). This affects only hledger-lib users who
+  serialise a `Journal` themselves; hledger and hledger-web don't expose
+  Journal JSON.
+
+- `matchesPayeeWIP` is renamed to `matchesPayee`, now matching declared
+  payees strictly (see the hledger changelog); the unused and
+  inconsistent `matchesDescription` is dropped.
+
+- `Hledger.Utils.Text`'s quote helpers are renamed `textStripQuotes`,
+  `textIsSingleQuoted` and `textIsDoubleQuoted`, for consistency with
+  that module's other names. The `String` versions (`stripQuotes`,
+  `isSingleQuoted`, `isDoubleQuoted`) are now exported from
+  `Hledger.Utils.String`.
+
+Fixes
+
+- `divideAmount`/`divideMixedAmount` no longer raise an error when
+  dividing by zero; they now return the amount unchanged.
+
+Improvements
+
+- `Hledger.Data.Errors.decorateExcerpt` is now exported, and there's a
+  new `wordsmay`, a total variant of `words'`.
+
+- `words'` and friends now tokenise quoted arguments more like the
+  shell (see the hledger changelog), with new doctests demonstrating
+  it. New `wordsEither` is like `wordsmay` but returns the parse error.
+
+- `warnIO` now emits through a swappable handler, settable with the new
+  `setWarningHandler`, so a TUI can collect warnings and display them
+  itself rather than letting them corrupt the terminal.
+
+- A `Journal` now also records the non-journal files its data came from
+  (a CSV rules file, the files it includes, and any file read by a
+  `source` rule), so callers watching for changes can watch those too.
+
+- `Write.Spreadsheet`'s `Cell` has a new `cellParts` field, holding a
+  multi-commodity amount's individual amounts for writers (eg HTML)
+  that want to style each one separately; other writers can ignore it
+  and use `cellContent` as before. `Data.Amount` has a new
+  `showMixedAmountOneLinePartsB`, like `showMixedAmountOneLineB` but
+  returning the amounts individually rather than joined.
+
+- `Hledger.Data.Journal` has a new `journalBaseCurrency` helper,
+  returning a journal's apparent base currency (used by the `stats`
+  command).
+
+- The aeson lower bound has been relaxed from 2.3 to 2.2.5.1, the
+  oldest version not vulnerable to HSEC-2026-0007.
+
+
+- Exclude megaparsec 9.8.0, to avoid a position marker bug in error messages ([megaparsec#572](https://github.com/mrkkrp/megaparsec/issues/572)).
+
+- Hledger.Write.Spreadsheet, Write.Html.Blaze, Write.Html.Lucid,
+  Reports.ReportOptions: support for the new barewide balance report
+  layout; formatCell no longer emits redundant colspan=1/rowspan=1
+  attributes. (Henning Thielemann)
+
+
+# 1.52.4 2026-09-10
+
+Improvements
+
+- Allow megaparsec 9.8.1+ (but not 9.8.0, because of [megaparsec#572](https://github.com/mrkkrp/megaparsec/issues/572)).
+
+
+# 1.52.3 2026-08-27
+
+
+
+# 1.52.2 2026-08-24
+
+
+
+# 1.99.3 2026-06-24
+
 Breaking changes
 
 Fixes
 
+- `amountIntegerWidth` was one too wide with a negative amount that
+  truncates to 0 with `Precision 0` (eg -0.3).
+
 Improvements
 
+- Rename `defaultMaxPrecision` to `defaultMaxDisplayPrecision`.
+  This constant is a display fallback for amounts representing
+  infinite decimals; the new name makes that intent explicit.
+
+- Rename `splitPostingTagName` to `feesplitPostingTagName`.
+  The tag was historically called `_split-posting` because fee-splits
+  were the only kind. Now that `_lotsplit-posting` exists for per-lot
+  splits, the names are renamed for symmetry. The tag value
+  `_split-posting` becomes `_feesplit-posting`.
+
+- `Hledger.Write.Ods`: enable digit grouping in output if `AmountStyle` declares any digit groups.
+  (Henning Thielemann)
+
+- `Hledger.Write.Ods.CommodityStyle`: use a custom data type instead of a pair.
+  (Henning Thielemann)
+
+- `Hledger.Utils.Regex`: new `regexEscape`.
+
+- `Hledger.Data.Amount`: consolidate `showPriceDirective` here.
+
+- `Hledger.Data.Journal`: new `journalBaseCurrencyCode` guesses a base currency.
+
+- `Hledger.Utils.IO`: new `withFileOrStdout`.
+
+- `Hledger.Utils.String`: new `shellQuoteIfNeeded` (double-quote escaping on mingw32, single quotes elsewhere).
+
+- `Hledger.Data.Currency`: some cryptocurrency symbols added for auto-detection
+  (roughly the top 100 by market cap).
+
+- The `Query` ADT now has `Cur` for alias-aware cur: queries and`Sym`
+  for exact sym: queries. Helpers that operate on these constructors
+  are renamed accordingly: queryIsSym -> queryIsCurOrSym,
+  queryIsAmtOrSym -> queryIsAmtOrCurOrSym, queryExpandSym{For,}Aliases
+  -> queryExpandCur{For,}Aliases, reportSpecExpandSymQueries ->
+  reportSpecExpandCurQueries.
+
+- allow megaparsec >9.8
 
 
 
+# 1.99.2 2026-04-28
+
+Improvements
+
+- New `Hledger.Data.Errors.makePostingErrorExcerptByIndex` for posting-aware error excerpts
+  in cases where the original posting's account name has been rewritten.
+
+- `escapeName` now also escapes `]`, `{`, `}`, and `.`.
+
+# 1.52.1 2026-04-28
 
 
+# 1.99.1 2026-03-28
 
--->
-Internal/api/developer-ish changes in the hledger-lib (and hledger) packages.
-For user-visible changes, see the hledger package changelog.
+(2.0 preview 1)
+
+Breaking changes
+
+- `PostingType`/`RegularPosting`/`ptype` have been renamed to `PostingRealness`/`RealPosting`/`preal`,
+  to avoid confusion with the new `ptype` tag.
+
+- `isAccountSubtypeOf` has been moved from `Hledger.Data.Types` to `Hledger.Data.AccountType`.
+
+- Standard transaction balancing ignores postings to accounts of Gain type, which typically occur in lot disposal transactions.
+  Those postings are now excluded from normal transaction balancing;
+  they are checked by a new disposal balancing check, which makes sure the transaction sums to zero at cost basis.
+
+Features
+
+- New `Hledger.Data.Lots` module with the full lot-tracking pipeline:
+  posting classification, lot calculation (FIFO/LIFO/HIFO/AVERAGE and *ALL variants),
+  disposal balancing, gain posting inference, and lot subaccount name parsing.
+  Key functions: `journalClassifyLotPostings`, `journalCalculateLots`,
+  `journalInferAndCheckDisposalBalancing`, `journalInferBasisFromAccountNames`.
+
+- New `Hledger.Write.Ledger` module provides `showTransactionLedger` for Ledger-style lot syntax output.
+
+- `Commodity` type gains a `csourcepos` field, captured during parsing.
+  This allows lots-tag validation errors to show file:line and a megaparsec-style excerpt.
+
+Improvements
+
+- `MixedAmount` and `MixedAmountKey` are better documented.
+
+- Amount arithmetic helpers now explicitly discard cost basis.
+
+- `sumSimilarAmountsUsingFirstCost` is renamed to `sumSimilarAmounts`.
+
+- `lotcostp` parser now accepts both Ledger-style `{COST} [DATE] (NOTE)` and
+  hledger consolidated `{DATE, "LABEL", COST}` lot annotations.
+
+- New `commentPrependTag` helper and a prepend parameter for `postingAddHiddenAndMaybeVisibleTag`.
+
+- New `amountSetQuantity` helper that resets precision to `NaturalPrecision`,
+  for lot-generated amounts with no user-written precision to preserve.
+
+- `postingsAsLines`/`postingAsLines` are parameterised with `AmountFormat`,
+  allowing the rendering chain to be reused with different amount formats.
+  `AmountFormat` gains a `displayLedgerLotSyntax` field.
+
+
+# 1.52 2026-03-20
+
+Breaking changes
+
+- A cost basis field (`acostbasis`) has been added to Amount (to store Ledger/Beancount-style cost basis annotations).
+
+Fixes
+
+- invertAmount: with zero amounts, do nothing instead of failing.
+  Previously `invertAmount` would raise a "Ratio has zero denominator"
+  exception if the amount's quantity was zero. Now it's a no-op in that case.
+  [#2476]
+
+[#2476]: https://github.com/hledgerorg/hledger/issues/2476
+
+
+# 1.51.2 2026-01-08
+
+- Allow base 4.22 / ghc 9.14.
+
+# 1.51.1 2025-12-08
+
+# 1.50.5 2025-12-08
+
+# 1.51 2025-12-05
+
+Breaking changes
+
+- Hledger.Data.Balancing: balanceTransaction -> balanceSingleTransaction
+- Hledger.Utils.IO:
+  - inputToHandle -> textToHandle; set utf8 not utf8_bom
+  - readHandlePortably, readHandlePortably' -> hGetContentsPortably
+
+Improvements
+
+- Hledger.Utils.String:
+  quoteForCommandLine now quotes some additional problem characters, and no longer quotes "7".
+  [#2468]
+
+
+# 1.50.4 2025-12-04
+
+# 1.50.3 2025-11-18
+
+# 1.50.2 2025-09-26
+
+# 1.50.1 2025-09-16
+
+# 1.50 2025-09-03
+
+Breaking changes
+
+- hledger now requires at least GHC 9.6 (and base 4.18), to ease maintenance.
+
+Fixes
+
+- Fix liftA2 build error with ghc <9.6 (broken since 1.43.1).
+
+Improvements
+
+- Account now stores balances, one per date period. This enables it do
+  the hard work in MultiBalanceReport.
+  Some new types are created to enable convenient operation of accounts:
+  - `BalanceData` is a type which stores an exclusive balance, inclusive
+    balance, and number of postings. This was previously directly stored
+    in Account, but is now factored into a separate data type.
+  - `PeriodData` is a container which stores date-indexed data, as well as
+    pre-period data. In post cases, this represents the report spans,
+    along with the historical data.
+  - Account becomes polymorphic, allowing customisation of the type of
+    data it stores. This will usually be `BalanceData`, but in
+    `BudgetReport` it can use `These BalanceData BalanceData` to store
+    both actuals and budgets in the same structure. The data structure
+    changes to contain a `PeriodData`, allowing multiperiod accounts.
+  (Stephen Morgan)
+- Hledger.Read: make LatestDatesForFile showable
+- Hledger.Read.Common: accountnamep and modifiedaccountnamep now take a flag to allow semicolons or not
+- Hledger.Utils.IO: getFlag, warnIO, rename exitOnError -> handleExit, improve doc
+- Hledger.Query: matchesCommodity handles all query types, not just cur:, and doesn't match by default
+- Hledger.Data.Amount: move commodityStylesFromAmounts here, drop canonicalStyleFrom
+
+# 1.43.2 2025-06-13
+
+- Hledger.Utils.IO: rename exitOnError -> handleExit, improve doc
 
 
 # 1.43.1 2025-06-04
@@ -187,7 +460,7 @@ Improvements
 - distinguish oneLineFmt and oneLineNoCostFmt; add fullZeroFmt
 - matchedPostingsBeforeAndDuring: improve debug output
 
-[#2177]: https://github.com/simonmichael/hledger/issues/2177
+[#2177]: https://github.com/hledgerorg/hledger/issues/2177
 
 
 # 1.32.3 2024-01-28
@@ -513,12 +786,12 @@ Misc. changes
 - Hledger.Utils: Add a helper function numDigitsInt to get the number
   of digits in an integer, which has a surprising number of ways to
   get it wrong.
-  ([#1813](https://github.com/simonmichael/hledger/issues/1813) (Stephen Morgan)
+  ([#1813](https://github.com/hledgerorg/hledger/issues/1813) (Stephen Morgan)
 
 # 1.25 2022-03-04
 
 - hledger-lib now builds with GHC 9.2 and latest deps. 
-  ([#1774](https://github.com/simonmichael/hledger/issues/1774)
+  ([#1774](https://github.com/hledgerorg/hledger/issues/1774)
 
 - Journal has a new jaccounttypes map.
   The journalAccountType lookup function makes it easy to check an account's type.
@@ -611,8 +884,8 @@ Much code cleanup and reorganisation, such as:
   As a consequence, all the ways of representing zero with a MixedAmount ([],
   [A 0], [A 0, B 0, ...]) are now Eq-ual (==), whereas before they were
   not. We have not been able to find anything broken by this change.
-  ([#1563](https://github.com/simonmichael/hledger/issues/1563), 
-  [#1564](https://github.com/simonmichael/hledger/issues/1564), 
+  ([#1563](https://github.com/hledgerorg/hledger/issues/1563), 
+  [#1564](https://github.com/hledgerorg/hledger/issues/1564), 
   Stephen Morgan)
 
 - HUnit's testCase and testGroup are now used directly instead of
@@ -635,7 +908,7 @@ Much code cleanup and reorganisation, such as:
   as it is now equivalent to utcTimeToPOSIXSeconds from Data.Time.Clock.POSIX.
   To get the current system time, you should now use getPOSIXTime 
   from Data.Time.Clock.POSIX instead of getClockTime.
-  ([#1650](https://github.com/simonmichael/hledger/issues/1650), Stephen Morgan)
+  ([#1650](https://github.com/hledgerorg/hledger/issues/1650), Stephen Morgan)
 
 - modifyTransactions now takes a Map of commodity styles, and will style amounts according to that argument. journalAddForecast and journalTransform now return an Either String Journal. (Stephen Morgan)
   This improves efficiency, as we no longer have to restyle all amounts in
@@ -655,7 +928,7 @@ Much code cleanup and reorganisation, such as:
 
   This is done to be more consistent with future field naming conventions,
   and to make automatic generation of lenses simpler. See discussion in
-  [#1545](https://github.com/simonmichael/hledger/issues/1545).
+  [#1545](https://github.com/hledgerorg/hledger/issues/1545).
 
       rsOpts      -> _rsReportOpts
       rsToday     -> _rsDay
@@ -730,7 +1003,7 @@ Much code cleanup and reorganisation, such as:
   This allows us to have a uniform procedure for balancing transactions,
   whether they are normal transactions or forecast transactions, including
   dealing with balance assignments, balance assertions, and auto postings.
-  ([#1638](https://github.com/simonmichael/hledger/issues/1638), Stephen Morgan)
+  ([#1638](https://github.com/hledgerorg/hledger/issues/1638), Stephen Morgan)
 
 # 1.22.1 2021-08-02
 
@@ -1188,7 +1461,7 @@ including:
 - NFData instances are no longer derived for hledger's data types.
   This speeds up a full build by roughly 7%. But it means we can't
   deep-evaluate hledger values, or time hledger code with Criterion.
-  https://github.com/simonmichael/hledger/pull/1330#issuecomment-684075129
+  https://github.com/hledgerorg/hledger/pull/1330#issuecomment-684075129
   has some ideas on this.
 
 - Query no longer has a custom Show instance
@@ -1372,16 +1645,16 @@ including:
 - add support for GHC 8.8, base-compat 0.11 (#1090)
 
   We are now using the new fail from the MonadFail class, which we
-  always import qualified as Fail.fail, from base-compat-batteries
+  always import as qualified Fail.fail, from base-compat-batteries
   Control.Monad.Fail.Compat to work with old GHC versions. If old fail
   is needed (shouldn't be) it should be imported qualified as
   Prelude.Fail, using imports such as:
 
       import Prelude hiding (fail)
-      import qualified Prelude (fail)
+      import Prelude qualified (fail)
       import Control.Monad.State.Strict hiding (fail)
       import "base-compat-batteries" Prelude.Compat hiding (fail)
-      import qualified "base-compat-batteries" Control.Monad.Fail.Compat as Fail
+      import "base-compat-batteries" qualified Control.Monad.Fail.Compat as Fail
 
 - hledger and hledger-lib unit tests have been ported to tasty.
 

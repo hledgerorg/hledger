@@ -35,3 +35,27 @@ $ hledger -f- check commodities
 $ hledger -f- check -s
 >2 /commodity "\$" has not been declared/
 >=1
+
+# ** 6. An alias: tag on a commodity directive lets the check accept the aliased symbol.
+<
+commodity USD1.00
+    ; alias: $
+
+2024-01-01
+  (a)  $1
+
+$ hledger -f- check commodities
+
+
+# ** 7. An error on a price directive quotes its amount as written, not restyled.
+<
+commodity 1 000,00 EUR
+
+2024-01-01
+    a    1 000,00 EUR
+    b
+
+P 2024-01-02 X 1000,5EUR
+$ hledger -f- check commodities
+>2 /P 2024-01-02 X 1000,5EUR/
+>=1

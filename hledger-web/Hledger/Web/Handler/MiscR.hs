@@ -22,16 +22,25 @@ module Hledger.Web.Handler.MiscR
   , getOpenApiR
   ) where
 
-import qualified Data.Map as M
-import qualified Data.Text as T
-import qualified Data.Yaml as Yaml
-import qualified Data.ByteString as BS
-import Yesod.Default.Handlers (getFaviconR, getRobotsR)
+import Data.Map qualified as M
+import Data.Text qualified as T
+import Data.Yaml qualified as Yaml
+import Data.ByteString qualified as BS
+import Data.FileEmbed (embedFile)
 
 import Hledger
 import Hledger.Web.Import
 import Hledger.Web.WebOptions (packageversion)
 import Hledger.Web.Widget.Common (journalFile404)
+
+-- | Serve the favicon and robots.txt from copies of config/favicon.ico and
+-- config/robots.txt embedded in this executable at build time, so that they
+-- are served whatever directory hledger-web is run from.
+getFaviconR :: Handler TypedContent
+getFaviconR = return $ TypedContent "image/x-icon" $ toContent $(embedFile "config/favicon.ico")
+
+getRobotsR :: Handler TypedContent
+getRobotsR = return $ TypedContent typePlain $ toContent $(embedFile "config/robots.txt")
 
 getRootR :: Handler Html
 getRootR = do
@@ -44,7 +53,7 @@ getManageR = do
   VD{j} <- getViewData
   require EditPermission
   defaultLayout $ do
-    setTitle "Edit journal"
+    setTitleI (HMsg "Edit journal")
     $(widgetFile "manage")
 
 getDownloadR :: FilePath -> Handler TypedContent

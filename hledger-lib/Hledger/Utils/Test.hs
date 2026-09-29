@@ -25,7 +25,7 @@ import Control.Monad.Except (ExceptT(..), liftEither, runExceptT, withExceptT)
 import Control.Monad.State.Strict (StateT, evalStateT, execStateT)
 import Data.Default (Default(..))
 import Data.List (isInfixOf)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Test.Tasty hiding (defaultMain)
 import Test.Tasty.HUnit
 -- import Test.Tasty.QuickCheck as QC

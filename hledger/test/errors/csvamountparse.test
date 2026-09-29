@@ -1,15 +1,11 @@
-$$$ hledger check -f  csvamountparse.csv
->>>2 /Error: could not parse "badamount" as an amount
+$ hledger check -f csvamountparse.csv
+>2 /hledger: Error: .*csvamountparse\.csv:5:
+5 \| 2022-01-03,badamount
+
+could not parse "badamount" as an amount
 record: 2022-01-03,badamount
-the amount rule is: %2
-the date rule is: %1
-
-the parse error is:      1:10:
-  \|
-1 \| badamount
-  \|          \^
-unexpected end of input
-expecting '\+', '-', or number
-
-you may need to change your am/
->>>= 1
+(.*
+)*hledger field assignment rules:
+  amount: +%2 +\(.*rules:3\)
+/
+>= 1

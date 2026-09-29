@@ -64,10 +64,15 @@ module Hledger.Data.Amount (
   (@@),
   amountWithCommodity,
   amountCost,
+  amountCostBasis,
+  amountSetCostToBasis,
   amountIsZero,
   amountLooksZero,
+  amountSetQuantity,
   divideAmount,
+  divideAmountAndUpdatePrecision,
   multiplyAmount,
+  multiplyQuantities,
   invertAmount,
   -- ** styles
   amountstyle,
@@ -77,6 +82,11 @@ module Hledger.Data.Amount (
   amountStyleSetRounding,
   amountStylesSetRounding,
   amountUnstyled,
+  commodityStylesFromAmounts,
+  addAmountStyle,
+  -- canonicalStyleFrom,
+  getAmounts,
+
   -- ** rendering
   AmountFormat(..),
   defaultFmt,
@@ -87,9 +97,15 @@ module Hledger.Data.Amount (
   machineFmt,
   showAmount,
   showAmountWith,
+  showAmountsDistinctly,
   showAmountB,
+  showAmountQuantity,
   showAmountCost,
   showAmountCostB,
+  showAmountCostBasis,
+  showAmountCostBasisB,
+  showAmountCostBasisLedger,
+  showAmountCostBasisLedgerB,
   cshowAmount,
   showAmountWithZeroCommodity,
   showAmountDebug,
@@ -102,13 +118,13 @@ module Hledger.Data.Amount (
   amountSetFullPrecisionUpTo,
   amountInternalPrecision,
   amountDisplayPrecision,
-  defaultMaxPrecision,
+  defaultMaxDisplayPrecision,
   setAmountInternalPrecision,
   withInternalPrecision,
   setAmountDecimalPoint,
   withDecimalPoint,
   amountStripCost,
-
+  
   -- * MixedAmount
   nullmixedamt,
   missingmixedamt,
@@ -128,15 +144,19 @@ module Hledger.Data.Amount (
   mixedAmountStripCosts,
   -- ** arithmetic
   mixedAmountCost,
+  mixedAmountCostBasis,
   maNegate,
   maPlus,
   maMinus,
   maSum,
   divideMixedAmount,
+  divideMixedAmountAndUpdatePrecision,
   multiplyMixedAmount,
   averageMixedAmounts,
+  sumAndAverageMixedAmounts,
   isNegativeAmount,
   isNegativeMixedAmount,
+  amountRoundedQuantity,
   mixedAmountIsZero,
   maIsZero,
   maIsNonZero,
@@ -149,6 +169,7 @@ module Hledger.Data.Amount (
   -- ** rendering
   showMixedAmount,
   showMixedAmountWith,
+  showMixedAmountsDistinctly,
   showMixedAmountOneLine,
   showMixedAmountDebug,
   showMixedAmountWithoutCost,
@@ -158,6 +179,7 @@ module Hledger.Data.Amount (
   showMixedAmountB,
   showMixedAmountLinesB,
   showMixedAmountLinesPartsB,
+  showMixedAmountOneLinePartsB,
   wbToText,
   wbUnpack,
   mixedAmountSetPrecision,
@@ -167,11 +189,12 @@ module Hledger.Data.Amount (
   mixedAmountSetPrecisionMax,
 
   -- * misc.
+  showPriceDirective,
   tests_Amount
 ) where
 
 import Prelude hiding (Applicative(..))
-import Control.Applicative (Applicative(..))
+import Control.Applicative ((<|>))
 import Control.Monad (foldM)
 import Data.Char (isDigit)
 import Data.Decimal (DecimalRaw(..), decimalPlaces, normalizeDecimal, roundTo)
@@ -182,12 +205,12 @@ import Data.List (find, intercalate, intersperse, mapAccumL, partition)
 import Data.List (foldl')
 #endif
 import Data.List.NonEmpty (NonEmpty(..), nonEmpty)
-import qualified Data.Map.Strict as M
-import qualified Data.Set as S
-import Data.Maybe (fromMaybe, isNothing)
+import Data.Map.Strict qualified as M
+import Data.Set qualified as S
+import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Data.Semigroup (Semigroup(..))
-import qualified Data.Text as T
-import qualified Data.Text.Lazy.Builder as TB
+import Data.Text qualified as T
+import Data.Text.Lazy.Builder qualified as TB
 import Data.Word (Word8)
 import Safe (headDef, lastDef, lastMay)
 import System.Console.ANSI (Color(..),ColorIntensity(..))
@@ -195,6 +218,7 @@ import System.Console.ANSI (Color(..),ColorIntensity(..))
 import Test.Tasty (testGroup)
 import Test.Tasty.HUnit ((@?=), assertBool, testCase)
 
+import Hledger.Data.Dates (showDate)
 import Hledger.Data.Types
 import Hledger.Utils (colorB, error', numDigitsInt, numDigitsInteger)
 import Hledger.Utils.Text (textQuoteIfNeeded)
@@ -215,10 +239,21 @@ showCommoditySymbol = textQuoteIfNeeded
 
 -- characters that may not be used in a non-quoted commodity symbol
 isNonsimpleCommodityChar :: Char -> Bool
-isNonsimpleCommodityChar = liftA2 (||) isDigit isOther
-  where
-    otherChars = "-+.@*;\t\n \"{}=" :: T.Text
-    isOther c = T.any (==c) otherChars
+isNonsimpleCommodityChar c = case c of
+  '-'  -> True
+  '+'  -> True
+  '.'  -> True
+  '@'  -> True
+  '*'  -> True
+  ';'  -> True
+  '\t' -> True
+  '\n' -> True
+  ' '  -> True
+  '"'  -> True
+  '{'  -> True
+  '}'  -> True
+  '='  -> True
+  _    -> isDigit c
 
 quoteCommoditySymbolIfNeeded :: T.Text -> T.Text
 quoteCommoditySymbolIfNeeded s
@@ -242,8 +277,10 @@ data AmountFormat = AmountFormat
   , displayMinWidth         :: Maybe Int  -- ^ Minimum width to pad to
   , displayMaxWidth         :: Maybe Int  -- ^ Maximum width to clip to
   , displayCost             :: Bool       -- ^ Whether to display Amounts' costs.
+  , displayCostBasis        :: Bool       -- ^ Whether to display Amounts' cost basis (Ledger-style lot syntax).
   , displayColour           :: Bool       -- ^ Whether to ansi-colourise negative Amounts.
   , displayQuotes           :: Bool       -- ^ Whether to enclose complex symbols in quotes (normally true)
+  , displayLedgerLotSyntax  :: Bool       -- ^ Whether to display cost basis using Ledger-style lot syntax ({COST} [DATE] (LABEL)) instead of hledger consolidated syntax.
   } deriving (Show)
 
 -- | By default, display amounts using @defaultFmt@ amount display options.
@@ -261,17 +298,19 @@ defaultFmt = AmountFormat {
   , displayMinWidth         = Just 0
   , displayMaxWidth         = Nothing
   , displayCost             = True
+  , displayCostBasis        = True
   , displayColour           = False
   , displayQuotes           = True
+  , displayLedgerLotSyntax  = False
   }
 
 -- | Like defaultFmt but show zero amounts with commodity symbol and styling, like non-zero amounts.
 fullZeroFmt :: AmountFormat
 fullZeroFmt = defaultFmt{displayZeroCommodity=True}
 
--- | Like defaultFmt but don't show costs.
+-- | Like defaultFmt but don't show costs or cost basis.
 noCostFmt :: AmountFormat
-noCostFmt = defaultFmt{displayCost=False}
+noCostFmt = defaultFmt{displayCost=False, displayCostBasis=False}
 
 -- | Like defaultFmt but display all amounts on one line.
 oneLineFmt :: AmountFormat
@@ -300,7 +339,7 @@ instance Num Amount where
 -- | The empty simple amount - a zero with no commodity symbol or cost
 -- and the default amount display style.
 nullamt :: Amount
-nullamt = Amount{acommodity="", aquantity=0, acost=Nothing, astyle=amountstyle}
+nullamt = Amount{acommodity="", aquantity=0, astyle=amountstyle, acost=Nothing, acostbasis=Nothing}
 
 -- | A special amount used as a marker, meaning
 -- "no explicit amount provided here, infer it when needed".
@@ -340,6 +379,26 @@ similarAmountsOp op Amount{acommodity=_,  aquantity=q1, astyle=AmountStyle{aspre
 amountWithCommodity :: CommoditySymbol -> Amount -> Amount
 amountWithCommodity c a = a{acommodity=c, acost=Nothing}
 
+-- | Multiply two quantities. Equivalent to Decimal's (*), but much faster
+-- in the usual case: that one multiplies via Rational, rounds to 255 decimal
+-- places and normalises via Rational again, costing kilobytes of allocation
+-- per multiplication. Here the mantissas are multiplied directly, and the
+-- result normalised the same way (to the minimal exponent), whenever the
+-- exponents' sum fits in a Decimal.
+multiplyQuantities :: Quantity -> Quantity -> Quantity
+multiplyQuantities a@(Decimal e1 m1) b@(Decimal e2 m2)
+  | m1 == 0 || m2 == 0 = 0
+  | e <= fromIntegral (maxBound :: Word8) = normalise (fromIntegral e) (m1 * m2)
+  | otherwise = a * b
+  where
+    e = fromIntegral e1 + fromIntegral e2 :: Int
+    -- reduce the exponent to the minimal value, like Decimal's normalizeDecimal
+    normalise :: Word8 -> Integer -> Quantity
+    normalise 0 m = Decimal 0 m
+    normalise ex m = case m `quotRem` 10 of
+      (q, 0) -> normalise (ex-1) q
+      _      -> Decimal ex m
+
 -- | Convert a amount to its total cost in another commodity,
 -- using its attached cost amount if it has one.  Notes:
 --
@@ -353,8 +412,27 @@ amountCost :: Amount -> Amount
 amountCost a@Amount{aquantity=q, acost=mp} =
     case mp of
       Nothing                                  -> a
-      Just (UnitCost  p@Amount{aquantity=pq}) -> p{aquantity=pq * q}
+      Just (UnitCost  p@Amount{aquantity=pq}) -> p{aquantity=multiplyQuantities pq q}
       Just (TotalCost p@Amount{aquantity=pq}) -> p{aquantity=pq}
+
+-- | Convert an Amount to its cost basis when it has a cost basis annotation
+-- with a cost (as lot postings do after lot processing), otherwise to its
+-- transacted cost as amountCost does. This is what -B/--value=cost reports:
+-- for a lot disposal it gives what the disposed units cost, not the proceeds.
+amountCostBasis :: Amount -> Amount
+amountCostBasis a@Amount{aquantity=q, acostbasis=mcb} =
+    case mcb >>= cbCost of
+      Just b@Amount{aquantity=bq} -> b{aquantity=multiplyQuantities bq q}
+      Nothing                     -> amountCost a
+
+-- | If this amount has a cost basis with a known per-unit cost, replace its
+-- transacted cost with that basis cost, so that 'amountCost', and sums at
+-- cost (which merge amounts by commodity and transacted cost, dropping
+-- differing bases), reflect the cost basis. Other amounts are unchanged.
+amountSetCostToBasis :: Amount -> Amount
+amountSetCostToBasis a = case acostbasis a >>= cbCost of
+  Just b  -> a{acost = Just (UnitCost b)}
+  Nothing -> a
 
 -- | Strip all costs from an Amount
 amountStripCost :: Amount -> Amount
@@ -368,16 +446,40 @@ transformAmount f a@Amount{aquantity=q,acost=p} = a{aquantity=f q, acost=f' <$> 
     f' p' = p'
 
 -- | Divide an amount's quantity (and total cost, if any) by some number.
+-- Returns the amount unchanged when the divisor is zero.
 divideAmount :: Quantity -> Amount -> Amount
-divideAmount n = transformAmount (/n)
+divideAmount 0 a = a
+divideAmount n a = transformAmount (/n) a
+
+-- | Like 'divideAmount', but sets the display precision to exactly the number
+-- of significant decimal digits in the quotient (capped at
+-- 'defaultMaxDisplayPrecision'), so the quotient's digits stay visible without
+-- adding trailing zeros. Use this when the quotient is intended for display in
+-- a journal entry (eg per-unit cost derived from a total cost); for aggregate
+-- report cells, prefer 'divideAmount' to keep the report's chosen precision.
+divideAmountAndUpdatePrecision :: Quantity -> Amount -> Amount
+divideAmountAndUpdatePrecision 0 a = a
+divideAmountAndUpdatePrecision n a = amountSetPrecision (Precision p) a'
+  where
+    a' = divideAmount n a
+    p  = min defaultMaxDisplayPrecision (amountInternalPrecision a')
 
 -- | Multiply an amount's quantity (and its total cost, if it has one) by a constant.
 multiplyAmount :: Quantity -> Amount -> Amount
-multiplyAmount n = transformAmount (*n)
+multiplyAmount n = transformAmount (multiplyQuantities n)
+
+-- | Replace an amount's quantity, resetting display precision to NaturalPrecision.
+-- This is the safe way to set a new quantity that may have different decimal places
+-- than the original — NaturalPrecision ensures the exact value is always displayed.
+-- Commodity styles will override the precision at rendering time.
+amountSetQuantity :: Quantity -> Amount -> Amount
+amountSetQuantity q a = a{aquantity=q, astyle=(astyle a){asprecision=NaturalPrecision}}
 
 -- | Invert an amount (replace its quantity q with 1/q).
--- (Its cost if any is not changed, currently.)
+-- The amount's transacted price, if any, is not changed.
+-- An amount with zero quantity is left unchanged.
 invertAmount :: Amount -> Amount
+invertAmount a@Amount{aquantity=0} = a
 invertAmount a@Amount{aquantity=q} = a{aquantity=1/q}
 
 -- | Is this amount negative ? The cost is ignored.
@@ -478,15 +580,15 @@ amountSetFullPrecisionUpTo mmaxp a = amountSetPrecision (Precision p) a
   where
     p = case mmaxp of
       Just maxp -> min maxp $ max disp intp
-      Nothing   -> if amountHasMaxDigits a then defaultMaxPrecision else max disp intp
+      Nothing   -> if amountHasMaxDigits a then defaultMaxDisplayPrecision else max disp intp
       where
         disp = amountDisplayPrecision a
         intp = amountInternalPrecision a
 
 -- | The fallback display precision used when showing amounts
 -- representing an infinite decimal.
-defaultMaxPrecision :: Word8
-defaultMaxPrecision = 8
+defaultMaxDisplayPrecision :: Word8
+defaultMaxDisplayPrecision = 8
 
 -- | How many internal decimal digits are stored for this amount ?
 amountInternalPrecision :: Amount -> Word8
@@ -562,6 +664,13 @@ instance HasAmounts Amount where
                 olds)
           Nothing -> olds
 
+-- | Get an amount and its attached cost amount if any. Returns one or two amounts.
+getAmounts :: Amount -> [Amount]
+getAmounts a@Amount{acost} = a : case acost of
+  Nothing            -> []
+  Just (UnitCost  c) -> [c]
+  Just (TotalCost c) -> [c]
+
 -- AmountStyle helpers
 
 -- | Replace one AmountStyle with another, but don't just replace the display precision;
@@ -603,8 +712,8 @@ instance HasAmounts Amount where
 amountStyleApplyWithRounding :: Bool -> Quantity -> AmountStyle -> AmountStyle -> AmountStyle
 amountStyleApplyWithRounding iscost q news@AmountStyle{asprecision=newp, asrounding=newr} AmountStyle{asprecision=oldp} =
   case newr of
-    NoRounding   -> news{asprecision=oldp}
-    SoftRounding -> news{asprecision=if iscost then oldp else newp'}
+    NoRounding   -> withprec oldp
+    SoftRounding -> withprec $ if iscost then oldp else newp'
       where
         newp' = case (newp, oldp) of
           (Precision new, Precision old) ->
@@ -613,8 +722,11 @@ amountStyleApplyWithRounding iscost q news@AmountStyle{asprecision=newp, asround
             else Precision $ max (min old internal) new
               where internal = decimalPlaces $ normalizeDecimal q
           _ -> NaturalPrecision
-    HardRounding -> news{asprecision=if iscost then oldp else newp}
+    HardRounding -> withprec $ if iscost then oldp else newp
     AllRounding  -> news
+  where
+    -- reuse the new style itself when the precision is unchanged, so that amounts share it (saves memory)
+    withprec p = if p == newp then news else news{asprecision=p}
 
 -- | Set this amount style's rounding strategy when it is being applied to amounts.
 amountStyleSetRounding :: Rounding -> AmountStyle -> AmountStyle
@@ -630,6 +742,62 @@ amountstyle = AmountStyle L False Nothing (Just '.') (Precision 0) NoRounding
 -- | Reset this amount's display style to the default.
 amountUnstyled :: Amount -> Amount
 amountUnstyled a = a{astyle=amountstyle}
+
+-- | Given a list of amounts, in parse order (roughly speaking; see journalStyleInfluencingAmounts),
+-- build a map from their commodity names to standard commodity
+-- display formats. Can return an error message eg if inconsistent
+-- number formats are found.
+--
+-- Though, these amounts may have come from multiple files, so we
+-- shouldn't assume they use consistent number formats.
+-- Currently we don't enforce that even within a single file,
+-- and this function never reports an error.
+commodityStylesFromAmounts :: [Amount] -> Either String (M.Map CommoditySymbol AmountStyle)
+commodityStylesFromAmounts = Right . foldr addAmountStyle mempty
+
+-- | Add an amount's style to a map of commodity styles, merging it into its
+-- commodity's canonical style so far (see canonicalStyle). Amounts are added
+-- in reverse order of appearance, so that the first amount's general style wins.
+-- When the amount's style adds nothing new, which is the common case, the map
+-- is returned unchanged.
+addAmountStyle :: Amount -> M.Map CommoditySymbol AmountStyle -> M.Map CommoditySymbol AmountStyle
+addAmountStyle Amount{acommodity=c, astyle=s} styles =
+  case M.lookup c styles of
+    Nothing -> M.insert c s styles
+    Just s0 -> let s' = canonicalStyle s s0 in if s' == s0 then styles else M.insert c s' styles
+
+-- -- | Given a list of amount styles (assumed to be from parsed amounts
+-- -- in a single commodity), in parse order, choose a canonical style.
+-- canonicalStyleFrom :: [AmountStyle] -> AmountStyle
+-- canonicalStyleFrom = foldl' canonicalStyle amountstyle
+
+-- TODO: should probably detect and report inconsistencies here.
+-- Though, we don't have the info for a good error message, so maybe elsewhere.
+
+-- | Given a pair of AmountStyles, choose a canonical style.
+-- This is:
+-- the general style of the first amount,
+-- with the first digit group style seen,
+-- with the maximum precision of all.
+canonicalStyle :: AmountStyle -> AmountStyle -> AmountStyle
+canonicalStyle a b = a{asprecision = prec, asdecimalmark = decmark, asdigitgroups = mgrps}
+ where
+  -- precision is maximum of all precisions
+  prec = max (asprecision a) (asprecision b)
+  -- identify the digit group mark (& group sizes)
+  mgrps = asdigitgroups a <|> asdigitgroups b
+  -- if a digit group mark was identified above, we can rely on that;
+  -- make sure the decimal mark is different. If not, default to period.
+  defdecmark = case mgrps of
+    Just (DigitGroups '.' _) -> ','
+    _ -> '.'
+  -- identify the decimal mark: the first one used, or the above default,
+  -- but never the same character as the digit group mark.
+  -- urgh.. refactor..
+  decmark = case mgrps of
+    Just _ -> Just defdecmark
+    Nothing -> asdecimalmark a <|> asdecimalmark b <|> Just defdecmark
+
 
 -- | Set (or clear) an amount's display decimal point.
 setAmountDecimalPoint :: Maybe Char -> Amount -> Amount
@@ -651,6 +819,33 @@ showAmount = wbUnpack . showAmountB defaultFmt
 showAmountWith :: AmountFormat -> Amount -> String
 showAmountWith fmt = wbUnpack . showAmountB fmt
 
+-- | Render two similar amounts as strings using the given format, at enough
+-- decimal display precision that the two strings differ. First tries each
+-- at its own full (capped) precision; if the strings already differ, both
+-- are returned as-is (preserving any per-amount asymmetry). Otherwise both
+-- amounts' display precision is increased in lockstep until the strings
+-- are distinct, capped at the larger of the two amounts' internal
+-- precisions. If the amounts are equal at the Decimal level the loop
+-- terminates at the cap. Useful in error messages that compare two
+-- amounts which would otherwise round to identical-looking text.
+showAmountsDistinctly :: AmountFormat -> Amount -> Amount -> (String, String)
+showAmountsDistinctly fmt a b
+  | sa0 /= sb0 = (sa0, sb0)
+  | otherwise  = go start
+  where
+    a0 = amountSetFullPrecisionUpTo Nothing $ amountSetFullPrecision a
+    b0 = amountSetFullPrecisionUpTo Nothing $ amountSetFullPrecision b
+    sa0 = showAmountWith fmt a0
+    sb0 = showAmountWith fmt b0
+    start = max (amountDisplayPrecision a0) (amountDisplayPrecision b0)
+    cap   = max (amountInternalPrecision a) (amountInternalPrecision b)
+    render p = (showAmountWith fmt (setp p a), showAmountWith fmt (setp p b))
+    setp p  = amountSetPrecision (Precision p)
+    go p
+      | sa /= sb || p >= cap = (sa, sb)
+      | otherwise            = go (p + 1)
+      where (sa, sb) = render p
+
 -- | Render an amount using its display style and the given amount format, as a builder for efficiency.
 -- (This can be converted to a Text with wbToText or to a String with wbUnpack).
 -- The special "missing" amount is displayed as the empty string. 
@@ -658,11 +853,11 @@ showAmountB :: AmountFormat -> Amount -> WideBuilder
 showAmountB _ Amount{acommodity="AUTO"} = mempty
 showAmountB
   afmt@AmountFormat{displayCommodity, displayZeroCommodity, displayDigitGroups
-                   ,displayForceDecimalMark, displayCost, displayColour, displayQuotes}
+                   ,displayForceDecimalMark, displayCost, displayCostBasis, displayColour, displayQuotes}
   a@Amount{astyle=style} =
     color $ case ascommodityside style of
-      L -> (if displayCommodity then wbFromText comm <> space else mempty) <> quantity' <> cost
-      R -> quantity' <> (if displayCommodity then space <> wbFromText comm else mempty) <> cost
+      L -> (if displayCommodity then wbFromText comm <> space else mempty) <> quantity' <> costbasis <> cost
+      R -> quantity' <> (if displayCommodity then space <> wbFromText comm else mempty) <> costbasis <> cost
   where
     color = if displayColour && isNegativeAmount a then colorB Dull Red else id
     quantity = showAmountQuantity displayForceDecimalMark $
@@ -672,6 +867,9 @@ showAmountB
       | otherwise = (quantity, (if displayQuotes then quoteCommoditySymbolIfNeeded else id) $ acommodity a)
     space = if not (T.null comm) && ascommodityspaced style then WideBuilder (TB.singleton ' ') 1 else mempty
     cost = if displayCost then showAmountCostB afmt a else mempty
+    costbasis = if displayCostBasis then
+                  (if displayLedgerLotSyntax afmt then showAmountCostBasisLedgerB else showAmountCostBasisB) afmt a
+                else mempty
 
 -- Show an amount's cost as @ UNITCOST or @@ TOTALCOST, plus a leading space, or "" if there's no cost.
 showAmountCost :: Amount -> String
@@ -689,6 +887,53 @@ showAmountCostDebug :: Maybe AmountCost -> String
 showAmountCostDebug Nothing                = ""
 showAmountCostDebug (Just (UnitCost pa))  = "@ "  ++ showAmountDebug pa
 showAmountCostDebug (Just (TotalCost pa)) = "@@ " ++ showAmountDebug pa
+
+-- | Show an amount's cost basis as consolidated lot syntax: {DATE, "LABEL", COST}.
+showAmountCostBasis :: Amount -> String
+showAmountCostBasis = wbUnpack . showAmountCostBasisB defaultFmt
+
+-- showAmountCostBasis, efficient builder version.
+showAmountCostBasisB :: AmountFormat -> Amount -> WideBuilder
+showAmountCostBasisB afmt amt = case acostbasis amt of
+  Nothing -> mempty
+  Just CostBasis{cbCost=Nothing, cbDate=Nothing, cbLabel=Nothing} ->
+    WideBuilder (TB.fromString " {}") 3
+  Just CostBasis{cbCost, cbDate, cbLabel} ->
+    case parts of
+      [] -> mempty
+      _  -> WideBuilder (TB.fromString " {") 2 <> contents <> WideBuilder (TB.singleton '}') 1
+    where
+      parts = catMaybes
+        [ fmap (wbFromText . T.pack . show) cbDate
+        , fmap (\l -> wbFromText ("\"" <> l <> "\"")) cbLabel
+        , fmap (showAmountB afmt) cbCost
+        ]
+      separator = WideBuilder (TB.fromString ", ") 2
+      contents = mconcat $ intersperse separator parts
+
+-- | Show an amount's cost basis as Ledger-style lot syntax: {LOTCOST} [LOTDATE] (LOTNOTE).
+-- Kept for future --ledger-lot-syntax flag (step 3).
+showAmountCostBasisLedger :: Amount -> String
+showAmountCostBasisLedger = wbUnpack . showAmountCostBasisLedgerB defaultFmt
+
+-- showAmountCostBasisLedger, efficient builder version.
+showAmountCostBasisLedgerB :: AmountFormat -> Amount -> WideBuilder
+showAmountCostBasisLedgerB afmt amt = case acostbasis amt of
+  Nothing -> mempty
+  Just CostBasis{cbCost=Nothing, cbDate=Nothing, cbLabel=Nothing} ->
+    WideBuilder (TB.fromString " {}") 3
+  Just CostBasis{cbCost, cbDate, cbLabel} ->
+    lotdate <> lotnote <> lotcost
+    where
+      lotcost = case cbCost of
+        Nothing -> mempty
+        Just a  -> WideBuilder (TB.fromString " {") 2 <> showAmountB afmt a <> WideBuilder (TB.singleton '}') 1
+      lotdate = case cbDate of
+        Nothing -> mempty
+        Just d  -> WideBuilder (TB.fromString " [") 2 <> wbFromText (T.pack $ show d) <> WideBuilder (TB.singleton ']') 1
+      lotnote = case cbLabel of
+        Nothing -> mempty
+        Just l  -> WideBuilder (TB.fromString " (") 2 <> wbFromText l <> WideBuilder (TB.singleton ')') 1
 
 -- | Colour version. For a negative amount, adds ANSI codes to change the colour,
 -- currently to hard-coded red.
@@ -778,13 +1023,6 @@ instance Num MixedAmount where
     abs    = mapMixedAmount (\amt -> amt { aquantity = abs (aquantity amt)})
     signum = error' "error, mixed amounts do not support signum"
 
--- | Calculate the key used to store an Amount within a MixedAmount.
-amountKey :: Amount -> MixedAmountKey
-amountKey amt@Amount{acommodity=c} = case acost amt of
-    Nothing             -> MixedAmountKeyNoCost    c
-    Just (TotalCost p) -> MixedAmountKeyTotalCost c (acommodity p)
-    Just (UnitCost  p) -> MixedAmountKeyUnitCost  c (acommodity p) (aquantity p)
-
 -- | The empty mixed amount.
 nullmixedamt :: MixedAmount
 nullmixedamt = Mixed mempty
@@ -799,7 +1037,7 @@ missingmixedamt = mixedAmount missingamt
 -- instead it looks for missingamt among the Amounts.
 -- missingamt should always be alone, but detect it even if not.
 isMissingMixedAmount :: MixedAmount -> Bool
-isMissingMixedAmount (Mixed ma) = amountKey missingamt `M.member` ma
+isMissingMixedAmount (Mixed ma) = mixedAmountKey missingamt `M.member` ma
 
 -- | Convert amounts in various commodities into a mixed amount.
 mixed :: Foldable t => t Amount -> MixedAmount
@@ -807,52 +1045,68 @@ mixed = maAddAmounts nullmixedamt
 
 -- | Create a MixedAmount from a single Amount.
 mixedAmount :: Amount -> MixedAmount
-mixedAmount a = Mixed $ M.singleton (amountKey a) a
-
--- | Add an Amount to a MixedAmount, normalising the result.
--- Amounts with different costs are kept separate.
-maAddAmount :: MixedAmount -> Amount -> MixedAmount
-maAddAmount (Mixed ma) a = Mixed $ M.insertWith sumSimilarAmountsUsingFirstCost (amountKey a) a ma
-
--- | Add a collection of Amounts to a MixedAmount, normalising the result.
--- Amounts with different costs are kept separate.
-maAddAmounts :: Foldable t => MixedAmount -> t Amount -> MixedAmount
-maAddAmounts = foldl' maAddAmount
+mixedAmount a = Mixed $ M.singleton (mixedAmountKey a) a
 
 -- | Negate mixed amount's quantities (and total costs, if any).
 maNegate :: MixedAmount -> MixedAmount
 maNegate = transformMixedAmount negate
 
--- | Sum two MixedAmount, keeping the cost of the first if any.
--- Amounts with different costs are kept separate (since 2021).
+-- | Sum two MixedAmounts. (Any cost basis on the amounts will be lost.)
 maPlus :: MixedAmount -> MixedAmount -> MixedAmount
-maPlus (Mixed as) (Mixed bs) = Mixed $ M.unionWith sumSimilarAmountsUsingFirstCost as bs
+maPlus (Mixed as) (Mixed bs) = Mixed $ M.unionWith sumSimilarAmounts as bs
 
--- | Subtract a MixedAmount from another.
--- Amounts with different costs are kept separate.
+-- | Subtract a MixedAmount from another. (Any cost basis on the amounts will be lost.)
 maMinus :: MixedAmount -> MixedAmount -> MixedAmount
 maMinus a = maPlus a . maNegate
 
--- | Sum a collection of MixedAmounts.
--- Amounts with different costs are kept separate.
-maSum :: Foldable t => t MixedAmount -> MixedAmount
+-- | Sum a collection of MixedAmounts. (Any cost basis on the amounts will be lost.)
+maSum :: (Foldable t) => t MixedAmount -> MixedAmount
 maSum = foldl' maPlus nullmixedamt
 
+-- | Add an Amount to a MixedAmount, and then normalise that.
+-- (Any cost basis on the amounts will be lost.)
+maAddAmount :: MixedAmount -> Amount -> MixedAmount
+maAddAmount (Mixed ma) a = Mixed $ M.insertWith sumSimilarAmounts (mixedAmountKey a) a ma
+
+-- | Add a collection of Amounts to a MixedAmount, and then normalise that.
+-- (Any cost basis on the amounts will be lost.)
+maAddAmounts :: (Foldable t) => MixedAmount -> t Amount -> MixedAmount
+maAddAmounts = foldl' maAddAmount
+
 -- | Divide a mixed amount's quantities (and total costs, if any) by a constant.
+-- Returns the mixed amount unchanged when the divisor is zero.
 divideMixedAmount :: Quantity -> MixedAmount -> MixedAmount
-divideMixedAmount n = transformMixedAmount (/n)
+divideMixedAmount 0 ma = ma
+divideMixedAmount n ma = transformMixedAmount (/n) ma
+
+-- | Like 'divideMixedAmount', but sets each component amount's display
+-- precision to exactly the number of significant decimal digits in the
+-- quotient (capped at 'defaultMaxDisplayPrecision'), so the quotient's
+-- digits stay visible without adding trailing zeros. Use this when the
+-- quotient is intended for display in a journal entry; for aggregate
+-- report cells, prefer 'divideMixedAmount'.
+divideMixedAmountAndUpdatePrecision :: Quantity -> MixedAmount -> MixedAmount
+divideMixedAmountAndUpdatePrecision 0 ma = ma
+divideMixedAmountAndUpdatePrecision n ma =
+  mapMixedAmountUnsafe (divideAmountAndUpdatePrecision n) ma
 
 -- | Multiply a mixed amount's quantities (and total costs, if any) by a constant.
 multiplyMixedAmount :: Quantity -> MixedAmount -> MixedAmount
-multiplyMixedAmount n = transformMixedAmount (*n)
+multiplyMixedAmount n = transformMixedAmount (multiplyQuantities n)
 
 -- | Apply a function to a mixed amount's quantities (and its total costs, if it has any).
 transformMixedAmount :: (Quantity -> Quantity) -> MixedAmount -> MixedAmount
 transformMixedAmount f = mapMixedAmountUnsafe (transformAmount f)
 
 -- | Calculate the average of some mixed amounts.
-averageMixedAmounts :: [MixedAmount] -> MixedAmount
-averageMixedAmounts as = fromIntegral (length as) `divideMixedAmount` maSum as
+averageMixedAmounts :: Foldable f => f MixedAmount -> MixedAmount
+averageMixedAmounts = snd . sumAndAverageMixedAmounts
+
+-- | Calculate the sum and average of some mixed amounts.
+sumAndAverageMixedAmounts :: Foldable f => f MixedAmount -> (MixedAmount, MixedAmount)
+sumAndAverageMixedAmounts amts = (total, fromIntegral nAmts `divideMixedAmount` total)
+  where
+    (nAmts, total) = foldl' (\(n, a) b -> (n + 1, maPlus a b)) (0 :: Int, nullmixedamt) amts
 
 -- | Is this mixed amount negative, if we can tell that unambiguously?
 -- Ie when normalised, are all individual commodity amounts negative ?
@@ -936,8 +1190,7 @@ amountsPreservingZeros (Mixed ma)
 -- | Get a mixed amount's component amounts without normalising zero and missing
 -- amounts. This is used for JSON serialisation, so the order is important. In
 -- particular, we want the Amounts given in the order of the MixedAmountKeys,
--- i.e. lexicographically first by commodity, then by cost commodity, then by
--- unit cost from most negative to most positive.
+-- i.e. sorted by commodity and transacted cost.
 amountsRaw :: MixedAmount -> [Amount]
 amountsRaw (Mixed ma) = toList ma
 
@@ -960,11 +1213,12 @@ unifyMixedAmount = foldM combine 0 . amounts
       | acommodity amt == acommodity result = Just $ amt + result
       | otherwise                           = Nothing
 
--- | Sum same-commodity amounts in a lossy way, applying the first
--- cost to the result and discarding any other costs. Only used as a
--- rendering helper.
-sumSimilarAmountsUsingFirstCost :: Amount -> Amount -> Amount
-sumSimilarAmountsUsingFirstCost a b = (a + b){acost=p}
+-- | Sum amounts which have the same MixedAmountKey; ie they have the same commodity and the same transacted cost if any.
+-- If they have total transacted costs, those are also summed.
+-- If they have a unit cost, that is preserved.
+-- If they have a lot cost basis, that is removed.
+sumSimilarAmounts :: Amount -> Amount -> Amount
+sumSimilarAmounts a b = (a + b){acost=p, acostbasis=Nothing}
   where
     p = case (acost a, acost b) of
         (Just (TotalCost ap), Just (TotalCost bp))
@@ -975,17 +1229,8 @@ sumSimilarAmountsUsingFirstCost a b = (a + b){acost=p}
 filterMixedAmount :: (Amount -> Bool) -> MixedAmount -> MixedAmount
 filterMixedAmount p (Mixed ma) = Mixed $ M.filter p ma
 
--- | Return an unnormalised MixedAmount containing just the amounts in the
--- requested commodity from the original mixed amount.
---
--- The result will contain at least one Amount of the requested commodity,
--- even if the original mixed amount did not (with quantity zero in that case,
--- and this would be discarded when the mixed amount is next normalised).
---
--- The result can contain more than one Amount of the requested commodity,
--- eg because there were several with different costs,
--- or simply because the original mixed amount was was unnormalised.
---
+-- | Return a MixedAmount containing just the amount of the requested commodity
+-- that was in the original mixed amount (or zero if there was none).
 filterMixedAmountByCommodity :: CommoditySymbol -> MixedAmount -> MixedAmount
 filterMixedAmountByCommodity c (Mixed ma)
   | M.null ma' = mixedAmount nullamt{acommodity=c}
@@ -997,16 +1242,24 @@ mapMixedAmount :: (Amount -> Amount) -> MixedAmount -> MixedAmount
 mapMixedAmount f (Mixed ma) = mixed . map f $ toList ma
 
 -- | Apply a transform to a mixed amount's component 'Amount's, which does not
--- affect the key of the amount (i.e. doesn't change the commodity, cost
--- commodity, or unit cost amount). This condition is not checked.
+-- affect the key of the amount (i.e. doesn't change the commodity or transacted cost).
+-- This condition is not checked.
 mapMixedAmountUnsafe :: (Amount -> Amount) -> MixedAmount -> MixedAmount
 mapMixedAmountUnsafe f (Mixed ma) = Mixed $ M.map f ma  -- Use M.map instead of fmap to maintain strictness
 
 -- | Convert all component amounts to cost where possible (see amountCost).
 mixedAmountCost :: MixedAmount -> MixedAmount
-mixedAmountCost (Mixed ma) =
-    foldl' (\m a -> maAddAmount m (amountCost a)) (Mixed noCosts) withCosts
+mixedAmountCost ma0@(Mixed ma)
+  | all (isNothing . acost) ma = ma0  -- no costs (the usual case), nothing to convert
+  | otherwise = foldl' (\m a -> maAddAmount m (amountCost a)) (Mixed noCosts) withCosts
   where (noCosts, withCosts) = M.partition (isNothing . acost) ma
+
+-- | Convert all component amounts to cost basis (or else transacted cost)
+-- where possible (see amountCostBasis).
+mixedAmountCostBasis :: MixedAmount -> MixedAmount
+mixedAmountCostBasis (Mixed ma) =
+    foldl' (\m a -> maAddAmount m (amountCostBasis a)) (Mixed noCosts) withCosts
+  where (noCosts, withCosts) = M.partition (\a -> isNothing (acost a) && isNothing (acostbasis a >>= cbCost)) ma
 
 -- -- | MixedAmount derived Eq instance in Types.hs doesn't know that we
 -- -- want $0 = EUR0 = 0. Yet we don't want to drag all this code over there.
@@ -1038,10 +1291,21 @@ mixedAmountSetStyles = styleAmounts
 -- v4
 instance HasAmounts MixedAmount where
   styleAmounts styles = mapMixedAmountUnsafe (styleAmounts styles)
+  -- getAmounts = concatMap getAmounts . amounts
 
-instance HasAmounts Account where
-  styleAmounts styles acct@Account{aebalance,aibalance} =
-    acct{aebalance=styleAmounts styles aebalance, aibalance=styleAmounts styles aibalance}
+instance HasAmounts BalanceData where
+  styleAmounts styles balance@BalanceData{bdexcludingsubs,bdincludingsubs} =
+    balance{bdexcludingsubs=styleAmounts styles bdexcludingsubs, bdincludingsubs=styleAmounts styles bdincludingsubs}
+  -- getAmounts BalanceData{bdexcludingsubs, bdincludingsubs} =
+  --   getAmounts bdexcludingsubs <> getAmounts bdincludingsubs
+
+instance HasAmounts a => HasAmounts (PeriodData a) where
+  styleAmounts styles = fmap (styleAmounts styles)
+  -- getAmounts 
+
+instance HasAmounts a => HasAmounts (Account a) where
+  styleAmounts styles acct@Account{adata} =
+    acct{adata = styleAmounts styles <$> adata}
 
 -- | Reset each individual amount's display style to the default.
 mixedAmountUnstyled :: MixedAmount -> MixedAmount
@@ -1060,6 +1324,30 @@ showMixedAmount = wbUnpack . showMixedAmountB defaultFmt
 -- See showMixedAmountB for special cases.
 showMixedAmountWith :: AmountFormat -> MixedAmount -> String
 showMixedAmountWith fmt = wbUnpack . showMixedAmountB fmt
+
+-- | Like 'showAmountsDistinctly' but for 'MixedAmount'. First tries each
+-- at its own precision; if those strings already differ, they are returned as-is.
+-- Otherwise display precision is increased uniformly (across all commodity components)
+-- in lockstep until the rendered strings are distinct, capped at the larger of
+-- the two amounts' internal precisions.
+showMixedAmountsDistinctly :: AmountFormat -> MixedAmount -> MixedAmount -> (String, String)
+showMixedAmountsDistinctly fmt a b
+  | sa0 /= sb0 = (sa0, sb0)
+  | otherwise  = go start
+  where
+    a0 = mixedAmountSetFullPrecisionUpTo Nothing $ mixedAmountSetFullPrecision a
+    b0 = mixedAmountSetFullPrecisionUpTo Nothing $ mixedAmountSetFullPrecision b
+    sa0 = showMixedAmountWith fmt a0
+    sb0 = showMixedAmountWith fmt b0
+    maxprec f x = maximum (0 : map f (amountsRaw x))
+    start = max (maxprec amountDisplayPrecision a0) (maxprec amountDisplayPrecision b0)
+    cap   = max (maxprec amountInternalPrecision a) (maxprec amountInternalPrecision b)
+    render p = (showMixedAmountWith fmt (setp p a), showMixedAmountWith fmt (setp p b))
+    setp p = mixedAmountSetPrecision (Precision p)
+    go p
+      | sa /= sb || p >= cap = (sa, sb)
+      | otherwise            = go (p + 1)
+      where (sa, sb) = render p
 
 -- | Get the one-line string representation of a mixed amount (also showing any costs).
 -- See showMixedAmountB for special cases.
@@ -1158,6 +1446,15 @@ showMixedAmountLinesPartsB opts@AmountFormat{displayMaxWidth=mmax,displayMinWidt
       where
         elisionStr = elisionDisplay (Just m) (wbWidth sep) (length long) $ lastDef nullAmountDisplay short
         (short, long) = partition ((m>=) . wbWidth . adBuilder) xs
+
+-- | Like 'showMixedAmountOneLineB' but returns the individual amounts as separate
+-- builders, along with their amounts, and without any padding or eliding
+-- (displayMinWidth and displayMaxWidth are ignored).
+-- Used eg for HTML output, where each amount gets its own styled element.
+showMixedAmountOneLinePartsB :: AmountFormat -> MixedAmount -> [(WideBuilder, Amount)]
+showMixedAmountOneLinePartsB opts ma =
+    [ (showAmountB opts a, a)
+    | a <- orderedAmounts opts $ if displayCost opts then ma else mixedAmountStripCosts ma ]
 
 -- | Helper for showMixedAmountB to deal with single line displays. This does not
 -- honour displayOneLine: all amounts will be displayed as if displayOneLine
@@ -1268,11 +1565,26 @@ mixedAmountSetPrecisionMin p = mapMixedAmountUnsafe (amountSetPrecisionMin p)
 mixedAmountSetPrecisionMax :: Word8 -> MixedAmount -> MixedAmount
 mixedAmountSetPrecisionMax p = mapMixedAmountUnsafe (amountSetPrecisionMax p)
 
--- | Remove all costs from a MixedAmount.
+-- | Remove all transacted costs and cost bases from a MixedAmount.
 mixedAmountStripCosts :: MixedAmount -> MixedAmount
-mixedAmountStripCosts (Mixed ma) =
-    foldl' (\m a -> maAddAmount m a{acost=Nothing}) (Mixed noCosts) withCosts
-  where (noCosts, withCosts) = M.partition (isNothing . acost) ma
+mixedAmountStripCosts ma0@(Mixed ma)
+  | all hasNoCosts ma = ma0  -- no costs (the usual case), nothing to strip
+  | otherwise = foldl' (\m a -> maAddAmount m a{acost=Nothing, acostbasis=Nothing}) (Mixed noCosts) withCosts
+  where
+    hasNoCosts a = isNothing (acost a) && isNothing (acostbasis a)
+    (noCosts, withCosts) = M.partition hasNoCosts ma
+
+
+-- | Render a price directive in journal format ("P DATE COMMODITY AMOUNT").
+-- Always shows the to-currency, even on a zero quantity, so the directive
+-- round-trips back to the same conversion pair.
+showPriceDirective :: PriceDirective -> T.Text
+showPriceDirective pd = T.unwords
+  [ "P"
+  , showDate (pddate pd)
+  , quoteCommoditySymbolIfNeeded (pdcommodity pd)
+  , wbToText $ showAmountB defaultFmt{displayZeroCommodity=True} (pdamount pd)
+  ]
 
 
 -------------------------------------------------------------------------------
@@ -1286,6 +1598,15 @@ tests_Amount = testGroup "Amount" [
        amountCost (eur 2){acost=Just $ UnitCost $ usd 2} @?= usd 4
        amountCost (eur 1){acost=Just $ TotalCost $ usd 2} @?= usd 2
        amountCost (eur (-1)){acost=Just $ TotalCost $ usd (-2)} @?= usd (-2)
+
+    ,testCase "multiplyQuantities" $ do
+       -- same result and representation as Decimal's (*)
+       let same a b = (multiplyQuantities a b, decimalPlaces $ multiplyQuantities a b) @?= (a * b, decimalPlaces $ a * b)
+       same 0.71 3
+       same 1.50 (-2.0)
+       same 0 100
+       same (Decimal 200 3) (Decimal 100 5)
+       multiplyQuantities 2.50 4 @?= 10
 
     ,testCase "amountLooksZero" $ do
        assertBool "" $ amountLooksZero nullamt

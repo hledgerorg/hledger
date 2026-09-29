@@ -52,10 +52,13 @@ commodity B1000.00
 # ** 1. By default, print shows all amounts with original precisions
 # (like 1.31)
 $ hledger -f- print
+; a amounts have 1 significant digit
+; b amounts have 1 significant digit and 2 zeros
+; c amounts have 3 significant digits
 2023-01-01
-    (a)        A0.1 @ B0.1 = A0.1 @ B0.1
-    (b)    A0.100 @ B0.100 = A0.100 @ B0.100
-    (c)    A0.123 @ B0.123 = A0.123 @ B0.123
+    (a)                                           A0.1 @ B0.1     = A0.1 @ B0.1
+    (b)                                           A0.100 @ B0.100 = A0.100 @ B0.100
+    (c)                                           A0.123 @ B0.123 = A0.123 @ B0.123
 
 >=
 
@@ -63,28 +66,37 @@ $ hledger -f- print
 # (like 1.30 but more thorough, also affects balance assertion amounts,
 # also does basic styling of balance assertion costs)
 $ hledger -f- print --round=soft
+; a amounts have 1 significant digit
+; b amounts have 1 significant digit and 2 zeros
+; c amounts have 3 significant digits
 2023-01-01
-    (a)       A0.10 @ B0.1 = A0.10 @ B0.1
-    (b)     A0.10 @ B0.100 = A0.10 @ B0.100
-    (c)    A0.123 @ B0.123 = A0.123 @ B0.123
+    (a)                                           A0.10 @ B0.1    = A0.10 @ B0.1
+    (b)                                           A0.10 @ B0.100  = A0.10 @ B0.100
+    (c)                                           A0.123 @ B0.123 = A0.123 @ B0.123
 
 >=
 
 # ** 3. With --round=hard, print rounds non-cost amounts.
 $ hledger -f- print --round=hard
+; a amounts have 1 significant digit
+; b amounts have 1 significant digit and 2 zeros
+; c amounts have 3 significant digits
 2023-01-01
-    (a)      A0.10 @ B0.1 = A0.10 @ B0.1
-    (b)    A0.10 @ B0.100 = A0.10 @ B0.100
-    (c)    A0.12 @ B0.123 = A0.12 @ B0.123
+    (a)                                           A0.10 @ B0.1   = A0.10 @ B0.1
+    (b)                                           A0.10 @ B0.100 = A0.10 @ B0.100
+    (c)                                           A0.12 @ B0.123 = A0.12 @ B0.123
 
 >=
 
 # ** 4. with --round=all, print rounds all amounts.
 $ hledger -f- print --round=all
+; a amounts have 1 significant digit
+; b amounts have 1 significant digit and 2 zeros
+; c amounts have 3 significant digits
 2023-01-01
-    (a)    A0.10 @ B0.10 = A0.10 @ B0.10
-    (b)    A0.10 @ B0.10 = A0.10 @ B0.10
-    (c)    A0.12 @ B0.12 = A0.12 @ B0.12
+    (a)                                           A0.10 @ B0.10 = A0.10 @ B0.10
+    (b)                                           A0.10 @ B0.10 = A0.10 @ B0.10
+    (c)                                           A0.12 @ B0.12 = A0.12 @ B0.12
 
 >=
 
@@ -100,9 +112,9 @@ commodity A 1000.
 
 $ hledger -f- print
 2023-01-01
-    f           A 1.5
-    g           A 1.5
-    c            B -3
+    f                                            A 1.5
+    g                                            A 1.5
+    c                                           B -3
 
 >=
 
@@ -115,7 +127,7 @@ decimal-mark .
 
 $ hledger -f- print
 2023-01-01
-    (a)          1,000.
+    (a)                                        1,000.
 
 >=
 
@@ -132,13 +144,13 @@ $ hledger -f- print
 
 $ hledger -f- print -x
 2023-01-01
-    a          A 0.00
-    b          B 0.00
-    c          A 0.00
-    c          B 0.00
+    a                                            A 0.00
+    b                                            B 0.00
+    c                                            A 0.00
+    c                                            B 0.00
 
 2023-01-02
-    d               0
+    d                                              0
 
 >=
 
@@ -173,8 +185,8 @@ $ hledger -f- print -x
 
 $ hledger -f- print -x -B
 2023-01-01
-    a        0.1234 B
-    b       -0.1234 B
+    a                                              0.1234 B
+    b                                             -0.1234 B
 
 >=
 
@@ -211,8 +223,8 @@ $ hledger -f- print -x -B
 
 $ hledger -f - print --infer-market-prices -V
 2023-01-01
-    a        0.1234 B
-    b       -0.1234 B
+    a                                              0.1234 B
+    b                                             -0.1234 B
 
 >=
 
@@ -225,8 +237,8 @@ $ hledger -f - print --infer-market-prices -V
 
 $ hledger -f - print --infer-market-prices -V -c '0.123456B'
 2023-01-01
-    a         0.1234B
-    b        -0.1234B
+    a                                              0.1234B
+    b                                             -0.1234B
 
 >=
 
@@ -244,8 +256,8 @@ P 2023-01-01 B 2A
 
 $ hledger -f- print -X B
 2023-01-01
-    a            B0.5
-    b           B-0.5
+    a                                             B0.5
+    b                                            B-0.5
 
 >=
 
@@ -261,8 +273,8 @@ P 2023-01-01 B 3.00A
 # default fallback precision for "infinite" decimals (8).
 $ hledger -f- print -X B
 2023-01-01
-    a     B0.33333333
-    b    B-0.33333333
+    a                                             B0.33333333
+    b                                            B-0.33333333
 
 >=
 # preferred ?
@@ -285,6 +297,6 @@ P 2023-01-01 A 0.012345678901234567890123456789012345678901234567890123456789012
 
 $ hledger -f- print -X B
 2023-01-01
-    (a)    0.0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789B
+    (a)                                            0.0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789B
 
 >=

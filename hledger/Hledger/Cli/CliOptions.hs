@@ -18,6 +18,7 @@ related utilities used by hledger commands.
 module Hledger.Cli.CliOptions (
   progname,
   prognameandversion,
+  prognameandversionnoarch,
   binaryinfo,
 
   -- * cmdargs flags & modes
@@ -58,8 +59,13 @@ module Hledger.Cli.CliOptions (
   getHledgerCliOpts,
   getHledgerCliOpts',
   rawOptsToCliOpts,
+  generalRawOpts,
+  insertRawOpts,
   cliOptsDropArgs,
-  argsAddDoubleDash,
+  journalCreatingCommandNames,
+  journalIgnoringCommandNames,
+  argsMarkRunCommands,
+  runCommandsMarker,
   outputFormats,
   defaultOutputFormat,
   CommandHelpStr,
@@ -81,6 +87,9 @@ module Hledger.Cli.CliOptions (
 
   -- * Other utils
   topicForMode,
+  DeclarablesSelector(..),
+  declarablesSelectorFromOpts,
+  findMatchedByArgument,
 
 --  -- * Convenience re-exports
 --  module Data.String.Here,
@@ -88,17 +97,17 @@ module Hledger.Cli.CliOptions (
 )
 where
 
-import qualified Control.Exception as C
+import Control.Exception qualified as C
 import Control.Monad (when)
 import Data.Char
 import Data.Default
-import Data.List.Extra (intercalate, isInfixOf, nubSort)
-import qualified Data.List.NonEmpty as NE (NonEmpty, fromList, nonEmpty)
+import Data.List.Extra (intercalate, nubSort)
+import Data.List.NonEmpty qualified as NE (NonEmpty, fromList, nonEmpty)
 import Data.List.Split (splitOn)
 import Data.Maybe
 --import Data.String.Here
 -- import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Void (Void)
 import GitHash (tGitInfoCwdTry)
 import Safe
@@ -114,11 +123,13 @@ import System.Info (os)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
+import Hledger.Utils.I18n (translationsForLangOption)
 import Hledger
 import Hledger.Cli.DocFiles
 import Hledger.Cli.Version
 import Data.Time.Clock.POSIX (POSIXTime)
-import Data.List (isPrefixOf, isSuffixOf)
+import Data.List (dropWhileEnd, find, isPrefixOf, isSuffixOf)
+import Data.Function ((&))
 
 
 -- | The name of this program's executable.
@@ -139,6 +150,10 @@ prognameandversion =
   progname
   packageversion
 
+-- | Just the program name and version, without the machine architecture.
+prognameandversionnoarch :: String
+prognameandversionnoarch = takeWhile (/= ',') prognameandversion
+
 binaryinfo :: HledgerBinaryInfo
 Right binaryinfo = parseHledgerVersion prognameandversion
 -- ui and web use nullbinaryinfo for a parse failure here to silence an inexhaustive pattern warning.
@@ -152,7 +167,14 @@ Right binaryinfo = parseHledgerVersion prognameandversion
 -- | Common input-related flags: --file, --rules, --conf, --alias...
 inputflags :: [Flag RawOpts]
 inputflags = [
-   flagReq  ["file","f"]      (\s opts -> Right $ setopt "file" s opts) "[FMT:]FILE" "Read data from FILE, or from stdin if FILE is -, inferring format from extension or a FMT: prefix. Can be specified more than once. If not specified, reads from $LEDGER_FILE or $HOME/.hledger.journal."
+   flagReq  ["file","f"]      (\s opts -> Right $ setopt "file" s opts) "[FMT:]FILE" $ unwords [
+     "Use this as the journal file (- means stdin)."
+    ,"If not specified, $LEDGER_FILE or ~/.hledger.journal will be used."
+    ,"If specified more than once, the files will be read in order."
+    ,"Each file's format (journal, csv, timeclock, timedot, rules..) is inferred from the file extension or a FMT: prefix."
+    ,"Some commands (add, import) write to the (first) file,"
+    ,"and expect it to be in journal format."
+    ]
   ,flagReq  ["rules"]         (\s opts -> Right $ setopt "rules" s opts) "RULESFILE" "Use rules defined in this rules file for converting subsequent CSV/SSV/TSV files. If not specified, uses FILE.csv.rules for each FILE.csv."  -- see also hiddenflags
 
   ,flagReq  ["alias"]         (\s opts -> Right $ setopt "alias" s opts)  "A=B|/RGX/=RPL" "transform account names from A to B, or by replacing regular expression matches"
@@ -163,9 +185,17 @@ inputflags = [
     , "Auto posting rules will also be applied to these transactions."
     , "In hledger-ui, also make future-dated transactions visible at startup."
     ])
-  ,flagNone ["ignore-assertions","I"] (setboolopt "ignore-assertions") "don't check balance assertions by default"
-  ,flagNone ["infer-costs"] (setboolopt "infer-costs") "infer conversion equity postings from costs"
-  ,flagNone ["infer-equity"] (setboolopt "infer-equity") "infer costs from conversion equity postings"
+  ,flagNone ["ignore-assertions"] (setboolopt "ignore-assertions") "don't check balance assertions by default"
+  ,flagNone ["ignore-lots"]       (setboolopt "ignore-lots")       "don't do lot tracking or checking by default"
+  ,flagNone ["I"]                 (setboolopt "ignore-assertions" . setboolopt "ignore-lots")
+                                  "shortcut for --ignore-assertions --ignore-lots"
+  ,flagReq  ["txn-balancing"] (\s opts -> Right $ setopt "txn-balancing" s opts) "..." (unlines [
+     "how to check that transactions are balanced:"
+    ,"'old':   - use global display precision"
+    ,"'exact': - use transaction precision (default)"
+    ])
+  ,flagNone ["infer-costs"] (setboolopt "infer-costs") "infer costs from conversion equity postings"
+  ,flagNone ["infer-equity"] (setboolopt "infer-equity") "infer conversion equity postings from costs"
   -- history of this flag so far, lest we be confused:
   --  originally --infer-value
   --  2021-02 --infer-market-price added, --infer-value deprecated
@@ -179,9 +209,6 @@ inputflags = [
   ,flagNone ["infer-market-prices"] (setboolopt "infer-market-prices") "infer market prices from costs"
   ,flagReq  ["pivot"]         (\s opts -> Right $ setopt "pivot" s opts)  "TAGNAME" "use a different field or tag as account names"
   ,flagNone ["strict","s"]    (setboolopt "strict") "do extra error checks (and override -I)"
-
-  -- generating transactions/postings
-  ,flagNone ["verbose-tags"]  (setboolopt "verbose-tags") "add tags indicating generated/modified data"
   ]
 
 -- | Common report-related flags: --period, --cost, etc.
@@ -209,7 +236,7 @@ reportflags = [
  ,flagReq  ["depth"]         (\s opts -> Right $ setopt "depth" s opts) "DEPTHEXP" "if a number (or -NUM): show only top NUM levels of accounts. If REGEXP=NUM, only apply limiting to accounts matching the regular expression."
 
   -- valuation
- ,flagNone ["B","cost"]      (setboolopt "B") "convert amounts to their cost/sale amount (@/@@)"
+ ,flagNone ["B","cost"]      (setboolopt "B") "convert amounts to their cost basis ({}), or else their cost/sale amount (@/@@)"
     -- ^ no "valuation mode:" prefix for this one, it's not mutually exclusive
  ,flagNone ["V","market"]    (setboolopt "V")
     (unwords
@@ -228,23 +255,37 @@ reportflags = [
       ,"'end':      value at period end(s)"
       ,"'now':      value today"
       ,"YYYY-MM-DD: value on given date"
+      ,"'cost':     cost basis, or else transacted cost (same as -B)"
+      ,"'transacted': transacted cost/sale amount (@/@@) only"
       ])
 
   -- display
+ ,flagNone ["lots"] (setboolopt "lots") "show lot subaccounts and other lot details"
  ,flagReq ["commodity-style", "c"] (\s opts -> Right $ setopt "commodity-style" s opts) "S"
     "Override a commodity's display style.\nEg: -c '$1000.' or -c '1.000,00 EUR'"
  ,flagOpt "yes" ["pretty"] (\s opts -> Right $ setopt "pretty" s opts) "YN"
     "Use box-drawing characters in text output? The optional 'y'/'yes' or 'n'/'no' arg requires =."
+ ,flagReq ["title"] (\s opts -> Right $ setopt "title" s opts) "T"
+    "set or customise a report title"
+ ,flagReq ["subreport-titles"] (\s opts -> Right $ setopt "subreport-titles" s opts) "TS"
+    "customise subreport headings in compound reports (|-separated)"
+ ,flagReq ["period-titles"] (\s opts -> Right $ setopt "period-titles" s opts) "OPT" $ unlines
+    ["customise headings in periodic reports:"
+    ,"'compact': readable period names when possible"
+    ,"'dates':   exact dates/date ranges always"
+    ]
  ]
   where
     valuationprefix = "valuation mode: "
 
 helpflags :: [Flag RawOpts]
 helpflags = [
-  flagNone ["help","h"] (setboolopt "help")    "show command line help"
- ,flagNone ["tldr"]     (setboolopt "tldr")    "show command examples with tldr"
- ,flagNone ["info"]     (setboolopt "info")    "show the manual with info"
- ,flagNone ["man"]      (setboolopt "man")     "show the manual with man"
+  flagNone ["?"]        (setboolopt "quickref") "show the hledger quick reference"
+ ,flagNone ["help","h"] (setboolopt "help")    "show this command's usage help"
+ ,flagNone ["info"]     (setboolopt "info")    "show this command's manual with info"
+ ,flagNone ["man"]      (setboolopt "man")     "show this command's manual with man"
+ ,flagNone ["webman"]   (setboolopt "webman")  "show this command's manual on the web"
+ ,flagNone ["examples"] (setboolopt "examples") "show examples for this command"
  ,flagNone ["version"]  (setboolopt "version") "show version information"
   -- flagOpt would be more correct for --debug, showing --debug[=LVL] rather than --debug=[LVL] in help.
   -- But flagReq plus special handling in Cli.hs makes the = optional, removing a source of confusion.
@@ -261,6 +302,8 @@ terminalflags = [
   -- keep synced with hledger-lib:colorOption:
  ,flagReq  ["color","colour"] (\s opts -> Right $ setopt "color" s opts) "YNA"
    "use ANSI color ? y/yes, n/no, or auto (default)"
+ ,flagReq  ["lang"] (\s opts -> Right $ setopt "lang" s opts) "LANG"
+   "language for report titles and headings: a language tag like de, auto (from the environment), or en (default)"
  ]
 
 -- | Flags for selecting flat/tree mode, used for reports organised by account.
@@ -291,7 +334,8 @@ hiddenflagsformainmode = [
   ,flagNone ["pretty-tables"]        (setopt "pretty" "always") "legacy flag that was renamed"
   ,flagNone ["anon"]                 (setboolopt "anon") "deprecated, renamed to --obfuscate"  -- #2133, handled by anonymiseByOpts
   ,flagNone ["obfuscate"]            (setboolopt "obfuscate") "slightly obfuscate hledger's output. Warning, does not give privacy. Formerly --anon."  -- #2133, handled by maybeObfuscate
-  ,flagNone ["timeclock-old"]        (setboolopt "oldtimeclock") "don't pair timeclock entries by account name"
+  ,flagNone ["old-timeclock", "timeclock-old"] (setboolopt "oldtimeclock") "don't pair timeclock entries by account name"
+  ,flagNone ["old-glob"]             (setboolopt "oldglob") "deprecated, no longer used as of 1.50.4"  -- #2498
   ,flagReq  ["rules-file"]           (\s opts -> Right $ setopt "rules" s opts) "RULESFILE" "was renamed to --rules"
   ]
 
@@ -484,13 +528,16 @@ parseCommandHelp :: CommandHelpStr -> Maybe CommandHelp
 parseCommandHelp t =
   case lines t of
     [] -> Nothing
-    (l1:_:l3:ls) -> Just $ CommandHelp cmdname (if null cmdalias then Nothing else Just cmdalias) preamble postamble
+    (l1:_:l3raw:ls) -> Just $ CommandHelp cmdname (if null cmdalias then Nothing else Just cmdalias) preamble postamble
       where
         cmdname = l1
+        -- pandoc's plain writer appends a trailing space after a single-character
+        -- parenthetical (eg "(h) "), so strip trailing whitespace before matching.
+        l3 = dropWhileEnd isSpace l3raw
         (cmdalias, rest) =
           if "(" `isPrefixOf` l3 && ")" `isSuffixOf` l3
           then (drop 1 $ init l3, ls)
-          else ([], l3:ls)
+          else ([], l3raw:ls)
         (preamblels, rest2) = break (== "Flags:") $ dropWhile null rest
         postamblels = dropWhile null $ dropWhile (not.null) rest2
         preamble = unlines $ reverse $ dropWhile null $ reverse preamblels
@@ -620,11 +667,11 @@ rawOptsToCliOpts rawopts = do
             Just d  -> either (const err) fromEFDay $ fixSmartDateStrEither' currentDay (T.pack d)
               where err = error' $ "Unable to parse date \"" ++ d ++ "\""
     command = stringopt "command" rawopts
-    moutputformat = maybestringopt "output-format" rawopts
-    postingaccttags = not $ command == "print" && moutputformat == Just "beancount"
   usecolor <- useColorOnStdout
-  let iopts = rawOptsToInputOpts day usecolor postingaccttags rawopts
-  rspec <- either error' pure $ rawOptsToReportSpec day usecolor rawopts  -- PARTIAL:
+  let iopts = rawOptsToInputOpts day usecolor rawopts
+  rspec0 <- either error' pure $ rawOptsToReportSpec day usecolor rawopts  -- PARTIAL:
+  trs <- translationsForLangOption $ maybestringopt "lang" rawopts
+  let rspec = rspec0{_rsReportOpts = (_rsReportOpts rspec0){translations_ = trs}}
   mtermwidth <- getTerminalWidth
   let availablewidth = fromMaybe defaultWidth mtermwidth
   return defcliopts {
@@ -634,7 +681,7 @@ rawOptsToCliOpts rawopts = do
              ,inputopts_       = iopts
              ,reportspec_      = rspec
              ,output_file_     = maybestringopt "output-file" rawopts
-             ,output_format_   = moutputformat
+             ,output_format_   = maybestringopt "output-format" rawopts
              ,pageropt_        = maybeynopt "pager" rawopts
              ,coloropt_        = maybeynaopt "color" rawopts
              ,debug_           = posintopt "debug" rawopts
@@ -643,36 +690,75 @@ rawOptsToCliOpts rawopts = do
              ,available_width_ = availablewidth
              }
 
+-- | The names of the general flags that run/repl propagate to the commands they run:
+-- all input, output/report, and terminal flags. Excludes --file (handled separately, as
+-- the default journal) and the help-action flags (which just show help and exit).
+propagatedGeneralFlagNames :: [String]
+propagatedGeneralFlagNames =
+  filter (`notElem` (["file","f"] ++ helpactionflags))
+    $ concatMap flagNames (inputflags ++ reportflags ++ helpflags)
+  where helpactionflags = ["quickref","help","h","examples","info","man","webman","version"]
+
+-- | Extract the propagated general flags from these raw options, as a raw option
+-- association list, for passing to run/repl subcommands.
+generalRawOpts :: RawOpts -> [(String,String)]
+generalRawOpts = collectopts $ \kv ->
+  if fst kv `elem` propagatedGeneralFlagNames then Just kv else Nothing
+
+-- | Prepend some extra raw options into a subcommand's options, as defaults that
+-- the subcommand's own options take precedence over, recomputing the derived
+-- CliOpts fields (inputopts_, file_, reportspec_..) so they stay consistent.
+insertRawOpts :: [(String,String)] -> CliOpts -> IO CliOpts
+insertRawOpts extraopts subopts = rawOptsToCliOpts $ overRawOpts (extraopts ++) (rawopts_ subopts)
+
 -- | Drop the arguments ("args") from this CliOpts' rawopts field.
 cliOptsDropArgs :: CliOpts -> CliOpts
 cliOptsDropArgs copts@CliOpts{rawopts_} = copts{rawopts_ = dropRawOpt "args" rawopts_}
 
--- | cmdargs eats the first double-dash (--) argument when parsing a command line,
--- which causes problems for the run and repl commands.
--- Sometimes we work around this by duplicating that first -- argument.
--- This doesn't break anything that we know of yet.
-argsAddDoubleDash args'
-  | "--" `elem` args' = let (as,bs) = break (=="--") args' in as <> ["--"] <> bs
+-- | Builtin commands that can operate on a nonexistent journal file, creating it
+-- (add and import). These are dispatched specially, both at the CLI and in run/repl,
+-- so a missing journal file is tolerated rather than an error.
+journalCreatingCommandNames :: [String]
+journalCreatingCommandNames = ["add","import"]
+
+-- | Names of builtin commands which do not read the journal at all.
+-- These are dispatched specially, both at the CLI and in run/repl, so they
+-- never read or check the journal (help is handled by the CLI's help hub,
+-- which also does not read the journal).
+journalIgnoringCommandNames :: [String]
+journalIgnoringCommandNames = ["help","setup","test"]
+
+-- | The name of a hidden marker flag used internally by the run command to
+-- recognise inline commands. run reads inline commands (rather than command
+-- files) when its arguments contain a "--". But cmdargs consumes the first "--"
+-- while parsing, so run can't detect it directly. Instead, before parsing we
+-- insert this marker flag just before the first "--" (with 'argsMarkRunCommands');
+-- cmdargs then parses it like any normal flag, leaving it in the options for run
+-- to check. This replaces an older, more fragile workaround which duplicated the
+-- first "--" so that one copy survived cmdargs.
+runCommandsMarker :: String
+runCommandsMarker = "_runcommands"
+
+-- | If these arguments contain a "--" (run's inline-commands introducer), insert
+-- the hidden 'runCommandsMarker' flag just before it, so the run command can tell
+-- it was given inline commands rather than command files. See 'runCommandsMarker'.
+argsMarkRunCommands :: [String] -> [String]
+argsMarkRunCommands args'
+  | "--" `elem` args' = let (as,bs) = break (=="--") args' in as <> ["--" <> runCommandsMarker] <> bs
   | otherwise = args'
 
 -- | A helper for addon commands: this parses options and arguments from
 -- the current command line using the given hledger-style cmdargs mode,
--- and returns a CliOpts. Or, with --help or -h present, it prints
--- long or short help, and exits the program.
+-- and returns a CliOpts. Or, with --help or -h present, it shows
+-- the full help (in the pager if appropriate) and exits the program.
 -- When --debug is present, also prints some debug output.
 -- Note this is not used by the main hledger executable.
 --
--- The help texts are generated from the mode.
--- Long help includes the full usage description generated by cmdargs
--- (including all supported options), framed by whatever pre- and postamble
--- text the mode specifies. It's intended that this forms a complete
--- help document or manual.
---
--- Short help is a truncated version of the above: the preamble and
--- the first part of the usage, up to the first line containing "flags:"
--- (normally this marks the start of the common hledger flags);
--- plus a mention of --help and the (presumed supported) common
--- hledger options not displayed.
+-- The full help is generated from the mode: the full usage description
+-- generated by cmdargs (including all supported options), framed by whatever
+-- pre- and postamble text the mode specifies. It's intended that this forms a
+-- complete help document or manual. It's the same help shown by CMD -h at the
+-- command line, keeping -h consistent everywhere (including in the repl).
 --
 -- Tips:
 -- Empty lines in the pre/postamble are removed by cmdargs;
@@ -683,18 +769,17 @@ getHledgerCliOpts' mode' args0 = do
   let rawopts = either usageError id $ process mode' args0
   opts <- rawOptsToCliOpts rawopts
   debugArgs args0 opts
-  when (boolopt "help" $ rawopts_ opts) $ putStr shorthelp >> exitSuccess
-  -- when (boolopt "help" $ rawopts_ opts) $ putStr longhelp  >> exitSuccess
+  when (boolopt "help" $ rawopts_ opts) $ runPager longhelp >> exitSuccess
   return opts
   where
     longhelp = showModeUsage mode'
-    shorthelp =
-      unlines $
-        (reverse $ dropWhile null $ reverse $ takeWhile (not . ("flags:" `isInfixOf`)) $ lines longhelp)
-        ++
-        [""
-        ,"  See also hledger -h for general hledger options."
-        ]
+    -- A truncated help (preamble and usage up to the first "flags:" line, plus a
+    -- pointer to the common options) was shown here before; disabled for now to
+    -- keep -h showing the full help everywhere. To restore it, show this instead:
+    -- shorthelp =
+    --   unlines $
+    --     (reverse $ dropWhile null $ reverse $ takeWhile (not . ("flags:" `isInfixOf`)) $ lines longhelp)
+    --     ++ ["", "  See also hledger -h for general hledger options."]
     -- | Print debug info about arguments and options if --debug is present.
     -- XXX use standard dbg helpers
     debugArgs :: [String] -> CliOpts -> IO ()
@@ -724,7 +809,7 @@ journalFilePathFromOpts opts = do
   case mbpaths of
     Just paths -> return paths
     Nothing -> do
-      f <- defaultJournalPath
+      f <- defaultExistingJournalPath
       return $ NE.fromList [f]
 
 -- | Like journalFilePathFromOpts, but does not use defaultJournalPath
@@ -738,19 +823,20 @@ journalFilePathFromOptsNoDefault opts = do
 expandPathPreservingPrefix :: FilePath -> PrefixedFilePath -> IO PrefixedFilePath
 expandPathPreservingPrefix d prefixedf = do
   let (p,f) = splitReaderPrefix prefixedf
-  f' <- expandPath d f
+  f' <- expandPathOrGlob d f
   return $ case p of
     Just p'  -> (show p') ++ ":" ++ f'
     Nothing -> f'
 
 -- | Get the expanded, absolute output file path specified by an
--- -o/--output-file options, or nothing, meaning stdout.
+-- -o/--output-file options, or nothing, meaning stdout (also when the path is "-").
 outputFileFromOpts :: CliOpts -> IO (Maybe FilePath)
 outputFileFromOpts opts = do
   d <- getCurrentDirectory
   case output_file_ opts of
-    Nothing -> return Nothing
-    Just f  -> Just <$> expandPath d f
+    Nothing  -> return Nothing
+    Just "-" -> return Nothing
+    Just f   -> Just <$> expandPath d f
 
 defaultOutputFormat :: String
 defaultOutputFormat = "txt"
@@ -769,6 +855,16 @@ outputFormatFromOpts opts =
     Just f  -> f
     Nothing ->
       case filePathExtension <$> output_file_ opts of
+        Just ext | ext `elem` outputFormats -> ext
+        _                                   -> defaultOutputFormat
+
+-- | Like outputFormatFromOpts, but works on RawOpts (before CliOpts are constructed).
+outputFormatFromRawOpts :: RawOpts -> String
+outputFormatFromRawOpts rawopts =
+  case maybestringopt "output-format" rawopts of
+    Just f  -> f
+    Nothing ->
+      case filePathExtension <$> maybestringopt "output-file" rawopts of
         Just ext | ext `elem` outputFormats -> ext
         _                                   -> defaultOutputFormat
 
@@ -809,6 +905,50 @@ registerWidthsFromOpts CliOpts{width_=Just s}  =
           descwidth <- optional (char ',' >> read `fmap` some digitChar)
           eof
           return (totalwidth, descwidth)
+
+-- Some common ways to select items from a list of declarable things.
+-- Used by the accounts, commodities, payees, tags commands, eg.
+data DeclarablesSelector
+  = Used
+  | Declared
+  | Undeclared
+  | Unused
+  | FindFirst  -- ^ the first item matched by the first argument (--find)
+  deriving (Show, Eq)
+
+-- Get the flag of this kind from opts, or raise an error if there's more than one.
+declarablesSelectorFromOpts :: CliOpts -> Maybe DeclarablesSelector
+declarablesSelectorFromOpts CliOpts{rawopts_=rawopts} =
+  case ( boolopt "used"       rawopts
+       , boolopt "declared"   rawopts
+       , boolopt "undeclared" rawopts
+       , boolopt "unused"     rawopts
+       , boolopt "find"       rawopts
+       ) of
+    (False, False, False, False, False) -> Nothing
+    (True,  False, False, False, False) -> Just Used
+    (False, True,  False, False, False) -> Just Declared
+    (False, False, True,  False, False) -> Just Undeclared
+    (False, False, False, True,  False) -> Just Unused
+    (False, False, False, False, True ) -> Just FindFirst
+    _ -> error' "please pick at most one of --used, --declared, --undeclared, --unused, --find"
+
+-- | A helper for the --find mode offered by commands like accounts, commodities, payees, tags (see also 'DeclarablesSelector').
+-- Interpret the first command argument found in rawopts as a case insensitive regular expression,
+-- then return the first of the provided items that it matches;
+-- or raise an error if there's no valid argument or no matched item.
+-- This function's second argument describes the items' type, for the error message.
+findMatchedByArgument :: RawOpts -> String -> [T.Text] -> T.Text
+findMatchedByArgument rawopts itemtype items =
+  let
+    arg = headDef err $ listofstringopt "args" rawopts
+      where err = error' $ "With --find, please provide a " ++ itemtype ++ " name or\n" ++
+              itemtype ++ " pattern (case-insensitive, infix, regexp) as first command argument."
+    firstmatch = case toRegexCI $ T.pack arg of  -- keep synced with aregister's matching
+      Right re -> find (regexMatchText re)
+      Left  _  -> const Nothing
+  in firstmatch items
+    & fromMaybe (error' $ show arg ++ " did not match any " ++ itemtype ++ ".")
 
 -- Other utils
 

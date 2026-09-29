@@ -10,34 +10,40 @@ Hledger.Utils.
 module Hledger.Cli.Utils
     (
      unsupportedOutputFormatError,
+     withJournal,
      withJournalDo,
+     withPossibleJournal,
      writeOutput,
      writeOutputLazyText,
+     warnIfLargeMultiPeriodReport,
+     withTitle,
+     printTitle,
      journalTransform,
      journalReload,
      journalReloadIfChanged,
      journalFileIsNewer,
+     maybeFileModificationTime,
      openBrowserOn,
      writeFileWithBackup,
      writeFileWithBackupIfChanged,
-     pivotByOpts,
-     anonymiseByOpts,
      journalSimilarTransaction,
      postingsOrTransactionsReportAsText,
      tests_Cli_Utils,
     )
 where
 
+import Control.Exception (IOException, evaluate, try)
 import Control.Monad.Except (ExceptT)
 import Control.Monad.IO.Class (liftIO)
 import Data.List
-import qualified Data.List.NonEmpty as NE (toList)
+import Data.List.NonEmpty qualified as NE (head, toList)
 import Data.Maybe
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.Builder as TB
-import qualified Data.Text.Lazy.IO as TL
+import Data.Set qualified as S
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
+import Data.Text.Lazy qualified as TL
+import Data.Text.Lazy.Builder qualified as TB
+import Data.Text.Lazy.IO qualified as TL
 import Data.Time (Day)
 import Data.Time.Clock.POSIX (POSIXTime, utcTimeToPOSIXSeconds)
 import Lens.Micro ((^.))
@@ -50,6 +56,7 @@ import System.Info (os)
 import System.Process (readProcessWithExitCode)
 import Text.Printf
 import Text.Regex.TDFA ((=~))
+import Web.Browser (openBrowser)
 
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Anon
@@ -64,52 +71,162 @@ import Data.Functor ((<&>))
 unsupportedOutputFormatError :: String -> String
 unsupportedOutputFormatError fmt = "Sorry, output format \""++fmt++"\" is unrecognised or not yet supported for this kind of report."
 
+-- | If a multi-period report has an implausible number of periods (more than 10,000;
+-- in practice this means a mistyped date in the journal, making the report span thousands of years),
+-- print a warning on stderr before starting it, so the user can cancel (#1683).
+-- Such a report can need a lot of memory (a balance report needs a column per period).
+-- The periods are counted without building the report, in constant memory.
+--
+-- This is called explicitly by each command that runs such a report (balance, the compound
+-- balance commands, stats, roi, activity), rather than living in the report code: the report functions
+-- are pure, so warning from them would need unsafePerformIO or trace, with no guarantee the
+-- message appears before the work starts. Doing it in the command's IO, before the report is
+-- forced, keeps the ordering reliable. New multi-period report commands should call this too.
+warnIfLargeMultiPeriodReport :: ReportSpec -> Journal -> IO ()
+warnIfLargeMultiPeriodReport rspec@ReportSpec{_rsReportOpts=ropts} j =
+  when (interval_ ropts /= NoInterval && nperiods > maxExpectedPeriods) $ warnIO $ printf
+    ("this report has %d periods (%s), and may use a lot of memory.\n"
+    <> "If not intended, press control-C now, and check for a mistyped date, or narrow the report.")
+    nperiods (showDateSpan rspan)
+  where
+    (rspan, spans) = reportSpanLazy j rspec
+    nperiods = length spans  -- constant memory: the lazy spans are counted, not kept
+    maxExpectedPeriods = 10000 :: Int
+
 -- | Parse the user's specified journal file(s) as a Journal, maybe apply some
 -- transformations according to options, and run a hledger command with it.
 -- Or, throw an error.
-withJournalDo :: CliOpts -> (Journal -> IO a) -> IO a
-withJournalDo opts cmd = do
+--
+-- Sets 'InputOpts._journaldir' on the iopts used for this read, so CSV
+-- @source@/@archive@ rules find the journal's @data/@ directory. If the
+-- callback subsequently performs another 'readJournalFile' / 'readJournalFiles'
+-- call (eg in the @import@ command), it should apply 'inputOptsSetJournalDir'
+-- to those iopts using the loaded journal — the local @opts.inputopts_@ does
+-- not yet carry @_journaldir@ at the call site here.
+withJournal :: CliOpts -> (Journal -> IO a) -> IO a
+withJournal opts cmd = do
   -- We kludgily read the file before parsing to grab the full text, unless
   -- it's stdin, or it doesn't exist and we are adding. We read it strictly
   -- to let the add command work.
   journalpaths <- journalFilePathFromOpts opts
-  j <- runExceptT $ journalTransform opts <$> readJournalFiles (inputopts_ opts) (NE.toList journalpaths)
+  let iopts = (inputopts_ opts){_journaldir = Just (takeDirectory (NE.head journalpaths))}
+  ej <- runExceptT $ journalTransform opts <$> readJournalFiles iopts (NE.toList journalpaths)
+  case ej of
+    Left e  -> error' e  -- PARTIAL:
+    Right j -> do
+      maybeWarnUnknownValuationCommodity opts j
+      cmd j
+
+-- | Warn on stderr if -X/--value requests a valuation commodity for which
+-- valuation will certainly have no effect: one appearing in no P directive
+-- or cost (from which conversion prices could come) and in which no
+-- amounts are already denominated. Also suggest a journal commodity
+-- equivalent under ISO 4217 currency code normalisation, if any
+-- (eg $ for USD).
+maybeWarnUnknownValuationCommodity :: CliOpts -> Journal -> IO ()
+maybeWarnUnknownValuationCommodity opts j =
+  case valuationTypeValuationCommodity =<< value_ (_rsReportOpts $ reportspec_ opts) of
+    Just c
+      | c `S.notMember` journalCommoditiesFromPriceDirectives j
+      , c `S.notMember` journalCommoditiesFromTransactions j ->
+          warnIO $ "no conversion prices to \"" <> T.unpack c <> "\" can be found." <> suggestion c
+    _ -> return ()
+  where
+    suggestion c = case [s | s <- S.toList (journalCommodities j), s /= c, toCurrencyCode s == toCurrencyCode c] of
+      (s:_) -> " Did you mean \"" <> T.unpack s <> "\" ?"
+      []    -> ""
+
+{-# DEPRECATED withJournalDo "renamed, please use withJournal instead" #-}
+withJournalDo = withJournal
+
+-- | Like withJournal, but if the first journal file does not exist, provides an empty
+-- journal with that file path set. This is useful for commands like add and import
+-- that need to work with a potentially non-existent first journal file,
+-- while still reading all specified files (for completions, etc).
+--
+-- See 'withJournal' for the note about 'inputOptsSetJournalDir' and secondary reads.
+withPossibleJournal :: CliOpts -> (Journal -> IO a) -> IO a
+withPossibleJournal opts cmd = do
+  journalpaths <- journalFilePathFromOptsNoDefault opts
+  fs <- case journalpaths of
+    Just paths -> return $ NE.toList paths
+    Nothing -> (:[]) <$> defaultJournalPath
+  let iopts = (inputopts_ opts){_journaldir = takeDirectory <$> headMay fs}
+  j <- runExceptT $ journalTransform opts <$> readPossibleJournalFiles iopts fs
   either error' cmd j  -- PARTIAL:
 
--- | Apply some extra post-parse transformations to the journal, if enabled by options.
--- These happen after parsing and finalising the journal, but before report calculation.
--- They are, in processing order:
+-- | Apply some journal transformations, if enabled by options, that should happen late.
+-- These happen after parsing, finalising the journal, strict checks, and .latest filtering/updating,
+-- but before report calculation. They are, in processing order:
+-- --pivot, --anonymise error message, --obfuscate, and (when --lots is off) collapsing lot detail.
 --
--- - pivoting account names (--pivot)
---
--- - anonymising (--anonymise).
---
+-- Why not do these in journalFinalise ?
+-- That step is supposed to check the data's intrinsic correctness, regardless of view options;
+-- whereas here we assume correctness and are just transforming the view (based only on InputOpts).
+-- XXX But it's easy to forget to call this. Current callers include withJournal, journalReload, uiReload, withJournalCached.
 journalTransform :: CliOpts -> Journal -> Journal
 journalTransform opts =
-      pivotByOpts opts
-  <&> anonymiseByOpts opts
+      maybePivot opts
+  <&> maybeWarnAboutAnon opts
   <&> maybeObfuscate opts
+  <&> maybeConvertToCostBasis opts
+  <&> maybeSetCostsToBasisForGain opts
+  <&> maybeCollapseLotDetail opts
 
--- | Apply the pivot transformation on a journal (replacing account names by a different field's value), if option is present.
-pivotByOpts :: CliOpts -> Journal -> Journal
-pivotByOpts opts =
+-- | With -B/--value=cost, convert amounts to cost basis now, before lot
+-- detail is collapsed: collapsing merges a multi-lot disposal's per-lot
+-- fragments (which may have different bases) into one amount with an
+-- unspecified basis, after which the basis values would be lost. The later
+-- per-report cost conversion is then a no-op for these amounts.
+maybeConvertToCostBasis :: CliOpts -> Journal -> Journal
+maybeConvertToCostBasis opts
+  | conversionop_ (_rsReportOpts $ reportspec_ opts) == Just ToCost = journalToCost ToCost
+  | otherwise = id
+
+-- | With --gain, replace lot postings' transacted costs with their cost basis
+-- now, before lot detail is collapsed, for the same reason: the gain
+-- calculation subtracts cost from summed account balances, and summing
+-- merges amounts by commodity and transacted cost (dropping differing
+-- bases), so the basis is carried in the transacted cost, which sums
+-- correctly. Then gain is value minus cost basis for lot postings however
+-- their costs were written (@ or @@), as it already was for -B (#2751).
+maybeSetCostsToBasisForGain :: CliOpts -> Journal -> Journal
+maybeSetCostsToBasisForGain opts
+  | balancecalc_ (_rsReportOpts $ reportspec_ opts) == CalcGain = journalMapPostingAmounts (mapMixedAmount amountSetCostToBasis)
+  | otherwise = id
+
+-- | Collapse lot-tracking detail (strip lot subaccounts, drop synthetic lot-processing
+-- postings) so reports show the user's original form. Skipped when --lots is set,
+-- or when --ignore-lots/-I is set (in which case leaf-@{...}@ accounts are
+-- treated as ordinary account names).
+maybeCollapseLotDetail :: CliOpts -> Journal -> Journal
+maybeCollapseLotDetail opts
+  | boolopt "lots" rawopts        = id
+  | boolopt "ignore-lots" rawopts = id
+  | command_ opts == "holdings"   = id  -- holdings always needs lot detail; it aggregates lots itself
+  | otherwise                     = journalCollapseLotDetail
+  where rawopts = rawopts_ opts
+
+-- | If the --pivot option is present, replace the journal's account names by specified other values.
+maybePivot :: CliOpts -> Journal -> Journal
+maybePivot opts =
   case maybestringopt "pivot" . rawopts_ $ opts of
     Just tag -> journalPivot $ T.pack tag
     Nothing  -> id
 
 -- #2133
--- | Raise an error, announcing the rename to --obfuscate and its limitations.
-anonymiseByOpts :: CliOpts -> Journal -> Journal
-anonymiseByOpts opts =
+-- | If the --anon flag is present, raise an informative error.
+maybeWarnAboutAnon :: CliOpts -> Journal -> Journal
+maybeWarnAboutAnon opts =
   if boolopt "anon" $ rawopts_ opts
     then error' $ unlines [
        "--anon does not give privacy, and perhaps should be avoided;"
-      ,"please see https://github.com/simonmichael/hledger/issues/2133 ."
+      ,"please see https://github.com/hledgerorg/hledger/issues/2133 ."
       ,"For now it has been renamed to --obfuscate (a hidden flag)."
       ]
     else id
 
--- | Apply light obfuscation to a journal, if --obfuscate is present (formerly --anon).
+-- | If the --obfuscate flag is present, apply light obfuscation to the journal data.
 maybeObfuscate :: CliOpts -> Journal -> Journal
 maybeObfuscate opts =
   if anon_ . inputopts_ $ opts
@@ -120,8 +237,10 @@ maybeObfuscate opts =
 -- If the file exists it will be overwritten.
 writeOutput :: CliOpts -> String -> IO ()
 writeOutput opts s = do
-  f <- outputFileFromOpts opts
-  (maybe putStr writeFile f) s
+  mf <- outputFileFromOpts opts
+  case mf of
+    Nothing -> putStr s
+    Just f  -> evaluate (length s) >> writeFile f s  -- generate all output first, see writeOutputLazyText
 
 -- | Write some output, to a file specified by --output-file if any,
 -- otherwise to stdout.
@@ -130,7 +249,30 @@ writeOutput opts s = do
 writeOutputLazyText :: CliOpts -> TL.Text -> IO ()
 writeOutputLazyText opts s = do
   mf <- outputFileFromOpts opts
-  maybe (runPager . TL.unpack) TL.writeFile mf s
+  case mf of
+    Nothing -> runPager $ TL.unpack s
+    -- Generate all of the output before opening the file, so that an error while generating it
+    -- doesn't leave an empty or truncated file.
+    Just f  -> evaluate (TL.length s) >> TL.writeFile f s
+
+-- | Prepend the effective report heading (followed by a blank line) to a
+-- report's lazy text output, if non-empty. Used by reports whose default
+-- heading is empty; pass the explicit --title value or "" via
+-- effectiveTitle.
+withTitle :: ReportOpts -> TL.Text -> TL.Text
+withTitle ropts body =
+  let h = effectiveTitle ropts ""
+  in if T.null h then body
+     else TL.fromStrict h <> "\n\n" <> body
+
+-- | Print the effective report heading (followed by a blank line) to stdout
+-- if non-empty. For commands whose output is written directly via putStrLn,
+-- call this before producing the main output.
+printTitle :: ReportOpts -> IO ()
+printTitle ropts =
+  let h = effectiveTitle ropts ""
+  in if T.null h then pure ()
+     else T.putStrLn h >> putStrLn ""
 
 -- -- | Get a journal from the given string and options, or throw an error.
 -- readJournal :: CliOpts -> String -> IO Journal
@@ -140,13 +282,13 @@ writeOutputLazyText opts s = do
 -- them has changed since last read. (If the file is standard input,
 -- this will either do nothing or give an error, not tested yet).
 -- Returns a journal or error message, and a flag indicating whether
--- it was re-read or not.  Like withJournalDo and journalReload, reads
+-- it was re-read or not.  Like withJournal and journalReload, reads
 -- the full journal, without filtering.
 journalReloadIfChanged :: CliOpts -> Day -> Journal -> ExceptT String IO (Journal, Bool)
 journalReloadIfChanged opts _d j = do
   let maybeChangedFilename f = do newer <- journalFileIsNewer j f
                                   return $ if newer then Just f else Nothing
-  changedfiles <- liftIO $ catMaybes <$> mapM maybeChangedFilename (journalFilePaths j)
+  changedfiles <- liftIO $ catMaybes <$> mapM maybeChangedFilename (journalAllFilePaths j)
   case changedfiles of
     []  -> return (j, False)
     f:_ -> do
@@ -159,10 +301,15 @@ journalReloadIfChanged opts _d j = do
 -- | Re-read the journal file(s) specified by options, applying any
 -- transformations specified by options. Or return an error string.
 -- Reads the full journal, without filtering.
+--
+-- Sets 'InputOpts._journaldir' on the iopts used for this read. Callers that
+-- subsequently do another 'readJournalFile' / 'readJournalFiles' call should
+-- apply 'inputOptsSetJournalDir' to those iopts (see 'withJournal').
 journalReload :: CliOpts -> ExceptT String IO Journal
 journalReload opts = do
   journalpaths <- liftIO $ dbg6 "reloading files" <$> journalFilePathFromOpts opts
-  journalTransform opts <$> readJournalFiles (inputopts_ opts) (NE.toList journalpaths)
+  let iopts = (inputopts_ opts){_journaldir = Just (takeDirectory (NE.head journalpaths))}
+  journalTransform opts <$> readJournalFiles iopts (NE.toList journalpaths)
 
 -- | Has the specified file changed since the journal was last read ?
 -- Typically this is one of the journal's journalFilePaths. These are
@@ -188,26 +335,31 @@ maybeFileModificationTime f = do
     return Nothing
 
 -- | Attempt to open a web browser on the given url, all platforms.
+-- On Windows this goes through the open-browser package, which asks the
+-- Win32 API to open the url. Elsewhere it runs the platform's launchers in
+-- turn until one exits successfully (one that is not installed counts as
+-- failing): `open` on mac; `xdg-open` and then some older launchers that
+-- may be installed on Linux. If nothing starts, print the url instead.
 openBrowserOn :: String -> IO ExitCode
-openBrowserOn = trybrowsers browsers
+openBrowserOn u
+  | os == "mingw32" = do
+      ok <- openBrowser u
+      if ok then return ExitSuccess else couldnotstart ["the Win32 API"]
+  | otherwise = trylaunchers launchers
     where
-      trybrowsers (b:bs) u1 = do
-        (e,_,_) <- readProcessWithExitCode b [u1] ""
-        case e of
-          ExitSuccess -> return ExitSuccess
-          ExitFailure _ -> trybrowsers bs u1
-      trybrowsers [] u1 = do
-        putStrLn $ printf "Could not start a web browser (tried: %s)" $ intercalate ", " browsers
-        putStrLn $ printf "Please open your browser and visit %s" u1
+      trylaunchers (cmd:rest) = do
+        r <- try $ readProcessWithExitCode cmd [u] ""
+        case r of
+          Right (ExitSuccess,_,_)    -> return ExitSuccess
+          Right (ExitFailure _,_,_)  -> trylaunchers rest
+          Left (_ :: IOException)    -> trylaunchers rest
+      trylaunchers [] = couldnotstart launchers
+      couldnotstart tried = do
+        putStrLn $ printf "Could not start a web browser (tried: %s)" $ intercalate ", " tried
+        putStrLn $ printf "Please open your browser and visit %s" u
         return $ ExitFailure 127
-      browsers | os=="darwin"  = ["open"]
-               | os=="mingw32" = ["c:/Program Files/Mozilla Firefox/firefox.exe"]
-               | otherwise     = ["sensible-browser","gnome-www-browser","firefox"]
-    -- jeffz: write a ffi binding for it using the Win32 package as a basis
-    -- start by adding System/Win32/Shell.hsc and follow the style of any
-    -- other module in that directory for types, headers, error handling and
-    -- what not.
-    -- ::ShellExecute(NULL, "open", "www.somepage.com", NULL, NULL, SW_SHOWNORMAL);
+      launchers | os == "darwin" = ["open"]
+                | otherwise      = ["xdg-open", "sensible-browser", "gnome-www-browser", "firefox"]
 
 -- | Back up this file with a (incrementing) numbered suffix then
 -- overwrite it with this new text, or give an error, but only if the text
@@ -253,12 +405,14 @@ backupNumber f g = case g =~ ("^" ++ f ++ "\\.([0-9]+)$") of
                         (_::FilePath, _::FilePath, _::FilePath, [ext::FilePath]) -> readMay ext
                         _ -> Nothing
 
--- Identify the closest recent match for this description in past transactions.
+-- Identify the closest match for this description in past/future transactions,
+-- considering both similarity and proximity to today's date.
 -- If the options specify a query, only matched transactions are considered.
 journalSimilarTransaction :: CliOpts -> Journal -> T.Text -> Maybe Transaction
 journalSimilarTransaction cliopts j desc =
-  fmap fourth4 $ headMay $ journalTransactionsSimilarTo j desc q 0 1
+  fmap fourth4 $ headMay $ journalTransactionsSimilarTo j today desc q 0 1
   where
+    today = cliopts ^. rsDay
     q = queryFromFlags $ _rsReportOpts $ reportspec_ cliopts
 
 -- | Render a 'PostingsReport' or 'AccountTransactionsReport' as Text,

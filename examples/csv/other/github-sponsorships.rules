@@ -1,0 +1,28 @@
+# hledger rules for github sponsorships csv (2026)
+
+# Sponsor Handle,Sponsor Profile Name,Sponsor Public Email,Sponsorship Started On,Is Public?,Is Yearly?,Transaction ID,Payment Source,Tier Name,Tier Monthly Amount,Processed Amount,Is Prorated?,Status,Transaction Date,Metadata,Country,Region,VAT
+fields sponsor_handle, sponsor_profile_name, sponsor_public_email, sponsorship_started_on, is_public, is_yearly, transaction_id, payment_source, tier_name, tier_monthly_amount, processed_amount, is_prorated, status_, transaction_date, metadata, country, region, vat
+skip 1
+
+date %transaction_date
+date-format %Y-%m-%d %H:%M:%S %z
+
+if %is_public true && %sponsor_profile_name .
+ description %sponsor_profile_name (%sponsor_handle)
+if %is_public true && !%sponsor_profile_name .
+ description %sponsor_handle
+
+if !%is_public true
+ description anonymous %sponsor_profile_name (%sponsor_handle)
+#description anonymous
+
+comment country:%country
+comment country:%country, region:%region, tier:%tier_name
+
+account1 revenues:github
+account2 assets
+
+amount1 -%processed_amount
+
+if %is_prorated true && !%tier_name one time
+ comment1 prorated:

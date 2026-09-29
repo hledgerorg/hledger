@@ -18,14 +18,14 @@
 $ hledger print -f- --auto --verbose-tags
 2016-01-01 paycheck
     ; modified-transaction: 
-    income:remuneration           $-100
-    (liabilities:tax)              $-33  ; income tax, generated-posting: = ^income
-    income:donations               $-15
-    (liabilities:tax)            $-4.95  ; income tax, generated-posting: = ^income
+    income:remuneration                        $-100
+    (liabilities:tax)                           $-33  ; income tax, generated-posting: = ^income
+    income:donations                            $-15
+    (liabilities:tax)                            $-4.95  ; income tax, generated-posting: = ^income
     assets:bank
 
 2016-01-01 withdraw
-    assets:cash             $20
+    assets:cash                                  $20
     assets:bank
 
 >=
@@ -84,9 +84,9 @@ $ hledger register -f- --auto
 $ hledger print -f- --auto
 2018-10-07 * MARKET
     expenses:groceries:food
-    [budget:groceries]                 $-20
-    [assets:bank:checking]              $20
-    assets:bank:checking               $-20
+    [budget:groceries]                          $-20
+    [assets:bank:checking]                       $20
+    assets:bank:checking                        $-20
 
 >=
 
@@ -102,9 +102,9 @@ $ hledger print -f- --auto
 # ** 6.
 $ hledger -f- print --auto -x
 2018-01-01
-    (assets:billable:client1)     0.50h @ $90
-    assets:receivable:client1    50.00h @ $90
-    revenues:client1                   $-4500
+    (assets:billable:client1)                      0.50h @ $90
+    assets:receivable:client1                     50.00h @ $90
+    revenues:client1                          $-4500
 
 >=
 
@@ -120,9 +120,9 @@ $ hledger -f- print --auto -x
 # ** 7.
 $ hledger -f- print --auto -x
 2018-01-01
-    (assets:billable:client1)           0.50h
-    assets:receivable:client1             $50
-    revenues:client1                     $-50
+    (assets:billable:client1)                      0.50h
+    assets:receivable:client1                    $50
+    revenues:client1                            $-50
 
 >=
 
@@ -138,9 +138,9 @@ $ hledger -f- print --auto -x
 # ** 8.
 $ hledger -f- print --auto -x
 2018-01-01
-    (assets:billable:client1)                       0.50h @ $90
-    assets:receivable:client1    0.50 "Client1 Hours" @ $100.00
-    revenues:client1                                    $-50.00
+    (assets:billable:client1)                      0.50h @ $90
+    assets:receivable:client1                      0.50 "Client1 Hours" @ $100.00
+    revenues:client1                            $-50.00
 
 >=
 
@@ -184,11 +184,11 @@ $ hledger print -f- --auto
 $ hledger -f- print --auto --verbose-tags
 2018-01-01
     ; modified-transaction: 
-    Expenses:Joint:Widgets     $100.00 @ £0.50
-    Expenses:Joint            $-100.00 @ £0.50  ; generated-posting: = ^Expenses:Joint
-    Liabilities:Joint:Bob       $50.00 @ £0.50  ; generated-posting: = ^Expenses:Joint
-    Liabilities:Joint:Bill      $50.00 @ £0.50  ; generated-posting: = ^Expenses:Joint
-    Assets:Joint:Bank                  £-50.00
+    Expenses:Joint:Widgets                      $100.00 @ £0.50
+    Expenses:Joint                             $-100.00 @ £0.50  ; generated-posting: = ^Expenses:Joint
+    Liabilities:Joint:Bob                        $50.00 @ £0.50  ; generated-posting: = ^Expenses:Joint
+    Liabilities:Joint:Bill                       $50.00 @ £0.50  ; generated-posting: = ^Expenses:Joint
+    Assets:Joint:Bank                           £-50.00
 
 >=0
 
@@ -206,11 +206,11 @@ $ hledger -f- print --auto --verbose-tags
 # ** 11.
 $ hledger -f- print --auto
 2018-01-01
-    Expenses:Joint:Widgets     $100.00 @@ £50
-    Expenses:Joint            $-100.00 @@ £50
-    Liabilities:Joint:Bob       $50.00 @@ £25
-    Liabilities:Joint:Bill      $50.00 @@ £25
-    Assets:Joint:Bank                 £-50.00
+    Expenses:Joint:Widgets                      $100.00 @@ £50
+    Expenses:Joint                             $-100.00 @@ £50
+    Liabilities:Joint:Bob                        $50.00 @@ £25
+    Liabilities:Joint:Bill                       $50.00 @@ £25
+    Assets:Joint:Bank                           £-50.00
 
 >=0
 # alternate approach: convert to unit prices
@@ -235,11 +235,11 @@ $ hledger -f- print --auto
 # ** 12.
 $ hledger -f- print --auto
 2018-01-01
-    Expenses:Joint:Widgets               $100.00
-    Expenses:Joint            $-100.00 @@ £50.00
-    Liabilities:Joint:Bob       $50.00 @@ £25.00
-    Liabilities:Joint:Bill      $50.00 @@ £25.00
-    Assets:Joint:Bank                    £-50.00
+    Expenses:Joint:Widgets                      $100.00
+    Expenses:Joint                             $-100.00 @@ £50.00
+    Liabilities:Joint:Bob                        $50.00 @@ £25.00
+    Liabilities:Joint:Bill                       $50.00 @@ £25.00
+    Assets:Joint:Bank                           £-50.00
 
 >=0
 
@@ -263,14 +263,14 @@ $ hledger -f- print --auto
 # ** 13.
 $ hledger print -f- --auto --forecast -b 2016-01 -e 2016-03
 2016-01-03 withdraw
-    assets:cash             $20
+    assets:cash                                  $20
     assets:bank
 
 2016-02-01 paycheck
-    income:remuneration           $-100
-    (liabilities:tax)              $-33  ; income tax
-    income:donations               $-15
-    (liabilities:tax)            $-4.95  ; income tax
+    income:remuneration                        $-100
+    (liabilities:tax)                           $-33  ; income tax
+    income:donations                            $-15
+    (liabilities:tax)                            $-4.95  ; income tax
     assets:bank
 
 >=
@@ -278,12 +278,12 @@ $ hledger print -f- --auto --forecast -b 2016-01 -e 2016-03
 # ** 14. and they don't force --auto on
 $ hledger print -f- --forecast -b 2016-01 -e 2016-03
 2016-01-03 withdraw
-    assets:cash             $20
+    assets:cash                                  $20
     assets:bank
 
 2016-02-01 paycheck
-    income:remuneration           $-100
-    income:donations               $-15
+    income:remuneration                        $-100
+    income:donations                            $-15
     assets:bank
 
 >=
@@ -306,7 +306,7 @@ $ hledger -f- register --auto
                                 assets:bank:checking          $-20             0
 >=
 
-# #893b, https://github.com/simonmichael/hledger/issues/893#issuecomment-459125266
+# #893b, https://github.com/hledgerorg/hledger/issues/893#issuecomment-459125266
 <
 = tag:tax20
   taxes  *0.2
@@ -341,8 +341,8 @@ commodity 0. B
 
 $ hledger -f- print --auto
 2020-01-20
-    (a)             1 A
-    (b)           1.5 B
+    (a)                                            1 A
+    (b)                                            1.5 B
 
 >=0
 
@@ -361,11 +361,11 @@ $ hledger -f- print --auto
 
 $ hledger -f- print --auto
 2017-12-14
-    revenue:job         -10 EUR
-    revenue:job         -10 USD
+    revenue:job                                  -10 EUR
+    revenue:job                                  -10 USD
     assets
-    (b:USD)               5 USD
-    (b:USD)              10 USD
+    (b:USD)                                        5 USD
+    (b:USD)                                       10 USD
 
 >=0
 
@@ -381,10 +381,10 @@ $ hledger -f- print --auto
 
 $ hledger -f- print --auto
 2017-12-14
-    revenue:job         -10 USD
-    revenue:job        -100 EUR
+    revenue:job                                  -10 USD
+    revenue:job                                 -100 EUR
     assets
-    (b)                 100 EUR
+    (b)                                          100 EUR
 
 >=0
 
@@ -403,14 +403,14 @@ $ hledger -f- print --auto
 
 $ hledger -f- print --forecast --auto --explicit
 2021-01-01 Fixed
-    Checking             -10
-    Costs                 10
-    (Auto)                10
+    Checking                                     -10
+    Costs                                         10
+    (Auto)                                        10
 
 2021-01-02 Periodic
-    Checking             -10
-    Costs                 10
-    (Auto)                10
+    Checking                                     -10
+    Costs                                         10
+    (Auto)                                        10
 
 >=0
 
@@ -426,3 +426,22 @@ $ hledger -f- print --forecast --auto --explicit
     a   1
 
 $ hledger -f- --auto check
+
+# 22. any instance of %account in the account name is substituted for the original account
+<
+2023-01-06 * A client
+    Income:Revenue  -1190 €  ; tax: 19%
+    Assets:Bank
+
+= acct:Income tag:tax=19%
+    %account              *-0.15966387 ; 1-100/119
+    Liabilities:VAT        *0.15966387 ; 1-100/119
+
+$ hledger -f- --auto print
+2023-01-06 * A client
+    Income:Revenue                             -1190 €  ; tax: 19%
+    Income:Revenue                               190.0000053 €  ; 1-100/119
+    Liabilities:VAT                             -190.0000053 €  ; 1-100/119
+    Assets:Bank
+
+>=0

@@ -37,8 +37,8 @@ $ hledger -f- register -w80 type:A
 # ** 5. We can match transactions by their accounts' types.
 $ hledger -f- print type:A
 2022-01-02
-    (a)               1
-    (l)               1
+    (a)                                            1
+    (l)                                            1
 
 >=
 
@@ -135,3 +135,42 @@ $ hledger -f- reg type:ae
 2022-02-02 Test                 (assets:cash)                    1             1
                                 (equity:conversion)              2             3
                                 (equity:conversion)             -2             1
+
+# ** 16. type:g matches gains accounts
+<
+account gains  ; type:G
+
+2022-02-02 Test
+  (gains)  1
+
+$ hledger -f- accounts type:g
+gains
+
+# ** 17. type:r matches both revenue and gains (subtype matching)
+<
+account revenue  ; type:R
+account gains    ; type:G
+
+2022-02-02 Test
+  (revenue)  1
+  (gains)    1
+
+$ hledger -f- accounts type:r
+revenue
+gains
+
+# ** 18. type:g matches gain accounts declared with type:G
+<
+account income:gains  ; type:G
+account revenue:capital-gains  ; type:G
+account income:losses  ; type:G
+
+2022-02-02 Test
+  (income:gains)           1
+  (revenue:capital-gains)  1
+  (income:losses)          1
+
+$ hledger -f- accounts type:g
+income:gains
+income:losses
+revenue:capital-gains

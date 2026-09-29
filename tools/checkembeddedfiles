@@ -2,13 +2,11 @@
 # Check that all files embedded with file-embed are declared in extra-source-files
 
 set -e
-rg="rg --sort=path"
-$rg --version >/dev/null
 
 echo "Checking embedded file declarations:"
 status=0
-for f in $($rg -I '\$\(embedFile[^ ]* "([^"]+)"' -or '$1'); do
-    if output=$($rg -l "$f" -- */package.yaml); then
+for f in $(find . -name '*.hs' | xargs grep -E '\$\(embedFile' | sed -E 's/.*\$\(embedFile[^ ]* "([^"]+)".*/\1/'); do
+    if output=$(grep -l "$f" -- */package.yaml); then
         printf '%-40s\tdeclared in %s\n' "$f" "$output"
     else
         printf '%-40s\tUNDECLARED\n' "$f"

@@ -5,5 +5,3 @@ They include:
   (Having the hledger-ui/hledger-web files also symlinked here within the hledger package allows embedding them without using absolute paths.)
 
 - symbolic links to all the hledger tldr pages.
-
-- asciinema screen casts, for embedding in Hledger/Cli/Commands/Demo.hs.

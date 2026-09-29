@@ -29,6 +29,9 @@ module Hledger.UI.UIUtils (
   ,modify'
   ,suspend
   ,redraw
+  ,uiInstallWarningCollector
+  ,uiTakeWarnings
+  ,journalIsFromStdin
   ,reportSpecAddQuery
   ,reportSpecSetFutureAndForecast
   ,listScrollPushingSelection
@@ -42,6 +45,7 @@ module Hledger.UI.UIUtils (
   ,mapScreens
   ,uiNumBlankItems
   ,showScreenStack
+  ,sendVtyEvents  -- currently unused, kept (and exported, to avoid an unused-binding warning) for future use
   )
 where
 
@@ -50,17 +54,21 @@ import Brick.Widgets.Border
 import Brick.Widgets.Border.Style
 import Brick.Widgets.Dialog
 import Brick.Widgets.Edit
-import Brick.Widgets.List (List, listSelectedL, listNameL, listItemHeightL, listSelected, listMoveDown, listMoveUp, GenericList, listElements)
+import Brick.Widgets.List (List, listSelectedL, listNameL, listItemHeightL, listSelected, listMoveTo, listElements)
+import Control.Concurrent.STM (atomically, writeTChan)  -- GHC only
 import Control.Monad.IO.Class
 import Data.Bifunctor (second)
+import Data.IORef (IORef, newIORef, atomicModifyIORef')
 import Data.List
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Time (addDays)
 import Graphics.Vty
   (Event(..),Key(..),Modifier(..),Vty(..),Color,Attr,currentAttr,refresh, displayBounds
   -- ,Output(displayBounds,mkDisplayContext),DisplayContext(..)
+  ,Vty (inputIface), InternalEvent (InputEvent), Input (eventChannel)
   )
 import Lens.Micro.Platform
+import System.IO.Unsafe (unsafePerformIO)
 
 import Hledger
 -- import Hledger.Cli.CliOptions (CliOpts(reportspec_))
@@ -68,8 +76,7 @@ import Hledger.Cli.DocFiles
 -- import Hledger.UI.UIOptions (UIOpts(uoCliOpts))
 import Hledger.UI.UITypes
 
-import Data.Vector (Vector)
-import qualified Data.Vector as V
+import Data.Vector qualified as V
 
 -- | On posix platforms, send the system STOP signal to suspend the
 -- current program. On windows, does nothing.
@@ -132,6 +139,23 @@ suspend st = suspendAndResume $ suspendSignal >> return st
 -- | Tell vty to redraw the whole screen.
 redraw :: EventM a s ()
 redraw = getVtyHandle >>= liftIO . refresh
+
+-- | Where warnings emitted while the TUI is running are collected, oldest first,
+-- so they can be shown in the UI instead of being printed to stderr
+-- (which would disrupt the terminal display). See uiInstallWarningCollector.
+{-# NOINLINE uiWarningsRef #-}
+uiWarningsRef :: IORef [String]
+uiWarningsRef = unsafePerformIO $ newIORef []
+
+-- | Make warnIO collect warnings in uiWarningsRef instead of printing them to stderr.
+-- Call once, before starting the brick app.
+uiInstallWarningCollector :: IO ()
+uiInstallWarningCollector = setWarningHandler $ \msg ->
+  atomicModifyIORef' uiWarningsRef $ \ws -> (ws ++ [msg], ())
+
+-- | Take any warnings collected since last time, clearing the collection.
+uiTakeWarnings :: IO [String]
+uiTakeWarnings = atomicModifyIORef' uiWarningsRef $ \ws -> ([], ws)
 
 -- | Wrap a widget in the default hledger-ui screen layout.
 defaultLayout :: Widget Name -> Widget Name -> Widget Name -> Widget Name
@@ -196,6 +220,7 @@ helpDialog =
                   ,renderKey ("B   ", "show amounts/costs")
                   ,renderKey ("E   ", "open editor")
                   ,renderKey ("I   ", "toggle balance assertions")
+                  ,renderKey ("L   ", "show/hide lot detail")
                   ,renderKey ("V   ", "show amounts/market values")
                   ,renderKey ("g   ", "reload data")
                   ,renderKey ("C-l ", "redraw & recenter")
@@ -378,19 +403,32 @@ withBorderAttr attr = updateAttrMap (applyAttrMappings [(attrName "border", attr
 --  setTop (viewportScroll vpname) 0
 
 -- | Scroll a list's viewport so that the selected item is centered in the
--- middle of the display area.
-scrollSelectionToMiddle :: Brick.Widgets.List.List Name item -> EventM Name UIState ()
-scrollSelectionToMiddle list = do
+-- middle of the display area. When the selected item is near the end of the
+-- list, the viewport is capped so that no blank padding is visible below the
+-- last real item, and the last real items stay bottom-aligned (so recentering
+-- a near-the-end selection doesn't push those items off screen). numitems is
+-- the number of non-blank items in the list.
+scrollSelectionToMiddle :: Int -> Brick.Widgets.List.List Name item -> EventM Name UIState ()
+scrollSelectionToMiddle numitems list = do
   case list^.listSelectedL of
     Nothing -> return ()
     Just selectedrow -> do
-      Vty{outputIface} <- getVtyHandle
-      pageheight <- dbg4 "pageheight" . snd <$> liftIO (displayBounds outputIface)
+      let name = list^.listNameL
+      mvp <- lookupViewport name
+      -- Use the list viewport's actual height. Before its first render the
+      -- viewport isn't known yet, so fall back to the terminal height.
+      pageheight <- dbg4 "pageheight" <$> case mvp of
+        Just VP{_vpSize=(_,h)} -> return h
+        Nothing -> do
+          Vty{outputIface} <- getVtyHandle
+          snd <$> liftIO (displayBounds outputIface)
       let
         itemheight   = dbg4 "itemheight" $ list^.listItemHeightL
         itemsperpage = dbg4 "itemsperpage" $ pageheight `div` itemheight
-        toprow       = dbg4 "toprow" $ max 0 (selectedrow - (itemsperpage `div` 2)) -- assuming ViewportScroll's row offset is measured in list items not screen rows
-      setTop (viewportScroll $ list^.listNameL) toprow
+        centeredtop  = selectedrow - (itemsperpage `div` 2)
+        maxtop       = numitems - itemsperpage
+        toprow       = dbg4 "toprow" $ max 0 (min centeredtop maxtop) -- assuming ViewportScroll's row offset is measured in list items not screen rows
+      setTop (viewportScroll name) toprow
 
 --                 arrow keys       vi keys               emacs keys                 enter key
 moveUpEvents    = [EvKey KUp []   , EvKey (KChar 'k') [], EvKey (KChar 'p') [MCtrl]]
@@ -426,26 +464,28 @@ reportSpecSetFutureAndForecast fcast rspec =
         ,Not generatedTransactionTag
       ]
 
--- Vertically scroll the named list's viewport with the given number of non-empty items
--- by the given positive or negative number of items (usually 1 or -1).
--- The selection will be moved when necessary to keep it visible and allow the scroll.
-listScrollPushingSelection :: Name -> Int -> Int -> EventM Name (Brick.Widgets.List.List Name item) (GenericList Name Vector item)
-listScrollPushingSelection name listheight scrollamt = do
-  list <- get
-  viewportScroll name `vScrollBy` scrollamt
-  mvp <- lookupViewport name
-  case mvp of
+-- Vertically scroll the named list's viewport, which shows the given number of
+-- non-blank items, by the given positive or negative number of items (usually 1 or -1).
+-- Scrolling stops with the first item at the top or the last item at the bottom,
+-- ignoring the blank items that pad the list out to the window height.
+-- The selection is pushed along when necessary to keep it within the viewport;
+-- without this, brick's list would keep pulling the viewport back to the selection,
+-- stopping the scroll as soon as the selection reached the viewport's edge.
+-- The (possibly moved) selection is left in the event handler's state.
+listScrollPushingSelection :: Name -> Int -> Int -> EventM Name (Brick.Widgets.List.List Name item) ()
+listScrollPushingSelection name listheight scrollamt =
+  lookupViewport name >>= \case
+    Nothing -> return ()
     Just VP{_vpTop, _vpSize=(_,vpheight)} -> do
-      let mselidx = listSelected list
-      case mselidx of
-        Just selidx -> return $ pushsel list
-          where
-            pushsel 
-              | scrollamt > 0, selidx <= _vpTop                && selidx < (listheight-1) = listMoveDown
-              | scrollamt < 0, selidx >= _vpTop + vpheight - 1 && selidx > 0              = listMoveUp
-              | otherwise = id
-        _ -> return list
-    _ -> return list
+      let
+        lastitem = listheight - 1
+        top    = min (max 0 $ listheight - vpheight) $ max 0 $ _vpTop + scrollamt  -- new first visible item
+        bottom = min lastitem $ top + vpheight - 1                                 -- new last visible item
+      viewportScroll name `vScrollBy` (top - _vpTop)
+      modify $ \list -> case listSelected list of
+        Just selidx | selidx < top    -> listMoveTo top list
+                    | selidx > bottom -> listMoveTo bottom list
+        _ -> list
 
 -- | A debug logging helper for hledger-ui code: at any debug level >= 1,
 -- logs the string to hledger-ui.log before returning the second argument.
@@ -456,6 +496,11 @@ dbgui = dbg1Msg
 -- | Like dbgui, but convenient to use in IO.
 dbguiIO :: String -> IO ()
 dbguiIO = dbg1MsgIO
+
+-- | Was this journal's main file read from standard input ?
+-- If so it can't be re-read, edited, or watched for changes.
+journalIsFromStdin :: Journal -> Bool
+journalIsFromStdin j = journalFilePath j == "-"
 
 -- | Like dbgui, but convenient to use in EventM handlers.
 dbguiEv :: String -> EventM Name s ()
@@ -495,14 +540,19 @@ mapScreens f UIState{aPrevScreens, aScreen} = map f $ reverse $ aScreen : aPrevS
 -- Show a screen's compact id (first letter of its constructor).
 showScreenId :: Screen -> String
 showScreenId = \case
-  MS _ -> "M"  -- menu
-  AS _ -> "A"  -- all accounts
-  CS _ -> "C"  -- cash accounts
-  BS _ -> "B"  -- bs accounts
-  IS _ -> "I"  -- is accounts
-  RS _ -> "R"  -- menu
-  TS _ -> "T"  -- transaction
-  ES _ -> "E"  -- error
+  MS _             -> "M"  -- menu
+  AS ASS{_assKind} -> accountsScreenKindId _assKind
+  RS _             -> "R"  -- register
+  TS _             -> "T"  -- transaction
+  ES _             -> "E"  -- error
+
+-- | The compact id letter for an accounts-like screen of the given kind.
+accountsScreenKindId :: AccountsScreenKind -> String
+accountsScreenKindId = \case
+  AllAccounts             -> "A"  -- all accounts
+  CashAccounts            -> "C"  -- cash accounts
+  BalancesheetAccounts    -> "B"  -- balance sheet accounts
+  IncomestatementAccounts -> "I"  -- income statement accounts
 
 -- Show a screen's compact id, plus for register screens, the transaction descriptions.
 showScreenRegisterDescriptions :: Screen -> String
@@ -515,12 +565,9 @@ showScreenRegisterDescriptions scr = case scr of
 -- Show a screen's compact id, plus index of its selected list item if any.
 showScreenSelection :: Screen -> String
 showScreenSelection = \case
-  MS MSS{_mssList} -> "M" ++ (maybe "" show $ listSelected _mssList)  -- menu
-  AS ASS{_assList} -> "A" ++ (maybe "" show $ listSelected _assList)  -- all accounts
-  CS ASS{_assList} -> "C" ++ (maybe "" show $ listSelected _assList)  -- cash accounts
-  BS ASS{_assList} -> "B" ++ (maybe "" show $ listSelected _assList)  -- bs accounts
-  IS ASS{_assList} -> "I" ++ (maybe "" show $ listSelected _assList)  -- is accounts
-  RS RSS{_rssList} -> "R" ++ (maybe "" show $ listSelected _rssList)  -- menu
+  MS MSS{_mssList}          -> "M" ++ (maybe "" show $ listSelected _mssList)  -- menu
+  AS ASS{_assKind,_assList} -> accountsScreenKindId _assKind ++ (maybe "" show $ listSelected _assList)
+  RS RSS{_rssList}          -> "R" ++ (maybe "" show $ listSelected _rssList)  -- register
   TS _ -> "T"  -- transaction
   ES _ -> "E"  -- error
 
@@ -530,3 +577,10 @@ uiNumBlankItems
   -- | debugLevel >= uiDebugLevel = 0    -- suppress to improve debug output.
   -- | otherwise 
   = 100  -- 100 ought to be enough for anyone
+
+-- Send some events to vty, atomically so they won't have other events interleaved.
+-- (But there may be events already in the channel ahead of them.)
+sendVtyEvents :: [Event] -> EventM n s ()
+sendVtyEvents evs = do
+  input <- eventChannel . inputIface <$> getVtyHandle
+  liftIO $ atomically $ mapM_ (writeTChan input . InputEvent) evs

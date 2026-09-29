@@ -2,8 +2,8 @@
 
 (cf)
 
-This command displays a (simple) [cashflow statement](https://en.wikipedia.org/wiki/Cash_flow_statement), 
-showing the inflows and outflows affecting "cash" (ie, liquid, easily convertible) assets.
+Show a (simple) [cashflow statement](https://en.wikipedia.org/wiki/Cash_flow_statement), 
+with the inflows and outflows affecting "cash" (ie, liquid, easily convertible) assets.
 Amounts are shown with normal positive sign, as in conventional
 financial statements.
 
@@ -40,7 +40,11 @@ Flags:
      --summary-only         display only row summaries (e.g. row total,
                             average) (in multicolumn reports)
   -N --no-total             omit the final total row
-     --no-elide             in tree mode, don't squash boring parent accounts
+     --no-elide             in tree mode, don't squash boring parent
+                            accounts; in list mode, also show parent accounts
+                            (usually zero, hidden without -E)
+     --full-names           in tree mode, show full account names instead of
+                            indented leaf names
      --format=FORMATSTR     use this custom line format (in simple reports)
   -S --sort-amount          sort by amount instead of account code/name
   -% --percent              express values in percentage of each column's
@@ -95,4 +99,4 @@ This command also supports the
 [output destination](hledger.html#output-destination) and
 [output format](hledger.html#output-format) options
 The output formats supported are
-`txt`, `csv`, `tsv` (*Added in 1.32*), `html`, and `json`.
+`txt`, `csv`, `tsv`, `html`, and `json`.

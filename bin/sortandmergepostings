@@ -3,9 +3,11 @@
 #
 # Passed a ledger file, this will:
 # 1. Sort accretion postings before deductions
-# 2. Sort postings by account alphabetically
-# 3. Merge 1 set of postings with the same account and direction by clearing
-#    the amount field. Note all posting meta data must also match to merge.
+# 3. Sort posting groups by commodity (descending for accretions, ascending for deductions)
+# 3. Sort commodity groups by amount (descending)
+# 2. Sort commodity groups by account name
+# 3. Merge 1 set of postings with the same account, commodity, direction, and other
+#    meta data by clearing the commodity and amounts and reducing to a single posting.
 #
 # Suggested usage:
 # $ sortandmergepostings journal.ledger | hledger -f - print -x
@@ -13,37 +15,120 @@
 # Given that each run will only merge and recalculate amounts on one account per
 # transaction it may need to be run multiple times to fully normalize a ledger.
 
-BEGIN { FS = "[[:space:]][[:space:]]+" }
+BEGIN {
+    FS = "[[:space:]][[:space:]]+"
+    DATE = "([0-9]{4}-[0-9]{2}-[0-9]{2})"
+    KS = "___"
+}
+
+function extract_account(val) {
+    sub(/^[*!] /, "", val)
+    gsub(/^\(\)\[\]/, "", val)
+    return val
+}
+
+function extract_commodity(val) {
+    split(val, segs, / *[@=]+ */)
+    gsub(/[-[:digit:]., ]+/, "", segs[1])
+    return segs[1]
+}
+
+function extract_amount(val) {
+    split(val, segs, / *[@=]+ */)
+    gsub(/[^-[:digit:].,]+/, "", segs[1])
+    gsub(/[\.,]/, "_", segs[1])
+    v = gensub(/_([^_]+)$/, ".\\1", "1", segs[1])
+    gsub(/_/, "", v)
+    return v
+}
+
+function extract_direction(val) {
+    split(val, segs, / *=+ */)
+    gsub(/[^-]/, "", segs[1])
+    return segs[1]
+}
+
+function extract_date(val) {
+    posting_date = transaction_date
+    if (match($val, "date2?: *" DATE, tday)) {
+        posting_date = tday[1]
+    }
+    return posting_date
+}
+
+function make_posting_key(account, commodity, comment) {
+    posting_key = account commodity comment
+    return posting_key
+}
+
+function make_sort_key(date, account, firstamount, commodity, postingct) {
+    result = date
+    key[2] = account
+    key[3] = commodity
+    key[4] = firstamount
+    key[5] = postingct
+    for (i in key)
+        result = result KS key[i]
+    return result
+}
+
+function sort_keys(i1, v1, i2, v2, l, r) {
+    split(i1, a, KS)
+    split(i2, b, KS)
+    for (i in a) {
+        if (a[i] == b[i]) continue
+        if (i == 3) {
+            if (a[4] > 0) {
+                return a[i] > b[i] ? 1 : -1
+            } else {
+                return a[i] < b[i] ? 1 : -1
+            }
+        } else if (i == 4) {
+            return a[i] < b[i] ? 1 : -1
+        } else {
+            return a[i] > b[i] ? 1 : -1
+        }
+    }
+    return 0
+}
 
 function dump() {
-    an = asorti(accretions, as)
-    dn = asorti(deductions, ds)
+    an = asorti(accretions, as, "sort_keys")
+    dn = asorti(deductions, ds, "sort_keys")
     for (i=1; i<=an; i++) {
         postings[length(postings)+1] = accretions[as[i]]
     }
     for (i=1; i<=dn; i++) {
         postings[length(postings)+1] = deductions[ds[i]]
     }
+    if (inferred_posting) delete seen
     for (i in postings) {
         posting = postings[i]
         split(posting, parts, FS)
-        currency = parts[3]
-        gsub(/[[:digit:]., ]+/, "", currency)
-        if (!inferred && (!merge || merge == parts[2]) && seen[parts[2] currency parts[4]]>1 && parts[3] !~ /@/) {
-            if (!merge) merged[i] = "    " parts[2] "  " parts[4]
-            merge = parts[2]
+        account = extract_account(parts[2])
+        commodity = extract_commodity(parts[3])
+        comment = parts[4]
+        posting_key = make_posting_key(account, commodity, comment)
+        as_inferred = "    " account "  " comment
+        if (seen[posting_key] < 2 || (inferred_commodity && inferred_commodity != commodity)) {
+            explicit_postings[i] = posting
         } else {
-            merged[i] = posting
+            if (!inferred_posting || as_inferred == inferred_posting) {
+                inferred_posting = as_inferred
+                inferred_commodity = commodity
+            } else {
+                explicit_postings[i] = posting
+            }
         }
     }
-    for (i in merged) print merged[i]
-    if (inferred) print inferred
-    inferred = ""
-    merge = ""
+    for (i in explicit_postings) print explicit_postings[i]
+    if (inferred_posting) print inferred_posting
+    inferred_posting = ""
+    merged_key = ""
     delete accretions
     delete deductions
     delete postings
-    delete merged
+    delete explicit_postings
     delete seen
 }
 
@@ -59,38 +144,47 @@ END {
 
 /^[^[:space:]]/ {
     dump()
+    if (match($0, "^" DATE, tday)) {
+        transaction_date = tday[1]
+    }
     print $0
     next
 }
 
 {
     postingct++
-    account = $2
+    posting = $0
+    account = extract_account($2)
+    commodity = extract_commodity($3)
     amount = $3
-    comments = $4
-    currency = amount
-    gsub(/[[:digit:]., ]+/, "", currency)
-    sub(/^[*!] /, "", account)
+    firstamount = extract_amount($3)
+    direction = extract_direction($3)
+    comment = $4
+    date = extract_date($4)
+    sort_key = make_sort_key(date, account, firstamount, commodity, postingct)
 }
 
+# Immediately output transaction comments at the top
 account ~ /^;/ {
     print
     next
 }
 
+# If amount is blank, this is our one and only allowed inferred amount
 !amount {
-    inferred = $0
+    inferred_posting = posting
     next
 }
 
-amount !~ /@/ {
-    seen[account currency comments]++
+# If no rates or balance assertions, this is eligable for merging
+amount !~ /[@=]/ {
+    seen[make_posting_key(account, commodity, comment)]++
 }
 
-amount !~ /-/ {
-    accretions[account postingct] = $0
+direction !~ /-/ {
+    accretions[sort_key] = posting
 }
 
-amount ~ /-/ {
-    deductions[account postingct] = $0
+direction ~ /-/ {
+    deductions[sort_key] = posting
 }

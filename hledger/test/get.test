@@ -1,0 +1,9 @@
+# * get command
+
+# ** 1. Merging new prices into a prices file keeps each price's number format as written.
+# Uses a stub getprices helper, which prints one new price.
+$ sh -c 'D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-get.XXXXXX"); mkdir "$D/prices"; printf "2024-01-01\n    a    1 X\n    b    -1 000,00 EUR\n" > "$D/main.journal"; printf "P 2024-01-02 X 1000,5EUR\nP 2024-01-03 X 1.001,25 EUR\n" > "$D/prices/X.prices"; printf "#!/bin/sh\necho \"P 2024-01-04 \$2 1002,75 \$1\"\n" > "$D/prices/getprices"; chmod +x "$D/prices/getprices"; hledger --no-conf -f "$D/main.journal" get --prices 2>/dev/null; cat "$D/prices/X.prices"; rm -rf "$D"'
+>
+P 2024-01-02 X 1000,5EUR
+P 2024-01-03 X 1.001,25 EUR
+P 2024-01-04 X 1002,75 EUR

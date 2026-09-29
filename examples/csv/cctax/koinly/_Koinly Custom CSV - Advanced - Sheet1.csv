@@ -1,0 +1,4 @@
+Date,Sent Amount,Sent Currency,Received Amount,Received Currency,Fee Amount,Fee Currency,Net Worth Amount,Net Worth Currency,Label,Description,TxHash
+2018-01-01 14:25 UTC,1000,USD,1,BTC,5,USD,,,,my first crypto!,
+2018-01-02 14:25 UTC,0.5,BTC,,,,,,,,,
+2018-01-03 14:25 UTC,,,1,BTC,,,,,mining,,0x12345

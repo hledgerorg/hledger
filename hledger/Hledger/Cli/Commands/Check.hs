@@ -56,12 +56,13 @@ data Check =
   -- done always
     Parseable
   | Autobalanced
-  | Assertions  -- unless -I is used
+  | Assertions  -- unless -I is used; failures are reported after any lot errors (see journalFinalise)
   -- done when --strict is used, or when specified with the check command
   | Balanced
   | Commodities
   | Accounts
   -- done when specified with the check command
+  | Lots
   | Ordereddates
   | Payees
   | Tags
@@ -89,7 +90,7 @@ parseCheckArgument s =
     (checkname:checkargs) = words' s
 
 -- XXX do all of these print on stderr ?
--- | Run the named error check, possibly with some arguments, 
+-- | Run the named error check, possibly with some arguments,
 -- on this journal with these options.
 runCheck :: CliOpts -> Journal -> (Check,[String]) -> IO ()
 runCheck _opts j (chck,_) = do
@@ -102,6 +103,7 @@ runCheck _opts j (chck,_) = do
       Assertions      -> Right ()
       Accounts        -> journalCheckAccounts j
       Commodities     -> journalCheckCommodities j
+      Lots            -> journalCheckLots j
       Ordereddates    -> journalCheckOrdereddates j
       Payees          -> journalCheckPayees j
       Recentassertions -> journalCheckRecentAssertions j

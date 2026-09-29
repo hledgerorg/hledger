@@ -12,12 +12,15 @@ on:
   workflow_dispatch:
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+      # arch:  x64
+      # image: https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md
     container: alpine:latest
+
     steps:
 
     - name: Check out
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       # have to fetch everything for git describe for --version
       with:
         fetch-depth: 0  
@@ -26,7 +29,7 @@ jobs:
 
     - name: Cache - stack global package db
       id:   stack-global
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.stack
         key: ${{ runner.os }}-stack-global-20240417-${{ hashFiles('**.yaml') }}
@@ -35,7 +38,7 @@ jobs:
 
     - name: Cache - stack-installed programs in ~/.local/bin
       id:   stack-programs
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.local/bin
         key: ${{ runner.os }}-stack-programs-20240417-${{ hashFiles('**.yaml') }}
@@ -43,7 +46,7 @@ jobs:
              ${{ runner.os }}-stack-programs-20240417
 
     - name: Cache - .stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: .stack-work
         key: ${{ runner.os }}-stack-work-20240417-${{ hashFiles('**.yaml') }}
@@ -51,7 +54,7 @@ jobs:
              ${{ runner.os }}-stack-work-20240417
 
     - name: Cache - hledger-lib/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-lib/.stack-work
         key: ${{ runner.os }}-hledger-lib-stack-work-20240417-${{ hashFiles('hledger-lib/package.yaml') }}
@@ -59,7 +62,7 @@ jobs:
              ${{ runner.os }}-hledger-lib-stack-work-20240417
 
     - name: Cache - hledger/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger/.stack-work
         key: ${{ runner.os }}-hledger-stack-work-20240417-${{ hashFiles('hledger/package.yaml') }}
@@ -67,7 +70,7 @@ jobs:
              ${{ runner.os }}-hledger-stack-work-20240417
 
     - name: Cache - hledger-ui/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-ui/.stack-work
         key: ${{ runner.os }}-hledger-ui-stack-work-20240417-${{ hashFiles('hledger-ui/package.yaml') }}
@@ -75,7 +78,7 @@ jobs:
              ${{ runner.os }}-hledger-ui-stack-work-20240417
 
     - name: Cache - hledger-web/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-web/.stack-work
         key: ${{ runner.os }}-hledger-web-stack-work-20240417-${{ hashFiles('hledger-web/package.yaml') }}
@@ -137,7 +140,7 @@ jobs:
     # github UI always zips artifacts when they are downloaded, so we don't bother compressing the tar.
     # Unfortunately it means users must both unzip and untar.
     - name: Upload binaries
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: hledger-linux-x64
         path: tmp/hledger-linux-x64.tar

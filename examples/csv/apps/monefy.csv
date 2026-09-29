@@ -1,0 +1,9 @@
+date,account,category,amount,currency,converted amount,currency,description
+06/12/2021,Cash,Bills,-55,USD,-55,USD,fbbd
+06/12/2021,Cash,Clothes,-25,USD,-25,USD,
+06/12/2021,Cash,Salary,"1,280.8",USD,"1,280.8",USD,salary
+06/12/2021,Payment card,Car,-180,USD,-180,USD,
+06/12/2021,Payment card,Savings,"4,884",USD,"4,884",USD,geehh
+06/12/2021,Payment card,Gifts,-12,USD,-12,USD,gift
+06/12/2021,Cash,To 'Payment card',-200,USD,-200,USD,
+06/12/2021,Payment card,From 'Cash',200,USD,200,USD,

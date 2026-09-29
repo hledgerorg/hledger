@@ -1,0 +1,22 @@
+# * register --title option
+
+# ** 1. --title adds a heading.
+<
+2024/1/1
+  (a)  1
+2024/2/1
+  (a)  1
+
+$ hledger -f- register '--title=Reg log'
+Reg log
+
+2024-01-01                      (a)                              1             1
+2024-02-01                      (a)                              1             2
+
+# ** 2. --title also affects csv or tsv output.
+$ hledger -f- register -O csv --title=foo
+"foo","","","","","",""
+"txnidx","date","code","description","account","amount","total"
+"1","2024-01-01","","","(a)","1","1"
+"2","2024-02-01","","","(a)","1","2"
+

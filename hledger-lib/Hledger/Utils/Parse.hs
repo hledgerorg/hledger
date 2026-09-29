@@ -34,7 +34,6 @@ module Hledger.Utils.Parse (
   parseWithState',
   fromparse,
   parseerror,
-  showDateParseError,
   nonspace,
   isNewline,
   isNonNewlineSpace,
@@ -44,6 +43,10 @@ module Hledger.Utils.Parse (
   skipNonNewlineSpaces,
   skipNonNewlineSpaces1,
   skipNonNewlineSpaces',
+  peekChar,
+  peekChars2,
+  peekAfterSpaces,
+  manyWhile,
 
   -- ** Trace the state of hledger parsers
   dbgparse,
@@ -66,6 +69,7 @@ module Hledger.Utils.Parse (
 
   -- ** Pretty-printing custom parse errors
   customErrorBundlePretty,
+  finalizeCustomErrorBundle,
 
   -- ** "Final" parse errors
   FinalParseError,
@@ -78,6 +82,7 @@ module Hledger.Utils.Parse (
   finalFancyFailure,
   finalFail,
   finalCustomFailure,
+  finalMessageFailure,
 
   -- *** Pretty-printing "final" parse errors
   finalErrorBundlePretty,
@@ -89,26 +94,23 @@ module Hledger.Utils.Parse (
 )
 where
 
-import Control.Monad (when)
-import qualified Data.Text as T
-import Safe (tailErr)
+import Control.Monad (MonadPlus, when)
+import Data.Text qualified as T
 import Text.Megaparsec
 import Text.Printf
 import Control.Monad.State.Strict (StateT, evalStateT)
 import Data.Char
 import Data.Functor (void)
 import Data.Functor.Identity (Identity(..))
-import Data.List
 import Data.Text (Text)
 import Text.Megaparsec.Char
--- import Text.Megaparsec.Debug (dbg)  -- from megaparsec 9.3+
+-- import Text.Megaparsec.Debug (dbg)
 
 import Control.Monad.Except (ExceptT, MonadError, catchError, throwError)
--- import Control.Monad.State.Strict (StateT, evalStateT)
 import Control.Monad.Trans.Class (lift)
-import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty qualified as NE
 import Data.Monoid (Alt(..))
-import qualified Data.Set as S
+import Data.Set qualified as S
 
 import Hledger.Utils.Debug (debugLevel, dbg0Msg)
 
@@ -141,11 +143,13 @@ dbgparse level msg = when (level <= debugLevel) $ do
   where
     peeklength = 30
 
--- | Render a pair of source positions in human-readable form, only displaying the range of lines.
+-- | Render a pair of source positions in human-readable form, only displaying the range of lines,
+-- or just the one line number if the range is a single line.
 sourcePosPairPretty :: (SourcePos, SourcePos) -> String
 sourcePosPairPretty (SourcePos fp l1 _, SourcePos _ l2 c2) =
-    fp ++ ":" ++ show (unPos l1) ++ "-" ++ show l2'
+    fp ++ ":" ++ show l1' ++ (if l2' > l1' then "-" ++ show l2' else "")
   where
+    l1' = unPos l1
     l2' = if unPos c2 == 1 then unPos l2 - 1 else unPos l2  -- might be at end of file with a final new line
 
 -- | Backtracking choice, use this when alternatives share a prefix.
@@ -165,13 +169,11 @@ parsewith :: Parsec e Text a -> Text -> Either (ParseErrorBundle Text e) a
 parsewith p = runParser p ""
 
 -- | Run a text parser in the identity monad. See also: parseWithState.
-runTextParser, rtp
-  :: TextParser Identity a -> Text -> Either HledgerParseErrors a
+runTextParser, rtp :: TextParser Identity a -> Text -> Either HledgerParseErrors a
 runTextParser = parsewith
 rtp = runTextParser
 
-parsewithString
-  :: Parsec e String a -> String -> Either (ParseErrorBundle String e) a
+parsewithString :: Parsec e String a -> String -> Either (ParseErrorBundle String e) a
 parsewithString p = runParser p ""
 
 -- | Run a stateful parser with some initial state on a text.
@@ -192,21 +194,15 @@ parseWithState'
   -> (Either (ParseErrorBundle s e) a)
 parseWithState' ctx p = runParser (evalStateT p ctx) ""
 
-fromparse
-  :: (Show t, Show (Token t), Show e) => Either (ParseErrorBundle t e) a -> a
+fromparse :: (Show t, Show (Token t), Show e) => Either (ParseErrorBundle t e) a -> a
 fromparse = either parseerror id
 
 parseerror :: (Show t, Show (Token t), Show e) => ParseErrorBundle t e -> a
 parseerror e = errorWithoutStackTrace $ showParseError e  -- PARTIAL:
 
-showParseError
-  :: (Show t, Show (Token t), Show e)
-  => ParseErrorBundle t e -> String
+showParseError :: (Show t, Show (Token t), Show e) => ParseErrorBundle t e -> String
 showParseError e = "parse error at " ++ show e
 
-showDateParseError
-  :: (Show t, Show (Token t), Show e) => ParseErrorBundle t e -> String
-showDateParseError e = printf "date parse error (%s)" (intercalate ", " $ tailErr $ lines $ show e)  -- PARTIAL tailError won't be null because showing a parse error
 
 isNewline :: Char -> Bool 
 isNewline '\n' = True
@@ -223,7 +219,7 @@ spacenonewline = satisfy isNonNewlineSpace
 {-# INLINABLE spacenonewline #-}
 
 restofline :: TextParser m String
-restofline = anySingle `manyTill` eolof
+restofline = T.unpack <$> takeWhileP Nothing (/= '\n') <* eolof
 
 -- Skip many non-newline spaces.
 skipNonNewlineSpaces :: (Stream s, Token s ~ Char) => ParsecT HledgerParseErrorData s m ()
@@ -235,10 +231,50 @@ skipNonNewlineSpaces1 :: (Stream s, Token s ~ Char) => ParsecT HledgerParseError
 skipNonNewlineSpaces1 = void $ takeWhile1P Nothing isNonNewlineSpace
 {-# INLINABLE skipNonNewlineSpaces1 #-}
 
--- Skip many non-newline spaces, returning True if any have been skipped.
+-- | Skip any non-newline whitespace, and return whether there was any.
 skipNonNewlineSpaces' :: (Stream s, Token s ~ Char) => ParsecT HledgerParseErrorData s m Bool
-skipNonNewlineSpaces' = True <$ skipNonNewlineSpaces1 <|> pure False
+skipNonNewlineSpaces' = do
+  o <- getOffset
+  skipNonNewlineSpaces
+  (> o) <$> getOffset
 {-# INLINABLE skipNonNewlineSpaces' #-}
+
+-- | Look at the next character of the input, if any, without consuming it.
+-- Unlike a failed parse attempt this constructs no parse error, so it is a cheap
+-- way to decide whether an optional or alternative parser could succeed before running it.
+peekChar :: TextParser m (Maybe Char)
+peekChar = fmap fst . T.uncons <$> getInput
+{-# INLINABLE peekChar #-}
+
+-- | Like peekChar, but returning the next two characters, if any.
+peekChars2 :: TextParser m (Maybe Char, Maybe Char)
+peekChars2 = do
+  s <- getInput
+  pure $ case T.uncons s of
+    Nothing       -> (Nothing, Nothing)
+    Just (c1, s') -> (Just c1, fst <$> T.uncons s')
+{-# INLINABLE peekChars2 #-}
+
+-- | Like peekChar, but looking past any non-newline whitespace (not consuming that either).
+-- Returns whether there was such whitespace, and the character following it, if any.
+peekAfterSpaces :: TextParser m (Bool, Maybe Char)
+peekAfterSpaces = do
+  s <- getInput
+  let spaced = maybe False (isNonNewlineSpace . fst) $ T.uncons s
+  pure (spaced, fst <$> T.uncons (T.dropWhile isNonNewlineSpace s))
+{-# INLINABLE peekAfterSpaces #-}
+
+-- | Run a parser repeatedly, collecting the results, like many; but continue only
+-- while a test (typically a cheap look at the next input, like peekChar) says it
+-- could succeed, so that the end of the sequence is found without a failed parse
+-- attempt. As with many, the parser failing without consuming input also ends the sequence.
+manyWhile :: MonadPlus m => m Bool -> m a -> m [a]
+manyWhile test p = go
+  where
+    go = do
+      continue <- test
+      if continue then ((:) <$> p <*> go) <|> pure [] else pure []
+{-# INLINABLE manyWhile #-}
 
 eolof :: TextParser m ()
 eolof = void newline <|> eof
@@ -295,7 +331,6 @@ instance ShowErrorComponent HledgerParseErrorData where
 -- | Fail at a specific source position, given by the raw offset from the
 -- start of the input stream (the number of tokens processed at that
 -- point).
-
 parseErrorAt :: Int -> String -> HledgerParseErrorData
 parseErrorAt offset = ErrorFailAt offset (offset+1)
 
@@ -305,7 +340,6 @@ parseErrorAt offset = ErrorFailAt offset (offset+1)
 --
 -- Note that care must be taken to ensure that the specified interval does
 -- not span multiple lines of the input source. This will not be checked.
-
 parseErrorAtRegion
   :: Int    -- ^ Start offset
   -> Int    -- ^ End end offset
@@ -325,12 +359,10 @@ parseErrorAtRegion startOffset endOffset msg =
 -- data type is to preserve the content and source position of the excerpt
 -- so that parse errors raised during "re-parsing" may properly reference
 -- the original source.
-
 data SourceExcerpt = SourceExcerpt Int  -- Offset of beginning of excerpt
                                    Text -- Fragment of source file
 
 -- | Get the raw text of a source excerpt.
-
 getExcerptText :: SourceExcerpt -> Text
 getExcerptText (SourceExcerpt _ txt) = txt
 
@@ -411,17 +443,23 @@ reparseExcerpt (SourceExcerpt offset txt) p = do
 -- case for 'ParseErrorBundle's returned from 'runParserT'.
 
 customErrorBundlePretty :: HledgerParseErrors -> String
-customErrorBundlePretty errBundle =
-  let errBundle' = errBundle { bundleErrors =
-        NE.sortWith errorOffset $ -- megaparsec requires that the list of errors be sorted by their offsets
-        bundleErrors errBundle >>= finalizeCustomError }
-  in  errorBundlePretty errBundle'
+customErrorBundlePretty = errorBundlePretty . finalizeCustomErrorBundle
+
+-- | Apply the final adjustments to the custom parse errors in this error
+-- bundle (see 'customErrorBundlePretty'), leaving errors which megaparsec's
+-- standard 'errorBundlePretty' can render correctly. Exposed for callers
+-- which need to adjust the bundle further before rendering it.
+finalizeCustomErrorBundle :: HledgerParseErrors -> HledgerParseErrors
+finalizeCustomErrorBundle errBundle =
+  errBundle { bundleErrors =
+    NE.sortWith errorOffset $ -- megaparsec requires that the list of errors be sorted by their offsets
+    bundleErrors errBundle >>= finalizeCustomError }
 
   where
     finalizeCustomError
       :: ParseError Text HledgerParseErrorData -> NE.NonEmpty (ParseError Text HledgerParseErrorData)
     finalizeCustomError err = case findCustomError err of
-      Nothing -> pure err
+      Nothing -> pure $ limitExpected err
 
       Just errFailAt@(ErrorFailAt startOffset _ _) ->
         -- Adjust the offset
@@ -442,6 +480,14 @@ customErrorBundlePretty errBundle =
     finds :: (Foldable t) => (a -> Maybe b) -> t a -> Maybe b
     finds f = getAlt . foldMap (Alt . f)
 
+    -- Megaparsec lists every alternative the parser expected; for some parsers
+    -- (eg period expressions, CSV rule field names) that's dozens or hundreds.
+    -- When there are that many, show just the first few.
+    limitExpected :: ParseError Text HledgerParseErrorData -> ParseError Text HledgerParseErrorData
+    limitExpected (TrivialError o u es) | S.size es > 20 =
+      TrivialError o u $ S.fromList (take 10 $ S.toAscList es) <> S.singleton (Label $ 'o' NE.:| ("ther valid values (" ++ show (S.size es - 10) ++ " more)"))
+    limitExpected e = e
+
 
 --- * "Final" parse errors
 --
@@ -454,22 +500,20 @@ customErrorBundlePretty errBundle =
 -- (1) it should be possible to convert any parse error into a "final"
 -- parse error,
 -- (2) it should be possible to take a parse error thrown from an include
--- file and re-throw it in the parent file, and
+-- file and re-throw it in the context of the parent file, and
 -- (3) the pretty-printing of "final" parse errors should be consistent
--- with that of ordinary parse errors, but should also report a stack of
--- files for errors thrown from include files.
+-- with that of ordinary parse errors, but should also report the stack of
+-- parent files when errors are thrown from included files, and
+-- (4) readers of non-journal formats (like CSV), which produce complete
+-- error messages rather than parse errors, should be able to throw those
+-- as "final" parse errors too, so they get the same include file stack.
 --
 -- In order to pretty-print a "final" parse error (goal 3), it must be
 -- bundled with include filepaths and its full source text. When a "final"
 -- parse error is thrown from within a parser, we do not have access to
--- the full source, so we must hold the parse error until it can be joined
--- with its source (and include filepaths, if it was thrown from an
--- include file) by the parser's caller.
---
--- A parse error with include filepaths and its full source text is
--- represented by the 'FinalParseErrorBundle' type, while a parse error in
--- need of either include filepaths, full source text, or both is
--- represented by the 'FinalParseError' type.
+-- the full source, so we must hold the parse error ('FinalParseError')
+-- until it can be combined with the full source (and any parent file paths)
+-- by the parser's caller ('FinalParseErrorBundle').
 
 data FinalParseError' e
   -- a parse error thrown as a "final" parse error
@@ -478,6 +522,8 @@ data FinalParseError' e
   | FinalBundle          (ParseErrorBundle Text e)
   -- a parse error thrown from an include file
   | FinalBundleWithStack (FinalParseErrorBundle' e)
+  -- a complete error message from a non-megaparsec reader (eg for CSV), shown without a source excerpt
+  | FinalMessage         String
   deriving (Show)
 
 type FinalParseError = FinalParseError' HledgerParseErrorData
@@ -501,10 +547,9 @@ instance Monoid (FinalParseError' e) where
 --
 -- Megaparsec's 'ParseErrorBundle' type already bundles a parse error with
 -- its full source text and filepath, so we just add a stack of include
--- files.
-
+-- files. Or, it can hold a complete error message instead (see 'FinalMessage').
 data FinalParseErrorBundle' e = FinalParseErrorBundle'
-  { finalErrorBundle :: ParseErrorBundle Text e
+  { finalErrorBundle :: Either String (ParseErrorBundle Text e)
   , includeFileStack :: [FilePath]
   } deriving (Show)
 
@@ -514,12 +559,10 @@ type FinalParseErrorBundle = FinalParseErrorBundle' HledgerParseErrorData
 --- * Constructing and throwing final parse errors
 
 -- | Convert a "regular" parse error into a "final" parse error.
-
 finalError :: ParseError Text e -> FinalParseError' e
 finalError = FinalError
 
 -- | Like megaparsec's 'fancyFailure', but as a "final" parse error.
-
 finalFancyFailure
   :: (MonadParsec e s m, MonadError (FinalParseError' e) m)
   => S.Set (ErrorFancy e) -> m a
@@ -528,38 +571,34 @@ finalFancyFailure errSet = do
   throwError $ FinalError $ FancyError offset errSet
 
 -- | Like 'fail', but as a "final" parse error.
-
-finalFail
-  :: (MonadParsec e s m, MonadError (FinalParseError' e) m) => String -> m a
+finalFail :: (MonadParsec e s m, MonadError (FinalParseError' e) m) => String -> m a
 finalFail = finalFancyFailure . S.singleton . ErrorFail
 
 -- | Like megaparsec's 'customFailure', but as a "final" parse error.
-
-finalCustomFailure
-  :: (MonadParsec e s m, MonadError (FinalParseError' e) m) => e -> m a
+finalCustomFailure :: (MonadParsec e s m, MonadError (FinalParseError' e) m) => e -> m a
 finalCustomFailure = finalFancyFailure . S.singleton . ErrorCustom
+
+-- | Throw a complete error message, eg from a non-megaparsec reader, as a "final" parse error.
+-- It will be shown with the include file stack, but without a source excerpt.
+finalMessageFailure :: MonadError (FinalParseError' e) m => String -> m a
+finalMessageFailure = throwError . FinalMessage
 
 
 --- * Pretty-printing "final" parse errors
 
 -- | Pretty-print a "final" parse error: print the stack of include files,
--- then apply the pretty-printer for parse error bundles. Note that
--- 'attachSource' must be used on a "final" parse error before it can be
--- pretty-printed.
-
+-- then apply the pretty-printer for parse error bundles.
+-- Note that 'attachSource' must be used on a "final" parse error before it can be pretty-printed.
 finalErrorBundlePretty :: FinalParseErrorBundle' HledgerParseErrorData -> String
 finalErrorBundlePretty bundle =
      concatMap showIncludeFilepath (includeFileStack bundle)
-  <> customErrorBundlePretty (finalErrorBundle bundle)
+  <> either id customErrorBundlePretty (finalErrorBundle bundle)
   where
     showIncludeFilepath path = "in file included from " <> path <> ",\n"
 
--- | Supply a filepath and source text to a "final" parse error so that it
--- can be pretty-printed. You must ensure that you provide the appropriate
--- source text and filepath.
-
-attachSource
-  :: FilePath -> Text -> FinalParseError' e -> FinalParseErrorBundle' e
+-- | Attach a filepath and source text to a "final" parse error so that it can be pretty-printed.
+-- You must ensure that you provide the appropriate source text and filepath.
+attachSource :: FilePath -> Text -> FinalParseError' e -> FinalParseErrorBundle' e
 attachSource filePath sourceText finalParseError = case finalParseError of
 
   -- A parse error thrown directly with the 'FinalError' constructor
@@ -569,13 +608,13 @@ attachSource filePath sourceText finalParseError = case finalParseError of
           { bundleErrors = err NE.:| []
           , bundlePosState = initialPosState filePath sourceText }
     in  FinalParseErrorBundle'
-          { finalErrorBundle = bundle
+          { finalErrorBundle = Right bundle
           , includeFileStack  = [] }
 
   -- A 'ParseErrorBundle' already has the appropriate source and filepath
   -- and so needs neither.
   FinalBundle peBundle -> FinalParseErrorBundle'
-    { finalErrorBundle = peBundle
+    { finalErrorBundle = Right peBundle
     , includeFileStack = [] }
 
   -- A parse error from a 'FinalParseErrorBundle' was thrown from an
@@ -583,12 +622,17 @@ attachSource filePath sourceText finalParseError = case finalParseError of
   FinalBundleWithStack fpeBundle -> fpeBundle
     { includeFileStack = filePath : includeFileStack fpeBundle }
 
+  -- A complete error message needs neither source nor filepath.
+  FinalMessage msg -> FinalParseErrorBundle'
+    { finalErrorBundle = Left msg
+    , includeFileStack = [] }
+
 
 --- * Handling parse errors from include files with "final" parse errors
 
--- | Parse a file with the given parser and initial state, discarding the
--- final state and re-throwing any parse errors as "final" parse errors.
-
+-- | Parse an include file with the given parser and initial state,
+-- discarding the resulting state,
+-- and re-throwing any parse errors as final parse errors with the file's info attached.
 parseIncludeFile
   :: Monad m
   => StateT st (ParsecT HledgerParseErrorData Text (ExceptT FinalParseError m)) a
@@ -596,26 +640,22 @@ parseIncludeFile
   -> FilePath
   -> Text
   -> StateT st (ParsecT HledgerParseErrorData Text (ExceptT FinalParseError m)) a
-parseIncludeFile parser initialState filepath text =
-  catchError parser' handler
+parseIncludeFile parser initialState filepath text = catchError parser' handler
   where
     parser' = do
-      eResult <- lift $ lift $
-                  runParserT (evalStateT parser initialState) filepath text
+      eResult <- lift $ lift $ runParserT (evalStateT parser initialState) filepath text
       case eResult of
         Left parseErrorBundle -> throwError $ FinalBundle parseErrorBundle
         Right result -> pure result
-
     -- Attach source and filepath of the include file to its parse errors
     handler e = throwError $ FinalBundleWithStack $ attachSource filepath text e
 
 
 --- * Helpers
 
--- Like megaparsec's 'initialState', but instead for 'PosState'. Used when
--- constructing 'ParseErrorBundle's. The values for "tab width" and "line
--- prefix" are taken from 'initialState'.
-
+-- | Like megaparsec's 'initialState', but instead for 'PosState'.
+-- Used when constructing 'ParseErrorBundle's.
+-- The values for "tab width" and "line prefix" are taken from 'initialState'.
 initialPosState :: FilePath -> Text -> PosState Text
 initialPosState filePath sourceText = PosState
   { pstateInput      = sourceText

@@ -1,47 +1,14 @@
-<script>
-
-  jQuery(document).ready(function() {
-
-    // Set up global completers which can be attached to appropriate inputs when needed
-
-    globalThis.descriptionsCompleter = new Bloodhound({
-      local:#{toBloodhoundJson (toList descriptions)},
-      limit:100,
-      datumTokenizer: function(d) { return [d.value]; },
-      queryTokenizer: function(q) { return [q]; }
-    });
-    globalThis.descriptionsCompleter.initialize();
-
-    globalThis.accountsCompleter = new Bloodhound({
-      local:#{toBloodhoundJson (journalAccountNamesDeclaredOrImplied j)},
-      limit:100,
-      datumTokenizer: function(d) { return [d.value]; },
-      queryTokenizer: function(q) { return [q]; }
-    });
-    globalThis.accountsCompleter.initialize();
-
-    // Attach the completers to the initial form inputs.
-    jQuery('input[name=description]').typeahead({ highlight: true }, { source: globalThis.descriptionsCompleter.ttAdapter() });
-    jQuery('input[name=account]'    ).typeahead({ highlight: true }, { source: globalThis.accountsCompleter.ttAdapter() });
-  });
-
-  const utf8textdecoder = new TextDecoder();
-  function decodeBase64EncodedText(b64) {
-      const unb64 = window.atob(b64);
-      const arr = new Uint8Array(unb64.length);
-      for (let i = 0; i < arr.length; i++) {
-          arr[i] = unb64.charCodeAt(i);
-      }
-      return utf8textdecoder.decode(arr);
-  }
-
 ^{extra}
 
 <div .row>
   <div .col-md-3.col-sm-5.col-xs-6 :isJust (fvErrors dateView):.has-error>
+    $# The date field stays a text input so that hledger's smart dates
+    $# ("today", "2/15") still work. The button opens the browser's own date
+    $# picker, via the hidden date input next to it.
     <div #dateWrap .form-group.input-group.date>
       ^{fvInput dateView}
-      <div .input-group-addon>
+      <input #datepicked type=date tabindex=-1 aria-hidden=true>
+      <div #datebutton .input-group-addon title=_{HMsg "Pick a date"}>
         <span .glyphicon .glyphicon-th>
     $maybe err <- fvErrors dateView
       <span .help-block .error-block>#{err}
@@ -51,28 +18,39 @@
     $maybe err <- fvErrors descView
       <span .help-block .error-block>#{err}
 
-<div .account-postings>
+$# The placeholder templates are also read by hledger.js when it adds rows.
+<div .account-postings data-account-placeholder=#{accountPlaceholder} data-amount-placeholder=#{amountPlaceholder}>
   $forall (n, (acc, amt, accE, amtE)) <- displayRows
-    <div .form-group .row .account-group style="padding-left:1em;">
+    <div .form-group .row .account-group>
       <div .col-sm-9.col-xs-9 :isJust accE:.has-error>
-        <input .account-input.form-control.input-lg.typeahead type=text
-          name=account placeholder="Account #{n}" value="#{acc}">
+        <input .account-input.form-control.input-lg type=text list=accountnames
+          name=account placeholder=#{numbered accountPlaceholder n} value="#{acc}">
         $maybe err <- accE
           <span .help-block .error-block>_{err}
       <div .col-sm-3.col-xs-3 :isJust amtE:.has-error>
         <input .amount-input.form-control.input-lg type=text
-          name=amount placeholder="Amount #{n}" value="#{amt}">
+          name=amount placeholder=#{numbered amountPlaceholder n} value="#{amt}">
         $maybe err <- amtE
           <span .help-block .error-block>_{err}
 
 <div .row>
   <div .col-sm-9.col-xs-9>
     $if length files > 1
-      Add to:
+      _{HMsg "Add to:"}
       &nbsp;
-      <div style="display:inline-block; width:auto;" .form-group :isJust (fvErrors fileView):.has-error>
+      <div .form-group .file-select :isJust (fvErrors fileView):.has-error>
         ^{fvInput fileView}
         $maybe err <- fvErrors fileView
           <span .help-block .error-block>#{err}
-  <div .col-sm-3.col-xs-3 style="text-align:right;">
-    <button type=submit .btn .btn-default .btn-lg name=submit style="font-weight:bold;">Save
+  <div .col-sm-3.col-xs-3.text-right>
+    <button type=submit .btn .btn-default .btn-lg name=submit>_{HMsg "Save"}
+
+$# Completion data for the account and description fields. The browser filters
+$# these itself, so there is no javascript and no library involved, and hamlet's
+$# escaping keeps journal text inert.
+<datalist #accountnames>
+  $forall acct <- journalAccountNamesDeclaredOrImplied j
+    <option value=#{acct}>
+<datalist #descriptionnames>
+  $forall desc <- toList descriptions
+    <option value=#{desc}>

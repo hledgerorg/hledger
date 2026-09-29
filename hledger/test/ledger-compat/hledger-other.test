@@ -106,11 +106,15 @@ $ hledger -f- check
 #     assets    1 AAA {{$2}} @ $2.50
 
 <
+account Income:Capital Gains  ; type:G
+
+2012-04-10 acquire 5 AAPL at $50
+    Assets:Brokerage              5 AAPL {2012-04-10, "a lot note", $50.00} @ $50.00
+    Assets:Brokerage:Cash      $-250.00
+
 2022-01-01 sell 5 AAPL acquired at $50 for $375, for a $125 gain
     Assets:Brokerage:Cash       $375.00
     Assets:Brokerage              -5 AAPL {$50.00} [2012-04-10] (a lot note) (($400)) (@@) $375.00  ; use lots of tricky syntax
     Income:Capital Gains       $-125.00
 
 $ hledger -f- check
->2 /transaction is unbalanced/
->=1

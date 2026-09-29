@@ -25,18 +25,18 @@ b  aabbaca   ; letter "dots" are tagged with t:LETTER
 # ** 1. The above timedot is converted to these transactions.
 $ hledger -ftimedot:- print
 2023-01-01 * transaction description
-    (biz:research)            1.00
-    (inc:client1)             1.50
+    (biz:research)                                 1.00
+    (inc:client1)                                  1.50
 
 2023-01-01 * different transaction, same day  ; with a comment and transaction-tag:
-    (fos:haskell)            1.00  ; a posting comment and posting-tag:
-    (per:admin)              1.00
+    (fos:haskell)                                  1.00  ; a posting comment and posting-tag:
+    (per:admin)                                    1.00
 
 2023-01-02 *
-    (a)            0.00  ; no quantity means zero
-    (b)            1.00  ; letter "dots" are tagged with t:LETTER, t:a
-    (b)            0.50  ; letter "dots" are tagged with t:LETTER, t:b
-    (b)            0.25  ; letter "dots" are tagged with t:LETTER, t:c
+    (a)                                            0.00  ; no quantity means zero
+    (b)                                            1.00  ; letter "dots" are tagged with t:LETTER, t:a
+    (b)                                            0.50  ; letter "dots" are tagged with t:LETTER, t:b
+    (b)                                            0.25  ; letter "dots" are tagged with t:LETTER, t:c
 
 2023-01-02 *  ; dates are allowed to be org headings
 
@@ -70,13 +70,13 @@ g  0.25h
 
 $ hledger -ftimedot:- print
 2023-01-01 *
-    (a)            0.25
-    (b)            0.25
-    (c)            0.25
-    (d)            0.25
-    (e)            0.25
-    (f)            0.25
-    (g)            0.25
+    (a)                                            0.25
+    (b)                                            0.25
+    (c)                                            0.25
+    (d)                                            0.25
+    (e)                                            0.25
+    (f)                                            0.25
+    (g)                                            0.25
 
 >=
 # ** 5. Lines can be commented by a leading # or ;, indented or not.
@@ -90,3 +90,40 @@ e
 
 $ hledger -ftimedot:- accounts
 e
+
+# ** 6. An org heading prefix on a date line is ignored.
+<
+* 2024 work
+** Q1
+*** 2024-02-29
+yoga  .
+
+$ hledger -ftimedot:- print
+2024-02-29 *
+    (yoga)                                         0.25
+
+>=
+
+# ** 7. After the first date line, an org heading prefix is stripped and the rest
+# is parsed as an entry (so a heading like "**** DONE" becomes a zero-time posting).
+<
+2024-01-01
+**** DONE
+yoga  .
+
+$ hledger -ftimedot:- print
+2024-01-01 *
+    (DONE)                                         0.00
+    (yoga)                                         0.25
+
+>=
+
+# ** 8. A line that looks like a date but isn't valid causes a clear error
+# (rather than being silently treated as a comment or entry).
+<
+*** 2023-02-29
+yoga  ....
+
+$ hledger -ftimedot:- print
+>2 /This is not a valid date/
+>=1

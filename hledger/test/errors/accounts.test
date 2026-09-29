@@ -1,13 +1,13 @@
-$$$ hledger check accounts -f accounts.j
->>>2 /Error: .*accounts.j:4:
+$ hledger check accounts -f accounts.j
+>2 /hledger: Error: .*accounts\.j:4:
   \| 2022-01-01
-4 \|     \(a\)               1
+4 \|     \(ß\)                                            1
   \|      \^
 
 Strict account checking is enabled, and
-account "a" has not been declared.
+account "ß" has not been declared.
 Consider adding an account directive. Examples:
 
-account a
+account ß
 /
->>>= 1
+>= 1

@@ -166,3 +166,19 @@ $ hledger -f - prices --show-reverse
 P 2023-01-01 B 3A
 P 2023-01-01 A 0.33333333B
 
+# ** 13. --locations annotates each price with a FILE:LINE comment.
+# Declared prices point at their P directive; inferred prices point at
+# the parent transaction's first line; reversed prices inherit the
+# source position of the directive they came from.
+<
+P 2024-01-01 B A10
+
+2024-02-01
+  (a)  1 B @ A20
+
+$ hledger -f- prices --locations --infer-market-prices --show-reverse
+P 2024-01-01 B A10  ; location: -:1
+P 2024-01-01 A 0.1 B  ; location: -:1
+P 2024-02-01 B A20  ; location: -:3
+P 2024-02-01 A 0.05 B  ; location: -:3
+

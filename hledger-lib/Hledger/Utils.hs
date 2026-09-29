@@ -18,12 +18,17 @@ module Hledger.Utils (
   curry4,
   uncurry4,
 
+  divideSafe,
+
   -- * Lists
   maximum',
   maximumStrict,
   minimumStrict,
   splitAtElement,
   sumStrict,
+  all1,
+  takeUntilFails,
+  takeUntilFailsNE,
 
   -- * Trees
   treeLeaves,
@@ -72,17 +77,19 @@ where
 import Data.Char (toLower)
 import Data.List (intersperse)
 import Data.List.Extra (chunksOf, foldl1', uncons, unsnoc)
+import qualified Data.List.NonEmpty as NE
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
 #endif
-import qualified Data.Set as Set
-import qualified Data.Text as T (pack, unpack)
+import Data.Set qualified as Set
+import Data.Text qualified as T (pack, unpack)
 import Data.Tree (foldTree, Tree (Node, subForest))
 import Language.Haskell.TH (DecsQ, Name, mkName, nameBase)
 import Lens.Micro ((&), (.~))
 import Lens.Micro.TH (DefName(TopName), lensClass, lensField, makeLensesWith, classyRules)
 
 import Hledger.Utils.Debug
+import Hledger.Utils.I18n (tests_I18n)
 import Hledger.Utils.Parse
 import Hledger.Utils.IO
 import Hledger.Utils.Regex
@@ -142,6 +149,11 @@ curry4 f w x y z = f (w, x, y, z)
 uncurry4 :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e
 uncurry4 f (w, x, y, z) = f w x y z
 
+-- | Division, returning 0 when the denominator is 0.
+divideSafe :: (Eq a, Fractional a) => a -> a -> a
+divideSafe _ 0 = 0
+divideSafe a b = a / b
+
 -- Lists
 
 -- | Total version of maximum, for integral types, giving 0 for an empty list.
@@ -173,6 +185,22 @@ splitAtElement x l =
 {-# INLINABLE sumStrict #-}
 sumStrict :: Num a => [a] -> a
 sumStrict = foldl' (+) 0
+
+-- | Version of all that fails on an empty list.
+{-# INLINABLE all1 #-}
+all1 :: (a -> Bool) -> [a] -> Bool
+all1 _ [] = False
+all1 p as = all p as
+
+-- | Take elements from a non-empty list until a predicate fails, and then keep
+-- the first failing element as well.
+takeUntilFailsNE :: (a -> Bool) -> NE.NonEmpty a -> NE.NonEmpty a
+takeUntilFailsNE p = NE.fromList . takeUntilFails p . NE.toList  -- Result guaranteed to be non-empty
+
+-- | Take elements from a list until a predicate fails, and then keep the first
+-- failing element as well.
+takeUntilFails :: (a -> Bool) -> [a] -> [a]
+takeUntilFails p = foldr (\x -> if p x then (x :) else const [x]) []
 
 -- Trees
 
@@ -269,7 +297,7 @@ numDigitsInteger = length . dropWhile (=='-') . show
 --   enclosing field, and reserve the shorter name for manually define lenses
 --   (or at least something lens-like) which will update the ReportSpec.
 -- cf. the lengthy discussion here and in surrounding comments:
--- https://github.com/simonmichael/hledger/pull/1545#issuecomment-881974554
+-- https://github.com/hledgerorg/hledger/pull/1545#issuecomment-881974554
 makeHledgerClassyLenses :: Name -> DecsQ
 makeHledgerClassyLenses x = flip makeLensesWith x $ classyRules
     & lensField .~ (\_ _ n -> fieldName $ nameBase n)
@@ -285,9 +313,9 @@ makeHledgerClassyLenses x = flip makeLensesWith x $ classyRules
 
     -- Fields which would cause too many conflicts if we exposed lenses with these names.
     commonFields = Set.fromList
-        [ "empty", "drop", "color", "transpose"  -- ReportOpts
-        , "anon", "new", "auto"                  -- InputOpts
-        , "rawopts", "file", "debug", "width"    -- CliOpts
+        [ "empty", "drop", "color", "transpose", "title"  -- ReportOpts
+        , "anon", "new", "auto"                           -- InputOpts
+        , "rawopts", "file", "debug", "width"             -- CliOpts
         ]
 
     -- When updating some fields of ReportOpts within a ReportSpec, we need to
@@ -302,5 +330,6 @@ makeHledgerClassyLenses x = flip makeLensesWith x $ classyRules
     queryFields = Set.fromList ["period", "statuses", "depth", "date2", "real", "querystring"]
 
 tests_Utils = testGroup "Utils" [
+  tests_I18n,
   tests_Text
   ]

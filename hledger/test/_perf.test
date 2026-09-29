@@ -1,0 +1,11 @@
+# * performance tests
+# This file is run after the other functional tests have completed,
+# so that they don't slow it down.
+# Log performance data to a persistent perf.log, so that we can detect changes over time.
+# Each line is `hledger stats -q` output plus the machine's CPU model (or architecture),
+# since results are comparable only on the same machine.
+# Ideally we will detect regressions and fail automatically,
+# but it's hard to ensure consistent machine performance.
+
+# ** 1. Log three runs' performance stats, and test that at least one hits 14k txns/s.
+$ m=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || uname -m); for i in 1 2 3; do hledger stats -q -f ../../examples/10ktxns-1kaccts.journal | awk -v m="$m" '{print $0 "\t" m}' >>../../perf.log; done; tail -3 ../../perf.log | awk -F'\t' '$4+0 >= 14000 {ok=1} END {exit !ok}'

@@ -1,12 +1,18 @@
-# https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository
+# https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/about-issue-and-pull-request-templates
+# https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository
 
-blank_issues_enabled: true
+blank_issues_enabled: false
+
 contact_links:
 
-  - name: A support request
-    url: https://hledger.org/support.html
-    about: For questions and support, please use our chat or mail list. See hledger.org > Support.
+  - name: (A website issue)
+    url: https://github.com/hledgerorg/hledger_site/issues
+    about: Please use the hledger_site issue tracker
 
-  - name: A security issue
+  - name: (A support request)
+    url: https://hledger.org/support
+    about: Please use chat, mail list or forum
+
+  - name: (A security issue)
     url: https://joyful.com
-    about: Contact simon@joyful.com.
+    about: Please contact Simon directly

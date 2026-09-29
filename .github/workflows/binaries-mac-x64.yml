@@ -6,12 +6,18 @@ on:
   push:
     branches: [ binaries-mac-x64, binaries ]
   workflow_dispatch:
+
 jobs:
   build:
-    # x64
-    runs-on: macos-13
+    runs-on: macos-15-intel
+      # arch:  x64
+      # image: somewhere near https://github.com/actions/runner-images/blob/main/images/macos/macos-15-Readme.md
+      # https://github.com/actions/runner-images/issues/13046
+
     env:
       stack: stack
+      ghcid: 9.12.2
+
     steps:
 
     - name: Show platform info
@@ -20,75 +26,74 @@ jobs:
         uname -a
 
     - name: Check out
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       # have to fetch everything for git describe for --version
       with: 
         fetch-depth: 0        
 
     - name: Check embedded files
       run: |
-        brew install ripgrep
         tools/checkembeddedfiles
 
-    # caching
+    # CACHES
 
     - name: Cache - stack-installed ~/.local/bin
       id:   stack-programs
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.local/bin
-        key: ${{ runner.os }}-x64-stack-programs-${{ hashFiles('**.yaml') }}
+        key: ${{ runner.os }}-x64-stack-programs-${{ env.ghcid }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-x64-stack-programs
+             ${{ runner.os }}-x64-stack-programs-${{ env.ghcid }}
 
     - name: Cache - ~/.stack
       id:   stack-global
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.stack
-        key: ${{ runner.os }}-x64-stack-global-${{ hashFiles('**.yaml') }}
+        key: ${{ runner.os }}-x64-stack-global-${{ env.ghcid }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-x64-stack-global
+             ${{ runner.os }}-x64-stack-global-${{ env.ghcid }}
 
     - name: Cache - ./.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: .stack-work
-        key: ${{ runner.os }}-x64-stack-work-${{ hashFiles('**.yaml') }}
+        key: ${{ runner.os }}-x64-stack-work-${{ env.ghcid }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-x64-stack-work
+             ${{ runner.os }}-x64-stack-work-${{ env.ghcid }}
 
     - name: Cache - hledger-lib/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-lib/.stack-work
-        key: ${{ runner.os }}-x64-hledger-lib-stack-work-${{ hashFiles('hledger-lib/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-lib-stack-work-${{ env.ghcid }}-${{ hashFiles('hledger-lib/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-x64-hledger-lib-stack-work
+             ${{ runner.os }}-x64-hledger-lib-stack-work-${{ env.ghcid }}
 
     - name: Cache - hledger/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger/.stack-work
-        key: ${{ runner.os }}-x64-hledger-stack-work-${{ hashFiles('hledger/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-stack-work-${{ env.ghcid }}-${{ hashFiles('hledger/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-x64-hledger-stack-work
+             ${{ runner.os }}-x64-hledger-stack-work-${{ env.ghcid }}
 
     - name: Cache - hledger-ui/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-ui/.stack-work
-        key: ${{ runner.os }}-x64-hledger-ui-stack-work-${{ hashFiles('hledger-ui/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-ui-stack-work-${{ env.ghcid }}-${{ hashFiles('hledger-ui/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-x64-hledger-ui-stack-work
+             ${{ runner.os }}-x64-hledger-ui-stack-work-${{ env.ghcid }}
 
     - name: Cache - hledger-web/.stack-work
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: hledger-web/.stack-work
-        key: ${{ runner.os }}-x64-hledger-web-stack-work-${{ hashFiles('hledger-web/package.yaml') }}
+        key: ${{ runner.os }}-x64-hledger-web-stack-work-${{ env.ghcid }}-${{ hashFiles('hledger-web/package.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-x64-hledger-web-stack-work
+             ${{ runner.os }}-x64-hledger-web-stack-work-${{ env.ghcid }}
 
     # actions:
 
@@ -107,9 +112,9 @@ jobs:
       run: |
         $stack build --test --only-dependencies --verbosity=error
 
-    # - name: List dep versions
-    #   run: |
-    #     $stack exec -- ghc-pkg list
+    - name: List dep versions
+      run: |
+        $stack exec -- ghc-pkg list
 
     - name: Build hledger and test unit tests, doc tests
       run: |
@@ -120,13 +125,14 @@ jobs:
     - name: Install shelltestrunner
       run: |
         export PATH=~/.local/bin:$PATH
-        if [[ ! -x ~/.local/bin/shelltest ]]; then $stack install --verbosity=error shelltestrunner; fi
+        # $stack update;                             $stack install --verbosity=error shelltestrunner-1.11
+        if [[ ! -x ~/.local/bin/shelltest ]]; then $stack install --verbosity=error shelltestrunner-1.11; fi
         shelltest --version
 
-    - name: Test functional tests (excluding addons)
+    - name: Test functional tests
       run: |
         export PATH=~/.local/bin:$PATH
-        COLUMNS=80 $stack exec -- shelltest --execdir -j16 hledger/test -x /_ -x /addons -x ledger-compat/ledger-baseline -x ledger-compat/ledger-regress -x ledger-compat/ledger-collected # bin
+        COLUMNS=80 $stack exec -- shelltest --execdir -j16 hledger/test -x /_ -x ledger-compat/ledger-baseline -x ledger-compat/ledger-regress -x ledger-compat/ledger-collected # bin
 
     # artifacts:
 
@@ -156,7 +162,7 @@ jobs:
     # https://github.com/actions/upload-artifact?tab=readme-ov-file#limitations
     # In release workflows, we repack these using the platform's native compression scheme.
     - name: Upload binaries artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: hledger-mac-x64
         path: tmp/hledger-mac-x64.tar

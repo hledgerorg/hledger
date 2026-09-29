@@ -6,12 +6,17 @@ _*
 *.o
 \#*
 .\#*
+.trash
+*.gz
+*.zip
 
 # dev stuff
 .build
+.hx
 .idea
 *.iml
 .shake
+.stack*
 .tmp
 .vscode
 tags
@@ -19,17 +24,9 @@ TAGS
 .obsidian
 stylish-haskell.yaml
 *.m4-e
-
-# test files
-/[0-9]*
-#*.j
-[a-z0-9]
-#[a-z0-9].*
-[a-z0-9][a-z0-9]
-![a-z0-9]/
-![a-z0-9].*/
-![a-z0-9][a-z0-9]/
-![a-z0-9][a-z0-9].*/
+/.apl.history
+/.beads.AGENTS.md
+/.gitattributes
 
 # haskell stuff
 *.dyn_hi
@@ -37,6 +34,7 @@ stylish-haskell.yaml
 *.hi
 *.p_o
 *.hp
+*.prof
 package.yaml-e
 .cabal-sandbox/
 cabal-dev*
@@ -53,6 +51,40 @@ Setup
 modules*.svg
 packages*.svg
 /*.packages
+/headroom-templates
+.headroom.yaml
+
+# ignore typical test file names (but not dirs)
+
+/[0-9]*
+!/[0-9]*/
+
+[a-z0-9]
+![a-z0-9]/
+
+[a-z0-9][a-z0-9]
+![a-z0-9][a-z0-9]/
+
+/[a-z0-9].*
+![a-z0-9].*/
+
+/[a-z0-9][a-z0-9].*
+![a-z0-9][a-z0-9].*/
+# a hx project config and lockfile are tracked
+!/hx.toml
+!/hx.lock
+
+/test*
+
+# hledger-web stuff
+/config
+/messages
+/static
+/templates
+hledger-web/static/tmp/
+hledger-web/yesod-devel/
+.hledger-web_client_session_key.aes
+/hledger-web/demo/
 
 # hledger stuff
 #*.webmanual.md
@@ -62,15 +94,15 @@ old
 *.log
 /profs/*
 /*.prof.*
+/*.profiterole.*
 /tmp
-/bench*
-/bin/**
-!/bin/*.hs
-!/bin/*.sh
-!/bin/*.md
-/bin/*_.hs
-/examples/[1-9]*.journal
-/hledger/test/cli/addons
+/bench/*
+
+#/bin - see bin/.gitignore
+
+/examples
+#/examples/[1-9]*.journal
+
 /hledger/hledger.md
 /hledger-ui/hledger-ui.md
 /hledger-web/hledger-web.md
@@ -84,34 +116,18 @@ old
 /tools/pandoc-drop-notes
 /tools/pandoc-drop-toc
 /tools/generatetimeclock
-
-# hledger-web stuff
-/config
-/messages
-/static
-/templates
-hledger-web/static/tmp/
-hledger-web/yesod-devel/
-.hledger-web_client_session_key.aes
-
-# sandstorm stuff
-# .vagrant
-# *.spk
-
-# recent stuff
-/checks
-/headroom-templates
-.headroom.yaml
-*.prof
-/artifacts/
-/tools/docshelltest
 /hledger-lib/test/doctests
 /examples/edk-hledger-ui-mobile.gif
 /examples/tty-ui-1.gif
-/site
+/site/
 /finance
 /examples/demo/
-/hledger-web/demo/
 /doc/ghrelnotes.md
-.aider*
-/doc/RELEASING2.md
+/doc/.*
+/doc/ai/ccusage.journal
+/checks
+/tools/docshelltest
+.latest.*
+.github/workflows/ci-arm.yml
+/doc/ai/aicommits.csv
+/doc/ai/ai.unlogged

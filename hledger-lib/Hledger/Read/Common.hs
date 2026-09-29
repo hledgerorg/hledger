@@ -30,6 +30,10 @@ Some of these might belong in Hledger.Read.JournalReader or Hledger.Read.
 --- ** exports
 module Hledger.Read.Common (
   Reader (..),
+  readerReadsOwnInput,
+  includeFileParser,
+  PrefixedFilePath,
+  isStdin,
   InputOpts(..),
   HasInputOpts(..),
   definputopts,
@@ -44,10 +48,15 @@ module Hledger.Read.Common (
   journalAddAutoPostings,
   setYear,
   getYear,
+  getSourcePos',
   setDefaultCommodityAndStyle,
   getDefaultCommodityAndStyle,
   getDefaultAmountStyle,
   getAmountStyle,
+  journalDecimalMarkStyle,
+  journalAmountStyleFor,
+  shareText,
+  shareAmountStyle,
   addDeclaredAccountTags,
   addDeclaredAccountType,
   pushParentAccount,
@@ -67,11 +76,13 @@ module Hledger.Read.Common (
   -- ** dates
   datep,
   datetimep,
+  timeofdayp,
   secondarydatep,
 
   -- ** account names
   modifiedaccountnamep,
   accountnamep,
+  accountnamenosemicolonp,
 
   -- ** account aliases
   accountaliasp,
@@ -79,6 +90,7 @@ module Hledger.Read.Common (
   -- ** amounts
   spaceandamountormissingp,
   amountp,
+  AmountParseKind(..),
   amountp',
   commoditysymbolp,
   costp,
@@ -87,6 +99,11 @@ module Hledger.Read.Common (
   numberp,
   fromRawNumber,
   rawnumberp,
+  interpretRawNumber,
+  RawNumber(..),
+  AmbiguousNumber(..),
+  DigitGrp(..),
+  isDigitSeparatorChar,
   parseamount,
   parseamount',
   parsemixedamount,
@@ -124,41 +141,46 @@ module Hledger.Read.Common (
 where
 
 --- ** imports
-import Control.Applicative.Permutations (runPermutation, toPermutationWithDefault)
-import Control.Monad (foldM, liftM2, when, unless, (>=>), (<=<))
-import qualified Control.Monad.Fail as Fail (fail)
-import Control.Monad.Except (ExceptT(..), liftEither, withExceptT)
+import Control.Monad (foldM, forM_, liftM2, when, unless, (>=>), (<=<))
+import Control.Monad.Fail qualified as Fail (fail)
+import Control.Exception (evaluate)
+import Control.Exception.Safe (tryIO)
+import Control.Monad.Except (ExceptT(..), liftEither, runExceptT, withExceptT)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.State.Strict (MonadState, evalStateT, modify', get, put)
 import Control.Monad.Trans.Class (lift)
-import Data.Bifunctor (bimap, second)
+import Data.Bifunctor (bimap, first, second)
 import Data.Char (digitToInt, isDigit, isSpace)
 import Data.Decimal (DecimalRaw (Decimal), Decimal)
 import Data.Either (rights)
 import Data.Function ((&))
 import Data.Functor ((<&>), ($>), void)
-import Data.List (find, genericReplicate, union)
+import Data.List (find, genericReplicate, intercalate, sortOn, union)
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Maybe (catMaybes, fromMaybe, isJust, listToMaybe)
-import qualified Data.Map as M
-import qualified Data.Semigroup as Sem
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe)
+import Data.Map qualified as M
+import Data.Set qualified as S
+import Data.Semigroup qualified as Sem
 import Data.Text (Text, stripEnd)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Time.Calendar (Day, fromGregorianValid, toGregorian)
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Time.LocalTime (LocalTime(..), TimeOfDay(..))
 import Data.Word (Word8)
+import System.Directory (canonicalizePath)
 import System.FilePath (takeFileName)
 import System.IO (Handle)
 import Text.Megaparsec
 import Text.Megaparsec.Char (char, char', digitChar, newline, string)
 import Text.Megaparsec.Char.Lexer (decimal)
+import Text.Printf (printf)
 
 import Hledger.Data
 import Hledger.Query (Query(..), filterQuery, parseQueryTerm, queryEndDate, queryStartDate, queryIsDate, simplifyQuery)
 import Hledger.Reports.ReportOptions (ReportOpts(..), queryFromFlags, rawOptsToReportOpts)
 import Hledger.Utils
 import Hledger.Read.InputOptions
+
 
 --- ** doctest setup
 -- $setup
@@ -168,34 +190,69 @@ import Hledger.Read.InputOptions
 
 -- main types; a few more below
 
--- | A hledger journal reader is a triple of storage format name, a
--- detector of that format, and a parser from that format to Journal.
--- The type variable m appears here so that rParserr can hold a
--- journal parser, which depends on it.
+-- | A hledger journal reader is a storage format name,
+-- a list of file extensions assumed to be in this format,
+-- and an IO action that reads data in this format, returning a Journal.
+--
+-- The journal parser used by the latter is also stored separately for direct use
+-- by the journal reader's includedirectivep to parse included files.
+-- The type variable m is needed for this parser.
+-- Lately it requires an InputOpts, basically to support --old-timeclock.
 data Reader m = Reader {
-
-     -- The canonical name of the format handled by this reader
-     rFormat   :: StorageFormat
-
-     -- The file extensions recognised as containing this format
-    ,rExtensions :: [String]
-
-     -- The entry point for reading this format, accepting input options, file
-     -- path for error messages and file contents via the handle, producing an exception-raising IO
-     -- action that produces a journal or error message.
-    ,rReadFn   :: InputOpts -> FilePath -> Handle -> ExceptT String IO Journal
-
-     -- The actual megaparsec parser called by the above, in case
-     -- another parser (includedirectivep) wants to use it directly.
-    ,rParser :: MonadIO m => ErroringJournalParser m ParsedJournal
-    }
+    -- The canonical name of the format handled by this reader. "journal", "timedot", "csv" etc.
+   rFormat :: StorageFormat
+    -- The file extensions recognised as containing this format.
+  ,rExtensions :: [String]
+    -- An IO action for reading this format, producing a journal or an error message.
+    -- It accepts input options, a file path to show in error messages, and a handle to read data from.
+  ,rReadFn :: InputOpts -> FilePath -> Handle -> ExceptT String IO Journal
+    -- The megaparsec parser called by the above, provided separately for parsing included files.
+    -- It is given the included file's text as input, or empty text if the reader reads its own input
+    -- (see readerReadsOwnInput).
+  ,rParser :: MonadIO m => InputOpts -> ErroringJournalParser m ParsedJournal
+  }
 
 instance Show (Reader m) where show r = show (rFormat r) ++ " reader"
 
+-- | Does this reader's rParser read the included file itself, ignoring the text it is given ?
+-- The CSV and rules readers do, since their data may be in a non-UTF-8 encoding declared by
+-- the rules file, or (for rules files) in a separate data file.
+readerReadsOwnInput :: Reader m -> Bool
+readerReadsOwnInput r = case rFormat r of
+  Sep _ -> True
+  Rules -> True
+  _     -> False
+
+-- | Make an include file parser (see rParser) from an IO action which reads the file
+-- at the given path and converts it to an unfinalised journal, with lists in reverse order
+-- as journalFinalise expects. This is for readers of non-journal formats like CSV.
+-- The megaparsec input is ignored; the file path is taken from the parse state's include file stack.
+-- The account aliases in effect (from alias directives and --alias options) are applied to the result,
+-- as they would be for inlined journal entries.
+-- Any error, including an IO error, is rethrown as a final parse error showing the include file stack.
+includeFileParser :: MonadIO m => (FilePath -> ExceptT String IO ParsedJournal) -> ErroringJournalParser m ParsedJournal
+includeFileParser readfn = do
+  j <- get
+  f <- maybe (finalMessageFailure "includeFileParser: no include file in parse state") (pure . fst) $
+       listToMaybe $ jparseincludefilestack j
+  ej <- liftIO $ tryIO $ runExceptT $ readfn f >>= liftEither . journalApplyAliases (jparsealiases j)
+  either (finalMessageFailure . show) (either finalMessageFailure pure) ej
+
+-- | A file path optionally prefixed by a reader name and colon (journal:, csv:, timedot:, etc.).
+-- The file path part can also be - meaning standard input.
+type PrefixedFilePath = FilePath
+
+-- | Is this the special file path meaning standard input ? (-, possibly prefixed)
+isStdin :: PrefixedFilePath -> Bool
+isStdin f = case splitAtElement ':' f of
+  [_,"-"] -> True
+  ["-"] -> True
+  _ -> False
+
 -- | Parse an InputOpts from a RawOpts and a provided date.
 -- This will fail with a usage error if the forecast period expression cannot be parsed.
-rawOptsToInputOpts :: Day -> Bool -> Bool -> RawOpts -> InputOpts
-rawOptsToInputOpts day usecoloronstdout postingaccttags rawopts =
+rawOptsToInputOpts :: Day -> Bool -> RawOpts -> InputOpts
+rawOptsToInputOpts day usecoloronstdout rawopts =
 
     let
         -- Allow/disallow implicit-cost conversion transactions, according to policy in Check.md.
@@ -214,8 +271,11 @@ rawOptsToInputOpts day usecoloronstdout postingaccttags rawopts =
         argsquery = map fst . rights . map (parseQueryTerm day) $ querystring_ ropts
         datequery = simplifyQuery . filterQuery queryIsDate . And $ queryFromFlags ropts : argsquery
 
+        txnbalancingprecision = either err id $ transactionBalancingPrecisionFromOpts rawopts
+          where err e = error' $ "could not parse --txn-balancing: '" ++ e ++ "'"  -- PARTIAL:
+
         styles = either err id $ commodityStyleFromRawOpts rawopts
-          where err e = error' $ "could not parse commodity-style: '" ++ e ++ "'"  -- PARTIAL:
+          where err e = error' $ "could not parse --commodity-style: '" ++ e ++ "'"  -- PARTIAL:
 
     in definputopts{
        -- files_             = listofstringopt "file" rawopts
@@ -227,15 +287,16 @@ rawOptsToInputOpts day usecoloronstdout postingaccttags rawopts =
       ,new_save_          = True
       ,pivot_             = stringopt "pivot" rawopts
       ,forecast_          = forecastPeriodFromRawOpts day rawopts
-      ,posting_account_tags_ = postingaccttags
       ,verbose_tags_      = boolopt "verbose-tags" rawopts
       ,reportspan_        = DateSpan (Exact <$> queryStartDate False datequery) (Exact <$> queryEndDate False datequery)
       ,auto_              = boolopt "auto" rawopts
       ,infer_equity_      = boolopt "infer-equity" rawopts && conversionop_ ropts /= Just ToCost
       ,infer_costs_       = boolopt "infer-costs" rawopts
+      ,ignore_lots_       = boolopt "ignore-lots" rawopts
       ,balancingopts_     = defbalancingopts{
                                  ignore_assertions_     = boolopt "ignore-assertions" rawopts
                                , infer_balancing_costs_ = not noinferbalancingcosts
+                               , txn_balancing_         = txnbalancingprecision
                                , commodity_styles_      = Just styles
                                }
       ,strict_            = boolopt "strict" rawopts
@@ -245,7 +306,7 @@ rawOptsToInputOpts day usecoloronstdout postingaccttags rawopts =
 
 handleReadFnToTextReadFn :: (InputOpts -> FilePath -> Text -> ExceptT String IO Journal) -> InputOpts -> FilePath -> Handle -> ExceptT String IO Journal
 handleReadFnToTextReadFn p iopts fp =
-  p iopts fp <=< lift . readHandlePortably
+  p iopts fp <=< dbgTimeIO 1 ("read " <> takeFileName fp) <=< lift . hGetContentsPortably Nothing
 
 -- | Get the date span from --forecast's PERIODEXPR argument, if any.
 -- This will fail with a usage error if the period expression cannot be parsed,
@@ -253,26 +314,34 @@ handleReadFnToTextReadFn p iopts fp =
 forecastPeriodFromRawOpts :: Day -> RawOpts -> Maybe DateSpan
 forecastPeriodFromRawOpts d rawopts = do
     arg <- maybestringopt "forecast" rawopts
-    let period = parsePeriodExpr d . stripquotes $ T.pack arg
+    let period = parsePeriodExpr d . textStripQuotes $ T.pack arg
     return $ if null arg then nulldatespan else either badParse (getSpan arg) period
   where
-    badParse e = usageError $ "could not parse forecast period : "++customErrorBundlePretty e
+    badParse e = usageError $ "could not parse forecast period: "++customErrorBundlePretty e
     getSpan arg (interval, requestedspan) = case interval of
         NoInterval -> requestedspan
         _          -> usageError $ "--forecast's argument should not contain a report interval ("
                                  ++ show interval ++ " in \"" ++ arg ++ "\")"
 
--- | Given the name of the option and the raw options, returns either
--- | * a map of successfully parsed commodity styles, if all options where successfully parsed
--- | * the first option which failed to parse, if one or more options failed to parse
+-- | Given the raw options, return either
+-- * if all options were successfully parsed: a map of successfully parsed commodity styles,
+-- * if one or more options failed to parse: the first option which failed to parse
 commodityStyleFromRawOpts :: RawOpts -> Either String (M.Map CommoditySymbol AmountStyle)
 commodityStyleFromRawOpts rawOpts =
-    foldM (\r -> fmap (\(c,a) -> M.insert c a r) . parseCommodity) mempty optList
+  foldM (\r -> fmap (\(c,a) -> M.insert c a r) . parseCommodity) mempty optList
   where
     optList = listofstringopt "commodity-style" rawOpts
     parseCommodity optStr = case parseamount optStr of
-        Left _ -> Left optStr
-        Right (Amount acommodity _ astyle _) -> Right (acommodity, astyle)
+      Left _ -> Left optStr
+      Right (Amount acommodity _ astyle _ _) -> Right (acommodity, astyle)
+
+transactionBalancingPrecisionFromOpts :: RawOpts -> Either String TransactionBalancingPrecision
+transactionBalancingPrecisionFromOpts rawopts =
+  case maybestringopt "txn-balancing" rawopts of
+    Nothing      -> Right TBPExact
+    Just "old"   -> Right TBPOld
+    Just "exact" -> Right TBPExact
+    Just s       -> Left $ s<>", should be one of: old, exact"
 
 -- | Given a parser to ParsedJournal, input options, file path and
 -- content: run the parser on the content, and finalise the result to
@@ -285,111 +354,168 @@ parseAndFinaliseJournal parser iopts f txt =
 -- | Given a parser to ParsedJournal, input options, file path and
 -- content: run the parser on the content. This is all steps of
 -- 'parseAndFinaliseJournal' without the finalisation step, and is used when
--- you need to perform other actions before finalisation, as in parsing
+-- you need to perform other actions before finalisatison, as in parsing
 -- Timeclock and Timedot files.
 initialiseAndParseJournal :: ErroringJournalParser IO ParsedJournal -> InputOpts
                           -> FilePath -> Text -> ExceptT String IO Journal
-initialiseAndParseJournal parser iopts f txt =
-    prettyParseErrors $ runParserT (evalStateT parser initJournal) f txt
+initialiseAndParseJournal parser iopts f txt = do
+    cf <- liftIO $ canonicalizePath f
+    prettyParseErrors (runParserT (evalStateT parser (initJournal cf)) f txt)
+      >>= dbgTimeIO 1 ("parse " <> takeFileName f)
+      >>= \j -> j <$ dbgFastPathStats (jparsefastpathstats j)
   where
     y = first3 . toGregorian $ _ioDay iopts
-    initJournal = nulljournal{jparsedefaultyear = Just y, jincludefilestack = [f]}
+    initJournal cf = nulljournal{jparsedefaultyear = Just y, jparseincludefilestack = [(f, cf)]}
     -- Flatten parse errors and final parse errors, and output each as a pretty String.
     prettyParseErrors :: ExceptT FinalParseError IO (Either (ParseErrorBundle Text HledgerParseErrorData) a)
                       -> ExceptT String IO a
     prettyParseErrors = withExceptT customErrorBundlePretty . liftEither
                     <=< withExceptT (finalErrorBundlePretty . attachSource f txt)
 
+-- | With --debug, report what share of a parsed file's entries (including its included files')
+-- the journal parser's fast path accepted, and why it declined the others; see the fast path
+-- section of Hledger.Read.JournalReader. Nothing is reported for files with no such entries.
+dbgFastPathStats :: MonadIO m => FastPathStats -> m ()
+dbgFastPathStats FastPathStats{..}
+  | debugLevel < 1 || null shares = return ()
+  | otherwise = dbgMsgIO 1 $ "fast path was used for " ++ intercalate ", " shares ++ declined
+  where
+    shares = [share fpsTxnsFast   fpsTxnsGeneral   "transactions" | fpsTxnsFast   + fpsTxnsGeneral   > 0]
+          ++ [share fpsPricesFast fpsPricesGeneral "prices"       | fpsPricesFast + fpsPricesGeneral > 0]
+    -- eg "51% of 900 transactions" (the percentage rounded)
+    share fast general what = show ((200 * fast + total) `div` (2 * total)) ++ "% of " ++ show total ++ " " ++ what
+      where total = fast + general
+    declined
+      | M.null fpsDeclines = ""
+      | otherwise = "; declined: " ++ intercalate ", "
+          [show n ++ " " ++ T.unpack reason | (reason, n) <- sortOn (negate . snd) $ M.toList fpsDeclines]
+
 {- HLINT ignore journalFinalise "Redundant <&>" -} -- silence this warning, the code is clearer as is
 --  note this activates TH, may slow compilation ? https://github.com/ndmitchell/hlint/blob/master/README.md#customizing-the-hints
 --
--- | Post-process a Journal that has just been parsed or generated, in this order:
---
--- - add misc info (file path, read time) 
---
--- - reverse transactions into their original parse order
---
--- - apply canonical commodity styles
---
--- - propagate account tags to postings
---
--- - maybe add forecast transactions
---
--- - propagate account tags to postings (again to affect forecast transactions)
---
--- - maybe add auto postings
---
--- - propagate account tags to postings (again to affect auto postings)
---
--- - evaluate balance assignments and balance each transaction
---
--- - maybe check balance assertions
---
--- - maybe infer costs from equity postings
---
--- - maybe infer equity postings from costs
---
--- - manye infer market prices from costs
---
--- One correctness check (parseable) has already passed when this function is called.
--- Up to four more are performed here:
---
---  - ordereddates (when enabled)
---
---  - assertions (when enabled)
---
---  - autobalanced (and with --strict, balanced ?), in the journalBalanceTransactions step.
---
--- Others (commodities, accounts..) are done later by journalStrictChecks.
---
+-- | Post-process a parsed Journal: infer missing information, check validity,
+-- and enrich postings with computed metadata.
+-- See doc\/SPEC-finalising.md for the full pipeline specification.
+maxExpectedForecastTxns :: Int
+maxExpectedForecastTxns = 100000
+
 journalFinalise :: InputOpts -> FilePath -> Text -> ParsedJournal -> ExceptT String IO Journal
-journalFinalise iopts@InputOpts{auto_,balancingopts_,infer_costs_,infer_equity_,strict_,posting_account_tags_,verbose_tags_,_ioDay} f txt pj = do
+journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,infer_equity_,strict_,verbose_tags_,_ioDay} f txt pj = do
   let
     BalancingOpts{commodity_styles_, ignore_assertions_} = balancingopts_
-    fname = "journalFinalise " <> takeFileName f
-    lbl = lbl_ fname
-    -- Some not so pleasant hacks
-    -- We want to know when certain checks have been explicitly requested with the check command,
-    -- but it does not run until later. For now, inspect the command line with unsafePerformIO.
+    -- Hack: peek at the command line to know if certain checks were requested.
     checking checkname = "check" `elem` args && checkname `elem` args where args = progArgs
-    -- We will check ordered dates when "check ordereddates" is used.
     checkordereddates = checking "ordereddates"
-    -- We will check balance assertions by default, unless -I is used, but always if -s or "check assertions" are used.
     checkassertions = not ignore_assertions_ || strict_ || checking "assertions"
+    lotschecking    = not ignore_lots_       || strict_ || checking "lots"  -- are lot checks wanted ?
+    lenientlots     = not lotschecking
+    haslots         = journalHasLotFeatures pj  -- does the journal use lots at all ? if not, the lot stages are skipped, they would do nothing
+    checklots       = haslots && lotschecking   -- run the lot classification, calculation and checking stages ?
+    -- With --debug, report each stage's run time and memory allocation (dbgTime forces the stage's result to measure it).
+    timed  name stage = dbgTime 1 name . stage          -- a stage returning a Journal
+    timedE name stage = fmap (dbgTime 1 name) . stage   -- a stage returning an Either error Journal
 
   t <- liftIO getPOSIXTime
-  liftEither $
+  -- Warn before generating an implausible number of forecast transactions
+  -- (in practice, a mistyped date in a periodic rule or --forecast period), so the user can cancel (#1683).
+  -- They are counted without being generated, in constant memory.
+  forM_ (forecastPeriod iopts pj) $ \forecastspan -> do
+    let n = sum [ length $ periodicTransactionDates pt forecastspan | pt <- jperiodictxns pj ]
+    when (n > maxExpectedForecastTxns) $ warnIO $ printf
+      ("--forecast would generate %d transactions (forecast period %s),\n"
+      <> "using a lot of memory. If not intended, press control-C now, and check for a mistyped date.")
+      n (showDateSpan forecastspan)
+  j <- liftEither $
     pj{jglobalcommoditystyles=fromMaybe mempty commodity_styles_}
-      &   journalSetLastReadTime t                       -- save the last read time
-      &   journalAddFile (f, txt)                        -- save the main file's info
-      &   journalReverse                                 -- convert all lists to the order they were parsed
-      &   journalAddAccountTypes                         -- build a map of all known account types
+
+      -- Setup
+      &   timed  "journalSetLastReadTime" (journalSetLastReadTime t)              -- save the last read time
+      &   timed  "journalAddFile" (journalAddFile (f, txt))                       -- save the main file's info
+      &   timed  "journalReverse" journalReverse                                  -- convert all lists to the order they were parsed
+
+      -- Account types and amount styles
+      &   timed  "journalAddAccountTypes" journalAddAccountTypes                  -- build a map of all known account types
             -- XXX does not see conversion accounts generated by journalInferEquityFromCosts below, requiring a workaround in journalCheckAccounts. Do it later ?
-      &   journalStyleAmounts                            -- Infer and apply commodity styles (but don't round) - should be done early
-      <&> journalAddForecast verbose_tags_ (forecastPeriod iopts pj)   -- Add forecast transactions if enabled
-      <&> (if posting_account_tags_ then journalPostingsAddAccountTags else id)     -- Propagate account tags to postings - unless printing a beancount journal
-      >>= journalTagCostsAndEquityAndMaybeInferCosts verbose_tags_ False   -- Tag equity conversion postings and redundant costs, to help journalBalanceTransactions ignore them.
+      &   timedE "journalStyleAmounts" journalStyleAmounts                        -- infer and apply commodity styles (but don't round) - should be done early
+
+      -- Forecast and account tags
+      <&> timed  "journalAddForecast" (journalAddForecast verbose_tags_ (forecastPeriod iopts pj))  -- add forecast transactions if enabled
+      <&> timed  "journalPostingsAddAccountTags" journalPostingsAddAccountTags    -- propagate account tags to postings (queryable but hidden)
+
+      -- Pre-balancing cost/equity tagging
+      >>= timedE "journalTagCostsAndEquityAndMaybeInferCosts" (journalTagCostsAndEquityAndMaybeInferCosts verbose_tags_ False)  -- tag equity conversion postings and redundant costs, to help the transaction balancer ignore them
+
+      -- Lot cost basis and transacted cost inference, and gain posting tagging
+      -- These enrichment stages always run, so lot entries balance the same
+      -- with or without --ignore-lots; with --ignore-lots (unless overridden
+      -- by --strict or `hledger check lots`) they are lenient, skipping their
+      -- errors and leaving the affected postings/transactions unchanged.
+      -- They run before auto postings, whose preliminary balancing needs them too.
+      >>= (if haslots then timedE "journalInferBasisFromAccountNames" (journalInferBasisFromAccountNames lenientlots) else pure)  -- infer cost basis from lot subaccount names (validating them, unless lenient)
+      <&> (if haslots then timed  "journalInferPostingsTransactedCost" journalInferPostingsTransactedCost else id)              -- in acquire-shaped postings, infer a transacted cost from cost basis
+      >>= (if checklots then timedE "journalCheckAcquireBasis" journalCheckAcquireBasis else pure)                              -- error if an acquire-shaped posting's written cost basis and transacted cost differ (before balancing, so this is reported rather than an unbalanced entry)
+      >>= (if haslots then timedE "journalTagGainPostings" (journalTagGainPostings lenientlots verbose_tags_) else pure)        -- in disposals, tag user-written gain postings so the balancer sets them aside
+
+      -- Auto postings
       >>= (if auto_ && not (null $ jtxnmodifiers pj)
-            then journalAddAutoPostings verbose_tags_ _ioDay balancingopts_  -- Add auto postings if enabled, and account tags if needed. Does preliminary transaction balancing.
+            then timedE "journalAddAutoPostings" $ journalAddAutoPostings verbose_tags_ _ioDay  -- add auto postings if enabled; does preliminary transaction balancing
+                  balancingopts_{lotful_commodities_ = journalLotfulCommodities pj
+                                ,account_lots_tags_ = journalAccountLotsTags pj
+                                ,lenient_lots_ = lenientlots
+                                ,verbose_balancing_tags_ = verbose_tags_}
             else pure)
-      -- XXX how to force debug output here ?
-       -- >>= Right . dbg0With (concatMap (T.unpack.showTransaction).jtxns)
-       -- >>= \j -> deepseq (concatMap (T.unpack.showTransaction).jtxns $ j) (return j)
-      <&> dbg9With (lbl "amounts after styling, forecasting, auto-posting".showJournalAmountsDebug)
-      >>= (\j -> if checkordereddates then journalCheckOrdereddates j $> j else Right j)  -- check ordereddates before assertions. The outer parentheses are needed.
-      >>= journalBalanceTransactions balancingopts_{ignore_assertions_=not checkassertions}  -- infer balance assignments and missing amounts, and maybe check balance assertions.
-      <&> dbg9With (lbl "amounts after transaction-balancing".showJournalAmountsDebug)
-      -- <&> dbg9With (("journalFinalise amounts after styling, forecasting, auto postings, transaction balancing"<>).showJournalAmountsDebug)
-      >>= journalInferCommodityStyles                    -- infer commodity styles once more now that all posting amounts are present
-      -- >>= Right . dbg0With (pshow.journalCommodityStyles)
-      >>= (if infer_costs_  then journalTagCostsAndEquityAndMaybeInferCosts verbose_tags_ True else pure)  -- With --infer-costs, infer costs from equity postings where possible
-      <&> (if infer_equity_ then journalInferEquityFromCosts verbose_tags_ else id)          -- With --infer-equity, infer equity postings from costs where possible
-      <&> dbg9With (lbl "amounts after equity-inferring".showJournalAmountsDebug)
-      <&> journalInferMarketPricesFromTransactions       -- infer market prices from commodity-exchanging transactions
-      -- <&> dbg6Msg fname  -- debug logging
-      <&> dbgJournalAcctDeclOrder (fname <> ": acct decls           : ")
-      <&> journalRenumberAccountDeclarations
-      <&> dbgJournalAcctDeclOrder (fname <> ": acct decls renumbered: ")
+
+      -- Transaction balancing
+      >>= (\j -> if checkordereddates then journalCheckOrdereddates j $> j else Right j)     -- maybe check that journal entries are in date order
+      >>= (\j -> do
+        -- Infer balance assignments/amounts, and maybe check balance assertions.
+        -- An assertion failure is not raised immediately: it is deferred until
+        -- the stages below have run without error, so lot errors (usually the
+        -- more fundamental problem) are reported first.
+        (j2, massertionerr) <- timedE "journalBalanceTransactionsAndDeferAssertions"
+              (journalBalanceTransactionsAndDeferAssertions
+                balancingopts_{ignore_assertions_=not checkassertions, account_types_ = jaccounttypes j
+                              ,lotful_commodities_ = journalLotfulCommodities j
+                              ,account_lots_tags_ = journalAccountLotsTags j
+                              ,lenient_lots_ = lenientlots
+                              ,verbose_balancing_tags_ = verbose_tags_}) j
+        j3 <- Right j2
+
+          -- Lot classification
+          -- Runs after balancing, when all posting amounts are known (inferred
+          -- amounts included), so every entry shape classifies the same way as
+          -- if its amounts had been written explicitly (#2686, #2690, #2692).
+          <&> (if checklots then timed "journalClassifyLotPostings" (journalClassifyLotPostings verbose_tags_) else id)  -- detect and classify lot postings (acquire/dispose/transfer..), maybe with visible tags
+
+          -- Post-balancing enrichment
+          >>= timedE "journalInferCommodityStyles" journalInferCommodityStyles          -- infer commodity styles once more now that all posting amounts are present
+          <&> timed  "journalPostingsAddCommodityTags" journalPostingsAddCommodityTags  -- propagate amounts' commodity tags to postings (queryable but hidden)
+
+          -- Cost inference
+          >>= (if infer_costs_  then timedE "journalTagCostsAndEquityAndMaybeInferCosts" (journalTagCostsAndEquityAndMaybeInferCosts verbose_tags_ True) else pure)  -- maybe infer costs from equity postings
+
+          -- Market prices and renumbering
+          <&> timed  "journalInferMarketPricesFromTransactions" journalInferMarketPricesFromTransactions  -- infer market prices from commodity-exchanging transactions
+          >>= timedE "journalInferAliasPrices" journalInferAliasPrices                                    -- inject 1:1 bridges for any alias: tags on commodity directives
+          <&> timed  "journalRenumberAccountDeclarations" journalRenumberAccountDeclarations              -- renumber account declarations for consistent ordering
+
+          -- Lot and capital gains calculation/checking
+          -- (skipped by --ignore-lots or -I; forced back on by --strict or `hledger check lots`)
+          >>= (if checklots  then timedE "journalCheckLotsTagValues" journalCheckLotsTagValues                       else pure)  -- validate lots: tag values on commodity/account declarations
+          >>= (if checklots  then timedE "journalCheckLotsMethodCoherence" journalCheckLotsMethodCoherence           else pure)  -- reject a global (*ALL) method mixed with other methods for one commodity
+          >>= (if checklots  then timedE "journalCalculateLots" (journalCalculateLots verbose_tags_)                 else pure)  -- evaluate lot selectors, calculate lot balances, add lot subaccounts
+          >>= (if checklots  then timedE "journalAddOrCheckGainPostings" (journalAddOrCheckGainPostings verbose_tags_) else pure)  -- in disposal transactions, add the realised-gain posting, or check a user-written one
+          <&> (if haslots    then timed  "journalStripBalancerCopiedBases" journalStripBalancerCopiedBases           else id)    -- remove balancer-copied basis annotations, kept until now as classification evidence
+
+          -- Equity inference
+          <&> (if infer_equity_ then timed  "journalInferEquityFromCosts" (journalInferEquityFromCosts verbose_tags_) else id)  -- maybe infer equity postings from costs; after lot processing, so lot disposals convert at cost basis
+
+        -- Now report any balance assertion failure detected above.
+        maybe (Right j3) Left massertionerr)
+
+  -- The last stage's timing line appears when its result is forced; with --debug, do that now.
+  when (debugLevel > 0) $ liftIO $ void $ evaluate j
+  return j
 
 -- | Apply any auto posting rules to generate extra postings on this journal's transactions.
 -- With a true first argument, adds visible tags to generated postings and modified transactions.
@@ -418,6 +544,62 @@ journalAddForecast verbosetags (Just forecastspan) j = j{jtxns = jtxns j ++ fore
       . concatMap (\pt -> runPeriodicTransaction verbosetags pt forecastspan)
       $ jperiodictxns j
 
+-- | For each posting whose account name contains a lot subaccount (e.g.
+-- @assets:broker:{2026-01-15, $50}@), parse the cost basis from the subaccount
+-- name and set or merge it into the posting's amounts' @acostbasis@.
+-- This allows users to write lot subaccounts explicitly without redundant @{...}@
+-- amount annotations.
+--
+-- With a true first argument (lenient mode, used by --ignore-lots), a posting
+-- whose lot subaccount name is invalid or conflicting is left unchanged
+-- (treated as an ordinary subaccount) instead of raising an error.
+journalInferBasisFromAccountNames :: Bool -> Journal -> Either String Journal
+journalInferBasisFromAccountNames lenient j = do
+  txns' <- mapM processTransaction (jtxns j)
+  Right j{jtxns = txns'}
+  where
+    parseAmt s = case parseamount s of
+      Right a  -> Just a
+      Left _   -> Nothing
+
+    processTransaction t = do
+      ps' <- mapM processPosting (tpostings t)
+      Right t{tpostings = ps'}
+
+    processPosting p
+      | lenient   = Right $ either (const p) id $ inferPosting p
+      | otherwise = inferPosting p
+
+    inferPosting p = case lotSubaccountName (paccount p) of
+      Nothing   -> Right p
+      Just name -> do
+        cb <- first (lotErr p) $ parseLotName parseAmt name
+        when (isNothing (cbDate cb) || isNothing (cbCost cb)) $
+          Left $ lotErr p $ "lot subaccount name must contain a date and cost: " ++ T.unpack name
+        let updateAmt a = case acostbasis a of
+              Nothing -> Right a{acostbasis = Just cb}
+              Just existing -> do
+                merged <- first (lotConflictErr p) $ mergeCostBasis cb existing
+                Right a{acostbasis = Just merged}
+        amts' <- mapM updateAmt (amountsRaw (pamount p))
+        Right p{pamount = foldMap mixedAmount amts'}
+
+    -- Wrap a lot-subaccount parse error with a verbose source-position excerpt
+    -- highlighting the posting's account name, and remind the reader that final
+    -- @:{...}@ components are reserved for lot subaccount syntax.
+    lotErr p msg = lotPosErr p $ msg
+      ++ "\n\nA final account name part enclosed in { } must be a valid lot subaccount name."
+      ++ "\nPlease adjust the account name, or use --ignore-lots/-I."
+
+    -- Likewise for a lot subaccount name which disagrees with the amount's lot annotation.
+    lotConflictErr p msg = lotPosErr p $ msg
+      ++ "\n\nThe lot subaccount name and the amount's lot annotation must agree."
+      ++ "\nPlease make them match, or remove one of them."
+
+    lotPosErr :: Posting -> String -> String
+    lotPosErr p msg = printf "%s:%d:\n%s\n%s" f line ex msg
+      where (f, line, _, ex) = makePostingAccountErrorExcerpt p
+
 setYear :: Year -> JournalParser m ()
 setYear y = modify' (\j -> j{jparsedefaultyear=Just y})
 
@@ -432,10 +614,11 @@ dp = const $ return ()  -- no-op
 -- (eg by the CSV decimal-mark rule, or possibly a future journal directive).
 -- Return it as an AmountStyle that amount parsers can use.
 getDecimalMarkStyle :: JournalParser m (Maybe AmountStyle)
-getDecimalMarkStyle = do
-  Journal{jparsedecimalmark} <- get
-  let mdecmarkStyle = (\c -> Just $ amountstyle{asdecimalmark=Just c}) =<< jparsedecimalmark
-  return mdecmarkStyle
+getDecimalMarkStyle = journalDecimalMarkStyle <$> get
+
+-- | The amount style implied by a decimal-mark directive or CSV rule in effect, if any.
+journalDecimalMarkStyle :: Journal -> Maybe AmountStyle
+journalDecimalMarkStyle Journal{jparsedecimalmark} = (\c -> amountstyle{asdecimalmark=Just c}) <$> jparsedecimalmark
 
 setDefaultCommodityAndStyle :: (CommoditySymbol,AmountStyle) -> JournalParser m ()
 setDefaultCommodityAndStyle cs = modify' (\j -> j{jparsedefaultcommodity=Just cs})
@@ -453,11 +636,37 @@ getDefaultAmountStyle = fmap snd <$> getDefaultCommodityAndStyle
 -- | Get the 'AmountStyle' declared by the most recently parsed (in the current or parent files,
 -- prior to the current position) commodity directive for the given commodity, if any.
 getAmountStyle :: CommoditySymbol -> JournalParser m (Maybe AmountStyle)
-getAmountStyle commodity = do
-  Journal{jdeclaredcommodities} <- get
-  let mspecificStyle = M.lookup commodity jdeclaredcommodities >>= cformat
-  mdefaultStyle <- fmap snd <$> getDefaultCommodityAndStyle
-  return $ listToMaybe $ catMaybes [mspecificStyle, mdefaultStyle]
+getAmountStyle commodity = flip journalAmountStyleFor commodity <$> get
+
+-- | The 'AmountStyle' declared by the most recently parsed commodity directive for the given
+-- commodity, or failing that by the most recent default commodity directive, if any.
+journalAmountStyleFor :: Journal -> CommoditySymbol -> Maybe AmountStyle
+journalAmountStyleFor Journal{jdeclaredcommodities, jparsedefaultcommodity} commodity =
+  listToMaybe $ catMaybes [M.lookup commodity jdeclaredcommodities >>= cformat, snd <$> jparsedefaultcommodity]
+
+-- | Return an identical amount style parsed earlier, if there is one, so that amounts share it;
+-- otherwise remember and return this one. Journals use few distinct styles, so this saves memory.
+shareAmountStyle :: AmountStyle -> JournalParser m AmountStyle
+shareAmountStyle s = do
+  styles <- jparseamountstyles <$> get
+  case S.lookupLE s styles of
+    Just s' | s' == s -> return s'
+    _ -> do
+      modify' $ \j -> j{jparseamountstyles = S.insert s styles}
+      return s
+
+-- | Return an identical text parsed earlier (an account name or commodity symbol), if there is one,
+-- so that they share one copy; otherwise remember (a compact copy of) this one and return that.
+-- Journals use relatively few distinct account names and commodity symbols, so this saves memory.
+shareText :: Text -> JournalParser m Text
+shareText t = do
+  texts <- jparsetexts <$> get
+  case S.lookupLE t texts of
+    Just t' | t' == t -> return t'
+    _ -> do
+      let t' = T.copy t  -- don't retain the whole input text this is a slice of
+      modify' $ \j -> j{jparsetexts = S.insert t' texts}
+      return t'
 
 addDeclaredAccountTags :: AccountName -> [Tag] -> JournalParser m ()
 addDeclaredAccountTags acct atags =
@@ -479,6 +688,38 @@ popParentAccount = do
 
 getParentAccount :: JournalParser m AccountName
 getParentAccount = fmap (concatAccountNames . reverse . jparseparentaccounts) get
+
+-- | Get the current source position, like megaparsec's getSourcePos but
+-- cheaper on large inputs. megaparsec walks every character since the last
+-- position it calculated, checking each one's width; this instead starts
+-- from the most recently calculated position kept in the parse state (see
+-- 'ParsePos'), counts the newlines since then with a fast scan, and walks
+-- only the current line, using megaparsec's column rules. The journal
+-- parsers should use this rather than getSourcePos. On the first call, or
+-- if the parser has somehow moved backwards, it falls back to getSourcePos.
+-- (Though, measured in 2026 on a 100k-transaction journal, this saved only
+-- about 4% of total run time: the per-character walk is cheap in optimised code,
+-- and this still scans the text, just faster.)
+getSourcePos' :: JournalParser m SourcePos
+getSourcePos' = do
+  o <- getOffset
+  manchor <- jparsepos <$> get
+  pos <- case manchor of
+    Just (ParsePos anchor@(SourcePos f l _) o0 s0) | o >= o0 -> do
+      let
+        consumed = T.take (o - o0) s0  -- the text between the anchor and here
+        newlines = T.count "\n" consumed
+        -- walk the current line only: from the anchor if that is on this line, else from the line's start
+        (startpos, lineprefix)
+          | newlines == 0 = (anchor, consumed)
+          | otherwise     = (SourcePos f (mkPos $ unPos l + newlines) pos1, T.takeWhileEnd (/= '\n') consumed)
+      return $ pstateSourcePos $ reachOffsetNoLine (T.length lineprefix) PosState
+        { pstateInput = lineprefix, pstateOffset = 0, pstateSourcePos = startpos
+        , pstateTabWidth = defaultTabWidth, pstateLinePrefix = "" }
+    _ -> getSourcePos
+  s <- getInput
+  modify' $ \j -> j{jparsepos = Just $ ParsePos pos o s}
+  return pos
 
 addAccountAlias :: MonadState Journal m => AccountAlias -> m ()
 addAccountAlias a = modify' (\(j@Journal{..}) -> j{jparsealiases=a:jparsealiases})
@@ -516,21 +757,26 @@ match' p = do
 --- *** transaction bits
 
 statusp :: TextParser m Status
-statusp =
-  choice'
-    [ skipNonNewlineSpaces >> char '*' >> return Cleared
-    , skipNonNewlineSpaces >> char '!' >> return Pending
-    , return Unmarked
-    ]
+statusp = do
+  -- a status mark may follow, after optional spaces; check cheaply, since usually there is none
+  (_, mc) <- peekAfterSpaces
+  case mc of
+    Just '*' -> Cleared <$ (skipNonNewlineSpaces *> char '*')
+    Just '!' -> Pending <$ (skipNonNewlineSpaces *> char '!')
+    _        -> pure Unmarked
 
 codep :: TextParser m Text
-codep = option "" $ do
-  try $ do
+codep = do
+  -- a code in parentheses may follow, after spaces; check cheaply, since usually there is none
+  (spaced, mc) <- peekAfterSpaces
+  if spaced && mc == Just '('
+  then do
     skipNonNewlineSpaces1
     char '('
-  code <- takeWhileP Nothing $ \c -> c /= ')' && c /= '\n'
-  char ')' <?> "closing bracket ')' for transaction code"
-  pure code
+    code <- takeWhileP Nothing $ \c -> c /= ')' && c /= '\n'
+    char ')' <?> "closing bracket ')' for transaction code"
+    pure code
+  else pure ""
 
 -- | Parse possibly empty text until a semicolon or newline.
 -- Whitespace is preserved (for now - perhaps helps preserve alignment 
@@ -607,9 +853,15 @@ datetimep' :: Maybe Year -> TextParser m LocalTime
 datetimep' mYear = do
   day <- datep' mYear
   skipNonNewlineSpaces1
+  time <- timeofdayp
+  pure $ LocalTime day time
+
+-- | Parse a time of day (HH:MM[:SS]), and skip any time zone suffix (like +0100) following it.
+timeofdayp :: TextParser m TimeOfDay
+timeofdayp = do
   time <- timeOfDay
   optional timeZone -- ignoring time zones
-  pure $ LocalTime day time
+  pure time
 
   where
     timeOfDay :: TextParser m TimeOfDay
@@ -665,16 +917,18 @@ yearorintp = do
 
 --- *** account names
 
--- | Parse an account name (plus one following space if present),
+-- | Parse an account name plus one following space if present (see accountnamep);
 -- then apply any parent account prefix and/or account aliases currently in effect,
--- in that order. (Ie first add the parent account prefix, then rewrite with aliases).
+-- in that order. Ie first add the parent account prefix, then rewrite with aliases.
 -- This calls error if any account alias with an invalid regular expression exists.
-modifiedaccountnamep :: JournalParser m AccountName
-modifiedaccountnamep = do
+-- The flag says whether account names may include semicolons; currently account names
+-- in journal format may, but account names in timeclock/timedot formats may not.
+modifiedaccountnamep :: Bool -> JournalParser m AccountName
+modifiedaccountnamep allowsemicolon = do
   parent  <- getParentAccount
   als     <- getAccountAliases
   -- off1    <- getOffset
-  a       <- lift accountnamep
+  a       <- lift $ if allowsemicolon then accountnamep else accountnamenosemicolonp
   -- off2    <- getOffset
   -- XXX or accountNameApplyAliasesMemo ? doesn't seem to make a difference (retest that function)
   case accountNameApplyAliases als $ joinAccountNames parent a of
@@ -688,15 +942,17 @@ modifiedaccountnamep = do
 
 -- | Parse an account name, plus one following space if present.
 -- Account names have one or more parts separated by the account separator character,
--- and are terminated by two or more spaces (or end of input).
--- Each part is at least one character long, may have single spaces inside it,
--- and starts with a non-whitespace.
--- Note, this means "{account}", "%^!" and ";comment" are all accepted
--- (parent parsers usually prevent/consume the last).
--- It should have required parts to start with an alphanumeric;
--- for now it remains as-is for backwards compatibility.
+-- and are terminated by two or more whitespace characters (spaces or tabs), or end of input.
+-- Each part is at least one character long, may have single spaces inside it, and starts with a non-whitespace.
+-- (We should have required them to start with an alphanumeric, but didn't.)
+-- Note, this means account names can contain all kinds of punctuation, including ; which usually starts a following comment.
+-- Parent parsers usually remove the following comment before using this parser.
 accountnamep :: TextParser m AccountName
 accountnamep = singlespacedtext1p
+
+-- Like accountnamep, but stops parsing if it reaches a semicolon.
+accountnamenosemicolonp :: TextParser m AccountName
+accountnamenosemicolonp = singlespacednoncommenttext1p
 
 -- | Parse a single line of possibly empty text enclosed in double quotes.
 doublequotedtextp :: TextParser m Text
@@ -728,12 +984,19 @@ singlespacednoncommenttext1p = singlespacedtextsatisfying1p (not . isSameLineCom
 singlespacedtextsatisfying1p :: (Char -> Bool) -> TextParser m T.Text
 singlespacedtextsatisfying1p f = do
   firstPart <- partp
-  otherParts <- many $ try $ singlespacep *> partp
+  otherParts <- manyWhile nextissinglespaceandpart $ try $ singlespacep *> partp
   pure $! T.unwords $ firstPart : otherParts
   where
     partp = takeWhile1P Nothing (\c -> f c && not (isSpace c))
+    -- is the next part separated from here by exactly one space ? (checked cheaply before parsing)
+    nextissinglespaceandpart = do
+      next2 <- peekChars2
+      pure $ case next2 of
+        (Just c1, Just c2) -> isNonNewlineSpace c1 && f c2 && not (isSpace c2)
+        _                  -> False
 
 -- | Parse one non-newline whitespace character that is not followed by another one.
+-- (A single tab is not a separator, unlike in Ledger; hledger 1 and 2 agree on this.)
 singlespacep :: TextParser m ()
 singlespacep = spacenonewline *> notFollowedBy spacenonewline
 
@@ -782,11 +1045,12 @@ spaceandamountormissingp =
 -- To parse an amount's numeric quantity we need to know which character 
 -- represents a decimal mark. We find it in one of three ways:
 --
--- 1. If a decimal mark has been set explicitly in the journal parse state, 
---    we use that
+-- 1. If a decimal mark has been set explicitly in the journal parse state
+--    (by a decimal-mark directive or CSV rule), we use that, strictly
 --
 -- 2. Or if the journal has a commodity declaration for the amount's commodity,
---    we get the decimal mark from  that
+--    we get the decimal mark from that, and use it only to interpret ambiguous numbers
+--    (see AmountParseKind for details)
 --
 -- 3. Otherwise we will parse any valid decimal mark appearing in the
 --    number, as long as the number appears well formed.
@@ -795,25 +1059,70 @@ spaceandamountormissingp =
 --    which is a bit too loose. There's an open issue.)
 --
 amountp :: JournalParser m Amount
-amountp = amountp' False
+amountp = amountp' OrdinaryAmount
+
+-- | The kinds of amount which are parsed a little differently.
+--
+-- A decimal-mark directive (or CSV rule) declares how numbers are written in the data,
+-- and data amounts (OrdinaryAmount, MultiplierAmount) must obey it strictly;
+-- violations are parse errors, reported at the number.
+-- A commodity or D directive declares a display style, given as a sample amount (StyleAmount),
+-- which may use a different decimal mark from the data.
+-- When there's no decimal-mark directive, a commodity's display style is also used
+-- to interpret ambiguous numbers like 1,000, but it is not enforced.
+data AmountParseKind
+  = OrdinaryAmount
+    -- ^ An amount in the data: in a posting, cost, balance assertion, price directive, CSV record, etc.
+    --   If a decimal-mark directive is in effect, the number must use only that decimal mark:
+    --   1,000.00 is rejected when , is declared, and 1.2.34 when . is declared.
+  | MultiplierAmount
+    -- ^ A multiplier in an auto posting rule (*AMT). The default commodity is not applied to it.
+    --   Otherwise it's parsed like an OrdinaryAmount.
+  | StyleAmount
+    -- ^ The sample amount in a commodity directive (or its format subdirective) or a D directive,
+    --   declaring a display style. Its decimal mark may differ from the one declared by decimal-mark,
+    --   so that is not enforced; but it is still used to interpret ambiguous numbers like 1,000.
+  deriving (Eq, Show)
 
 -- An amount with optional cost, valuation, and/or cost basis, as described above.
--- A flag indicates whether we are parsing a multiplier amount;
--- if not, a commodity-less amount will have the default commodity applied to it.
-amountp' :: Bool -> JournalParser m Amount
-amountp' mult =
-  -- dbg "amountp'" $ 
+amountp' :: AmountParseKind -> JournalParser m Amount
+amountp' kind =
+  -- dbg "amountp'" $
   label "amount" $ do
   let spaces = lift $ skipNonNewlineSpaces
-  amt <- simpleamountp mult <* spaces
-  (mcost, _valuationexpr, _mlotcost, _mlotdate, _mlotnote) <- runPermutation $
-    -- costp, valuationexprp, lotnotep all parse things beginning with parenthesis, try needed
-    (,,,,) <$> toPermutationWithDefault Nothing (Just <$> try (costp amt) <* spaces)
-          <*> toPermutationWithDefault Nothing (Just <$> valuationexprp <* spaces)  -- XXX no try needed here ?
-          <*> toPermutationWithDefault Nothing (Just <$> lotcostp <* spaces)
-          <*> toPermutationWithDefault Nothing (Just <$> lotdatep <* spaces)
-          <*> toPermutationWithDefault Nothing (Just <$> lotnotep <* spaces)
-  pure $ amt { acost = mcost }
+  amt <- simpleamountp kind <* spaces
+  -- A cost, valuation expression or lot annotation may follow, in any order, each at most once.
+  -- Each begins with a distinctive character or two, so look at those and run just the right
+  -- parser, stopping at anything else or at a repeated kind. (A permutation parser was used before,
+  -- but its failed attempts at the other alternatives made each cost cost ~3x as much as a posting.)
+  -- costp, valuationexprp and lotnotep all begin with a parenthesis; costp is tried first,
+  -- and backtracks if no @ follows, so that errors within a cost's amount are reported.
+  let annotations mcost mval mcb mdate mnote = do
+        (mc1, mc2) <- lift peekChars2
+        case (mc1, mc2) of
+          (Just '@', _)        | isNothing mcost -> costp amt <* spaces          >>= \x -> annotations (Just x) mval mcb mdate mnote
+          (Just '(', Just '@') | isNothing mcost -> costp amt <* spaces          >>= \x -> annotations (Just x) mval mcb mdate mnote
+          (Just '(', Just '(') | isNothing mval  -> valuationexprp <* spaces     >>= \x -> annotations mcost (Just x) mcb mdate mnote
+          (Just '{', _)        | isNothing mcb   -> lotcostp (aquantity amt) <* spaces >>= \x -> annotations mcost mval (Just x) mdate mnote
+          (Just '[', _)        | isNothing mdate -> lotdatep <* spaces           >>= \x -> annotations mcost mval mcb (Just x) mnote
+          (Just '(', _)        | isNothing mnote -> lotnotep <* spaces           >>= \x -> annotations mcost mval mcb mdate (Just x)
+          _ -> pure (mcost, mval, mcb, mdate, mnote)
+  (mcost, _valuationexpr, mlotcb, mlotdate, mlotnote) <- annotations Nothing Nothing Nothing Nothing Nothing
+  -- Reject mixing consolidated {DATE,...} or {"LABEL",...} with ledger-style [DATE] or (NOTE)
+  let isConsolidated = case mlotcb of
+        Just cb | isJust (cbDate cb) || isJust (cbLabel cb) -> True
+        _ -> False
+  when (isConsolidated && (isJust mlotdate || isJust mlotnote)) $
+    Fail.fail "hledger lot syntax {...} cannot be combined with ledger-style [DATE] or (NOTE)"
+  let mcostbasis =
+        case (mlotcb, mlotdate, mlotnote) of
+          (Nothing, Nothing, Nothing) -> Nothing
+          _ -> Just $ CostBasis
+                 { cbCost  = mlotcb >>= cbCost
+                 , cbDate  = (mlotcb >>= cbDate) <|> mlotdate
+                 , cbLabel = (mlotcb >>= cbLabel) <|> mlotnote
+                 }
+  pure $ amt { acost = mcost, acostbasis = mcostbasis }
 
 -- An amount with optional cost, but no cost basis.
 amountnobasisp :: JournalParser m Amount
@@ -821,26 +1130,31 @@ amountnobasisp =
   -- dbg "amountnobasisp" $ 
   label "amount" $ do
   let spaces = lift $ skipNonNewlineSpaces
-  amt <- simpleamountp False
+  amt <- simpleamountp OrdinaryAmount
   spaces
   mprice <- optional $ costp amt <* spaces
   pure $ amt { acost = mprice }
 
 -- An amount with no cost or cost basis.
--- A flag indicates whether we are parsing a multiplier amount;
--- if not, a commodity-less amount will have the default commodity applied to it.
-simpleamountp :: Bool -> JournalParser m Amount
-simpleamountp mult = 
+-- A commodity-less amount will have the default commodity applied to it, unless it's a multiplier.
+simpleamountp :: AmountParseKind -> JournalParser m Amount
+simpleamountp kind =
   -- dbg "simpleamountp" $
   do
   sign <- lift signp
-  leftsymbolamountp sign <|> rightornosymbolamountp sign
+  -- A symbol-first amount starts with a quote or a simple commodity symbol character;
+  -- anything else (a digit or decimal mark, usually) is parsed as a number-first amount.
+  -- Checking cheaply avoids a failed parse attempt for the latter, the common case.
+  mc <- lift peekChar
+  if maybe False startsCommoditySymbol mc then leftsymbolamountp sign else rightornosymbolamountp sign
 
   where
+  startsCommoditySymbol c = c == '"' || not (isNonsimpleCommodityChar c)
+
   -- An amount with commodity symbol on the left.
   leftsymbolamountp :: (Decimal -> Decimal) -> JournalParser m Amount
   leftsymbolamountp sign = label "amount" $ do
-    c <- lift commoditysymbolp
+    c <- shareText =<< lift commoditysymbolp
     mdecmarkStyle <- getDecimalMarkStyle
     mcommodityStyle <- getAmountStyle c
     -- XXX amounts of this commodity in periodic transaction rules and auto posting rules ? #1461
@@ -849,11 +1163,11 @@ simpleamountp mult =
     sign2 <- lift $ signp
     offBeforeNum <- getOffset
     ambiguousRawNum <- lift rawnumberp
-    mExponent <- lift $ optional $ try exponentp
+    mExponent <- lift optionalexponentp
     offAfterNum <- getOffset
     let numRegion = (offBeforeNum, offAfterNum)
-    (q,prec,mdec,mgrps) <- lift $ interpretNumber numRegion suggestedStyle ambiguousRawNum mExponent
-    let s = amountstyle{ascommodityside=L, ascommodityspaced=commodityspaced, asprecision=prec, asdecimalmark=mdec, asdigitgroups=mgrps}
+    (q,prec,mdec,mgrps) <- interpretNumber numRegion suggestedStyle ambiguousRawNum mExponent
+    s <- shareAmountStyle amountstyle{ascommodityside=L, ascommodityspaced=commodityspaced, asprecision=prec, asdecimalmark=mdec, asdigitgroups=mgrps}
     return nullamt{acommodity=c, aquantity=sign (sign2 q), astyle=s, acost=Nothing}
 
   -- An amount with commodity symbol on the right or no commodity symbol.
@@ -863,19 +1177,25 @@ simpleamountp mult =
   rightornosymbolamountp sign = label "amount" $ do
     offBeforeNum <- getOffset
     ambiguousRawNum <- lift rawnumberp
-    mExponent <- lift $ optional $ try exponentp
+    mExponent <- lift optionalexponentp
     offAfterNum <- getOffset
     let numRegion = (offBeforeNum, offAfterNum)
-    mSpaceAndCommodity <- lift $ optional $ try $ (,) <$> skipNonNewlineSpaces' <*> commoditysymbolp
+    -- A commodity symbol may follow the number, possibly after spaces; check cheaply first.
+    (_, mnext) <- lift peekAfterSpaces
+    mSpaceAndCommodity <- lift $
+      if maybe False startsCommoditySymbol mnext
+      then optional $ try $ (,) <$> skipNonNewlineSpaces' <*> commoditysymbolp
+      else pure Nothing
     case mSpaceAndCommodity of
       -- right symbol amount
-      Just (commodityspaced, c) -> do
+      Just (commodityspaced, c0) -> do
+        c <- shareText c0
         mdecmarkStyle <- getDecimalMarkStyle
         mcommodityStyle <- getAmountStyle c
         -- XXX amounts of this commodity in periodic transaction rules and auto posting rules ? #1461
         let msuggestedStyle = mdecmarkStyle <|> mcommodityStyle
-        (q,prec,mdec,mgrps) <- lift $ interpretNumber numRegion msuggestedStyle ambiguousRawNum mExponent
-        let s = amountstyle{ascommodityside=R, ascommodityspaced=commodityspaced, asprecision=prec, asdecimalmark=mdec, asdigitgroups=mgrps}
+        (q,prec,mdec,mgrps) <- interpretNumber numRegion msuggestedStyle ambiguousRawNum mExponent
+        s <- shareAmountStyle amountstyle{ascommodityside=R, ascommodityspaced=commodityspaced, asprecision=prec, asdecimalmark=mdec, asdigitgroups=mgrps}
         return nullamt{acommodity=c, aquantity=sign q, astyle=s, acost=Nothing}
       -- no symbol amount
       Nothing -> do
@@ -886,29 +1206,32 @@ simpleamountp mult =
         mdefaultStyle   <- getDefaultAmountStyle -- a D default commodity directive
         -- XXX no-symbol amounts in periodic transaction rules and auto posting rules ? #1461
         let msuggestedStyle = mdecmarkStyle <|> mcommodityStyle <|> mdefaultStyle
-        (q,prec,mdec,mgrps) <- lift $ interpretNumber numRegion msuggestedStyle ambiguousRawNum mExponent
+        (q,prec,mdec,mgrps) <- interpretNumber numRegion msuggestedStyle ambiguousRawNum mExponent
         -- if a default commodity has been set, apply it and its style to this amount
         -- (unless it's a multiplier in an automated posting)
         defcs <- getDefaultCommodityAndStyle
-        let (c,s) = case (mult, defcs) of
-              (False, Just (defc,defs)) -> (defc, defs{asprecision=max (asprecision defs) prec})
+        let (c,s) = case defcs of
+              Just (defc,defs) | kind /= MultiplierAmount -> (defc, defs{asprecision=max (asprecision defs) prec})
               _ -> ("", amountstyle{asprecision=prec, asdecimalmark=mdec, asdigitgroups=mgrps})
-        return nullamt{acommodity=c, aquantity=sign q, astyle=s, acost=Nothing}
+        s' <- shareAmountStyle s
+        return nullamt{acommodity=c, aquantity=sign q, astyle=s', acost=Nothing}
 
   -- For reducing code duplication. Doesn't parse anything. Has the type
-  -- of a parser only in order to throw parse errors (for convenience).
+  -- of a parser only in order to read the parse state and throw parse errors (for convenience).
   interpretNumber
     :: (Int, Int) -- offsets
     -> Maybe AmountStyle
     -> Either AmbiguousNumber RawNumber
     -> Maybe Integer
-    -> TextParser m (Quantity, AmountPrecision, Maybe Char, Maybe DigitGroupStyle)
-  interpretNumber posRegion msuggestedStyle ambiguousNum mExp =
-    let rawNum = either (disambiguateNumber msuggestedStyle) id ambiguousNum
-    in  case fromRawNumber rawNum mExp of
-          Left errMsg -> customFailure $
-                           uncurry parseErrorAtRegion posRegion errMsg
-          Right (q,p,d,g) -> pure (q, Precision p, d, g)
+    -> JournalParser m (Quantity, AmountPrecision, Maybe Char, Maybe DigitGroupStyle)
+  interpretNumber posRegion msuggestedStyle ambiguousNum mExp = do
+    -- The decimal mark declared by a decimal-mark directive or CSV rule, which all numbers must use,
+    -- except those declaring a display style.
+    mrequiredmark <- if kind == StyleAmount then pure Nothing else jparsedecimalmark <$> get
+    case interpretRawNumber mrequiredmark msuggestedStyle ambiguousNum mExp of
+      Left errMsg -> customFailure $
+                       uncurry parseErrorAtRegion posRegion errMsg
+      Right (q,p,d,g) -> pure (q, Precision p, d, g)
 
 -- | Try to parse a single-commodity amount from a string
 parseamount :: String -> Either HledgerParseErrors Amount
@@ -932,11 +1255,19 @@ parsemixedamount' = mixedAmount . parseamount'
 -- | Parse a minus or plus sign followed by zero or more spaces,
 -- or nothing, returning a function that negates or does nothing.
 signp :: Num a => TextParser m (a -> a)
-signp = ((char '-' $> negate <|> char '+' $> id) <* skipNonNewlineSpaces) <|> pure id
+signp = do
+  -- check the next character first: most amounts have no sign
+  mc <- peekChar
+  case mc of
+    Just '-' -> negate <$ (char '-' *> skipNonNewlineSpaces)
+    Just '+' -> id     <$ (char '+' *> skipNonNewlineSpaces)
+    _        -> pure id
 
 commoditysymbolp :: TextParser m CommoditySymbol
-commoditysymbolp =
-  quotedcommoditysymbolp <|> simplecommoditysymbolp <?> "commodity symbol"
+commoditysymbolp = (do
+  mc <- peekChar
+  if mc == Just '"' then quotedcommoditysymbolp else simplecommoditysymbolp
+  ) <?> "commodity symbol"
 
 quotedcommoditysymbolp :: TextParser m CommoditySymbol
 quotedcommoditysymbolp =
@@ -953,13 +1284,16 @@ costp baseAmt =
   -- dbg "costp" $
   label "transaction price" $ do
   -- https://www.ledger-cli.org/3.0/doc/ledger3.html#Virtual-posting-costs
-  parenthesised <- option False $ char '(' >> pure True
-  char '@'
-  totalCost <- char '@' $> True <|> pure False
+  -- (optional parts are checked for cheaply before parsing, as usual)
+  -- ( might begin something else, like a valuation expression or lot note, so backtrack if no @ follows
+  parenthesised <- (== Just '(') <$> lift peekChar
+  if parenthesised then void $ try $ string "(@" else void $ char '@'
+  totalCost <- (== Just '@') <$> lift peekChar
+  when totalCost $ void $ char '@'
   when parenthesised $ void $ char ')'
 
   lift skipNonNewlineSpaces
-  priceAmount <- simpleamountp False -- <?> "unpriced amount (specifying a price)"
+  priceAmount <- simpleamountp OrdinaryAmount -- <?> "unpriced amount (specifying a price)"
 
   let amtsign' = signum $ aquantity baseAmt
       amtsign  = if amtsign' == 0 then 1 else amtsign'
@@ -980,10 +1314,12 @@ valuationexprp =
 
 balanceassertionp :: JournalParser m BalanceAssertion
 balanceassertionp = do
-  sourcepos <- getSourcePos
+  sourcepos <- getSourcePos'
   char '='
-  istotal <- fmap isJust $ optional $ try $ char '='
-  isinclusive <- fmap isJust $ optional $ try $ char '*'
+  istotal <- (== Just '=') <$> lift peekChar
+  when istotal $ void $ char '='
+  isinclusive <- (== Just '*') <$> lift peekChar
+  when isinclusive $ void $ char '*'
   lift skipNonNewlineSpaces
   -- this amount can have a cost, but not a cost basis.
   -- balance assertions ignore it, but balance assignments will use it
@@ -995,45 +1331,109 @@ balanceassertionp = do
     , baposition  = sourcepos
     }
 
--- Parse a Ledger-style lot cost,
--- {UNITCOST} or {{TOTALCOST}} or {=FIXEDUNITCOST} or {{=FIXEDTOTALCOST}},
--- and discard it.
-lotcostp :: JournalParser m ()
-lotcostp =
+-- Parse lot cost in curly braces.
+-- Accepts either:
+--   Ledger-style:  {UNITCOST} or {{TOTALCOST}} or {=FIXEDUNITCOST} or {{=FIXEDTOTALCOST}} or {}
+--   Consolidated:  {DATE, "LABEL", COST} or {{DATE, "LABEL", TOTALCOST}}
+--                  with all fields optional and in DLC order
+-- If total cost syntax {{}} is used, the parsed cost is converted to unit cost
+-- by dividing by the posting quantity (with full Decimal precision, so that
+-- `{{T}}` and `@@T` yield equal per-unit Decimals — important for the strict
+-- comparison in `journalCheckAcquireBasis`).
+lotcostp :: Quantity -> JournalParser m CostBasis
+lotcostp postingqty =
   -- dbg "lotcostp" $
-  label "ledger-style lot cost" $ do
+  label "lot cost" $ do
   char '{'
   doublebrace <- option False $ char '{' >> pure True
   lift skipNonNewlineSpaces
-  _fixed <- fmap isJust $ optional $ char '='
-  lift skipNonNewlineSpaces
-  _a <- simpleamountp False
-  lift skipNonNewlineSpaces
+  -- Peek to decide: consolidated vs ledger
+  -- consolidated starts with date (digit), label ("), or empty }
+  -- ledger starts with =, amount, or empty }
+  c <- lookAhead anySingle
+  cb <- case c of
+    '}' -> pure (CostBasis Nothing Nothing Nothing)
+    '=' -> ledgerCost
+    '"' -> consolidatedNoDate
+    _   -> tryDateOrLedger
   char '}'
-  when (doublebrace) $ void $ char '}'
+  when doublebrace $ void $ char '}'
+  pure $ if doublebrace then mapCbCost convertToUnitCost cb else cb
+  where
+    -- Apply a function to the cost amount, if any, of a CostBasis.
+    mapCbCost f (CostBasis md ml mc) = CostBasis md ml (fmap f mc)
 
--- Parse a Ledger-style [LOTDATE], and discard it.
-lotdatep :: JournalParser m ()
+    -- The inner parsers below leave the closing }(}) for the outer parser.
+
+    tryDateOrLedger = do
+      -- Does input look like a date (YYYY-D...) ? If so, commit to consolidated
+      -- date parsing (no try), so invalid dates give clear errors instead of
+      -- falling through to the amount parser with a confusing message.
+      looksLikeDate <- option False $ lookAhead $ try $
+        count 4 digitChar >> char '-' >> digitChar >> pure True
+      if looksLikeDate
+        then do
+          d <- datep
+          lift skipNonNewlineSpaces
+          void $ lookAhead (oneOf [',','}'])
+          consolidatedAfterDate d
+        else ledgerCost  -- not a date, parse as ledger amount
+
+    consolidatedAfterDate d = do
+      -- after date: optional ", LABEL", optional ", COST"
+      mlabel <- optional $ try $ char ',' >> lift skipNonNewlineSpaces >> quotedLabelp <* lift skipNonNewlineSpaces
+      mcost  <- optional $ char ',' >> lift skipNonNewlineSpaces >> simpleamountp OrdinaryAmount <* lift skipNonNewlineSpaces
+      pure $ CostBasis (Just d) mlabel mcost
+
+    consolidatedNoDate = do
+      -- parse "LABEL", then optional ", COST"
+      mlabel <- Just <$> quotedLabelp
+      lift skipNonNewlineSpaces
+      mcost <- optional $ char ',' >> lift skipNonNewlineSpaces >> simpleamountp OrdinaryAmount <* lift skipNonNewlineSpaces
+      pure $ CostBasis Nothing mlabel mcost
+
+    quotedLabelp = do
+      char '"'
+      lbl <- T.pack <$> many (noneOf ['"', '\n'])
+      char '"'
+      pure lbl
+
+    ledgerCost = do
+      _fixed <- fmap isJust $ optional $ char '='
+      lift skipNonNewlineSpaces
+      ma <- optional $ simpleamountp OrdinaryAmount
+      lift skipNonNewlineSpaces
+      pure $ CostBasis Nothing Nothing ma
+
+    -- Divide with full Decimal precision (so `{{T}}` and `@@T` give equal
+    -- per-unit Decimals for the strict basis check), and widen display
+    -- precision to show the quotient's digits.
+    convertToUnitCost = divideAmountAndUpdatePrecision postingqty
+
+-- Parse a Ledger-style [LOTDATE].
+lotdatep :: JournalParser m Day
 lotdatep =
   -- dbg "lotdatep" $
   label "ledger-style lot date" $ do
   char '['
   lift skipNonNewlineSpaces
-  _d <- datep
+  d <- datep
   lift skipNonNewlineSpaces
   char ']'
-  return ()
+  return d
 
--- Parse a Ledger-style (LOT NOTE), and discard it.
-lotnotep :: JournalParser m ()
+-- Parse a Ledger-style (LOT NOTE).
+-- Any double-quote characters inside the parentheses are stripped,
+-- because they would disrupt round-tripping of hledger's label syntax.
+lotnotep :: JournalParser m Text
 lotnotep =
   -- dbg "lotnotep" $
   label "ledger-style lot note" $ do
   char '('
   lift skipNonNewlineSpaces
-  _note <- stripEnd . T.pack <$> (many $ noneOf [')','\n'])  -- XXX other line endings ?
+  note <- stripEnd . T.pack <$> (many $ noneOf [')','\n'])  -- XXX other line endings ?
   char ')'
-  return ()
+  return $ T.filter (/= '"') note
 
 -- | Parse a string representation of a number for its value and display
 -- attributes.
@@ -1053,16 +1453,54 @@ numberp suggestedStyle = label "number" $ do
     -- interspersed with periods, commas, or both
     -- dbgparse 0 "numberp"
     sign <- signp
-    rawNum <- either (disambiguateNumber suggestedStyle) id <$> rawnumberp
-    mExp <- optional $ try $ exponentp
+    ambiguousNum <- rawnumberp
+    mExp <- optionalexponentp
     dbg7 "numberp suggestedStyle" suggestedStyle `seq` return ()
     case dbg7 "numberp quantity,precision,mdecimalpoint,mgrps"
-           $ fromRawNumber rawNum mExp of
+           $ interpretRawNumber Nothing suggestedStyle ambiguousNum mExp of
       Left errMsg -> Fail.fail errMsg
       Right (q, p, d, g) -> pure (sign q, p, d, g)
 
 exponentp :: TextParser m Integer
 exponentp = char' 'e' *> signp <*> decimal <?> "exponent"
+
+-- | Parse an exponent if one follows, checking the next character first,
+-- since most numbers have none.
+optionalexponentp :: TextParser m (Maybe Integer)
+optionalexponentp = do
+  mc <- peekChar
+  if mc == Just 'e' || mc == Just 'E' then optional (try exponentp) else pure Nothing
+
+-- | Interpret a possibly-ambiguous raw number as a decimal number.
+-- The suggested style (from a decimal-mark or commodity directive, eg), if any,
+-- is used to disambiguate it.
+-- If a required decimal mark is given (from a decimal-mark directive, eg),
+-- the number must use only that decimal mark.
+interpretRawNumber
+  :: Maybe Char
+  -> Maybe AmountStyle
+  -> Either AmbiguousNumber RawNumber
+  -> Maybe Integer
+  -> Either String (Quantity, Word8, Maybe Char, Maybe DigitGroupStyle)
+interpretRawNumber mrequiredmark msuggestedStyle ambiguousNum mExp = do
+  raw <- checkDecimalMark $ either (disambiguateNumber msuggestedStyle) id ambiguousNum
+  fromRawNumber raw mExp
+  where
+    checkDecimalMark raw = case mrequiredmark of
+      Just d
+        | Just m <- rawDecimalMark raw, m /= d ->
+          declared d $ "but this number's decimal mark is " ++ show m
+        -- rawnumberp decides that a mark appearing more than once is a digit group mark.
+        -- If that's the declared decimal mark, the number is probably mistyped (eg 1.2.34);
+        -- don't silently read it as a larger number.
+        | Just d == rawDigitGroupMark raw ->
+          declared d "so it can appear only once"
+      _ -> Right raw
+    declared d msg = Left $ "invalid number: the decimal mark is declared to be " ++ show d ++ ", " ++ msg
+    rawDecimalMark (NoSeparators _ mdec)     = fst <$> mdec
+    rawDecimalMark (WithSeparators _ _ mdec) = fst <$> mdec
+    rawDigitGroupMark (WithSeparators sep _ _) = Just sep
+    rawDigitGroupMark NoSeparators{}           = Nothing
 
 -- | Interpret a raw number as a decimal number.
 --
@@ -1080,8 +1518,14 @@ fromRawNumber (WithSeparators{}) (Just _) =
     Left "invalid number: digit separators and exponents may not be used together"
 fromRawNumber raw mExp = do
     (quantity, precision) <- toQuantity (fromMaybe 0 mExp) (digitGroup raw) (decimalGroup raw)
-    return (quantity, precision, mDecPt raw, digitGroupStyle raw)
+    -- force the Maybes' contents, so that parsed amount styles don't retain the raw number
+    let !mdec = forceMaybe $ mDecPt raw
+        !mgrps = forceMaybe $ digitGroupStyle raw
+    return (quantity, precision, mdec, mgrps)
   where
+    forceMaybe m = case m of
+      Just x  -> x `seq` m
+      Nothing -> m
     toQuantity :: Integer -> DigitGrp -> DigitGrp -> Either String (Quantity, Word8)
     toQuantity e preDecimalGrp postDecimalGrp
       | precision < 0   = Right (Decimal 0 (digitGrpNum * 10^(-precision)), 0)
@@ -1141,22 +1585,29 @@ disambiguateNumber msuggestedStyle (AmbiguousNumber grp1 sep grp2) =
 -- Left (AmbiguousNumber "1" ',' "000")
 -- >>> parseTest rawnumberp "1 000"
 -- Right (WithSeparators ' ' ["1","000"] Nothing)
+-- >>> parseTest rawnumberp "1'000"
+-- Right (WithSeparators '\'' ["1","000"] Nothing)
+-- >>> parseTest rawnumberp "1_000"
+-- Right (WithSeparators '_' ["1","000"] Nothing)
 --
 rawnumberp :: TextParser m (Either AmbiguousNumber RawNumber)
 rawnumberp = label "number" $ do
-  rawNumber <- fmap Right leadingDecimalPt <|> leadingDigits
+  -- (The next characters are inspected directly in a few places below,
+  -- avoiding failed parse attempts on this hot path.)
+  mc <- peekChar
+  rawNumber <- if maybe False isDecimalMark mc then Right <$> leadingDecimalPt else leadingDigits
 
   -- Guard against mistyped numbers
-  mExtraDecimalSep <- optional $ lookAhead $ satisfy isDecimalMark
-  when (isJust mExtraDecimalSep) $
+  mExtraDecimalSep <- peekChar
+  when (maybe False isDecimalMark mExtraDecimalSep) $
     Fail.fail "invalid number (invalid use of separator)"
 
-  mExtraFragment <- optional $ lookAhead $ try $
-    char ' ' *> getOffset <* digitChar
-  case mExtraFragment of
-    Just off -> customFailure $
-                  parseErrorAt off "invalid number (excessive trailing digits)"
-    Nothing -> pure ()
+  next2 <- peekChars2
+  case next2 of
+    (Just ' ', Just d) | isDigit d -> do
+      off <- getOffset
+      customFailure $ parseErrorAt (off + 1) "invalid number (excessive trailing digits)"
+    _ -> pure ()
 
   return $ dbg7 "rawnumberp" rawNumber
   where
@@ -1170,8 +1621,16 @@ rawnumberp = label "number" $ do
   leadingDigits :: TextParser m (Either AmbiguousNumber RawNumber)
   leadingDigits = do
     grp1 <- digitgroupp
-    withSeparators grp1 <|> fmap Right (trailingDecimalPt grp1)
-                        <|> pure (Right $ NoSeparators grp1 Nothing)
+    -- More digit groups (after a separator) or a decimal mark may follow; most often neither does.
+    next2 <- peekChars2
+    let more = case next2 of
+          (Just c1, _)       | isDecimalMark c1 -> True
+          (Just c1, Just c2) | isDigitSeparatorChar c1 && isDigit c2 -> True
+          _ -> False
+    if more
+    then withSeparators grp1 <|> fmap Right (trailingDecimalPt grp1)
+                             <|> pure (Right $ NoSeparators grp1 Nothing)
+    else pure (Right $ NoSeparators grp1 Nothing)
 
   withSeparators :: DigitGrp -> TextParser m (Either AmbiguousNumber RawNumber)
   withSeparators grp1 = do
@@ -1206,7 +1665,7 @@ rawnumberp = label "number" $ do
     pure $ NoSeparators grp1 (Just (decPt, mempty))
 
 isDigitSeparatorChar :: Char -> Bool
-isDigitSeparatorChar c = isDecimalMark c || isDigitSeparatorSpaceChar c
+isDigitSeparatorChar c = c == '.' || c == ',' || c == '\'' || c == '_' || isDigitSeparatorSpaceChar c
 
 -- | Kinds of unicode space character we accept as digit group marks.
 -- See also https://en.wikipedia.org/wiki/Decimal_separator#Digit_grouping .
@@ -1286,7 +1745,8 @@ emptyorcommentlinep :: TextParser m ()
 emptyorcommentlinep = do
   dp "emptyorcommentlinep"
   skipNonNewlineSpaces
-  skiplinecommentp <|> void newline
+  mc <- peekChar
+  if maybe False isLineCommentStart mc then skiplinecommentp else void newline
   where
     skiplinecommentp :: TextParser m ()
     skiplinecommentp = do
@@ -1348,10 +1808,10 @@ followingcommentp = fst <$> followingcommentpWith (void $ takeWhileP Nothing (/=
 -- using the provided line parser to parse each line.
 -- This returns the comment text, and the combined results from the line parser.
 --
--- Following comments begin with a semicolon and extend to the end of the line.
--- They can optionally be continued on the next lines,
--- where each next line begins with an indent and another semicolon.
--- (This parser expects to see these semicolons and indents.)
+-- Following comments are a 1-or-more-lines comment,
+-- beginning with a semicolon possibly preceded by whitespace on the current line,
+-- or with an indented semicolon on the next line.
+-- Additional lines also must begin with an indented semicolon.
 --
 -- Like Ledger, we sometimes allow data to be embedded in comments.
 -- account directive comments and transaction comments can contain tags,
@@ -1363,12 +1823,13 @@ followingcommentp = fst <$> followingcommentpWith (void $ takeWhileP Nothing (/=
 followingcommentpWith :: (Monoid a, Show a) => TextParser m a -> TextParser m (Text, a)
 followingcommentpWith contentp = do
   skipNonNewlineSpaces
-  -- there can be 0 or 1 sameLine
-  sameLine <- try headerp *> ((:[]) <$> match' contentp) <|> pure []
+  -- there can be 0 or 1 sameLine (checking for its semicolon cheaply, as usually there is none)
+  mc <- peekChar
+  sameLine <- if mc == Just ';' then (:[]) <$> (headerp *> match' contentp) else pure []
   _ <- eolof
   -- there can be 0 or more nextLines
-  nextLines <- many $
-    try (skipNonNewlineSpaces1 *> headerp) *> match' contentp <* eolof
+  nextLines <- manyWhile nextlineiscomment $
+    skipNonNewlineSpaces1 *> headerp *> match' contentp <* eolof
   let
     -- if there's just a next-line comment, insert an empty same-line comment
     -- so the next-line comment doesn't get rendered as a same-line comment.
@@ -1381,6 +1842,10 @@ followingcommentpWith contentp = do
 
   where
     headerp = char ';' *> skipNonNewlineSpaces
+    -- does the next line begin with an indented semicolon ?
+    nextlineiscomment = do
+      (spaced, mnext) <- peekAfterSpaces
+      pure $ spaced && mnext == Just ';'
 
 {-# INLINABLE followingcommentpWith #-}
 
@@ -1415,10 +1880,11 @@ commentlinetagsp = do
 
 -- | Parse a transaction comment and extract its tags.
 --
--- The first line of a transaction may be followed by comments, which
--- begin with semicolons and extend to the end of the line. Transaction
--- comments may span multiple lines, but comment lines below the
--- transaction must be preceded by leading whitespace.
+-- The first line of a transaction may be followed a 1-or-more-lines comment,
+-- beginning with a semicolon possibly preceded by whitespace on the current line,
+-- or with an indented semicolon on the next line. Additional lines also must
+-- begin with an indented semicolon.
+-- See also followingcommentpWith.
 --
 -- 2000/1/1 ; a transaction comment starting on the same line ...
 --   ; extending to the next line
@@ -1608,9 +2074,14 @@ bracketeddatetagsp mYear1 = do
 {-# INLINABLE bracketeddatetagsp #-}
 
 -- | Get the account name aliases from options, if any.
+-- A bad alias argument causes a program exit with a parse error message.
 aliasesFromOpts :: InputOpts -> [AccountAlias]
-aliasesFromOpts = map (\a -> fromparse $ runParser accountaliasp ("--alias "++quoteIfNeeded a) $ T.pack a)
-                  . aliases_
+aliasesFromOpts = map parseAliasOpt . aliases_
+  where
+    parseAliasOpt a =
+      case runParser accountaliasp "--alias" (T.pack a) of
+        Right alias -> alias
+        Left e      -> error' $ customErrorBundlePretty e  -- PARTIAL:
 
 accountaliasp :: TextParser m AccountAlias
 accountaliasp = regexaliasp <|> basicaliasp
@@ -1686,6 +2157,8 @@ tests_Common = testGroup "Common" [
      assertParseEq p "1"          (1, 0, Nothing, Nothing)
      assertParseEq p "1.1"        (1.1, 1, Just '.', Nothing)
      assertParseEq p "1,000.1"    (1000.1, 1, Just '.', Just $ DigitGroups ',' [3])
+     assertParseEq p "1_000.1"    (1000.1, 1, Just '.', Just $ DigitGroups '_' [3])
+     assertParseEq p "1'000.1"    (1000.1, 1, Just '.', Just $ DigitGroups '\'' [3])
      assertParseEq p "1.00.000,1" (100000.1, 1, Just ',', Just $ DigitGroups '.' [3,2])
      assertParseEq p "1,000,000"  (1000000, 0, Nothing, Just $ DigitGroups ',' [3,3])  -- could be simplified to [3]
      assertParseEq p "1."         (1, 0, Just '.', Nothing)
@@ -1702,6 +2175,27 @@ tests_Common = testGroup "Common" [
      assertParseError p ",1." ""
      assertParseEq    p "1.555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555" (1.555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555, 255, Just '.', Nothing)
      assertParseError p "1.5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555" ""
+
+  ,testCase "numberp with a suggested decimal mark" $ do
+     let p c = lift (numberp $ Just amountstyle{asdecimalmark=Just c}) :: JournalParser IO (Quantity, Word8, Maybe Char, Maybe DigitGroupStyle)
+     assertParseEq    (p '.') "1.000"        (1, 3, Just '.', Nothing)
+     assertParseEq    (p ',') "1.000"        (1000, 0, Nothing, Just $ DigitGroups '.' [3])
+     assertParseEq    (p ',') "1.000.000"    (1000000, 0, Nothing, Just $ DigitGroups '.' [3,3])
+     assertParseEq    (p '.') "1,000,000"    (1000000, 0, Nothing, Just $ DigitGroups ',' [3,3])
+     assertParseEq    (p '.') "1 000 000"    (1000000, 0, Nothing, Just $ DigitGroups ' ' [3,3])
+     -- the suggested decimal mark is used only for disambiguation, not enforced
+     assertParseEq    (p '.') "1.2.34"       (1234, 0, Nothing, Just $ DigitGroups '.' [2,1,1])
+     assertParseEq    (p ',') "1,000,000.00" (1000000, 2, Just '.', Just $ DigitGroups ',' [3,3])
+
+  ,testCase "amountp with a decimal-mark directive" $ do
+     let p kind = modify' (\j -> j{jparsedecimalmark=Just ','}) >> amountp' kind
+     assertParse      (p OrdinaryAmount) "1.000,5 EUR"
+     assertParseError (p OrdinaryAmount) "1,000.5 EUR"       "number's decimal mark is '.'"
+     assertParseError (p OrdinaryAmount) ".5 EUR"            "number's decimal mark is '.'"
+     assertParseError (p OrdinaryAmount) "1 X @ 1,000.5 EUR" "number's decimal mark is '.'"
+     assertParseError (p OrdinaryAmount) "1,000,000 EUR"     "so it can appear only once"
+     -- directives declaring a display style may use a different decimal mark
+     assertParse      (p StyleAmount)    "1,000.5 EUR"
 
   ,testGroup "spaceandamountormissingp" [
      testCase "space and amount" $ assertParseEq spaceandamountormissingp " $47.18" (mixedAmount $ usd 47.18)

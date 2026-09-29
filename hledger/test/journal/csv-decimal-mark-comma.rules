@@ -1,0 +1,4 @@
+fields date, amount
+account1 a
+currency EUR
+decimal-mark ,

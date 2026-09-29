@@ -75,20 +75,19 @@ $  printf 'D A1000.00\n' >t$$.j; hledger -f t$$.j add >/dev/null; cat t$$.j; rm 
 > /a  +1000/
 >2 //
 
-# ** 7. existing commodity with greater precision
+# ** 7. adding with below-standard precision, saves the entered precision
 <
 
 
-a
-A1000.0
-b
 
-.
-$  printf '2010/1/1\n a  A1000.00\n b\n' >t$$.j; hledger -f t$$.j add >/dev/null; cat t$$.j; rm -f t$$.j
-> /a  +A1000\.0/
+A2.0
+
+
+$  printf '2010-01-01\n  (a)  A1.00\n' >t$$.j; hledger -f t$$.j add >/dev/null; cat t$$.j; rm -f t$$.j
+> /\(a\)  +A2\.0/
 >2 //
 
-# ** 8. existing commodity with less precision
+# ** 8. adding with above-standard precision, saves the entered precision
 <
 
 
@@ -265,9 +264,55 @@ $  rm -f nosuch.$$.journal; hledger -f nosuch.$$.journal add; rm -f nosuch.$$.jo
 > //
 >2 /Balance assertion failed in a/
 
+# ** 19. add's balance assertion checking is aware of how things are ordered in the journal [#2478].
+# So a  1 is accepted here without raising a balance assertion error.
+<
 
-## 18. shouldn't add decimals if there aren't any
-## printf '\n\na\n1\nb\n' | hledger -f /dev/null add
+
+(a)
+1
+$  cp add-2478.j add-2478.$$.j; hledger -f add-2478.$$.j add >/dev/null 2>&1; rm -f add-2478.$$.j
+
+# ** 20. balance assignments can be added, and are aware of the whole journal.
+<
+
+
+(a)
+= 5
+
+$  printf '2025-01-01\n  (a)  1\n' >t$$.j; hledger -f t$$.j add 2>&1; rm -f t$$.j
+> /^ +\(a\) +4 = 5/
+
+# ** 21. add supports --layout, controlling the layout of appended transactions.
+<
+2026-01-01
+
+a
+100
+b
+
+.
+
+$  printf '' >t$$.j; hledger -f t$$.j add 2026-01-01 --layout=hledger1 >/dev/null 2>&1; cat t$$.j; rm -f t$$.j
+
+2026-01-01
+    a             100
+    b            -100
+>=
+
+# ** 22. Default amounts offered for completion have an unambiguous decimal mark,
+# so that they will be reparsed correctly. Eg if the default amount contains digit group marks,
+# a decimal mark is always shown. [#2645]
+<
+
+Gehalt
+
+$  printf '2026-07-02 Gehalt\n    assets:Sparkasse:Giro  -1.000,\n    expenses:HinzKunz  1.000,\n' >t$$.j; hledger -f t$$.j add; rm -f t$$.j
+> /Amount  1 \[-1\.000,\]/
+>2 //
+
+# ** . shouldn't add decimals if there aren't any
+# printf '\n\na\n1\nb\n' | hledger -f /dev/null add
 # <
 #
 #

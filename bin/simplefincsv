@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+# simplefincsv 1.1 - (c) Simon Michael 2025
+
+__version__ = "1.1"
+__author__  = "Simon Michael"
+versionmsg = f"%prog {__version__}, by {__author__} 2025; part of the hledger project."
+usagemsg   = """%prog [options] [JSONFILE|-] [REGEX]
+
+Read SimpleFIN /accounts JSON from JSONFILE or stdin, and for each account with transactions,
+or just the ones where "ORGNAME ACCTNAME ACCTID" is case-insensitively infix-matched
+by the given regular expression, print CSV records to stdout:
+
+1. an account info record:  "account",BALANCE,ORGNAME,ACCTNAME,CURRENCY,ACCTID
+2. a field headings record: "date","amount","payee","description","memo","id"
+3. the transaction records, in date order.
+
+Excess whitespace (more than single spaces) will be trimmed.
+Also, if the JSON includes error messages, they will be displayed on stderr,
+and the exit code will be non-zero.
+
+Requirements:
+ python 3
+ a SimpleFIN account with financial institution(s) and app connection configured.
+
+Examples:
+
+Download the JSON for one account and print as CSV:
+
+$ simplefinjson ACT-00b02b825-7cf-495f-8f49-b097d310dd4 | simplefincsv
+
+Download the JSON for all accounts, then print the CSV for one of them:
+
+$ simplefinjson >sf.json
+$ simplefincsv sf.json 'chase.*card'
+
+"""
+
+from pprint import pprint as pp
+import csv
+import datetime
+import decimal
+import json
+import optparse
+import re
+import sys
+
+def parse_options():
+    parser = optparse.OptionParser(usage=usagemsg, version=versionmsg)
+    opts, args = parser.parse_args()
+    if len(args) > 2:
+        parser.print_help()
+        sys.exit()
+    return opts, args
+
+# Limit spaces to at most a single space.
+def clean(txt):
+    return re.sub(r' +', ' ', txt)
+    #return re.sub(r'  +', '  ', txt)
+
+def main():
+    opts, args = parse_options()
+    infile = args[0] if len(args) > 0 else '-'
+    r = re.compile(args[1], re.I) if len(args) > 1 else None
+    with open(infile,'r') if infile != '-' else sys.stdin as inp:
+        with sys.stdout as out:
+            j = json.load(inp)
+            w = csv.writer(out, quoting=csv.QUOTE_ALL)
+
+            for a in j['accounts']:
+                oname = clean(a['org']['name'])
+                aname = clean(a['name'])
+                aid = a['id']
+                if r and not r.search(f"{oname} {aname} {aid}"): continue
+
+                ts = a['transactions']
+                if ts:
+                    w.writerow([
+                        "account",
+                        a['balance'],
+                        oname,
+                        aname,
+                        a['currency'],
+                        aid,
+                        ])
+                    w.writerow([
+                        "date",
+                        "amount",
+                        "payee",
+                        "description",
+                        "memo",
+                        "id",
+                        ])
+                for t in reversed(a['transactions']):
+                  dt = datetime.datetime.fromtimestamp(t['posted'])
+                  # dtl = dt.astimezone()
+                  w.writerow([
+                      dt.strftime('%Y-%m-%d'), # %H:%M:%S %Z'),
+                      t['amount'],
+                      clean(t['payee']),
+                      clean(t['description']),
+                      clean(t['memo']),
+                      t['id'],
+                      ])
+  
+            errors = j['errors']
+            if errors:
+                for e in errors: print(f"simplefincsv: {e}", file=sys.stderr)
+                sys.exit(1)
+
+if __name__ == "__main__": main()

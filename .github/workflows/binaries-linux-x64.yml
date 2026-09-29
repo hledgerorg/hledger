@@ -9,40 +9,64 @@ on:
   workflow_dispatch:
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+      # arch:  x64
+      # image: https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md
     container: alpine:latest
+
+    env:
+      ghcid: 9.12.2
+
     steps:
 
     - name: Check out
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       # have to fetch everything for git describe for --version
       with:
         fetch-depth: 0  
 
     - name: Install general tools with system package manager
       run: |
-        apk --no-cache add gmp-dev gmp-static libffi-dev zlib-dev zlib-static ncurses-dev ncurses-static binutils-gold curl gcc g++ git make xz tar perl
+        apk --no-cache add gmp-dev gmp-static libffi-dev zlib-dev zlib-static ncurses-dev ncurses-static binutils-gold curl gcc g++ git make xz tar perl file
 
-    # things to be cached/restored (needs tar)
+    # CACHES
 
     - name: Cache - ~/.ghcup
       id:   ghcup
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.ghcup
-        key: ${{ runner.os }}-ghcup-${{ hashFiles('**.yaml') }}
+        key: ${{ runner.os }}-x64-ghcup-${{ env.ghcid }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-ghcup
+             ${{ runner.os }}-x64-ghcup-${{ env.ghcid }}
 
-    # XXX Warning: Path Validation Error: Path(s) specified in the action for caching do(es) not exist, hence no cache is being saved.
-    - name: Cache - ~/.cabal
-      id:   cabal
-      uses: actions/cache@v4
+    - name: Cache - ~/.cabal/store
+      id:   cabal-store
+      uses: actions/cache@v6
       with:
-        path: ~/.cabal
-        key: ${{ runner.os }}-cabal-${{ hashFiles('**.yaml') }}
+        path: ~/.cabal/store
+        key: ${{ runner.os }}-x64-cabal-store-${{ env.ghcid }}-${{ hashFiles('**.yaml') }}
         restore-keys: |
-             ${{ runner.os }}-cabal
+             ${{ runner.os }}-x64-cabal-store-${{ env.ghcid }}
+
+    - name: Cache - ~/.cabal (excluding store)
+      id:   cabal-config
+      uses: actions/cache@v6
+      with:
+        path: |
+          ~/.cabal
+          !~/.cabal/store
+        key: ${{ runner.os }}-x64-cabal-config-${{ env.ghcid }}-${{ hashFiles('cabal.project*') }}
+        restore-keys: |
+             ${{ runner.os }}-x64-cabal-config-${{ env.ghcid }}
+
+    - name: Cache - dist-newstyle
+      uses: actions/cache@v6
+      with:
+        path: dist-newstyle
+        key: ${{ runner.os }}-x64-dist-newstyle-${{ env.ghcid }}-${{ hashFiles('**/*.cabal', 'cabal.project*') }}
+        restore-keys: |
+             ${{ runner.os }}-x64-dist-newstyle-${{ env.ghcid }}
 
     # actions:
 
@@ -71,6 +95,10 @@ jobs:
       run: |
         cabal update
 
+    - name: Clean any cached binaries from previous versions
+      run: |
+        find dist-newstyle/build/x86_64-linux/ghc-*/hledger*/x/*/build/*/hledger* -type f -executable -delete 2>/dev/null || true
+
     - name: Build with cabal
       run: |
         cabal build --enable-executable-static --ghc-options=-Werror hledger     || (echo "ERROR: building hledger failed"; false)
@@ -80,9 +108,9 @@ jobs:
     - name: Gather binaries
       run: |
         mkdir tmp
-        cp dist-newstyle/build/x86_64-linux/ghc-*/hledger-*/x/hledger/build/hledger/hledger tmp
-        cp dist-newstyle/build/x86_64-linux/ghc-*/hledger-ui-*/x/hledger-ui/build/hledger-ui/hledger-ui tmp
-        cp dist-newstyle/build/x86_64-linux/ghc-*/hledger-web-*/x/hledger-web/build/hledger-web/hledger-web tmp
+        cp $(cabal list-bin hledger) tmp
+        cp $(cabal list-bin hledger-ui) tmp
+        cp $(cabal list-bin hledger-web) tmp
         cp hledger/embeddedfiles/*.1 tmp
         cp hledger/embeddedfiles/*.info tmp
         cp hledger/shell-completion/hledger-completion.bash tmp
@@ -91,12 +119,12 @@ jobs:
         strip tmp/hledger-web
         cd tmp
         tar cvf hledger-linux-x64.tar hledger hledger-ui hledger-web *.1 *.info hledger-completion.bash
-        ldd hledger || true
-        ldd hledger-ui || true
-        ldd hledger-web || true
-        # file hledger
-        # file hledger-ui
-        # file hledger-web
+        file hledger
+        file hledger-ui
+        file hledger-web
+        if ldd hledger     2>&1 | grep -qi "not.*dynamic"; then echo "hledger:     statically linked"; else echo "hledger     dependencies:"; ldd hledger    ; fi
+        if ldd hledger-ui  2>&1 | grep -qi "not.*dynamic"; then echo "hledger-ui:  statically linked"; else echo "hledger-ui  dependencies:"; ldd hledger-ui ; fi
+        if ldd hledger-web 2>&1 | grep -qi "not.*dynamic"; then echo "hledger-web: statically linked"; else echo "hledger-web dependencies:"; ldd hledger-web; fi
         ./hledger --version
         ./hledger-ui --version
         ./hledger-web --version
@@ -106,7 +134,7 @@ jobs:
     # https://github.com/actions/upload-artifact?tab=readme-ov-file#limitations
     # In release workflows, we repack these using the platform's native compression scheme.
     - name: Upload binaries
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: hledger-linux-x64
         path: tmp/hledger-linux-x64.tar

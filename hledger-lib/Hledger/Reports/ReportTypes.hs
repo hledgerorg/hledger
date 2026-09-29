@@ -45,7 +45,7 @@ import GHC.Generics (Generic)
 import Hledger.Data
 import Hledger.Query (Query)
 import Hledger.Reports.ReportOptions (ReportOpts)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.List (intercalate)
 
 type Percentage = Decimal

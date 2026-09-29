@@ -1,5 +1,0 @@
-#!/usr/bin/env sh
-# A hledger-* alias for pricehist to show it in hledger's commands list.
-# https://pypi.org/project/pricehist
-
-pricehist "$@"

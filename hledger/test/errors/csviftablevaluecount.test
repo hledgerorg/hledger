@@ -1,8 +1,8 @@
-$$$ hledger check -f  csviftablevaluecount.csv
->>>2 /Error: .*csviftablevaluecount.csv.rules:4:1:
+$ hledger check -f  csviftablevaluecount.csv
+>2 /hledger: Error: .*csviftablevaluecount.csv.rules:4:1:
   \|
 4 \| one,val1
   \| \^
 line of conditional table should have 2 values, but this one has only 1
 /
->>>= 1
+>= 1

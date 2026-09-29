@@ -24,12 +24,15 @@ module Hledger.Data.AccountName (
   ,accountNameInferTypeExcept
   ,accountNameType
   ,defaultBaseConversionAccount
+  ,defaultGainAccount
   ,assetAccountRegex
   ,cashAccountRegex
   ,liabilityAccountRegex
   ,equityAccountRegex
   ,conversionAccountRegex
   ,revenueAccountRegex
+  ,gainAccountRegex
+  ,unrealisedGainAccountRegex
   ,expenseAccountRegex
   ,acctsep
   ,acctsepchar
@@ -63,20 +66,19 @@ where
 import Control.Applicative ((<|>))
 import Control.Monad (foldM)
 import Data.Foldable (asum, find, toList)
-import qualified Data.List.NonEmpty as NE
-import qualified Data.Map as M
+import Data.List.NonEmpty qualified as NE
+import Data.Map qualified as M
 import Data.Maybe (mapMaybe)
 import Data.MemoUgly (memo)
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Data.Text (Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Tree (Tree(..), unfoldTree)
 import Safe
 import Text.DocLayout (realLength)
 
 import Hledger.Data.Types hiding (asubs)
 import Hledger.Utils
-import Data.List (partition)
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -91,6 +93,10 @@ acctsep = T.pack [acctsepchar]
 -- when no other account of type V/Conversion has been declared.
 defaultBaseConversionAccount = "equity:conversion"
 
+-- The default account name for inferred gain postings,
+-- when no other account of type G/Gain has been declared.
+defaultGainAccount = "revenues:gain"
+
 -- | Regular expressions matching common English top-level account names,
 -- used as a fallback when account types are not declared.
 assetAccountRegex      = toRegexCI' "^assets?(:|$)"
@@ -99,20 +105,31 @@ liabilityAccountRegex  = toRegexCI' "^(debts?|liabilit(y|ies))(:|$)"
 equityAccountRegex     = toRegexCI' "^equity(:|$)"
 conversionAccountRegex = toRegexCI' "^equity:(trade|trades|trading|conversion)(:|$)"
 revenueAccountRegex    = toRegexCI' "^(income|revenue)s?(:|$)"
+gainAccountRegex       = toRegexCI' "^(income|revenue)s?:(capital[- ]?)?(gains?|loss(es)?)(:|$)"
+unrealisedGainAccountRegex = toRegexCI' "^equity:unreali[sz]ed([- ](capital[- ])?gains?)?(:|$)"
 expenseAccountRegex    = toRegexCI' "^expenses?(:|$)"
 
 -- | Try to guess an account's type from its name,
 -- matching common English top-level account names.
+-- (The top-level account name is checked first, cheaply, and only the regular
+-- expressions which could then match are tried. Previously all of them were tried
+-- for every account, a noticeable cost with many accounts.)
 accountNameInferType :: AccountName -> Maybe AccountType
 accountNameInferType a
-  | regexMatchText cashAccountRegex       a = Just Cash
-  | regexMatchText assetAccountRegex      a = Just Asset
-  | regexMatchText liabilityAccountRegex  a = Just Liability
-  | regexMatchText conversionAccountRegex a = Just Conversion
-  | regexMatchText equityAccountRegex     a = Just Equity
-  | regexMatchText revenueAccountRegex    a = Just Revenue
-  | regexMatchText expenseAccountRegex    a = Just Expense
-  | otherwise                               = Nothing
+  | isOneOf ["asset", "assets"] =
+      if regexMatchText cashAccountRegex a then Just Cash else Just Asset
+  | isOneOf ["debt", "debts", "liability", "liabilities"] = Just Liability
+  | isOneOf ["equity"] =
+      if regexMatchText conversionAccountRegex a then Just Conversion
+      else if regexMatchText unrealisedGainAccountRegex a then Just UnrealisedGain
+      else Just Equity
+  | isOneOf ["income", "incomes", "revenue", "revenues"] =
+      if regexMatchText gainAccountRegex a then Just Gain else Just Revenue
+  | isOneOf ["expense", "expenses"] = Just Expense
+  | otherwise = Nothing
+  where
+    toplevel = T.toLower $ T.takeWhile (/= acctsepchar) a
+    isOneOf = elem toplevel
 
 -- | Like accountNameInferType, but exclude the provided types from the guesses.
 -- Used eg to prevent "equity:conversion" being inferred as Conversion when a different
@@ -140,7 +157,7 @@ accountNameFromComponents :: [Text] -> AccountName
 accountNameFromComponents = T.intercalate acctsep
 
 accountLeafName :: AccountName -> Text
-accountLeafName = last . accountNameComponents
+accountLeafName = T.takeWhileEnd (/= acctsepchar)
 
 -- | Truncate all account name components but the last to two characters.
 accountSummarisedName :: AccountName -> Text
@@ -169,23 +186,23 @@ accountNameLevel a = T.length (T.filter (==acctsepchar) a) + 1
 unbudgetedAccountName :: T.Text
 unbudgetedAccountName = "<unbudgeted>"
 
-accountNamePostingType :: AccountName -> PostingType
+accountNamePostingType :: AccountName -> PostingRealness
 accountNamePostingType a
-    | T.null a = RegularPosting
+    | T.null a = RealPosting
     | T.head a == '[' && T.last a == ']' = BalancedVirtualPosting
     | T.head a == '(' && T.last a == ')' = VirtualPosting
-    | otherwise = RegularPosting
+    | otherwise = RealPosting
 
 accountNameWithoutPostingType :: AccountName -> AccountName
 accountNameWithoutPostingType a = case accountNamePostingType a of
                                     BalancedVirtualPosting -> textUnbracket a
                                     VirtualPosting -> textUnbracket a
-                                    RegularPosting -> a
+                                    RealPosting -> a
 
-accountNameWithPostingType :: PostingType -> AccountName -> AccountName
+accountNameWithPostingType :: PostingRealness -> AccountName -> AccountName
 accountNameWithPostingType BalancedVirtualPosting = wrap "[" "]" . accountNameWithoutPostingType
 accountNameWithPostingType VirtualPosting         = wrap "(" ")" . accountNameWithoutPostingType
-accountNameWithPostingType RegularPosting         = accountNameWithoutPostingType
+accountNameWithPostingType RealPosting            = accountNameWithoutPostingType
 
 -- | Prefix one account name to another, preserving posting type
 -- indicators like concatAccountNames.
@@ -197,7 +214,7 @@ joinAccountNames a b = concatAccountNames $ filter (not . T.null) [a,b]
 -- the resulting account name.
 concatAccountNames :: [AccountName] -> AccountName
 concatAccountNames as = accountNameWithPostingType t $ T.intercalate ":" $ map accountNameWithoutPostingType as
-    where t = headDef RegularPosting $ filter (/= RegularPosting) $ map accountNamePostingType as
+    where t = headDef RealPosting $ filter (/= RealPosting) $ map accountNamePostingType as
 
 -- | Rewrite an account name using all matching aliases from the given list, in sequence.
 -- Each alias sees the result of applying the previous aliases.
@@ -262,8 +279,10 @@ topAccountNames = filter ((1==) . accountNameLevel) . expandAccountNames
 topAccountName :: AccountName -> AccountName
 topAccountName = T.takeWhile (/= acctsepchar)
 
+-- | The parent of an account name, or "" if it has none. ("a:b:c" -> "a:b").
+-- Returns a slice of the name, without copying.
 parentAccountName :: AccountName -> AccountName
-parentAccountName = accountNameFromComponents . init . accountNameComponents
+parentAccountName = T.dropEnd 1 . T.dropWhileEnd (/= acctsepchar)
 
 parentAccountNames :: AccountName -> [AccountName]
 parentAccountNames a = parentAccountNames' $ parentAccountName a
@@ -284,21 +303,22 @@ s `isSubAccountNameOf` p =
 subAccountNamesFrom :: [AccountName] -> AccountName -> [AccountName]
 subAccountNamesFrom accts a = filter (`isSubAccountNameOf` a) accts
 
--- | Convert a list of account names to a tree, efficiently.
+-- | Convert a list of account names to a tree (with a "root" node at the top,
+-- and each node's subaccounts in sorted order), efficiently: any missing parent
+-- accounts are added, then each account's direct subaccounts are looked up in a
+-- map, built in one pass. (Previously, the remaining accounts were filtered at
+-- each node, which was quadratic, and a noticeable cost with many accounts.)
 accountNameTreeFrom :: [AccountName] -> Tree AccountName
-accountNameTreeFrom accts = unfoldTree grow ("root", expandAccountNames accts)
+accountNameTreeFrom accts = unfoldTree grow Nothing
   where
-    -- unfoldTree :: (b -> (a, [b])) -> b -> Tree a
-    -- grow :: (b -> (a, [b]))
-    -- a = AccountName                  - the label at each node of the tree
-    -- b = (AccountName, [AccountName]) - the next node's account, and the accounts remaining to consume under it
-    grow :: ((AccountName, [AccountName]) -> (AccountName, [(AccountName, [AccountName])]))
-    grow (a,[])   = (a,[])
-    grow (a,rest) = (a, [(s, filter (s `isAccountNamePrefixOf`) deepersubs) | s <- asubs])
-      where
-        (asubs, deepersubs) = partition (isChildOf a) rest
-        isChildOf "root" = (1==) . accountNameLevel
-        isChildOf acct   = (`isSubAccountNameOf` acct)
+    -- Nothing is the root node; its children are the top-level accounts.
+    grow Nothing  = ("root", map Just $ M.findWithDefault [] Nothing subsbyparent)
+    grow (Just a) = (a, map Just $ M.findWithDefault [] (Just a) subsbyparent)
+    -- each account's direct subaccounts, in the (sorted) order of the expanded account list
+    subsbyparent :: M.Map (Maybe AccountName) [AccountName]
+    subsbyparent = M.map reverse $ M.fromListWith (++) [(parent a, [a]) | a <- expandAccountNames accts]
+    parent a | accountNameLevel a <= 1 = Nothing
+             | otherwise               = Just $ parentAccountName a
 
 -- | Elide an account name to fit in the specified width.
 -- From the ledger 2.6 news:
@@ -389,11 +409,13 @@ clipOrEllipsifyAccountName ds a = go (getAccountNameClippedDepth ds a)
 -- | Escape an AccountName for use within a regular expression.
 -- >>> putStr . T.unpack $ escapeName "First?!#$*?$(*) !@^#*? %)*!@#"
 -- First\?!#\$\*\?\$\(\*\) !@\^#\*\? %\)\*!@#
+-- >>> putStr . T.unpack $ escapeName "assets:broker:{2026-01-01, $50}"
+-- assets:broker:\{2026-01-01, \$50\}
 escapeName :: AccountName -> Text
 escapeName = T.concatMap escapeChar
   where
     escapeChar c = if c `elem` escapedChars then T.snoc "\\" c else T.singleton c
-    escapedChars = ['[', '?', '+', '|', '(', ')', '*', '$', '^', '\\']
+    escapedChars = ['[', ']', '?', '+', '|', '(', ')', '*', '$', '^', '\\', '{', '}', '.']
 
 -- | Convert an account name to a regular expression matching it and its subaccounts.
 accountNameToAccountRegex :: AccountName -> Regexp
@@ -447,6 +469,16 @@ tests_AccountName = testGroup "AccountName" [
     accountNameInferType "revenues"          @?= Just Revenue
     accountNameInferType "revenue"           @?= Just Revenue
     accountNameInferType "income"            @?= Just Revenue
+    accountNameInferType "income:gains"          @?= Just Gain
+    accountNameInferType "revenue:gain"          @?= Just Gain
+    accountNameInferType "revenues:capital-gains" @?= Just Gain
+    accountNameInferType "income:capitalgain"    @?= Just Gain
+    accountNameInferType "income:losses"         @?= Just Gain
+    accountNameInferType "revenue:capital-loss"  @?= Just Gain
+    accountNameInferType "income:gains:realized" @?= Just Gain
+    accountNameInferType "equity:unrealised-gain"  @?= Just UnrealisedGain
+    accountNameInferType "equity:unrealized gains" @?= Just UnrealisedGain
+    accountNameInferType "equity:unrealisedfoo"    @?= Just Equity
   ,testCase "joinAccountNames" $ do
     joinAccountNames "assets" "cash"     @?= "assets:cash"
     joinAccountNames "assets:cash" "a"   @?= "assets:cash:a"

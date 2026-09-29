@@ -11,6 +11,7 @@ module Hledger.Reports.EntriesReport (
   EntriesReport,
   EntriesReportItem,
   entriesReport,
+  entriesReportUnsorted,
   -- * Tests
   tests_EntriesReport
 )
@@ -32,11 +33,15 @@ import Hledger.Utils
 type EntriesReport = [EntriesReportItem]
 type EntriesReportItem = Transaction
 
--- | Select transactions for an entries report.
+-- | Select transactions for an entries report, sorted by date.
 entriesReport :: ReportSpec -> Journal -> EntriesReport
 entriesReport rspec@ReportSpec{_rsReportOpts=ropts} =
-      sortBy (comparing $ transactionDateFn ropts)
-    . map  (if invert_ ropts then transactionNegate else id)
+  sortBy (comparing $ transactionDateFn ropts) . entriesReportUnsorted rspec
+
+-- | Select transactions for an entries report, keeping their journal order.
+entriesReportUnsorted :: ReportSpec -> Journal -> EntriesReport
+entriesReportUnsorted rspec@ReportSpec{_rsReportOpts=ropts} =
+      map  (if invert_ ropts then transactionNegate else id)
     . jtxns
     . journalApplyValuationFromOpts (setDefaultConversionOp NoConversionOp rspec)
     . filterJournalTransactions (filterQuery (not.queryIsDepth) $ _rsQuery rspec)

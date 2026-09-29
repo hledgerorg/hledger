@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# getdata is a helper for hledger's `get` command (data phase). You can also run it yourself.
+# It is intended to download statements (CSV, OFX, etc.) from banks, brokerages,
+# and other financial providers into the current directory, ready for hledger to
+# read via CSV rules or convert with the `import` command.
+#
+# It is run by `hledger get` with the journal's `data/` directory as the
+# current working directory, so any files it creates land there.
+#
+# This shipped version is a stub. Copy it into your journal's `data/` directory
+# and customise it for your accounts and tools.
+#
+# See also:
+# https://hledger.org/import-csv.html
+# https://hledger.org/csv.html
+
+set -euo pipefail
+
+cat >&2 <<'EOF'
+getdata: this is the sample stub script.
+It does not fetch anything yet. Customise this script to download CSV/TSV/SSV files
+from your bank, brokerage, or other financial providers, into the working directory.
+EOF

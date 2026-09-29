@@ -9,7 +9,7 @@
 
 $ hledger -f - print desc:x
 2009-01-01 x
-    a               1
+    a                                              1
     b
 
 >= 0

@@ -18,42 +18,49 @@ comment
 
 # ** 1. normal unvalued output
 $ hledger -f- print -x
+; a transaction with both amounts in B
 2019-06-01
-    a             1 B
-    b            -1 B
+    a                                              1 B
+    b                                             -1 B
 
 >=
 
 # ** 2. current market value in default valuation commodity
 $ hledger -f- print -x -V
+; a transaction with both amounts in B
 2019-06-01
-    a            10 A
-    b           -10 A
+    a                                             10 A
+    b                                            -10 A
 
 >=
 
 # ** 3. same as above, but request commodity A explicitly
 $ hledger -f- print -x --value=now,A
+; a transaction with both amounts in B
 2019-06-01
-    a            10 A
-    b           -10 A
+    a                                             10 A
+    b                                            -10 A
 
 >=
 
 # ** 4. request commodity B - no effect
 $ hledger -f- print -x --value=now,B
+; a transaction with both amounts in B
 2019-06-01
-    a             1 B
-    b            -1 B
+    a                                              1 B
+    b                                             -1 B
 
 >=
 
-# ** 5. request commodity we don't have prices for - no effect
+# ** 5. request commodity we don't have prices for - no effect, and a warning
 $ hledger -f- print -x --value=now,Z
+; a transaction with both amounts in B
 2019-06-01
-    a             1 B
-    b            -1 B
+    a                                              1 B
+    b                                             -1 B
 
+>2
+Warning: no conversion prices to "Z" can be found.
 >=
 
 # ** 6. request commodity C - uses reverse of C->B price.
@@ -61,17 +68,19 @@ $ hledger -f- print -x --value=now,Z
 # but the precision is increased to show all significant decimal digits
 # (otherwise it would show C0).
 $ hledger -f- print -x --value=now,C
+; a transaction with both amounts in B
 2019-06-01
-    a            C0.5
-    b           C-0.5
+    a                                             C0.5
+    b                                            C-0.5
 
 >=
 
 # ** 7. request commodity D - chains B->A, A->D prices
 $ hledger -f- print -x --value=now,D
+; a transaction with both amounts in B
 2019-06-01
-    a          1000 D
-    b         -1000 D
+    a                                           1000 D
+    b                                          -1000 D
 
 >=
 
@@ -79,9 +88,10 @@ $ hledger -f- print -x --value=now,D
 # As with C above, E gets the default display style, but with the precision
 # increased to show the decimal digits, but no more than 8.
 $ hledger -f- print -x --value=now,E
+; a transaction with both amounts in B
 2019-06-01
-    a     E333.33333333
-    b    E-333.33333333
+    a                                           E333.33333333
+    b                                          E-333.33333333
 
 >=
 
@@ -96,24 +106,27 @@ $ hledger -f- print -x --value=now,E
 
 $ hledger -f- print
 2000-01-01
-    a        -1A @ 1B
-    b              1B
+    a                                             -1A @ 1B
+    b                                              1B
 
 >=0
 
-# ** 10. Valuing in a commodity with no market price has no effect.
+# ** 10. Valuing in a commodity with no market price has no effect,
+# and warns.
 $ hledger -f- print -XZ
 2000-01-01
-    a        -1A @ 1B
-    b              1B
+    a                                             -1A @ 1B
+    b                                              1B
 
+>2
+Warning: no conversion prices to "Z" can be found.
 >=0
 
 # ** 11. -B converts to the transaction price's commodity.
 $ hledger -f- print -B
 2000-01-01
-    a             -1B
-    b              1B
+    a                                             -1B
+    b                                              1B
 
 >=0
 
@@ -121,9 +134,11 @@ $ hledger -f- print -B
 # (-B -XZ is equivalent to --cost --value=end,Z).
 $ hledger -f- print -B -XZ
 2000-01-01
-    a             -1B
-    b              1B
+    a                                             -1B
+    b                                              1B
 
+>2
+Warning: no conversion prices to "Z" can be found.
 >=0
 
 # With a market price: same as above.
@@ -137,32 +152,34 @@ P 2000/1/1 A 1B
 # ** 13. 
 $ hledger -f- print
 2000-01-01
-    a        -1A @ 1B
-    b              1B
+    a                                             -1A @ 1B
+    b                                              1B
 
 >=0
 
-# ** 14. 
+# ** 14.
 $ hledger -f- print -XZ
 2000-01-01
-    a        -1A @ 1B
-    b              1B
+    a                                             -1A @ 1B
+    b                                              1B
 
+>2
+Warning: no conversion prices to "Z" can be found.
 >=0
 
 # ** 15. 
 $ hledger -f- print -B
 2000-01-01
-    a             -1B
-    b              1B
+    a                                             -1B
+    b                                              1B
 
 >=0
 
 # ** 16. 
 $ hledger -f- print -B -XA
 2000-01-01
-    a             -1A
-    b              1A
+    a                                             -1A
+    b                                              1A
 
 >=0
 
@@ -353,6 +370,36 @@ P 2000-01-01 B  100.5 C
 
 $ hledger -f- print -X C
 2000-01-01
-    (a)        105525 C
+    (a)                                       105525 C
 
+>=
+
+# ** 34. An unknown valuation commodity is warned about; when a journal
+# commodity has the same ISO 4217 currency code, it is suggested.
+<
+P 2026-01-01 A $2
+
+2026-01-01
+    (a)    1 A
+
+$ hledger -f- print -x -X USD
+2026-01-01
+    (a)                                            1 A
+
+>2
+Warning: no conversion prices to "USD" can be found. Did you mean "$" ?
+>=
+
+# ** 35. A valuation commodity that is known but has no conversion prices
+# (and no amounts denominated in it) is also warned about.
+<
+commodity XYZ 1.00
+
+2026-01-01
+    (a)    $10
+
+$ hledger -f- bal -N -X XYZ
+                 $10  a
+>2
+Warning: no conversion prices to "XYZ" can be found.
 >=

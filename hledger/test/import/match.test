@@ -1,10 +1,11 @@
 # Various match group interpolation tests. See the comments
 # in match.rules for specifics.
 $ hledger -f a.j import --rules match.rules --dry-run match.csv
-; would import 1 new transactions from match.csv:
-
 2022-12-15 Zettle_*Robert W. Bell
-    expenses:snacks          £ 7.90  ; Bell=Bell.
-    income:unknown          £ -7.90  ; date:2022-12-01
+    expenses:snacks                              £ 7.90  ; Bell=Bell.
+    income:unknown                              £ -7.90  ; date:2022-12-01
+
+>2
+would import 1 new transactions from match.csv:
 
 >=

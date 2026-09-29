@@ -12,6 +12,8 @@ module Hledger.Data.JournalChecks (
   journalCheckAccounts,
   journalCheckBalanceAssertions,
   journalCheckCommodities,
+  journalUndeclaredCommodities,
+  journalCheckLots,
   journalCheckPayees,
   journalCheckPairedConversionPostings,
   journalCheckRecentAssertions,
@@ -24,8 +26,8 @@ where
 import Data.Char (isSpace)
 import Data.List.Extra
 import Data.Maybe
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
+import Data.Set qualified as S
+import Data.Text qualified as T
 import Safe (atMay, lastMay, headMay)
 import Text.Printf (printf)
 
@@ -33,15 +35,16 @@ import Hledger.Data.Errors
 import Hledger.Data.Journal
 import Hledger.Data.JournalChecks.Ordereddates
 import Hledger.Data.JournalChecks.Uniqueleafnames
-import Hledger.Data.Posting (isVirtual, postingDate, transactionAllTags, conversionPostingTagName, costPostingTagName, postingAsLines, generatedPostingTagName, generatedTransactionTagName, modifiedTransactionTagName)
+import Hledger.Data.Posting (defaultDecimalMarkColumn, isVirtual, postingDate, transactionAllTags, conversionPostingTagName, costPostingTagName, postingAsLines, generatedPostingTagName, generatedTransactionTagName, modifiedTransactionTagName, feesplitPostingTagName, lotsplitPostingTagName, lotParentAssertionTagName, AmountCols(..))
 import Hledger.Data.Types
-import Hledger.Data.Amount (amountIsZero, amountsRaw, missingamt, oneLineFmt, showMixedAmountWith)
+import Hledger.Data.Amount (amountIsZero, amountsRaw, defaultFmt, missingamt)
 import Hledger.Data.Transaction (transactionPayee, showTransactionLineFirstPart, partitionAndCheckConversionPostings)
 import Data.Time (diffDays)
 import Hledger.Utils
 import Data.Ord
 import Hledger.Data.Dates (showDate)
 import Hledger.Data.Balancing (journalBalanceTransactions, defbalancingopts)
+import Hledger.Data.Lots (lotBaseAccount)
 
 -- | Run the extra -s/--strict checks on a journal, in order of priority,
 -- returning the first error message if any of them fail.
@@ -58,17 +61,18 @@ journalCheckAccounts :: Journal -> Either String ()
 journalCheckAccounts j = mapM_ checkacct (journalPostings j)
   where
     checkacct p@Posting{paccount=a}
-      | a `elem` journalAccountNamesDeclared j = Right ()
+      | acct `elem` journalAccountNamesDeclared j = Right ()
       | otherwise = Left $ printf (unlines [
            "%s:%d:"
           ,"%s"
           ,"Strict account checking is enabled, and"
-          ,"account %s has not been declared."
+          ,"account \"%s\" has not been declared."
           ,"Consider adding an account directive. Examples:"
           ,""
           ,"account %s"
-          ]) f l ex (show a) a
+          ]) f l ex acct acct
         where
+          acct = lotBaseAccount a
           (f,l,_mcols,ex) = makePostingAccountErrorExcerpt p
 
 -- | Check all balance assertions in the journal and return an error message if any of them fail.
@@ -77,6 +81,29 @@ journalCheckAccounts j = mapM_ checkacct (journalPostings j)
 journalCheckBalanceAssertions :: Journal -> Either String ()
 journalCheckBalanceAssertions = fmap (const ()) . journalBalanceTransactions defbalancingopts
 
+-- | The distinct commodity symbols referenced in a posting's amount(s) or
+-- balance assertion, ignoring the "missing" amount and bare zeroes (#1767).
+postingCommoditiesUsed :: Posting -> [CommoditySymbol]
+postingCommoditiesUsed Posting{pamount=amt, pbalanceassertion} =
+  map acommodity (filter (not . isIgnorable) $ amountsRaw amt)
+  ++ [acommodity a | Just a <- [baamount <$> pbalanceassertion]]
+  where isIgnorable a = a==missingamt || (amountIsZero a && T.null (acommodity a))  -- #1767
+
+-- | The commodity symbols referenced in a P directive.
+priceDirectiveCommoditiesUsed :: PriceDirective -> [CommoditySymbol]
+priceDirectiveCommoditiesUsed PriceDirective{pdcommodity=c, pdamount=amt} = [c, acommodity amt]
+
+-- | The commodities referenced by this journal's postings and P directives that
+-- have not been declared by a commodity directive, nor as an @alias:@ of one.
+-- These are exactly the commodities that make 'journalCheckCommodities' (hledger
+-- check commodities, and -s) fail. The synthetic 1:1 price directives inferred
+-- from @alias:@ tags contribute only aliases, so they never appear here.
+journalUndeclaredCommodities :: Journal -> [CommoditySymbol]
+journalUndeclaredCommodities j =
+  filter (`S.notMember` commoditiesAndAliases j) . nubSort $
+       concatMap priceDirectiveCommoditiesUsed (jpricedirectives j)
+    ++ concatMap postingCommoditiesUsed        (journalPostings j)
+
 -- | Check that all the commodities used in this journal's postings and P directives
 -- have been declared by commodity directives, returning an error message otherwise.
 journalCheckCommodities :: Journal -> Either String ()
@@ -84,7 +111,8 @@ journalCheckCommodities j = do
   mapM_ checkPriceDirectiveCommodities $ jpricedirectives j
   mapM_ checkPostingCommodities $ journalPostings j
   where
-    firstUndeclaredOf comms = find (`M.notMember` jdeclaredcommodities j) comms
+    declared = commoditiesAndAliases j
+    firstUndeclaredOf = find (`S.notMember` declared)
 
     errmsg = unlines [
         "%s:%d:"
@@ -97,34 +125,19 @@ journalCheckCommodities j = do
       ,"commodity 1.000,00 %s"
       ]
 
-    checkPriceDirectiveCommodities pd@PriceDirective{pdcommodity=c, pdamount=amt} =
-      case firstUndeclaredOf [c, acommodity amt] of
+    checkPriceDirectiveCommodities pd =
+      case firstUndeclaredOf (priceDirectiveCommoditiesUsed pd) of
         Nothing   -> Right ()
         Just comm -> Left $ printf errmsg f l ex (show comm) comm comm
           where (f,l,_mcols,ex) = makePriceDirectiveErrorExcerpt pd Nothing
 
     checkPostingCommodities p =
-      case firstundeclaredcomm p of
-        Nothing                    -> Right ()
-        Just (comm, _inpostingamt) -> Left $ printf errmsg f l ex (show comm) comm comm
+      case firstUndeclaredOf (postingCommoditiesUsed p) of
+        Nothing   -> Right ()
+        Just comm -> Left $ printf errmsg f l ex (show comm) comm comm
           where
             (f,l,_mcols,ex) = makePostingErrorExcerpt p finderrcols
       where
-        -- Find the first undeclared commodity symbol in this posting's amount or balance assertion amount, if any.
-        -- and whether it was in the posting amount.
-        -- XXX The latter is currently unused, could be used to refine the error highlighting ?
-        firstundeclaredcomm :: Posting -> Maybe (CommoditySymbol, Bool)
-        firstundeclaredcomm Posting{pamount=amt,pbalanceassertion} =
-          case (firstUndeclaredOf postingcomms, firstUndeclaredOf assertioncomms) of
-            (Just c, _) -> Just (c, True)
-            (_, Just c) -> Just (c, False)
-            _           -> Nothing
-          where
-            assertioncomms = [acommodity a | Just a <- [baamount <$> pbalanceassertion]]
-            postingcomms = map acommodity $ filter (not . isIgnorable) $ amountsRaw amt
-              where
-                isIgnorable a = a==missingamt || (amountIsZero a && T.null (acommodity a))  -- #1767
-
         -- Calculate columns suitable for highlighting the excerpt.
         -- We won't show these in the main error line as they aren't
         -- accurate for the actual data.
@@ -243,6 +256,10 @@ builtinTags = [
       ,generatedPostingTagName     -- marks postings which have been generated
       ,costPostingTagName          -- marks equity conversion postings which have been matched with a nearby costful posting
       ,conversionPostingTagName    -- marks costful postings which have been matched with a nearby pair of equity conversion postings
+      ,"_ptype"                    -- marks lot postings with their classification (acquire, dispose, transfer-from, transfer-to, gain)
+      ,feesplitPostingTagName      -- marks fee fragments split off lot transfers
+      ,lotsplitPostingTagName      -- marks tail fragments of postings split across lots
+      ,lotParentAssertionTagName   -- marks postings carrying a balance assertion relocated from a posting split into lots
       ]
 
 -- | In each tranaction, check that any conversion postings occur in adjacent pairs.
@@ -316,10 +333,14 @@ findRecentAssertionError ps = do
     (showposting firsterrorp)
     where
       showposting p =
-        headDef "" $ first3 $ postingAsLines False True acctw amtw p{pcomment=""}
+        headDef "" $ fst $ postingAsLines defaultFmt False True statusw acctw dc p{pcomment=""}
         where
+          statusw = case pstatus p of Unmarked -> 0; _ -> 2
           acctw = T.length $ paccount p
-          amtw  = length $ showMixedAmountWith oneLineFmt $ pamount p
+          -- single-posting render: no cross-posting alignment to satisfy,
+          -- so eqcol / asndecimalcol are unused (no assertion is rendered
+          -- here either, but pass safe defaults).
+          dc = AmountCols { acDecMark = defaultDecimalMarkColumn, acEquals = 0, acAssDecMark = 0 }
 
 -- -- | Print the last balance assertion date & status of all accounts with balance assertions.
 -- printAccountLastAssertions :: Day -> [BalanceAssertionInfo] -> IO ()
@@ -330,3 +351,10 @@ findRecentAssertionError ps = do
 --       (if baiLatestClearedAssertionStatus==Unmarked then " " else show baiLatestClearedAssertionStatus)
 --       (show baiLatestClearedAssertionDate)
 --       (diffDays today baiLatestClearedAssertionDate)
+
+-- | Check all lot tracking calculations. Validation runs during journalFinalise
+-- (unless --ignore-lots/-I is in effect), so any valid Journal reaching this point
+-- has already passed the checks. This stub exists so @hledger check lots@ remains
+-- a valid command, and also re-enables the validation when -I was passed.
+journalCheckLots :: Journal -> Either String ()
+journalCheckLots _ = Right ()

@@ -17,6 +17,7 @@ $ hledger -f- reg --output-format=json
         {
           "acommodity": "AAA",
           "acost": null,
+          "acostbasis": null,
           "aquantity": {
             "decimalMantissa": 10,
             "decimalPlaces": 1,
@@ -37,15 +38,16 @@ $ hledger -f- reg --output-format=json
       "pdate": null,
       "pdate2": null,
       "poriginal": null,
+      "preal": "VirtualPosting",
       "pstatus": "Unmarked",
       "ptags": [],
-      "ptransaction_": "1",
-      "ptype": "VirtualPosting"
+      "ptransaction_": "1"
     },
     [
       {
         "acommodity": "AAA",
         "acost": null,
+        "acostbasis": null,
         "aquantity": {
           "decimalMantissa": 10,
           "decimalPlaces": 1,
@@ -76,6 +78,7 @@ $ hledger -f- bal --output-format=json
         {
           "acommodity": "AAA",
           "acost": null,
+          "acostbasis": null,
           "aquantity": {
             "decimalMantissa": 10,
             "decimalPlaces": 1,
@@ -97,6 +100,7 @@ $ hledger -f- bal --output-format=json
     {
       "acommodity": "AAA",
       "acost": null,
+      "acostbasis": null,
       "aquantity": {
         "decimalMantissa": 10,
         "decimalPlaces": 1,

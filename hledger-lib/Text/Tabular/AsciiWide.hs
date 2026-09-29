@@ -30,8 +30,8 @@ import Data.Default (Default(..))
 import Data.List (intersperse, transpose)
 import Data.Semigroup (stimesMonoid)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
+import Data.Text qualified as T
+import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Builder (Builder, fromString, fromText, singleton, toLazyText)
 import Safe (maximumMay)
 import Text.Tabular

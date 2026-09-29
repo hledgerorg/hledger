@@ -7,7 +7,7 @@
 module Hledger.Web.WebOptions where
 
 import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as BC
+import Data.ByteString.Char8 qualified as BC
 import Data.ByteString.UTF8 (fromString)
 import Data.Default (Default(def))
 import Data.Maybe (fromMaybe)
@@ -20,7 +20,7 @@ import Safe (lastMay)
 
 import Hledger.Cli hiding (packageversion, progname, prognameandversion)
 import Hledger.Web.Settings (defhost, defport, defbaseurl)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Char (toLower)
 import Data.List (isPrefixOf)
 import Data.Either (fromRight)
@@ -74,7 +74,8 @@ webflags =
       ["allow"]
       (\s opts -> Right $ setopt "allow" s opts)
       "view|add|edit"
-      "set the user's access level for changing data (default: `add`). It also accepts `sandstorm` for use on that platform (reads permissions from the `X-Sandstorm-Permissions` request header)."
+      ("set the user's access level for changing data (default: `add` on a local-only address, `view` otherwise)." ++
+      " It also accepts `sandstorm` for that platform (reading from the `X-Sandstorm-Permissions` request header).")
   , flagReq
       ["cors"]
       (\s opts -> Right $ setopt "cors" s opts)
@@ -89,7 +90,7 @@ webflags =
       ["port"]
       (\s opts -> Right $ setopt "port" s opts)
       "PORT"
-      ("listen on this TCP port (default: " ++ show defport ++ ")")
+      ("listen on this TCP port (default: " ++ show defport ++ "); 0 means a free port chosen by the OS")
   , flagReq
       ["socket"]
       (\s opts -> Right $ setopt "socket" s opts)
@@ -156,7 +157,7 @@ defwebopts = WebOpts
   , port_               = def
   , base_url_           = ""
   , file_url_           = Nothing
-  , allow_              = AddAccess
+  , allow_              = ViewAccess
   , cliopts_            = def
   , socket_             = Nothing
   }
@@ -176,9 +177,14 @@ rawOptsToWebOpts rawopts =
       -- otherwise it will infer a better one from the request, which browsers prefer.
       b = maybe (defbaseurl h p) stripTrailingSlash $ maybestringopt "base-url" rawopts
       sock = stripTrailingSlash <$> maybestringopt "socket" rawopts
+      -- Is this a local-only listen address (loopback or unix socket) ?
+      -- If so, we'll allow add access by default.
+      isLocalOnly = case sock of
+        Just _  -> True
+        Nothing -> h `elem` ["127.0.0.1", "::1", "localhost"]
       access =
         case lastMay $ listofstringopt "allow" rawopts of
-          Nothing -> AddAccess
+          Nothing -> if isLocalOnly then AddAccess else ViewAccess
           Just t ->
             case parseAccessLevel t of
               Right al -> al

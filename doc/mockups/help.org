@@ -703,7 +703,7 @@ DESCRIPTION
        file  format.   hledger  is  inspired  by  and  largely compatible with
 ....
 
-* 201707 https://github.com/simonmichael/hledger/issues/579
+* 201707 https://github.com/hledgerorg/hledger/issues/579
 ** principles
 *** docs (usage, manuals, tutorials..) should be available reliably and instantly from the software you are running (without net or filesystem access and on windows too)
 *** docs should by default be provided in the native UI of the tool you request them from

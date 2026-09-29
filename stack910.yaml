@@ -1,0 +1,21 @@
+# stack build plan using GHC 9.10.3
+# https://gitlab.haskell.org/ghc/ghc/-/wikis/migration/9.10
+# https://downloads.haskell.org/ghc/9.10.1/docs/users_guide/9.10.1-notes.html
+
+resolver: lts-24.57
+
+packages:
+- hledger-lib
+- hledger
+- hledger-ui
+- hledger-web
+
+extra-deps:
+# megaparsec 9.8.3 parses about 10% faster than earlier versions (megaparsec#612)
+- megaparsec-9.8.3
+# for hledger's openBrowserOn (Windows launch through the Win32 API)
+- open-browser-0.5.1.0
+
+nix:
+  pure: false
+  packages: [perl gmp ncurses zlib]

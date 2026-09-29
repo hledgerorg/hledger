@@ -1,11 +1,11 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.38.0.
+-- This file has been generated from package.yaml by hpack version 0.39.6.
 --
 -- see: https://github.com/sol/hpack
 
 name:           hledger
-version:        1.43.99
+version:        1.99
 synopsis:       Command-line interface for the hledger accounting system
 description:    The command-line interface for the hledger accounting system.
                 Its basic function is to read a plain text file describing
@@ -27,17 +27,13 @@ license:        GPL-3.0-or-later
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    ghc==8.10.7, ghc==9.0.2, ghc==9.2.8, ghc==9.4.8, ghc==9.6.7, ghc==9.8.4, ghc==9.10.2, ghc==9.12.1
+    ghc==9.6.7, ghc==9.8.4, ghc==9.10.3, ghc==9.12.4, ghc==9.14.1
 extra-source-files:
     CHANGES.md
     README.md
-    bench/10000x1000x10.journal
+    quickref.txt
     shell-completion/hledger-completion.bash
     test/unittest.hs
-    embeddedfiles/add.cast
-    embeddedfiles/balance.cast
-    embeddedfiles/install.cast
-    embeddedfiles/print.cast
     embeddedfiles/hledger-accounts.md
     embeddedfiles/hledger-add.md
     embeddedfiles/hledger-aregister.md
@@ -69,13 +65,13 @@ extra-source-files:
     Hledger/Cli/Commands/Check.txt
     Hledger/Cli/Commands/Close.txt
     Hledger/Cli/Commands/Codes.txt
-    Hledger/Cli/Commands/Commands.txt
     Hledger/Cli/Commands/Commodities.txt
-    Hledger/Cli/Commands/Demo.txt
     Hledger/Cli/Commands/Descriptions.txt
     Hledger/Cli/Commands/Diff.txt
     Hledger/Cli/Commands/Files.txt
+    Hledger/Cli/Commands/Get.txt
     Hledger/Cli/Commands/Help.txt
+    Hledger/Cli/Commands/Holdings.txt
     Hledger/Cli/Commands/Import.txt
     Hledger/Cli/Commands/Incomestatement.txt
     Hledger/Cli/Commands/Notes.txt
@@ -91,20 +87,16 @@ extra-source-files:
     Hledger/Cli/Commands/Stats.txt
     Hledger/Cli/Commands/Tags.txt
     Hledger/Cli/Commands/Test.txt
+    Hledger/Cli/Commands/Transactions.txt
 
 source-repository head
   type: git
-  location: https://github.com/simonmichael/hledger
+  location: https://github.com/hledgerorg/hledger
 
 flag debug
-  description: Build with GHC 9.10+'s stack traces enabled
+  description: Build with GHC 9.10+ stack traces enabled
   manual: True
   default: False
-
-flag threaded
-  description: Build with support for multithreaded execution
-  manual: False
-  default: True
 
 library
   exposed-modules:
@@ -125,17 +117,19 @@ library
       Hledger.Cli.Commands.Close
       Hledger.Cli.Commands.Codes
       Hledger.Cli.Commands.Commodities
-      Hledger.Cli.Commands.Demo
       Hledger.Cli.Commands.Descriptions
       Hledger.Cli.Commands.Diff
-      Hledger.Cli.Commands.Help
       Hledger.Cli.Commands.Files
+      Hledger.Cli.Commands.Get
+      Hledger.Cli.Commands.Help
+      Hledger.Cli.Commands.Holdings
       Hledger.Cli.Commands.Import
       Hledger.Cli.Commands.Incomestatement
       Hledger.Cli.Commands.Notes
       Hledger.Cli.Commands.Payees
       Hledger.Cli.Commands.Prices
       Hledger.Cli.Commands.Print
+      Hledger.Cli.Commands.Quickref
       Hledger.Cli.Commands.Register
       Hledger.Cli.Commands.Rewrite
       Hledger.Cli.Commands.Roi
@@ -143,6 +137,7 @@ library
       Hledger.Cli.Commands.Setup
       Hledger.Cli.Commands.Stats
       Hledger.Cli.Commands.Tags
+      Hledger.Cli.Commands.Transactions
       Hledger.Cli.CompoundBalanceCommand
       Hledger.Cli.Conf
       Hledger.Cli.DocFiles
@@ -150,17 +145,21 @@ library
       Hledger.Cli.Utils
       Hledger.Cli.Version
   other-modules:
+      Hledger.Cli.Commands.Balance.Internal
       Paths_hledger
   autogen-modules:
       Paths_hledger
+  hs-source-dirs:
+      ./
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -optP-Wno-nonportable-include-path
-  cpp-options: -DVERSION="1.43.99"
+  cpp-options: -DVERSION="1.99"
   build-depends:
       Decimal >=0.5.1
-    , Diff >=0.2
-    , aeson >=1 && <2.3
+    , Diff >=1.0
+    , aeson >=2.2.5.1 && <2.4
     , ansi-terminal >=0.9
-    , base >=4.14 && <4.22
+    , base >=4.18 && <4.23
+    , blaze-html
     , bytestring
     , cmdargs >=0.10
     , containers >=0.5.9
@@ -171,20 +170,20 @@ library
     , githash >=0.1.6.2
     , hashable >=1.2.4
     , haskeline >=0.6
-    , hledger-lib >=1.43.99 && <1.44
+    , hledger-lib ==1.99.*
     , http-client
     , http-types
-    , lucid
     , math-functions >=0.3.3.0
-    , megaparsec >=7.0.0 && <9.8
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , modern-uri >=0.3
     , mtl >=2.2.1
+    , open-browser >=0.5
+    , pretty
     , process
     , regex-tdfa
     , req
     , safe >=0.3.20
-    , shakespeare >=2.0.2.2
     , split >=0.1
     , tabular >=0.2
     , tasty >=1.2.3
@@ -198,7 +197,7 @@ library
     , utf8-string >=0.3.5
     , utility-ht >=0.0.13
     , wizards >=1.0
-  default-language: Haskell2010
+  default-language: GHC2021
   if (flag(debug))
     cpp-options: -DDEBUG
 
@@ -210,13 +209,13 @@ executable hledger
       Paths_hledger
   hs-source-dirs:
       app
-  ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -optP-Wno-nonportable-include-path -with-rtsopts=-T
-  cpp-options: -DVERSION="1.43.99"
+  ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -optP-Wno-nonportable-include-path -threaded -rtsopts -with-rtsopts=-T
+  cpp-options: -DVERSION="1.99"
   build-depends:
       Decimal >=0.5.1
-    , aeson >=1 && <2.3
+    , aeson >=2.2.5.1 && <2.4
     , ansi-terminal >=0.9
-    , base >=4.14 && <4.22
+    , base >=4.18 && <4.23
     , bytestring
     , cmdargs >=0.10
     , containers >=0.5.9
@@ -227,18 +226,18 @@ executable hledger
     , githash >=0.1.6.2
     , haskeline >=0.6
     , hledger
-    , hledger-lib >=1.43.99 && <1.44
+    , hledger-lib ==1.99.*
     , http-client
     , http-types
     , math-functions >=0.3.3.0
-    , megaparsec >=7.0.0 && <9.8
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , mtl >=2.2.1
+    , open-browser >=0.5
     , process
     , regex-tdfa
     , req
     , safe >=0.3.20
-    , shakespeare >=2.0.2.2
     , split >=0.1
     , tabular >=0.2
     , tasty >=1.2.3
@@ -252,11 +251,9 @@ executable hledger
     , utf8-string >=0.3.5
     , utility-ht >=0.0.13
     , wizards >=1.0
-  default-language: Haskell2010
+  default-language: GHC2021
   if (flag(debug))
     cpp-options: -DDEBUG
-  if flag(threaded)
-    ghc-options: -threaded
 
 test-suite unittest
   type: exitcode-stdio-1.0
@@ -264,12 +261,12 @@ test-suite unittest
   hs-source-dirs:
       test
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -optP-Wno-nonportable-include-path
-  cpp-options: -DVERSION="1.43.99"
+  cpp-options: -DVERSION="1.99"
   build-depends:
       Decimal >=0.5.1
-    , aeson >=1 && <2.3
+    , aeson >=2.2.5.1 && <2.4
     , ansi-terminal >=0.9
-    , base >=4.14 && <4.22
+    , base >=4.18 && <4.23
     , bytestring
     , cmdargs >=0.10
     , containers >=0.5.9
@@ -280,18 +277,18 @@ test-suite unittest
     , githash >=0.1.6.2
     , haskeline >=0.6
     , hledger
-    , hledger-lib >=1.43.99 && <1.44
+    , hledger-lib ==1.99.*
     , http-client
     , http-types
     , math-functions >=0.3.3.0
-    , megaparsec >=7.0.0 && <9.8
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , mtl >=2.2.1
+    , open-browser >=0.5
     , process
     , regex-tdfa
     , req
     , safe >=0.3.20
-    , shakespeare >=2.0.2.2
     , split >=0.1
     , tabular >=0.2
     , tasty >=1.2.3
@@ -305,7 +302,7 @@ test-suite unittest
     , utf8-string >=0.3.5
     , utility-ht >=0.0.13
     , wizards >=1.0
-  default-language: Haskell2010
+  default-language: GHC2021
   if (flag(debug))
     cpp-options: -DDEBUG
 
@@ -315,11 +312,12 @@ benchmark bench
   hs-source-dirs:
       bench
   ghc-options: -Wall -Wno-incomplete-uni-patterns -Wno-missing-signatures -Wno-orphans -Wno-type-defaults -Wno-unused-do-bind -optP-Wno-nonportable-include-path
+  cpp-options: -DVERSION="1.99"
   build-depends:
       Decimal >=0.5.1
-    , aeson >=1 && <2.3
+    , aeson >=2.2.5.1 && <2.4
     , ansi-terminal >=0.9
-    , base >=4.14 && <4.22
+    , base >=4.18 && <4.23
     , bytestring
     , cmdargs >=0.10
     , containers >=0.5.9
@@ -331,19 +329,19 @@ benchmark bench
     , githash >=0.1.6.2
     , haskeline >=0.6
     , hledger
-    , hledger-lib >=1.43.99 && <1.44
+    , hledger-lib ==1.99.*
     , html
     , http-client
     , http-types
     , math-functions >=0.3.3.0
-    , megaparsec >=7.0.0 && <9.8
+    , megaparsec >=7.0.0 && <9.8 || >=9.8.1 && <9.9
     , microlens >=0.4
     , mtl >=2.2.1
+    , open-browser >=0.5
     , process
     , regex-tdfa
     , req
     , safe >=0.3.20
-    , shakespeare >=2.0.2.2
     , split >=0.1
     , tabular >=0.2
     , tasty >=1.2.3
@@ -358,6 +356,6 @@ benchmark bench
     , utility-ht >=0.0.13
     , wizards >=1.0
   buildable: False
-  default-language: Haskell2010
+  default-language: GHC2021
   if (flag(debug))
     cpp-options: -DDEBUG

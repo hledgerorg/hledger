@@ -1,0 +1,8 @@
+$ hledger check -f  csvifblocknomatchers.csv
+>2 /hledger: Error: .*csvifblocknomatchers.csv.rules:3:1:
+  \|
+3 \| # a comment, not a matcher
+  \| \^
+start of conditional block found, but no matchers afterward
+/
+>= 1

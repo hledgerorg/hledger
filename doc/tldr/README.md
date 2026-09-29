@@ -1,3 +1,17 @@
+2026-08:
+
+Our --tldr flag has been renamed to --examples. I think some people in need of tldr won't know the acronym.
+
+And I think we'll stop syncing with and using the content from the official tldr-pages repo.
+Because it adds friction and maintenance cost, and it restricts our content quite a lot (commands only, style rules..).
+Also, having these docs built in to software, which is easy to do nowadays,
+is just more robust and will always be preferable to having to install and update a separate tool.
+
+But we'll keep using tldr's basic format, and for now we keep using an
+external tldr executable for rendering, since it probably does a better job.
+
+2024:
+
 [tldr-pages](https://tldr.sh) provides very short, example-focussed doc pages for many command line tools, 
 which can be viewed quickly with a `tldr` client
 (such as [tealdeer](https://github.com/tealdeer-rs/tealdeer)).
@@ -23,7 +37,7 @@ It is relatively easy. You can do it entirely in your web browser if you have a 
 1. Starting with eg https://tldr.inbrowser.app/pages/common/hledger
 2. click "Find this page on GitHub"
 3. click the "Copy raw file" icon (two squares)
-4. navigate to eg https://github.com/tldr-pages/tldr/tree/main/pages.de/common
+4. navigate to the common/ folder for your language, eg https://github.com/tldr-pages/tldr/tree/main/pages.es/common
 5. click "Add file" > "Create new file"
 6. reuse the original file name, paste the original content
 7. translate the content
@@ -31,14 +45,15 @@ It is relatively easy. You can do it entirely in your web browser if you have a 
 9. send a pull request
 
 Here is the [tldr translations status](https://lukwebsforge.github.io/tldri18n).
-At the time of writing, translations have been contributed by
+If you check all languages you can see all the existing hledger translations.
+As of 2025Q3, besides english there's
 
-- kant (es)
-- CodePsy-2001 (ko)
+- [ko](https://github.com/tldr-pages/tldr/tree/main/pages.ko/common) CodePsy-2001
+- [es](https://github.com/tldr-pages/tldr/tree/main/pages.es/common) (partial) kant
 
 ## Usage tips
 
-Some of these pages are embedded in `hledger`, `hledger-ui` and `hledger-web`, accessible with `--tldr`.
+Some of these pages are embedded in `hledger`, `hledger-ui` and `hledger-web`, accessible with `--examples`.
 We may find other ways to use them in future.
 
 <https://tldr.inbrowser.app> is an online (& offline) tldr viewer,

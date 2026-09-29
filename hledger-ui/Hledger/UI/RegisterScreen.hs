@@ -25,8 +25,8 @@ import Data.List hiding ((!?))
 import Data.List
 #endif
 import Data.Maybe
-import qualified Data.Text as T
-import qualified Data.Vector as V
+import Data.Text qualified as T
+import Data.Vector qualified as V
 import Data.Vector ((!?))
 import Graphics.Vty (Event(..),Key(..),Modifier(..), Button (BLeft, BScrollDown, BScrollUp))
 import Brick
@@ -43,13 +43,12 @@ import Hledger.UI.UIState
 import Hledger.UI.UIUtils
 import Hledger.UI.UIScreens
 import Hledger.UI.Editor
-import Hledger.UI.ErrorScreen (uiReloadJournal, uiCheckBalanceAssertions, uiReloadJournalIfChanged)
+import Hledger.UI.ErrorScreen (uiReload, uiReloadIfFileChanged, uiToggleBalanceAssertions)
 
-rsDraw :: UIState -> [Widget Name]
-rsDraw UIState{aopts=_uopts@UIOpts{uoCliOpts=copts@CliOpts{reportspec_=rspec}}
-              ,aScreen=RS RSS{..}
+rsDraw :: RegisterScreenState -> UIState -> [Widget Name]
+rsDraw RSS{..} UIState{aopts=uopts@UIOpts{uoCliOpts=copts@CliOpts{reportspec_=rspec}}
               ,aMode=mode
-              } = dbgui "rsDraw 1" $
+              } = dbgui "rsDraw" $
   case mode of
     Help       -> [helpDialog, maincontent]
     _          -> [maincontent]
@@ -73,7 +72,7 @@ rsDraw UIState{aopts=_uopts@UIOpts{uoCliOpts=copts@CliOpts{reportspec_=rspec}}
         maxamtswidth = max 0 (totalwidth - minnonamtcolswidth - whitespacewidth)
         maxchangewidthseen = maximum' $ map (wbWidth . rsItemChangeAmount) displayitems
         maxbalwidthseen = maximum' $ map (wbWidth . rsItemBalanceAmount) displayitems
-        changewidthproportion = fromIntegral maxchangewidthseen / fromIntegral (maxchangewidthseen + maxbalwidthseen)
+        changewidthproportion = fromIntegral maxchangewidthseen `divideSafe` fromIntegral (maxchangewidthseen + maxbalwidthseen)
         maxchangewidth = round $ changewidthproportion * fromIntegral maxamtswidth
         maxbalwidth = maxamtswidth - maxchangewidth
         changewidth = min maxchangewidth maxchangewidthseen
@@ -104,7 +103,7 @@ rsDraw UIState{aopts=_uopts@UIOpts{uoCliOpts=copts@CliOpts{reportspec_=rspec}}
         -- inclusive = tree_ ropts || rsForceInclusive
 
         toplabel =
-              withAttr (attrName "border" <> attrName "bold") (str $ T.unpack $ replaceHiddenAccountsNameWith "All" _rssAccount)
+              withAttr (attrName "border" <> attrName "bold") (str $ T.unpack $ replaceHiddenAccountsNameWith "All" $ uiDisplayAccount uopts _rssAccount)
 --           <+> withAttr ("border" <> "query") (str $ if inclusive then "" else " exclusive")
           <+> togglefilters
           <+> str " transactions"
@@ -150,13 +149,13 @@ rsDraw UIState{aopts=_uopts@UIOpts{uoCliOpts=copts@CliOpts{reportspec_=rspec}}
 
               ,("H", renderToggle (not ishistorical) "historical" "period")
               ,("F", renderToggle1 (isJust . forecast_ . inputopts_ $ copts) "forecast")
+              ,("L", renderToggle1 (boolopt "lots" $ rawopts_ copts) "lots")
               -- ,("a", "add")
               -- ,("g", "reload")
               ,("?", str "help")
               -- ,("q", "quit")
               ]
 
-rsDraw _ = dbgui "rsDraw 2" $ errorWrongScreenType "draw function"  -- PARTIAL:
 
 rsDrawItem :: (Int,Int,Int,Int,Int) -> Bool -> RegisterScreenItem -> Widget Name
 rsDrawItem (datewidth,descwidth,acctswidth,changewidth,balwidth) selected RegisterScreenItem{..} =
@@ -184,14 +183,13 @@ rsDrawItem (datewidth,descwidth,acctswidth,changewidth,balwidth) selected Regist
         | otherwise = id
 
 -- XXX clean up like asHandle
-rsHandle :: BrickEvent Name AppEvent -> EventM Name UIState ()
-rsHandle ev = do
+rsHandle :: RegisterScreenState -> BrickEvent Name AppEvent -> EventM Name UIState ()
+rsHandle sst@RSS{..} ev = do
   ui0 <- get'
-  dbguiEv "rsHandle 1"
+  dbguiEv "rsHandle"
   case ui0 of
     ui@UIState{
-      aScreen=RS sst@RSS{..}
-      ,aopts=UIOpts{uoCliOpts=copts}
+      aopts=UIOpts{uoCliOpts=copts}
       ,ajournal=j
       ,aMode=mode
       } -> do
@@ -211,12 +209,12 @@ rsHandle ev = do
         Minibuffer _ ed ->
           case ev of
             VtyEvent (EvKey KEsc   []) -> modify' closeMinibuffer
-            VtyEvent (EvKey KEnter []) -> put' $ regenerateScreens j d $
+            VtyEvent (EvKey KEnter []) -> put' $ regenerateScreens d $
                 case setFilter s $ closeMinibuffer ui of
                   Left bad -> showMinibuffer "Cannot compile regular expression" (Just bad) ui
                   Right ui' -> ui'
               where s = chomp . unlines . map strip $ getEditContents ed
-            -- VtyEvent (EvKey (KChar '/') []) -> put' $ regenerateScreens j d $ showMinibuffer ui
+            -- VtyEvent (EvKey (KChar '/') []) -> put' $ regenerateScreens d $ showMinibuffer ui
             VtyEvent (EvKey (KChar 'l') [MCtrl]) -> redraw
             VtyEvent (EvKey (KChar 'z') [MCtrl]) -> suspend ui
             VtyEvent e -> do
@@ -241,18 +239,17 @@ rsHandle ev = do
 
             -- AppEvents arrive in --watch mode, see AccountsScreen
             AppEvent (DateChange old _) | isStandardPeriod p && p `periodContainsDate` old ->
-              put' $ regenerateScreens j d $ setReportPeriod (DayPeriod d) ui
+              put' $ regenerateScreens d $ setReportPeriod (DayPeriod d) ui
               where
                 p = reportPeriod ui
 
-            e | e `elem` [AppEvent FileChange, VtyEvent (EvKey (KChar 'g') [])] ->
-              liftIO (uiReloadJournal copts d ui) >>= put'
+            e | e `elem` [AppEvent FileChange, VtyEvent (EvKey (KChar 'g') [])] -> uiReload copts d ui >>= put'
 
-            VtyEvent (EvKey (KChar 'I') []) -> put' $ uiCheckBalanceAssertions d (toggleIgnoreBalanceAssertions ui)
-            VtyEvent (EvKey (KChar 'a') []) -> suspendAndResume $ clearScreen >> setCursorPosition 0 0 >> add (cliOptsDropArgs copts) j >> uiReloadJournalIfChanged copts d j ui
-            VtyEvent (EvKey (KChar 'A') []) -> suspendAndResume $ void (runIadd (journalFilePath j)) >> uiReloadJournalIfChanged copts d j ui
-            VtyEvent (EvKey (KChar 'T') []) -> put' $ regenerateScreens j d $ setReportPeriod (DayPeriod d) ui
-            VtyEvent (EvKey (KChar 'E') []) -> suspendAndResume $ void (runEditor pos f) >> uiReloadJournalIfChanged copts d j ui
+            VtyEvent (EvKey (KChar 'I') []) -> uiToggleBalanceAssertions d ui
+            VtyEvent (EvKey (KChar 'a') []) -> suspendAndResume $ clearScreen >> setCursorPosition 0 0 >> add (cliOptsDropArgs copts) j >> uiReloadIfFileChanged copts d j ui
+            VtyEvent (EvKey (KChar 'A') []) -> suspendAndResume $ void (runIadd (journalFilePath j)) >> uiReloadIfFileChanged copts d j ui
+            VtyEvent (EvKey (KChar 'T') []) -> put' $ regenerateScreens d $ setReportPeriod (DayPeriod d) ui
+            VtyEvent (EvKey (KChar 'E') []) -> suspendAndResume $ void (runEditor pos f) >> uiReloadIfFileChanged copts d j ui
               where
                 (pos,f) = case listSelectedElement _rssList of
                             Nothing -> (endPosition, journalFilePath j)
@@ -260,24 +257,34 @@ rsHandle ev = do
                               rsItemTransaction=Transaction{tsourcepos=(SourcePos f' l c,_)}}) -> (Just (unPos l, Just $ unPos c),f')
 
             -- display mode/query toggles
-            VtyEvent (EvKey (KChar 'B') []) -> rsCenterSelection (regenerateScreens j d $ toggleConversionOp ui) >>= put'
-            VtyEvent (EvKey (KChar 'V') []) -> rsCenterSelection (regenerateScreens j d $ toggleValue ui) >>= put'
-            VtyEvent (EvKey (KChar 'H') []) -> rsCenterSelection (regenerateScreens j d $ toggleHistorical ui) >>= put'
-            VtyEvent (EvKey (KChar 't') []) -> rsCenterSelection (regenerateScreens j d $ toggleTree ui) >>= put'
-            VtyEvent (EvKey (KChar c) []) | c `elem` ['z','Z'] -> rsCenterSelection (regenerateScreens j d $ toggleEmpty ui) >>= put'
-            VtyEvent (EvKey (KChar 'R') []) -> rsCenterSelection (regenerateScreens j d $ toggleReal ui) >>= put'
-            VtyEvent (EvKey (KChar 'U') []) -> rsCenterSelection (regenerateScreens j d $ toggleUnmarked ui) >>= put'
-            VtyEvent (EvKey (KChar 'P') []) -> rsCenterSelection (regenerateScreens j d $ togglePending ui) >>= put'
-            VtyEvent (EvKey (KChar 'C') []) -> rsCenterSelection (regenerateScreens j d $ toggleCleared ui) >>= put'
-            VtyEvent (EvKey (KChar 'F') []) -> rsCenterSelection (regenerateScreens j d $ toggleForecast d ui) >>= put'
+            VtyEvent (EvKey (KChar 'B') []) -> rsCenterSelection (regenerateScreens d $ toggleConversionOp ui) >>= put'
+            VtyEvent (EvKey (KChar 'V') []) -> rsCenterSelection (regenerateScreens d $ toggleValue ui) >>= put'
+            VtyEvent (EvKey (KChar 'H') []) -> rsCenterSelection (regenerateScreens d $ toggleHistorical ui) >>= put'
+            VtyEvent (EvKey (KChar 't') []) -> rsCenterSelection (regenerateScreens d $ toggleTree ui) >>= put'
+            VtyEvent (EvKey (KChar c) []) | c `elem` ['z','Z'] -> rsCenterSelection (regenerateScreens d $ toggleEmpty ui) >>= put'
+            VtyEvent (EvKey (KChar 'R') []) -> rsCenterSelection (regenerateScreens d $ toggleReal ui) >>= put'
+            VtyEvent (EvKey (KChar 'U') []) -> rsCenterSelection (regenerateScreens d $ toggleUnmarked ui) >>= put'
+            VtyEvent (EvKey (KChar 'P') []) -> rsCenterSelection (regenerateScreens d $ togglePending ui) >>= put'
+            VtyEvent (EvKey (KChar 'C') []) -> rsCenterSelection (regenerateScreens d $ toggleCleared ui) >>= put'
+            VtyEvent (EvKey (KChar 'F') []) -> rsCenterSelection (regenerateScreens d $ toggleForecast d ui) >>= put'
+            VtyEvent (EvKey (KChar 'L') []) -> rsCenterSelection (regenerateScreens d $ toggleLots ui) >>= put'
+            VtyEvent (EvKey (KChar 'J') []) -> do
+              let l' = listMoveBy 10 _rssList
+              let l'' = if isBlankElement (listSelectedElement l')
+                        then listMoveTo lastnonblankidx l'
+                        else l'
+              put' ui{aScreen=RS sst{_rssList=l''}}
 
-            VtyEvent (EvKey (KChar '/') []) -> put' $ regenerateScreens j d $ showMinibuffer "filter" Nothing ui
-            VtyEvent (EvKey (KDown)     [MShift]) -> put' $ regenerateScreens j d $ shrinkReportPeriod d ui
-            VtyEvent (EvKey (KUp)       [MShift]) -> put' $ regenerateScreens j d $ growReportPeriod d ui
-            VtyEvent (EvKey (KRight)    [MShift]) -> put' $ regenerateScreens j d $ nextReportPeriod journalspan ui
-            VtyEvent (EvKey (KLeft)     [MShift]) -> put' $ regenerateScreens j d $ previousReportPeriod journalspan ui
-            VtyEvent (EvKey k           []) | k `elem` [KBS, KDel] -> (put' $ regenerateScreens j d $ resetFilter ui)
-            VtyEvent (EvKey (KChar 'l') [MCtrl]) -> scrollSelectionToMiddle _rssList >> redraw
+            VtyEvent (EvKey (KChar 'K') []) -> do
+              let l' = listMoveBy (-10) _rssList
+              put' ui{aScreen=RS sst{_rssList=l'}}
+            VtyEvent (EvKey (KChar '/') []) -> put' $ regenerateScreens d $ showMinibuffer "filter" Nothing ui
+            VtyEvent (EvKey (KDown)     [MShift]) -> put' $ regenerateScreens d $ shrinkReportPeriod d ui
+            VtyEvent (EvKey (KUp)       [MShift]) -> put' $ regenerateScreens d $ growReportPeriod d ui
+            VtyEvent (EvKey (KRight)    [MShift]) -> put' $ regenerateScreens d $ nextReportPeriod journalspan ui
+            VtyEvent (EvKey (KLeft)     [MShift]) -> put' $ regenerateScreens d $ previousReportPeriod journalspan ui
+            VtyEvent (EvKey k           []) | k `elem` [KBS, KDel] -> (put' $ regenerateScreens d $ resetFilter ui)
+            VtyEvent (EvKey (KChar 'l') [MCtrl]) -> scrollSelectionToMiddle (rsListSize _rssList) _rssList >> redraw
             VtyEvent (EvKey (KChar 'z') [MCtrl]) -> suspend ui
 
             -- exit screen on LEFT
@@ -287,7 +294,7 @@ rsHandle ev = do
 
             -- enter transaction screen on RIGHT
             VtyEvent e | e `elem` moveRightEvents ->
-              case mtxns of Nothing -> return (); Just (nts, nt) -> rsEnterTransactionScreen _rssAccount nts nt ui
+              case mtxns of Nothing -> return (); Just (nts, nt) -> rsEnterTransactionScreen _rssAccount _rssForceInclusive nts nt ui
             -- or on transaction click
             -- MouseDown is sometimes duplicated, https://github.com/jtdaugherty/brick/issues/347
             -- just use it to move the selection
@@ -296,12 +303,11 @@ rsHandle ev = do
               where clickeddate = maybe "" rsItemDate $ listElements _rssList !? y
             -- and on MouseUp, enter the subscreen
             MouseUp _n (Just BLeft) Location{loc=(_x,y)} | not $ (=="") clickeddate -> do
-              case mtxns of Nothing -> return (); Just (nts, nt) -> rsEnterTransactionScreen _rssAccount nts nt ui
+              case mtxns of Nothing -> return (); Just (nts, nt) -> rsEnterTransactionScreen _rssAccount _rssForceInclusive nts nt ui
               where clickeddate = maybe "" rsItemDate $ listElements _rssList !? y
 
-            -- when selection is at the last item, DOWN scrolls instead of moving, until maximally scrolled
-            VtyEvent e | e `elem` moveDownEvents, isBlankElement mnextelement -> do
-              vScrollBy (viewportScroll $ listName $ _rssList) 1
+            -- when selection is at the last item, do nothing
+            VtyEvent e | e `elem` moveDownEvents, isBlankElement mnextelement -> return ()
               where mnextelement = listSelectedElement $ listMoveDown _rssList
 
             -- mouse scroll wheel scrolls the viewport up or down to its maximum extent,
@@ -317,7 +323,7 @@ rsHandle ev = do
               if isBlankElement $ listSelectedElement l
               then do
                 let l' = listMoveTo lastnonblankidx l
-                scrollSelectionToMiddle l'
+                scrollSelectionToMiddle (rsListSize l') l'
                 put' ui{aScreen=RS sst{_rssList=l'}}
               else
                 put' ui{aScreen=RS sst{_rssList=l}}
@@ -332,7 +338,6 @@ rsHandle ev = do
             MouseUp{}         -> return ()
             AppEvent _        -> return ()
 
-    _ -> dbgui "rsHandle 2" $ errorWrongScreenType "event handler"
 
 isBlankElement mel = ((rsItemDate . snd) <$> mel) == Just ""
 
@@ -347,15 +352,11 @@ rsSetAccount _ _ st = st
 -- No effect on other screens.
 rsCenterSelection :: UIState -> EventM Name UIState UIState
 rsCenterSelection ui@UIState{aScreen=RS sst} = do
-  scrollSelectionToMiddle $ _rssList sst
+  scrollSelectionToMiddle (rsListSize $ _rssList sst) (_rssList sst)
   return ui  -- ui is unchanged, but this makes the function more chainable
 rsCenterSelection ui = return ui
 
-rsEnterTransactionScreen :: AccountName -> [NumberedTransaction] -> NumberedTransaction -> UIState -> EventM Name UIState ()
-rsEnterTransactionScreen acct nts nt ui = do
+rsEnterTransactionScreen :: AccountName -> Bool -> [NumberedTransaction] -> NumberedTransaction -> UIState -> EventM Name UIState ()
+rsEnterTransactionScreen acct forceinclusive nts nt ui = do
   dbguiEv "rsEnterTransactionScreen"
-  put' $
-    pushScreen (tsNew acct nts nt)
-    ui
-
-
+  put' $ pushScreen (tsNew acct forceinclusive nts nt) ui

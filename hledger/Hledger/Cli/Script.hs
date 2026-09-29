@@ -32,7 +32,7 @@ import Text.Printf as M hiding (formatString)
 import "text" Data.Text as M (Text, pack, unpack)
   -- can't re-export much of Data.Text & Data.Text.IO, they need to be qualified
 import Safe as M hiding (at)
--- import qualified System.Console.CmdArgs.Explicit as M
+-- import System.Console.CmdArgs.Explicit qualified as M
 import System.Directory as M
 import System.Environment as M
 import System.Exit as M

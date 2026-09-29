@@ -1,4 +1,9 @@
-/* hledger web ui styles */
+/* hledger web ui styles
+ *
+ * Conventions and the reasoning behind them: ../STYLE.md
+ * Short version: no build step, nothing from a third party, style lives here
+ * rather than in style= attributes, and amounts get tabular figures.
+ */
 
 /*------------------------------------------------------------------------------------------*/
 /* 0. revert some things */
@@ -10,6 +15,13 @@
 
 /*------------------------------------------------------------------------------------------*/
 /* 1. colours */
+
+/* The UI is light-only; declare that so browser-drawn widgets
+   (datalist suggestions, date picker, scrollbars) stay light
+   instead of following the OS dark theme. */
+:root {
+  color-scheme: light;
+}
 
 /* green */
 ::-moz-placeholder {
@@ -32,49 +44,213 @@ body {
 }
 
 /*------------------------------------------------------------------------------------------*/
-/* 4. typeahead styles */
+/* 3. tabular data: amounts, dates, column headers */
 
-.tt-hint {
-  color: #bbb;
+/* Amounts read as a column of figures: tabular (fixed width) digits, aligned
+   right so the decimal points line up. Both the cell and the amount spans
+   inside it carry .amount, so this reaches either. */
+.amount {
+  font-feature-settings: "tnum";
+  font-variant: tabular-nums;
+  text-align: right;
 }
 
-.tt-dropdown-menu {
-  padding: 8px 0;
-  background-color: #fff;
-  border: 1px solid #ccc;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  -webkit-border-radius: 8px;
-     -moz-border-radius: 8px;
-          border-radius: 8px;
-  -webkit-box-shadow: 0 5px 10px rgba(0,0,0,.2);
-     -moz-box-shadow: 0 5px 10px rgba(0,0,0,.2);
-          box-shadow: 0 5px 10px rgba(0,0,0,.2);
-  overflow:auto;
-  max-height:300px;
+/* A date is one token; don't break it across lines. */
+td.date {
+  white-space: nowrap;
 }
 
-.tt-suggestion {
-  padding: 3px 20px;
-  font-size: 18px;
-  line-height: 24px;
+/* One row, one line: descriptions arrive elided, so the width is bounded. */
+@media (min-width: 992px) { /* under md: no room */
+  td.description {
+    white-space: nowrap;
+  }
 }
 
-.tt-suggestion.tt-cursor {
-  color: #fff;
-  background-color: #0097cf;
+/* A row lights up under the pointer, which helps when reading a wide row
+   across to its amount. The :target rule further down overrides this. */
+.table > tbody > tr:hover > td {
+  background-color: #f6f8fa;
 }
 
-.tt-suggestion p {
-  margin: 0;
+/* Column headers label the data, they are not part of it: small, spaced and
+   muted. Left alignment comes from bootstrap's th rule; .amount above
+   overrides it for the figure columns. */
+.table > thead > tr > th,
+.table > thead > th {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #687385;
+  border-bottom: 1px solid #e6e8eb;
+  white-space: normal;
 }
 
-.twitter-typeahead {
-  width:100%;
+/* A balance report can be wider than the page at any window size, and
+   bootstrap's .table-responsive only scrolls below 768px. Without this the
+   whole main pane scrolls instead, dragging the account column, the heading
+   and the search box out of view. */
+.report-table {
+  overflow-x: auto;
+}
+
+/* The balance report's table comes from hledger-lib's HTML writer, which
+   marks heading and total cells with border classes (border-bottom-double,
+   border-top-double) for its standalone output. Here the rules above apply
+   instead: one hairline between rows, none vertical, no double lines. The
+   totals, in tfoot, are bold (the writer's <b>) under a hairline in the
+   header color, so the eye finds them without a heavier rule. */
+.table > tfoot > tr > td {
+  border-top: 1px solid #687385;
+}
+
+/* The row of links to the balance reports, on the journal and balance
+   pages; the report being shown is set in bold, like the sidebar's
+   current account. */
+.report-links a {
+  margin-left: 0.5em;
+}
+.report-links .current {
+  font-weight: bold;
+}
+
+/*------------------------------------------------------------------------------------------*/
+/* 4. the add form */
+
+/* Each posting row is indented a little under the date and description. */
+#addform .account-group {
+  padding-left: 1em;
+}
+
+/* When the journal has several files, a selector chooses which one to add to.
+   It sits inline after its "Add to:" label instead of filling the row. */
+#addform .file-select {
+  display: inline-block;
+  width: auto;
+}
+
+#addform button[type=submit] {
+  font-weight: bold;
+}
+
+/* The date picker button. */
+#datebutton {
+  cursor: pointer;
+}
+
+/* The date input that backs the picker button. It must be rendered for
+   showPicker to work, so it is placed under the button rather than hidden. */
+#datepicked {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The add form shown on a page of its own, after a submission was rejected. */
+.add-page {
+  margin-top: 1em;
+}
+
+/*------------------------------------------------------------------------------------------*/
+/* 5. the entry targeted by the url hash */
+
+/* Following a link to a transaction or posting marks it. */
+.table > tbody > tr:target > td,
+tr:target > td {
+  background-color: #fcf8e3;
 }
 
 code {
   font-weight: bold;
   color: black;
+}
+
+/*------------------------------------------------------------------------------------------*/
+/* 6. dialogs */
+
+/* The add form and help are <dialog> elements. Browsers draw those with a
+   plain black border, so give them the look of the modals around them. */
+dialog {
+  width: min(900px, calc(100% - 20px));
+  /* Sit near the top of the viewport, where the modals did, rather than
+     centered as a <dialog> is by default. */
+  margin-top: 30px;
+  margin-bottom: 30px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, .2);
+  border-radius: 6px;
+  box-shadow: 0 3px 9px rgba(0, 0, 0, .5);
+}
+
+/* The program name and version, at the right of the help dialog's header. */
+.modal-header .version {
+  float: right;
+  margin-right: 4em;
+}
+dialog::backdrop {
+  background-color: rgba(0, 0, 0, .5);
+}
+
+/* showModal() puts focus on the dialog, which is a container rather than
+   something the user tabs to, so it does not need a focus ring. */
+dialog:focus {
+  outline: none;
+}
+
+/* In the help dialog's lists, an item that starts a new group. */
+.modal-body li.gap-above {
+  margin-top: 1em;
+}
+
+/*------------------------------------------------------------------------------------------*/
+/* 7. the register chart */
+
+/* flot draws into this, and needs it to have a size first. */
+#register-chart {
+  height: 150px;
+  margin-bottom: 1em;
+}
+
+/* The legend, which hledger.js adds to the label line: a color swatch and
+   the commodity for each balance line. */
+#register-chart-label .legend-item {
+  margin-left: 1em;
+  font-weight: normal;
+}
+#register-chart-label .legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 0.3em;
+  border: 1px solid #ccc;
+  vertical-align: middle;
+}
+
+/*------------------------------------------------------------------------------------------*/
+/* 8. the manage, edit and upload pages */
+
+/* The list of journal files: each name is centered against its row of buttons. */
+.table.files td.filename {
+  vertical-align: middle;
+}
+
+/* The edit form is a table only for layout; no rules between its cells. */
+.table.edit-form td {
+  border: 0;
+}
+
+/* The upload form's file input is hidden; its label, styled as a button, is
+   the visible control and opens the file dialog. (Bootstrap makes file inputs
+   display:block, which outranks the hidden attribute, hence a rule here.) */
+label.btn > input[type=file] {
+  display: none;
 }
 
 ul {
@@ -94,6 +270,18 @@ ul {
 #sidebar-menu {
     overflow:hidden;
     border-right: 1px solid #ebebeb;
+}
+/* On wider screens, give the sidebar and the main content each their own
+   vertical scrollbar so they scroll independently and the window itself doesn't
+   scroll. This keeps the account list from shifting when the main pane is long,
+   and lets its scroll position be preserved across navigations (restored from
+   sessionStorage in hledger.js). calc leaves room for the header row above, so
+   the last accounts aren't clipped; short lists stay content-height. */
+@media screen and (min-width: 769px) {
+    #sidebar-menu, #main-content {
+        max-height: calc(100vh - 5em);
+        overflow-y: auto;
+    }
 }
 #sidebar-menu .main-menu {
     table-layout: fixed;
@@ -164,10 +352,6 @@ ul {
 
 .negative {
     color: #a94442;
-}
-
-.date {
-    whitespace: nowrap;
 }
 
 .col-any-0 {

@@ -1,0 +1,164 @@
+# * find: queries (and their short form, ::)
+
+<
+account assets:checking  ; bankname: chase
+
+2023-12-01 Bookshop
+    expenses:books           $15
+    assets:cash
+
+2024-01-15 * (101) Amazon | books  ; ttag: tvalue
+    expenses:books           $20  ; ptag: pvalue
+    assets:checking
+
+2024-02-10 Whole Foods
+    expenses:food            $30
+    assets:cash
+
+# ** 1. find: matches the description
+$ hledger -f - print find:amazon
+2024-01-15 * (101) Amazon | books  ; ttag: tvalue
+    expenses:books                               $20  ; ptag: pvalue
+    assets:checking
+
+>=
+
+# ** 2. :: is a short form of find:. Here it matches account names.
+$ hledger -f - print ::books
+2023-12-01 Bookshop
+    expenses:books                               $15
+    assets:cash
+
+2024-01-15 * (101) Amazon | books  ; ttag: tvalue
+    expenses:books                               $20  ; ptag: pvalue
+    assets:checking
+
+>=
+
+# ** 3. It matches the posting comment, including any tags there.
+$ hledger -f - print ::pvalue
+2024-01-15 * (101) Amazon | books  ; ttag: tvalue
+    expenses:books                               $20  ; ptag: pvalue
+    assets:checking
+
+>=
+
+# ** 4. It matches the transaction comment, including any tags there.
+$ hledger -f - print ::ttag
+2024-01-15 * (101) Amazon | books  ; ttag: tvalue
+    expenses:books                               $20  ; ptag: pvalue
+    assets:checking
+
+>=
+
+# ** 5. It matches the transaction code.
+$ hledger -f - print ::101
+2024-01-15 * (101) Amazon | books  ; ttag: tvalue
+    expenses:books                               $20  ; ptag: pvalue
+    assets:checking
+
+>=
+
+# ** 6. It matches the amount, as displayed.
+$ hledger -f - print ::30
+2024-02-10 Whole Foods
+    expenses:food                                $30
+    assets:cash
+
+>=
+
+# ** 7. A pattern which is also a period expression matches dates in that period.
+$ hledger -f - print ::2023
+2023-12-01 Bookshop
+    expenses:books                               $15
+    assets:cash
+
+>=
+
+# ** 8. Any period expression syntax can be used.
+$ hledger -f - print ::2024-02
+2024-02-10 Whole Foods
+    expenses:food                                $30
+    assets:cash
+
+>=
+
+# ** 9. Multiple find: terms must all match.
+$ hledger -f - print ::books ::2024
+2024-01-15 * (101) Amazon | books  ; ttag: tvalue
+    expenses:books                               $20  ; ptag: pvalue
+    assets:checking
+
+>=
+
+# ** 10. It can be negated.
+$ hledger -f - print not:::books
+2024-02-10 Whole Foods
+    expenses:food                                $30
+    assets:cash
+
+>=
+
+# ** 11. A quoted pattern is a single pattern, which can contain spaces.
+$ hledger -f - print ::'whole foods'
+2024-02-10 Whole Foods
+    expenses:food                                $30
+    assets:cash
+
+>=
+
+# ** 12. Regular expression syntax works, eg for alternatives.
+$ hledger -f - print ::'amazon|whole'
+2024-01-15 * (101) Amazon | books  ; ttag: tvalue
+    expenses:books                               $20  ; ptag: pvalue
+    assets:checking
+
+2024-02-10 Whole Foods
+    expenses:food                                $30
+    assets:cash
+
+>=
+
+# ** 13. It can be used in boolean queries.
+$ hledger -f - print expr:'::books and not ::2024'
+2023-12-01 Bookshop
+    expenses:books                               $15
+    assets:cash
+
+>=
+
+# ** 14. In posting-oriented commands, a term is matched against each posting,
+# with its account, amount and comment, and its transaction's fields.
+$ hledger -f - register ::cash
+2023-12-01 Bookshop             assets:cash                   $-15          $-15
+2024-02-10 Whole Foods          assets:cash                   $-30          $-45
+
+# ** 15. So a term matching a transaction field matches all of that transaction's postings.
+$ hledger -f - register ::amazon
+2024-01-15 Amazon | books       expenses:books                 $20           $20
+                                assets:checking               $-20             0
+
+# ** 16. And multiple terms must all match the same posting (or its transaction).
+$ hledger -f - register ::books ::cash
+2023-12-01 Bookshop             assets:cash                   $-15          $-15
+
+# ** 17. Unlike date:, a date-like find: term filters but does not set the report period.
+$ hledger -f - balance -M ::2024 -O csv
+"account","2023-12","2024-01","2024-02"
+"assets:checking","0","$-20","0"
+"assets:cash","0","0","$-30"
+"expenses:books","0","$20","0"
+"expenses:food","0","0","$30"
+"Total:","0","0","0"
+
+# ** 18. Only visible text is searched. Tags inherited from account declarations
+# are queryable with tag:, but not with find:.
+$ hledger -f - print tag:bankname=chase
+2024-01-15 * (101) Amazon | books  ; ttag: tvalue
+    expenses:books                               $20  ; ptag: pvalue
+    assets:checking
+
+>=
+
+# ** 19.
+$ hledger -f - print ::chase

@@ -17,6 +17,18 @@ $ hledger -f balance-multicol.journal balance -M -A -O csv --transpose
 "2013-03","0","0","1","1"
 "average","0","0","3","3"
 
+# Repeating --transpose reverses it (an even number of flags has no effect).
+$ hledger -f balance-multicol.journal balance -M -A --transpose --transpose
+Balance changes in 2012-12-01..2013-03-31:
+
+                 || 2012-12  2013-01  2013-02  2013-03  Average 
+=================++=============================================
+ assets          ||       0        0        1        0        0 
+ assets:cash     ||       0        0        1        0        0 
+ assets:checking ||      10        0        0        1        3 
+-----------------++---------------------------------------------
+                 ||      10        0        2        1        3 
+
 
 <
 2016/12/01

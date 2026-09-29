@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""krakencsv - add derived columns to a Kraken ledger CSV export.
+
+Reads a Kraken ledgers CSV (on stdin, or from files named as arguments) and
+writes it back out with four columns appended:
+
+  isodate              the ISO date part of the time field
+  netamount            amount minus fee
+  marketprice          for subclass=crypto rows, the market price of the asset
+                       on that date, from the prices directory's ASSET.prices
+  marketpricecurrency  the currency marketprice is denominated in
+
+Prices are hledger price directives (P DATE SYM PRICE), one per day.  If
+there is no price for the exact date, the most recent earlier price is carried
+forward.  If there is no price file, or no price at or before the date, both
+price columns are left empty and a warning is printed to stderr.
+
+Already-enriched input (recognised by a netamount column in the header)
+is passed through unchanged, with a warning, so accidentally enriching twice
+can't misalign columns.
+
+The prices directory is located as follows: the --pricedir DIR option if
+given; otherwise the first of ./prices and ../prices that exists; otherwise
+the prices directory next to $LEDGER_FILE. Note when run by hledger as a
+rules file's data cleaning command, the working directory is the rules
+file's directory - so those relative paths (including a relative
+--pricedir) are relative to the rules file, covering rules that live in
+the journal's directory or in a subdirectory of it.
+
+Usage:  krakencsv [--pricedir DIR] [FILE...] > enriched.csv
+
+Or in a hledger rules file: source kraken-spot-ledgers-*.csv | krakencsv
+
+"""
+
+import bisect
+import csv
+import os
+import sys
+from decimal import Decimal, InvalidOperation
+
+PRICEDIR = None   # the prices directory; set at startup, see findpricedir
+NEWCOLS = ['isodate', 'netamount', 'marketprice', 'marketpricecurrency']
+
+
+def findpricedir():
+    """The default prices directory: the first of ./prices and ../prices
+    that exists (when run by hledger, the working directory is the rules
+    file's directory, so these cover rules living in the journal directory
+    or in a subdirectory of it); otherwise the prices directory next to
+    $LEDGER_FILE."""
+    candidates = ['prices', os.path.join('..', 'prices')]
+    lf = os.environ.get('LEDGER_FILE')
+    if lf:
+        candidates.append(
+            os.path.join(os.path.dirname(os.path.expanduser(lf)), 'prices'))
+    for d in candidates:
+        if os.path.isdir(d):
+            return d
+    return candidates[0]
+
+_pricecache = {}   # asset -> ([dates], [prices], [currencies]) or None
+_warned = set()
+
+
+def warn(msg):
+    print('krakencsv: %s' % msg, file=sys.stderr)
+
+
+def loadprices(asset):
+    """Return ([dates],[prices],[currencies]) sorted by date for ASSET, or None."""
+    if asset in _pricecache:
+        return _pricecache[asset]
+    path = os.path.join(PRICEDIR, asset + '.prices')
+    entries = []
+    try:
+        with open(path) as f:
+            for line in f:
+                fields = line.split()
+                # P DATE SYM PRICE [CURRENCY]
+                if len(fields) >= 4 and fields[0] == 'P':
+                    entries.append((fields[1], fields[3],
+                                    fields[4] if len(fields) >= 5 else ''))
+    except OSError:
+        _pricecache[asset] = None
+        return None
+    entries.sort()
+    _pricecache[asset] = ([d for d, _, _ in entries],
+                          [p for _, p, _ in entries],
+                          [c for _, _, c in entries])
+    return _pricecache[asset]
+
+
+def pricefile_asset(asset):
+    """Map a Kraken asset code to a price file name.
+
+    Tries the code as-is, then without any Kraken suffix (ADA.S -> ADA).
+    """
+    if os.path.exists(os.path.join(PRICEDIR, asset + '.prices')):
+        return asset
+    base = asset.split('.', 1)[0]
+    if base != asset and os.path.exists(os.path.join(PRICEDIR, base + '.prices')):
+        return base
+    return asset
+
+
+def marketprice(asset, date):
+    """(price, currency) for ASSET on DATE, carrying the last price forward."""
+    name = pricefile_asset(asset)
+    prices = loadprices(name)
+    if prices is None:
+        if asset not in _warned:
+            _warned.add(asset)
+            warn('no price file %s/%s.prices' % (PRICEDIR, name))
+        return '', ''
+    dates, vals, currs = prices
+    i = bisect.bisect_right(dates, date)
+    if i == 0:
+        key = (asset, 'early')
+        if key not in _warned:
+            _warned.add(key)
+            warn('no %s price at or before %s (earliest is %s)'
+                 % (asset, date, dates[0]))
+        return '', ''
+    return vals[i - 1], currs[i - 1]
+
+
+def plain(d):
+    """Format a Decimal without scientific notation."""
+    s = format(d, 'f')
+    return s
+
+
+def isnumeric(s):
+    try:
+        Decimal(s)
+        return True
+    except (InvalidOperation, ValueError):
+        return False
+
+
+def quote(field):
+    """Quote like Kraken does: text quoted, numbers bare."""
+    if field != '' and isnumeric(field):
+        return field
+    return '"' + field.replace('"', '""') + '"'
+
+
+def enrich(rows, out):
+    header = None
+    idx = {}
+    passthrough = False
+    for row in rows:
+        if not row:
+            continue
+        if header is None:
+            header = row
+            idx = {name: i for i, name in enumerate(header)}
+            # Idempotency guard: don't enrich twice. An already-enriched
+            # input is passed through unchanged, with a warning.
+            if 'netamount' in idx:
+                warn('input looks already enriched (has netamount); passing it through unchanged')
+                passthrough = True
+                out.write(','.join(quote(f) for f in header) + '\n')
+                continue
+            missing = [c for c in ('time', 'amount', 'fee', 'subclass', 'asset')
+                       if c not in idx]
+            if missing:
+                sys.exit('krakencsv: input header lacks column(s): %s'
+                         % ', '.join(missing))
+            out.write(','.join(quote(f) for f in header + NEWCOLS) + '\n')
+            continue
+
+        if passthrough:
+            out.write(','.join(quote(f) for f in row) + '\n')
+            continue
+
+        def get(name):
+            i = idx[name]
+            return row[i] if i < len(row) else ''
+
+        date = get('time')[:10]
+
+        amount, fee = get('amount'), get('fee')
+        try:
+            netamount = plain(Decimal(amount or 0) - Decimal(fee or 0))
+        except InvalidOperation:
+            netamount = ''
+            warn('row %s: unparseable amount %r / fee %r'
+                 % (get('txid') if 'txid' in idx else '?', amount, fee))
+
+        price = pricecurr = ''
+        if get('subclass') == 'crypto' and date:
+            price, pricecurr = marketprice(get('asset'), date)
+
+        out.write(','.join(quote(f)
+                           for f in row + [date, netamount, price, pricecurr]) + '\n')
+
+
+def main():
+    global PRICEDIR
+    args = sys.argv[1:]
+    if args and args[0] == '--pricedir':
+        if len(args) < 2:
+            sys.exit('krakencsv: --pricedir needs a directory argument')
+        PRICEDIR = os.path.expanduser(args[1])
+        args = args[2:]
+    else:
+        PRICEDIR = findpricedir()
+    out = sys.stdout
+    if not args:
+        enrich(csv.reader(sys.stdin), out)
+    else:
+        for path in args:
+            with open(path, newline='') as f:
+                enrich(csv.reader(f), out)
+
+
+if __name__ == '__main__':
+    main()

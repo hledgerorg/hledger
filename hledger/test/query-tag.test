@@ -15,10 +15,10 @@
 $ hledger -f - print
 2010-01-01  ; txntag1: txn val 1
     ; txntag2: txn val 2
-    a               1
+    a                                              1
     ; posting1tag1: posting 1 val 1
     ; posting1tag2:
-    b              -1  ; posting-2-tag-1: posting 2 val 1
+    b                                             -1  ; posting-2-tag-1: posting 2 val 1
     ; posting-2-tag-2:
 
 >=
@@ -38,12 +38,12 @@ $ hledger -f - print
     f            -1
 $ hledger -f - print tag:foo
 2010-01-01  ; foo:bar
-    a               1
-    b              -1
+    a                                              1
+    b                                             -1
 
 2010-01-02  ; foo:baz
-    c               1
-    d              -1
+    c                                              1
+    d                                             -1
 
 >=
 
@@ -63,8 +63,8 @@ $ hledger -f - print tag:foo
     f            -1
 $ hledger -f - print tag:foo=bar
 2010-01-01  ; foo:bar
-    a               1
-    b              -1
+    a                                              1
+    b                                             -1
 
 >=
 
@@ -106,16 +106,16 @@ $ hledger -f - register tag:foo=bar
     h            -4
 $ hledger -f - print not:tag:.
 2010-01-01 desc
-    a               1
-    b              -1
+    a                                              1
+    b                                             -1
 
 2010-01-03
-    e               3
-    f              -3
+    e                                              3
+    f                                             -3
 
 2010-01-04 (code)
-    g               4
-    h              -4
+    g                                              4
+    h                                             -4
 
 >=
 
@@ -175,8 +175,8 @@ $ hledger -f- register -w80 tag:type=^a
 # ** 15. We can match transactions by their accounts' tags.
 $ hledger -f- print tag:type=^a
 2022-01-02
-    (a)               1
-    (l)               1
+    (a)                                            1
+    (l)                                            1
 
 >=
 

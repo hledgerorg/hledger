@@ -1,0 +1,62 @@
+# Fidelity account csv rules
+# These rules are for a specific kind of csv from Fidelity:
+# 1. Accounts & Trade > Portfolio > All accounts > Activity & Orders
+# 2. Select a suitable date range
+# 3. Make sure no filters are selected (easiest)
+# 4. Click download icon at top right
+# This csv will have 13 fields (12 commas).
+
+# Read the downloaded csv. Adjust the filename here.
+source History_for_Account_Z12345678*.csv
+
+# Save all csvs in data/.
+#archive
+
+newest-first
+intra-day-reversed
+
+# Skip undesirable lines: all but those beginning with a digit and having 12 comma-separated fields
+if ! ^[0-9]([^,]*,){11}
+ skip
+
+# Run Date,Action,Symbol,Security Description,Security Type,Quantity,Price ($),Commission ($),Fees ($),Accrued Interest ($),Amount ($),Settlement Date
+# If you have multiple accounts there will also be an Account field after Run Date
+# (and it might need preprocessing, see https://github.com/hledgerorg/hledger/issues/2082).
+fields Run_Date, Action, Symbol, Security_Description, Security_Type, Quantity, Price_Usd, Commission_Usd, Fees_Usd, Accrued_Interest_Usd, Amount_Usd, Settlement_Date
+
+date %Run_Date
+date-format %m/%d/%Y
+
+description Fidelity | %Action
+currency $
+amount   %Amount_Usd
+balance  %Cash_Balance_Usd
+
+account1 assets:inv:fidelity:cash
+
+# Transactions come in various types, including:
+
+# Electronic Funds Transfer Received (Cash)
+if %Action Transfer Received \(Cash\)
+ account1 assets:bank:bb:checking
+ account2 assets:inv:fidelity:cash
+
+# WIRE TRANSFER TO BANK (Cash)
+if %Action WIRE TRANSFER
+ account2 assets:bank:bb:checking
+ 
+# INTEREST EARNED FDIC INSURED DEPOSIT AT CITIBANK NOT... (QPCTQ) (Cash)
+if %Action INTEREST EARNED
+ account2 revenues:interest
+if %Action INTEREST EARNED.*QPCTQ
+ account2 revenues:interest:qpctq
+
+# DIVIDEND RECEIVED FIDELITY GOVERNMENT MONEY MARKET (SPAXX) (Cash)
+if %Action DIVIDEND RECEIVED
+ account2 revenues:dividends
+if %Action DIVIDEND RECEIVED.*SPAXX
+ account2 revenues:dividends:spaxx
+
+# REINVESTMENT FIDELITY GOVERNMENT MONEY MARKET (SPAXX) (Cash)
+if %Action REINVESTMENT
+ skip

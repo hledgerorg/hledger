@@ -1,5 +1,5 @@
 Tests of Ledger compatibility, focussed on reading journal format for now.
-See https://github.com/simonmichael/hledger/issues/1962.
+See https://github.com/hledgerorg/hledger/issues/1962.
 
 The hledger-* tests test hledger's main journal syntax, 
 other journal syntax supported by hledger,

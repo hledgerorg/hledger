@@ -11,8 +11,8 @@ where
 import Data.Function (on)
 import Data.List (groupBy)
 import Data.Maybe (fromMaybe)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Data.Time.Calendar (addDays)
 import System.Console.CmdArgs.Explicit as C
 
@@ -22,7 +22,7 @@ import Safe (lastDef, readMay, readDef)
 import System.FilePath (takeBaseName)
 import Data.Char (isDigit)
 import Hledger.Read.RulesReader (parseBalanceAssertionType)
-import Hledger.Cli.Commands.Print (roundFlag, amountStylesSetRoundingFromRawOpts)
+import Hledger.Cli.Commands.Print (roundFlag, amountStylesSetRoundingFromRawOpts, layoutFlag, layoutFromRawOpts)
 
 defclosedesc  = "closing balances"
 defopendesc   = "opening balances"
@@ -48,6 +48,7 @@ closemode = hledgerCommandMode
   ,flagReq  ["open-desc"]    (\s opts -> Right $ setopt "open-desc"  s opts) "DESC" "set opening transaction's description"
   ,flagReq  ["open-acct"]    (\s opts -> Right $ setopt "open-acct"  s opts) "ACCT" "set opening transaction's source account"
   ,roundFlag
+  ,layoutFlag
   ]
   cligeneralflagsgroups1
   (hiddenflags
@@ -127,12 +128,28 @@ close CliOpts{rawopts_=rawopts, reportspec_=rspec0} j = do
     -- the balances to close
     rspec3 = rspec1{_rsQuery=q3}
     (acctbals',_) = balanceReport rspec3 j
-    acctbals = map (\(a,_,_,b) -> (a, if show_costs_ ropts then b else mixedAmountStripCosts b)) acctbals'
+    showcosts = show_costs_ ropts
+    -- Strip costs unless --show-costs is used, and drop any accounts whose
+    -- balance thereby becomes zero (unless -E). These are accounts which were
+    -- emptied by postings with mismatched costs; without this they would
+    -- generate zero postings, and with --lots, duplicate lot ids (#2689).
+    -- Lot subaccounts are stripped even with --show-costs: their cost info
+    -- lives in the lot name, and transacted prices on their postings would
+    -- make the output unparseable (lot transfers may not have one).
+    acctbals = [ (a, b')
+               | (a,_,_,b) <- acctbals'
+               , let keepcosts = showcosts && not (isLotSubaccount a)
+               , let b' = if keepcosts then b else mixedAmountStripCosts b
+               , keepcosts || empty_ ropts || not (mixedAmountLooksZero b')
+               ]
     totalamt = maSum $ map snd acctbals
 
     -- since balance assertion amounts are required to be exact, the
     -- amounts in opening/closing transactions should be too (#941, #1137)
     precise = amountSetFullPrecision
+
+    -- does this account have a lot subaccount component (e.g. assets:stocks:{2026-01-15, $50}) ?
+    isLotSubaccount a = lotBaseAccount a /= a
 
     -- interleave equity postings next to the corresponding closing posting, or put them all at the end ?
     interleaved = boolopt "interleaved" rawopts
@@ -164,8 +181,10 @@ close CliOpts{rawopts_=rawopts, reportspec_=rspec0} j = do
                   ,pamount           = mixedAmount $ precise b{aquantity=0, acost=Nothing}
                   -- after each commodity's last posting, assert 0 balance (#1035)
                   -- balance assertion amounts are unpriced (#824)
+                  -- lot subaccounts are skipped: assertions run before lot calculation,
+                  -- so the subaccount balance would be wrong when re-read
                   ,pbalanceassertion =
-                      if islast
+                      if islast && not (isLotSubaccount a)
                       then Just assertion{baamount=precise b}
                       else Nothing
                   }
@@ -184,8 +203,9 @@ close CliOpts{rawopts_=rawopts, reportspec_=rspec0} j = do
                     ,pamount           = mixedAmount . precise $ negate b
                     -- after each commodity's last posting, assert 0 balance (#1035)
                     -- balance assertion amounts are unpriced (#824)
+                    -- lot subaccounts are skipped (see Assert branch above)
                     ,pbalanceassertion =
-                        if islast
+                        if islast && not (isLotSubaccount a)
                         then Just assertion{baamount=precise b{aquantity=0, acost=Nothing}}
                         else Nothing
                     }
@@ -238,10 +258,14 @@ close CliOpts{rawopts_=rawopts, reportspec_=rspec0} j = do
             concat [
               posting{paccount          = a
                     ,pamount           = mixedAmount $ precise b
+                    -- lot subaccounts are skipped: assertions run before lot
+                    -- calculation, so the subaccount balance would be wrong
+                    -- when re-read (mirrors the close branch above)
                     ,pbalanceassertion =
                         case mcommoditysum of
-                          Just s  -> Just assertion{baamount=precise s{acost=Nothing}}
-                          Nothing -> Nothing
+                          Just s | not (isLotSubaccount a) ->
+                            Just assertion{baamount=precise s{acost=Nothing}}
+                          _ -> Nothing
                     }
               : [posting{paccount=openacct, pamount=mixedAmount . precise $ negate b} | interleaved]
 
@@ -258,6 +282,8 @@ close CliOpts{rawopts_=rawopts, reportspec_=rspec0} j = do
   -- print them
   -- allow user-specified rounding with --round, like print
   let styles = amountStylesSetRoundingFromRawOpts rawopts $ journalCommodityStyles j
-  maybe (pure ()) (T.putStr . showTransaction . styleAmounts styles) mclosetxn
-  maybe (pure ()) (T.putStr . showTransaction . styleAmounts styles) mopentxn
+      postinglayout = layoutFromRawOpts rawopts
+      showtxn = showTransactionWithLayout postinglayout . styleAmounts styles
+  maybe (pure ()) (T.putStr . showtxn) mclosetxn
+  maybe (pure ()) (T.putStr . showtxn) mopentxn
  

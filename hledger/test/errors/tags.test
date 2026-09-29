@@ -1,0 +1,12 @@
+$ hledger check tags -f tags.j
+>2 /hledger: Error: .*tags\.j:3:
+3 \| 2022-01-01  ; atag:
+.*
+
+Strict tag checking is enabled, and
+tag "atag" has not been declared\.
+Consider adding a tag directive\. Examples:
+
+tag atag
+/
+>= 1

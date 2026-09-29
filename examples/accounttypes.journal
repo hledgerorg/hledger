@@ -1,0 +1,33 @@
+# sample2.journal with non-standard account names
+
+account x:assets       ; type:A
+account x:liabilities  ; type:L
+account x:equity       ; type:E
+account x:revenues     ; type:R
+account x:expenses     ; type:X
+
+2025-01-01 starting balances
+    x:assets:cash               100 USD            =  100 USD
+    x:assets:bank:checking     1000 USD            = 1000 USD
+    x:assets:broker:usd        1000 USD            = 1000 USD
+    x:assets:broker:aaa           1 AAA @ 1.20 USD =    1 AAA @ 1.20 USD
+    x:liabilities:credit card  -400 USD            = -400 USD
+    x:equity:start
+
+2025-01-01 pay rent
+    x:assets:bank:checking
+    x:expenses:rent             800 USD
+
+2025-01-02 salary
+    x:revenues:salary
+    x:assets:bank:checking     1000 USD
+
+2025-01-03 pay half of credit card balance
+    x:assets:bank:checking
+    x:liabilities:credit card   200 USD = -200 USD
+
+2025-01-04 shopping
+    x:assets:bank:checking
+    x:expenses:food             200 USD
+    x:expenses:supplies          50 USD
+

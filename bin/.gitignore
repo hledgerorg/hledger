@@ -1,9 +1,29 @@
-hledger-budget
-hledger-chart
-hledger-check-dates
-hledger-dupes
-hledger-equity
-hledger-prices
-hledger-print-unique
-hledger-register-match
-hledger-rewrite
+# lots of uncommitted stuff here
+
+#g.*
+# _*
+# *.hi
+# *.o
+
+/hledger-lsp
+/rledger*
+/rbean*
+
+# executables compiled from .hs scripts
+/gsheet-csv
+/hledger-balance-as-budget-multi
+/hledger-balance-as-budget
+/hledger-check-fancyassertions
+/hledger-check-postable
+/hledger-check-tagfiles.cabal
+/hledger-check-tagfiles
+/hledger-combine-balances
+/hledger-move
+/hledger-register-max
+/hledger-register-max2
+/hledger-report1
+/hledger-script-example-short
+/hledger-script-example
+/hledger-smooth
+/hledger-swap-dates
+/hledgerprof

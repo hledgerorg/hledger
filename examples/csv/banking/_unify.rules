@@ -1,0 +1,6 @@
+# unify financial credit union common rules
+
+skip 1
+fields account, date, code_, description, amount-out, amount-in, statusmsg, balance
+date-format %-m/%-d/%Y
+currency $

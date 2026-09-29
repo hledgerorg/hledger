@@ -1,6 +1,3 @@
-{-# LANGUAGE CPP               #-}
-{-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE ViewPatterns      #-}
@@ -11,27 +8,32 @@ module Hledger.Cli.Commands.Rewrite (
 )
 where
 
+import Control.Monad (unless)
+import Data.Either (partitionEithers)
 import Data.Functor.Identity
-import Data.List (sortOn)
-#if !MIN_VERSION_base(4,20,0)
-import Data.List (foldl')
-#endif
+import Data.List (dropWhileEnd, sortOn)
+import Data.Map qualified as M
+import Data.Maybe (isJust)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
 import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Commands.Print
 import System.Console.CmdArgs.Explicit
-import Text.Printf
+import System.IO (hPutStr, stderr)
 import Text.Megaparsec hiding (pos1)
-import qualified Data.Algorithm.Diff as D
+import Text.Printf (printf)
+import Data.Algorithm.DiffContext qualified as D
+import Text.PrettyPrint (render, text)
 
 rewritemode = hledgerCommandMode
   $(embedFileRelative "Hledger/Cli/Commands/Rewrite.txt")
   [flagReq ["add-posting"] (\s opts -> Right $ setopt "add-posting" s opts) "'ACCT  AMTEXPR'"
            "add a posting to ACCT, which may be parenthesised. AMTEXPR is either a literal amount, or *N which means the transaction's first matched amount multiplied by N (a decimal number). Two spaces separate ACCT and AMTEXPR."
   ,flagNone ["diff"] (setboolopt "diff") "generate diff suitable as an input for patch tool"
+  ,flagNone ["verbose-tags"] (setboolopt "verbose-tags") "add tags indicating generated/modified data"
+  ,layoutFlag
   ]
   cligeneralflagsgroups1
   hiddenflags
@@ -47,7 +49,7 @@ rewrite opts@CliOpts{rawopts_=rawopts,reportspec_=rspec} j@Journal{jtxns=ts} = d
     today = _rsDay rspec
     verbosetags = boolopt "verbose-tags" rawopts
     modifiers = transactionModifierFromOpts opts : jtxnmodifiers j
-  let j' = j{jtxns=either error' id $ modifyTransactions (journalAccountType j) (journalInheritedAccountTags j) mempty today verbosetags modifiers ts}  -- PARTIAL:
+  let j' = j{jtxns=either error' id $ modifyTransactions (journalAccountType j) (journalInheritedAccountTags j) mempty (queryExpandCurAliases j) today verbosetags modifiers ts}  -- PARTIAL:
   -- run the print command, showing all transactions, or show diffs
   printOrDiff rawopts opts{reportspec_=rspec{_rsQuery=Any}} j j'
 
@@ -66,89 +68,82 @@ transactionModifierFromOpts CliOpts{rawopts_=rawopts} =
 
 printOrDiff :: RawOpts -> (CliOpts -> Journal -> Journal -> IO ())
 printOrDiff opts
-    | boolopt "diff" opts = const diffOutput
+    | boolopt "diff" opts = const (diffOutput (layoutFromRawOpts opts))
     | otherwise = flip (const print')
 
-diffOutput :: Journal -> Journal -> IO ()
-diffOutput j j' = do
-    let changed = [(transactionWithMostlyOriginalPostings t, transactionWithMostlyOriginalPostings t') | (t, t') <- zip (jtxns j) (jtxns j'), t /= t']
-    T.putStr $ renderPatch $ map (uncurry $ diffTxn j) changed
+-- | How many lines of unchanged context to show around each change,
+-- as with diff -U3. patch and similar tools need some context to be
+-- able to apply a patch.
+diffContextLines :: Int
+diffContextLines = 3
 
-type Chunk = (SourcePos, [DiffLine Text])
+-- | A replacement of a source file's lines [start..end) with new lines.
+type Edit = (Int, Int, [Text])
 
--- XXX doctests, update needed:
--- >>> putStr $ renderPatch [(GenericSourcePos "a" 1 1, [D.First "x", D.Second "y"])]
--- --- a
--- +++ a
--- @@ -1,1 +1,1 @@
--- -x
--- +y
--- >>> putStr $ renderPatch [(GenericSourcePos "a" 1 1, [D.Both "x" "x", D.Second "y"]), (GenericSourcePos "a" 5 1, [D.Second "z"])]
--- --- a
--- +++ a
--- @@ -1,1 +1,2 @@
---  x
--- +y
--- @@ -5,0 +6,1 @@
--- +z
--- >>> putStr $ renderPatch [(GenericSourcePos "a" 1 1, [D.Both "x" "x", D.Second "y"]), (GenericSourcePos "b" 5 1, [D.Second "z"])]
--- --- a
--- +++ a
--- @@ -1,1 +1,2 @@
---  x
--- +y
--- --- b
--- +++ b
--- @@ -5,0 +5,1 @@
--- +z
--- | Render list of changed lines as a unified diff
-renderPatch :: [Chunk] -> Text
-renderPatch = go Nothing . sortOn fst where
-    go _ [] = ""
-    go Nothing cs@((SourcePos fp _ _, _):_) = fileHeader fp <> go (Just (fp, 0)) cs
-    go (Just (fp, _)) cs@((SourcePos fp' _ _, _):_) | fp /= fp' = go Nothing cs
-    go (Just (fp, offs)) ((SourcePos _ lineno _, diffs):cs) = chunkHeader <> chnk <> go (Just (fp, offs + adds - dels)) cs
-        where
-            chunkHeader = T.pack $ printf "@@ -%d,%d +%d,%d @@\n" (unPos lineno) dels (unPos lineno+offs) adds
-            (dels, adds) = foldl' countDiff (0, 0) diffs
-            chnk = foldMap renderLine diffs
-    fileHeader fp = "--- " <> T.pack fp <> "\n+++ " <> T.pack fp <> "\n"
+-- | Show the changes between two journals as a unified diff, suitable
+-- for piping to patch.
+--
+-- Only transactions which exist as journal entries in a file can be
+-- patched. Changed transactions which don't - ones generated from CSV
+-- or timeclock data, or by a periodic transaction rule - are left out
+-- of the diff, and reported on stderr.
+diffOutput :: PostingLayout -> Journal -> Journal -> IO ()
+diffOutput postinglayout j j' = do
+    unless (null unpatchable) . hPutStr stderr $ unpatchableWarning unpatchable
+    T.putStr . foldMap fileDiff $ M.toAscList editsbyfile
+  where
+    changed = [(transactionWithMostlyOriginalPostings False t, transactionWithMostlyOriginalPostings False t')
+              | (t, t') <- zip (jtxns j) (jtxns j'), t /= t']
+    -- collected per file, in no particular order; fileDiff sorts them
+    (edits, unpatchable) = partitionEithers $ map txnEdit changed
+    editsbyfile = M.fromListWith (++) edits
 
-    countDiff (dels, adds) = \case
-        Del _  -> (dels + 1, adds)
-        Add _ -> (dels    , adds + 1)
-        Ctx _ -> (dels + 1, adds + 1)
+    -- The rewriting of a changed transaction, as a replacement of its lines in
+    -- its source file; or, if it has no journal entry to replace, why not.
+    txnEdit (t, t')
+      -- A transaction generated by a periodic rule occupies no lines of its own;
+      -- its source position is the rule's, which we must not overwrite.
+      | isJust . lookup generatedTransactionTagName $ ttags t =
+          Right "generated by a periodic transaction rule"
+      -- Transactions read from CSV or timeclock data have a source line but no line range.
+      | (SourcePos fp line _, SourcePos _ line' _) <- tsourcepos t, line' > line =
+          Left (fp, [(unPos line, unPos line', newlines)])
+      | otherwise = Right . T.pack $ "read from " <> sourceName (fst $ tsourcepos t)
+      where
+        -- showTransaction* adds a trailing blank line; the source lines don't include one.
+        newlines = dropWhileEnd T.null . T.lines $ showTransactionWithLayout postinglayout t'
 
-    renderLine = \case
-        Del s -> "-" <> s <> "\n"
-        Add s -> "+" <> s <> "\n"
-        Ctx s -> " " <> s <> "\n"
+    fileDiff (fp, es) = case lookup fp $ jfiles j of
+      Nothing -> ""
+      Just contents -> unifiedDiff fp oldlines $ applyEdits (sortOn first3 es) oldlines
+        where oldlines = T.lines contents
 
-diffTxn :: Journal -> Transaction -> Transaction -> Chunk
-diffTxn j t t' = case tsourcepos t of
-    (pos1@(SourcePos fp line col), pos2) | pos1 == pos2 -> (SourcePos fp (line <> mkPos 1) col, diffs) where
-        -- TODO: use range and produce two chunks: one removes part of
-        --       original file, other adds transaction to new file with
-        --       suffix .ledger (generated). I.e. move transaction from one file to another.
-        diffs :: [DiffLine Text]
-        diffs = concatMap (traverse showPostingLines . mapDiff) $ D.getDiff (tpostings t) (tpostings t')
-    (pos1@(SourcePos fp line _), SourcePos _ line' _) -> (pos1, diffs) where
-        -- We do diff for original lines vs generated ones. Often leads
-        -- to big diff because of re-format effect.
-        diffs :: [DiffLine Text]
-        diffs = map mapDiff $ D.getDiff source changed'
-        source | Just contents <- lookup fp $ jfiles j = drop (unPos line-1) . take (unPos line' - 1) $ T.lines contents
-               | otherwise = []
-        changed = T.lines $ showTransaction t'
-        changed' | null changed = changed
-                 | T.null $ last changed = init changed
-                 | otherwise = changed
+-- | Explain which changed transactions were left out of the diff, and why.
+unpatchableWarning :: [Text] -> String
+unpatchableWarning reasons = unlines $
+     printf "warning: %d changed transaction%s not shown in the diff, having no journal entry to patch:"
+       n (if n == (1::Int) then " is" else "s are" :: String)
+   : [printf "  %d %s" howmany reason | (reason, howmany) <- M.toAscList reasoncounts]
+  where
+    n = length reasons
+    reasoncounts = M.fromListWith (+) [(T.unpack r, 1::Int) | r <- reasons]
 
-data DiffLine a = Del a | Add a | Ctx a
-    deriving (Show, Functor, Foldable, Traversable)
+-- | Replace line ranges in a list of lines. Edits are expected to be
+-- sorted by start line and non-overlapping; any that aren't are skipped.
+applyEdits :: [Edit] -> [Text] -> [Text]
+applyEdits = go 1
+  where
+    go _ [] ls = ls
+    go lineno ((start, end, new):es) ls
+      | start < lineno || end < start = go lineno es ls
+      | otherwise                     = before <> new <> go end es (drop (end-start) rest)
+      where (before, rest) = splitAt (start-lineno) ls
 
-mapDiff :: D.Diff a -> DiffLine a
-mapDiff = \case
-    D.First x -> Del x
-    D.Second x -> Add x
-    D.Both x _ -> Ctx x
+-- | Render the differences between two versions of a file's lines as a
+-- unified diff, with the standard amount of context. Returns the empty
+-- text if there are no differences.
+unifiedDiff :: FilePath -> [Text] -> [Text] -> Text
+unifiedDiff fp old new
+  | null hunks = ""
+  | otherwise  = T.pack . render $ D.prettyContextDiff (text fp) (text fp) (text . T.unpack . D.unnumber) hunks
+  where hunks = D.getContextDiff (Just diffContextLines) old new

@@ -9,32 +9,29 @@ module Hledger.Reports.BudgetReport (
   BudgetReportRow,
   BudgetReport,
   budgetReport,
-  -- * Helpers
-  combineBudgetAndActual,
   -- * Tests
   tests_BudgetReport
 )
 where
 
 import Control.Applicative ((<|>))
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HM
-import Data.List (find, partition, maximumBy, intercalate)
-import Data.List.Extra (nubSort)
-import Data.Maybe (fromMaybe, isJust)
-import Data.Map (Map)
-import qualified Data.Map as Map
-import qualified Data.Set as S
-import qualified Data.Text as T
+import Control.Monad ((>=>))
+import Data.Bifunctor (bimap)
+import Data.Foldable (toList)
+import Data.List (find, maximumBy, intercalate)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
+import Data.Ord (comparing)
+import Data.Set qualified as S
+import Data.Text qualified as T
+import Data.These (These(..), these)
 import Safe (minimumDef)
 
 import Hledger.Data
+import Hledger.Query
 import Hledger.Utils
 import Hledger.Reports.ReportOptions
 import Hledger.Reports.ReportTypes
 import Hledger.Reports.MultiBalanceReport
-import Data.Ord (comparing)
-import Control.Monad ((>=>))
 
 -- All MixedAmounts:
 type BudgetGoal    = Change
@@ -69,7 +66,9 @@ budgetReport rspec bopts reportspan j = dbg4 "sortedbudgetreport" budgetreport
     -- Budget report demands ALTree mode to ensure subaccounts and subaccount budgets are properly handled
     -- and that reports with and without --empty make sense when compared side by side
     ropts = (_rsReportOpts rspec){ accountlistmode_ = ALTree }
+    -- ropts = _rsReportOpts rspec
     showunbudgeted = empty_ ropts
+
     budgetedaccts =
       dbg3 "budgetedacctsinperiod" $
       S.fromList $
@@ -78,21 +77,86 @@ budgetReport rspec bopts reportspan j = dbg4 "sortedbudgetreport" budgetreport
       concatMap tpostings $
       concatMap (\pt -> runPeriodicTransaction False pt reportspan) $
       jperiodictxns j
+
     actualj = journalWithBudgetAccountNames budgetedaccts showunbudgeted j
     budgetj = journalAddBudgetGoalTransactions bopts ropts reportspan j
     priceoracle = journalPriceOracle (infer_prices_ ropts) j
-    budgetgoalreport@(PeriodicReport _ budgetgoalitems budgetgoaltotals) =
-        dbg5 "budgetgoalreport" $ multiBalanceReportWith rspec{_rsReportOpts=ropts{empty_=True}} budgetj priceoracle mempty
-    budgetedacctsseen = S.fromList $ map prrFullName budgetgoalitems
-    actualreport@(PeriodicReport actualspans _ _) =
-        dbg5 "actualreport"     $ multiBalanceReportWith rspec{_rsReportOpts=ropts{empty_=True}} actualj priceoracle budgetedacctsseen
-    budgetgoalreport'
-      -- If no interval is specified:
-      -- budgetgoalreport's span might be shorter actualreport's due to periodic txns;
-      -- it should be safe to replace it with the latter, so they combine well.
-      | interval_ ropts == NoInterval = PeriodicReport actualspans budgetgoalitems budgetgoaltotals
-      | otherwise = budgetgoalreport
-    budgetreport = combineBudgetAndActual ropts j budgetgoalreport' actualreport
+
+    -- The report spec used for selecting budget goals, with the query terms
+    -- that describe actual transactions/postings dropped. (#2545)
+    budgetrspec = rspec{_rsQuery = budgetGoalQuery $ _rsQuery rspec}
+
+    (_, actualspans) = dbg5 "actualspans" $ reportSpan actualj rspec
+    (_, budgetspans) = dbg5 "budgetspans" $ reportSpan budgetj budgetrspec
+    allspans = dbg5 "allspans" $ case (interval_ ropts, budgetspans) of
+        -- If no interval is specified:
+        -- budgetgoalreport's span might be shorter actualreport's due to periodic txns;
+        -- it should be safe to replace it with the latter, so they combine well.
+        (NoInterval, _) -> actualspans
+        (_,    Nothing) -> actualspans
+        (_, Just bspan) -> unionDayPartitions bspan =<< actualspans
+
+    actualps = dbg5 "actualps" $ getPostings rspec actualj priceoracle reportspan
+    budgetps = dbg5 "budgetps" $ getPostings budgetrspec budgetj priceoracle reportspan
+
+    actualAcct = dbg5 "actualAcct" $ generateMultiBalanceAccount rspec actualj priceoracle actualspans actualps
+    budgetAcct = dbg5 "budgetAcct" $ generateMultiBalanceAccount budgetrspec budgetj priceoracle budgetspans budgetps
+
+    combinedAcct = dbg5 "combinedAcct" $ if null budgetps
+        -- If no budget postings, just use actual account, to avoid unnecssary budget zeros
+        then This <$> actualAcct
+        else mergeAccounts actualAcct budgetAcct
+
+    budgetreport = generateBudgetReport ropts allspans combinedAcct
+
+-- | Reduce a report query to the terms which are meaningful for selecting budget goals:
+-- the account, account type, depth, date and commodity terms.
+-- The remaining terms (status, code, description, payee, note, tag, realness, amount)
+-- describe actual transactions and postings, and are dropped;
+-- budget goal transactions are synthetic, so applying those terms to them
+-- would discard budget goals unexpectedly (#2545).
+budgetGoalQuery :: Query -> Query
+budgetGoalQuery = filterQuery selectsAccountOrPeriod
+  where
+    selectsAccountOrPeriod q = case q of
+      Acct{}      -> True
+      DepthAcct{} -> True
+      Depth{}     -> True
+      Type{}      -> True
+      Date{}      -> True
+      Date2{}     -> True
+      Sym{}       -> True
+      Cur{}       -> True
+      None        -> True
+      Not q'      -> selectsAccountOrPeriod q'
+      _           -> False
+
+-- | Lay out a set of postings grouped by date span into a regular matrix with rows
+-- given by AccountName and columns by DateSpan, then generate a MultiBalanceReport
+-- from the columns.
+generateBudgetReport :: ReportOpts -> Maybe DayPartition -> Account (These BalanceData BalanceData) -> BudgetReport
+generateBudgetReport = generatePeriodicReport makeBudgetReportRow treeActualBalance flatActualBalance
+  where
+    treeActualBalance = these bdincludingsubs (const nullmixedamt) (const . bdincludingsubs)
+    flatActualBalance = fromMaybe nullmixedamt . fst
+
+-- | Build a report row.
+--
+-- Calculate the column totals. These are always the sum of column amounts.
+makeBudgetReportRow :: ReportOpts -> (BalanceData -> MixedAmount)
+                    -> a -> Account (These BalanceData BalanceData) -> PeriodicReportRow a BudgetCell
+makeBudgetReportRow ropts balance =
+    makePeriodicReportRow (Just nullmixedamt, Nothing) avg ropts (theseToMaybe . bimap balance balance)
+  where
+    avg xs = ((actualtotal, budgettotal), (actualavg, budgetavg))
+      where
+        (actuals, budgets) = unzip $ toList xs
+        (actualtotal, actualavg) = bimap Just Just . sumAndAverageMixedAmounts $ catMaybes actuals
+        (budgettotal, budgetavg) = bimap Just Just . sumAndAverageMixedAmounts $ catMaybes budgets
+
+    theseToMaybe (This a) = (Just a, Nothing)
+    theseToMaybe (That b) = (Just nullmixedamt, Just b)
+    theseToMaybe (These a b) = (Just a, Just b)
 
 -- | Use all (or all matched by --budget's argument) periodic transactions in the journal 
 -- to generate budget goal transactions in the specified date span (and before, to support
@@ -179,81 +243,6 @@ journalWithBudgetAccountNames budgetedaccts showunbudgeted j =
         budgetedparent = find (`S.member` budgetedaccts) $ parentAccountNames a
         u = unbudgetedAccountName
 
--- | Combine a per-account-and-subperiod report of budget goals, and one
--- of actual change amounts, into a budget performance report.
--- The two reports should have the same report interval, but need not
--- have exactly the same account rows or date columns.
--- (Cells in the combined budget report can be missing a budget goal,
--- an actual amount, or both.) The combined report will include:
---
--- - consecutive subperiods at the same interval as the two reports,
---   spanning the period of both reports
---
--- - all accounts mentioned in either report, sorted by account code or
---   account name or amount as appropriate.
---
-combineBudgetAndActual :: ReportOpts -> Journal -> MultiBalanceReport -> MultiBalanceReport -> BudgetReport
-combineBudgetAndActual ropts j
-      (PeriodicReport budgetperiods budgetrows (PeriodicReportRow _ budgettots budgetgrandtot budgetgrandavg))
-      (PeriodicReport actualperiods actualrows (PeriodicReportRow _ actualtots actualgrandtot actualgrandavg)) =
-    PeriodicReport periods combinedrows totalrow
-  where
-    periods = nubSort . filter (/= nulldatespan) $ budgetperiods ++ actualperiods
-
-    -- first, combine any corresponding budget goals with actual changes
-    actualsplusgoals = [
-        -- dbg0With (("actualsplusgoals: "<>)._brrShowDebug) $
-        PeriodicReportRow acct amtandgoals totamtandgoal avgamtandgoal
-      | PeriodicReportRow acct actualamts actualtot actualavg <- actualrows
-
-      , let mbudgetgoals       = HM.lookup (displayFull acct) budgetGoalsByAcct :: Maybe ([BudgetGoal], BudgetTotal, BudgetAverage)
-      , let budgetmamts        = maybe (Nothing <$ periods) (map Just . first3) mbudgetgoals :: [Maybe BudgetGoal]
-      , let mbudgettot         = second3 <$> mbudgetgoals :: Maybe BudgetTotal
-      , let mbudgetavg         = third3 <$> mbudgetgoals  :: Maybe BudgetAverage
-      , let acctGoalByPeriod   = Map.fromList [ (p,budgetamt) | (p, Just budgetamt) <- zip budgetperiods budgetmamts ] :: Map DateSpan BudgetGoal
-      , let acctActualByPeriod = Map.fromList [ (p,actualamt) | (p, Just actualamt) <- zip actualperiods (map Just actualamts) ] :: Map DateSpan Change
-      , let amtandgoals        = [ (Map.lookup p acctActualByPeriod, Map.lookup p acctGoalByPeriod) | p <- periods ] :: [BudgetCell]
-      , let totamtandgoal      = (Just actualtot, mbudgettot)
-      , let avgamtandgoal      = (Just actualavg, mbudgetavg)
-      ]
-      where
-        budgetGoalsByAcct :: HashMap AccountName ([BudgetGoal], BudgetTotal, BudgetAverage) =
-          HM.fromList [ (displayFull acct, (amts, tot, avg))
-                      | PeriodicReportRow acct amts tot avg <-
-                          -- dbg0With (unlines.map (("budgetgoals: "<>).prrShowDebug)) $
-                          budgetrows
-                      ]
-
-    -- next, make rows for budget goals with no actual changes
-    othergoals = [
-        -- dbg0With (("othergoals: "<>)._brrShowDebug) $
-        PeriodicReportRow acct amtandgoals totamtandgoal avgamtandgoal
-      | PeriodicReportRow acct budgetgoals budgettot budgetavg <- budgetrows
-      , displayFull acct `notElem` map prrFullName actualsplusgoals
-      , let acctGoalByPeriod   = Map.fromList $ zip budgetperiods budgetgoals :: Map DateSpan BudgetGoal
-      , let amtandgoals        = [ (Just 0, Map.lookup p acctGoalByPeriod) | p <- periods ] :: [BudgetCell]
-      , let totamtandgoal      = (Just 0, Just budgettot)
-      , let avgamtandgoal      = (Just 0, Just budgetavg)
-      ]
-
-    -- combine and re-sort rows
-    -- TODO: add --sort-budget to sort by budget goal amount
-    combinedrows :: [BudgetReportRow] =
-      -- map (dbg0With (("combinedrows: "<>)._brrShowDebug)) $
-      sortRowsLike (mbrsorted unbudgetedrows ++ mbrsorted rows') rows
-      where
-        (unbudgetedrows, rows') = partition ((==unbudgetedAccountName) . prrFullName) rows
-        mbrsorted = map prrFullName . sortRows ropts j . map (fmap $ fromMaybe nullmixedamt . fst)
-        rows = actualsplusgoals ++ othergoals
-
-    totalrow = PeriodicReportRow ()
-        [ (Map.lookup p totActualByPeriod, Map.lookup p totGoalByPeriod) | p <- periods ]
-        ( Just actualgrandtot, budget budgetgrandtot )
-        ( Just actualgrandavg, budget budgetgrandavg )
-      where
-        totGoalByPeriod = Map.fromList $ zip budgetperiods budgettots :: Map DateSpan BudgetTotal
-        totActualByPeriod = Map.fromList $ zip actualperiods actualtots :: Map DateSpan Change
-        budget b = if mixedAmountLooksZero b then Nothing else Just b
 
 -- tests
 

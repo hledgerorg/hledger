@@ -1,0 +1,71 @@
+# * --subreport-titles option (compound balance reports)
+
+# ** 1. --subreport-titles overrides a compound report's subreport headings.
+<
+2024/1/15
+  assets:bank:checking   100
+  income:salary         -100
+2024/2/15
+  expenses:food           20
+  liabilities:credit     -20
+2024/3/15
+  equity:opening          50
+  assets:bank:checking   -50
+
+$ hledger -f- balancesheet '--subreport-titles=A|L'
+Balance Sheet 2024-03-15
+
+                      || 2024-03-15 
+======================++============
+ A                    ||            
+----------------------++------------
+ assets:bank:checking ||         50 
+----------------------++------------
+                      ||         50 
+======================++============
+ L                    ||            
+----------------------++------------
+ liabilities:credit   ||         20 
+----------------------++------------
+                      ||         20 
+======================++============
+ Net:                 ||         30 
+
+# ** 2. An empty value suppresses the subreport headings.
+$ hledger -f- balancesheet --subreport-titles=
+Balance Sheet 2024-03-15
+
+                      || 2024-03-15 
+======================++============
+ assets:bank:checking ||         50 
+----------------------++------------
+                      ||         50 
+======================++============
+ liabilities:credit   ||         20 
+----------------------++------------
+                      ||         20 
+======================++============
+ Net:                 ||         30 
+
+# ** 3. csv output is also affected.
+$ hledger -f- balancesheet '--subreport-titles=A|L' -O csv
+"Balance Sheet 2024-03-15",""
+"Account","2024-03-15"
+"A",""
+"assets:bank:checking","50"
+"Total:","50"
+"L",""
+"liabilities:credit","20"
+"Total:","20"
+"Net:","30"
+
+# ** 4. Likewise, an empty value suppresses the subheading rows in csv.
+$ hledger -f- balancesheet --subreport-titles= -O csv
+"Balance Sheet 2024-03-15",""
+"Account","2024-03-15"
+"assets:bank:checking","50"
+"Total:","50"
+"liabilities:credit","20"
+"Total:","20"
+"Net:","30"
+

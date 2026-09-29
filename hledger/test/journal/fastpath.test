@@ -1,0 +1,354 @@
+# * The journal parser's fast path for simple transactions and price directives
+# (fasttransactionp, fastmarketpricedirectivep in JournalReader.hs).
+# HLEDGER_FASTPATH=check makes hledger parse every fast-path item with the general parser too,
+# and fail if the results differ; so these tests verify that the two parsers agree.
+
+# ** 1. Simple transactions and prices (which the fast path parses) mixed with less simple ones (which it declines); each fast-path result is checked against the general parser.
+<
+; Simple transactions and prices, which the fast path handles, mixed with ones it declines.
+2024-01-01 simple
+    assets:cash                 $-1.50
+    expenses:food
+
+2024/01/02 * cleared, other separators, right symbols and signs
+    assets:cash                 -2 EUR
+    (virtual)                   2,5 EUR
+    [balanced virtual:sub]      -2,5 EUR
+    [balanced virtual:other]    2,5 EUR
+    expenses:other  2 EUR
+
+2024.01.03 ! pending, unit cost, tab in an account name
+    assets:stock                10 AAPL @ $1.5
+    assets:cash                 $-15
+    expenses:fees:a	b       1
+    income:fees                 -1
+
+2024-01-04 total cost, symbol-less amounts
+    a   -1 @@ 0.5 X
+    c   0.5 X
+    (d)  1
+
+2024-01-05=2024-01-06 * (code) secondary date, status, code, posting status marks
+    * a  1
+    ! b
+
+Y 2024
+1/7 partial date, using the Y directive's year
+    a  1
+    b
+
+2024-01-08=1/9 partial secondary date, in the primary date's year
+    a  1
+    b
+
+2024-01-10 plain comments  ; on the transaction
+    ; and continued on the next line
+    a  1  ; on a posting
+    ; continued
+    b  ; on a posting with no amount
+    c  -1
+    ; only on the line after a posting
+
+2024-01-11 tags  ; type:sale, note : no name, k1:v1,k2: v2 ,  k3:
+    ; second line tag:yes, time: 12:30
+    a  1  ; date:2024-01-15 extra, date2:1/16, :leading colon, k:v
+    ; cont:inued
+    b  -1
+
+2024-01-12 declined: balance assertion, digit groups, quoted symbol
+    asserted  1,000.50 = 1,000.50
+    b  1 "two words"
+    c
+
+P 2024-01-01 AAPL $1.5
+P 2024-01-02 EUR 1,1 USD  ; comment ignored
+P 2024-01-03 12:00 EUR 1.2 USD
+P 2024-01-04 12:00:30+0100 EUR 1.3 USD
+P 1/5 EUR 1.4 USD
+P 2024-01-06 "two words" 1 X
+$ HLEDGER_FASTPATH=check hledger -f- print
+; Simple transactions and prices, which the fast path handles, mixed with ones it declines.
+2024-01-01 simple
+    assets:cash                                  $-1.50
+    expenses:food
+
+2024-01-02 * cleared, other separators, right symbols and signs
+    assets:cash                                   -2 EUR
+    (virtual)                                      2,5 EUR
+    [balanced virtual:sub]                        -2,5 EUR
+    [balanced virtual:other]                       2,5 EUR
+    expenses:other                                 2 EUR
+
+2024-01-03 ! pending, unit cost, tab in an account name
+    assets:stock                                  10 AAPL @ $1.5
+    assets:cash                                 $-15
+    expenses:fees:a b                              1
+    income:fees                                   -1
+
+2024-01-04 total cost, symbol-less amounts
+    a                                             -1 @@ 0.5 X
+    c                                              0.5 X
+    (d)                                            1
+
+2024-01-05=2024-01-06 * (code) secondary date, status, code, posting status marks
+    * a                                            1
+    ! b
+
+2024-01-07 partial date, using the Y directive's year
+    a                                              1
+    b
+
+2024-01-08=2024-01-09 partial secondary date, in the primary date's year
+    a                                              1
+    b
+
+2024-01-10 plain comments  ; on the transaction
+    ; and continued on the next line
+    a                                              1  ; on a posting
+    ; continued
+    b                                                 ; on a posting with no amount
+    c                                             -1
+    ; only on the line after a posting
+
+2024-01-11 tags  ; type:sale, note : no name, k1:v1,k2: v2 ,  k3:
+    ; second line tag:yes, time: 12:30
+    a                                              1  ; date:2024-01-15 extra, date2:1/16, :leading colon, k:v
+    ; cont:inued
+    b                                             -1
+
+2024-01-12 declined: balance assertion, digit groups, quoted symbol
+    asserted                                   1,000.50          = 1,000.50
+    b                                              1 "two words"
+    c
+
+>=
+
+# ** 2. Declared commodity styles resolve ambiguous numbers the same way in both parsers.
+<
+; A declared style resolves ambiguous numbers, in both parsers.
+commodity 1.000,00 EUR
+commodity $1,000.00
+
+2024-01-01
+    a    1,000 EUR
+    b    1.000 EUR
+    c    $1,000
+    d    $1.000
+    e
+$ HLEDGER_FASTPATH=check hledger -f- print
+2024-01-01
+    a                                              1,000 EUR
+    b                                          1.000, EUR
+    c                                         $1,000.
+    d                                             $1.000
+    e
+
+>=
+
+# ** 3. Parent accounts and aliases are applied; a default commodity directive makes symbol-less amounts decline.
+<
+; Parent accounts and aliases are applied; a default commodity makes symbol-less amounts decline.
+alias checking = assets:bank:checking
+apply account home
+
+2024-01-01
+    checking    1
+    expenses:food
+
+end apply account
+
+D 1.000,00 EUR
+
+2024-01-02
+    a    1,5
+    b
+$ HLEDGER_FASTPATH=check hledger -f- print
+2024-01-01
+    home:checking                                  1
+    home:expenses:food
+
+2024-01-02
+    a                                              1,50 EUR
+    b
+
+>=
+
+# ** 4. Register output, with market prices used for valuation (the fast path's price directives).
+<
+; Simple transactions and prices, which the fast path handles, mixed with ones it declines.
+2024-01-01 simple
+    assets:cash                 $-1.50
+    expenses:food
+
+2024/01/02 * cleared, other separators, right symbols and signs
+    assets:cash                 -2 EUR
+    (virtual)                   2,5 EUR
+    [balanced virtual:sub]      -2,5 EUR
+    [balanced virtual:other]    2,5 EUR
+    expenses:other  2 EUR
+
+2024.01.03 ! pending, unit cost, tab in an account name
+    assets:stock                10 AAPL @ $1.5
+    assets:cash                 $-15
+    expenses:fees:a	b       1
+    income:fees                 -1
+
+2024-01-04 total cost, symbol-less amounts
+    a   -1 @@ 0.5 X
+    c   0.5 X
+    (d)  1
+
+2024-01-05 (code) declined: has a code
+    a  1
+    b
+
+2024-01-06 declined: comment ; and tags
+    a  1  ; tag: value
+    b
+
+2024-01-07 declined: balance assertion, digit groups, quoted symbol
+    asserted  1,000.50 = 1,000.50
+    b  1 "two words"
+    c
+
+2024-01-08=2024-01-09 declined: secondary date
+    a  1
+    b
+
+P 2024-01-01 AAPL $1.5
+P 2024-01-02 EUR 1,1 USD  ; comment ignored
+P 2024-01-03 12:00 EUR 1.2 USD
+P 2024-01-04 "two words" 1 X
+$ HLEDGER_FASTPATH=check hledger -f- register -V -e 2024-01-05
+2024-01-01 simple               assets:cash                 $-1.50        $-1.50
+                                expenses:food                $1.50             0
+2024-01-02 cleared, other se..  assets:cash               -2,4 USD      -2,4 USD
+                                (virtual)                  3,0 USD       0,6 USD
+                                [ba:sub]                  -3,0 USD      -2,4 USD
+                                [ba:other]                 3,0 USD       0,6 USD
+                                expenses:other             2,4 USD       3,0 USD
+2024-01-03 pending, unit cos..  assets:stock                $15.00        $15.00
+                                                                         3,0 USD
+                                assets:cash                $-15.00       3,0 USD
+                                expenses:fees:a b             1.00          1.00
+                                                                         3,0 USD
+                                income:fees                  -1.00       3,0 USD
+2024-01-04 total cost, symbo..  a                            -1.00         -1.00
+                                                                         3,0 USD
+                                c                            0.5 X         -1.00
+                                                                         3,0 USD
+                                                                           0.5 X
+                                (d)                           1.00       3,0 USD
+                                                                           0.5 X
+
+# ** 5. Numbers with digit group marks (including spaces), decimal marks, and leading or trailing marks; exponents decline.
+<
+; Numbers with digit group marks, decimal marks, and leading or trailing marks.
+commodity 1.000,00 EUR
+
+2024-01-01
+    a    $1,234.56
+    b    1.234,56 EUR
+    c    1,000,000 X
+    d    1 234,5 EUR
+    e    1.000 EUR
+    f    1,000. Y
+    g    .5 Z
+    h    1. Z
+    i    1'000'000.25 CHF
+    j    1_000 W
+    k
+
+2024-01-02 declined: exponents
+    a    1e3 X
+    b
+$ HLEDGER_FASTPATH=check hledger -f- print
+2024-01-01
+    a                                         $1,234.56
+    b                                          1.234,56 EUR
+    c                                      1,000,000. X
+    d                                          1.234,5 EUR
+    e                                          1.000, EUR
+    f                                          1,000. Y
+    g                                              0.5 Z
+    h                                              1 Z
+    i                                      1'000'000.25 CHF
+    j                                          1_000. W
+    k
+
+2024-01-02 declined: exponents
+    a                                          1,000. X
+    b
+
+>=
+
+# ** 6. With --debug=1, the parser reports how many entries took the fast path, and why it declined the others.
+<
+2024-01-01 simple
+    a  1
+    b
+
+2024-01-02 (code) accepted  ; with a plain comment
+    a  1
+    b
+
+2024-01-03 accepted  ; with a tag:val
+    a  1  ; tag:val
+    b
+
+2024-01-04 declined
+    c  1 = 1
+    b
+
+2024-01-05 declined
+    a  1  ; [2024-01-06]
+    b
+
+P 2024-01-01 A 1 B
+P 2024-01-02 "A B" 1 B
+$ hledger -f- --debug=1 stats 2>&1 | grep '^fast path'
+fast path was used for 60% of 5 transactions, 50% of 2 prices; declined: 1 balance assertion or assignment, 1 posting comment with bracketed date, 1 quoted commodity symbol
+
+# ** 7. Tags and posting dates in comments are parsed by the fast path; the register shows the posting dates.
+<
+2024-01-01 x  ; type:sale, note : no name, k1:v1,k2: v2 ,  k3:
+    ; second line tag:yes, time: 12:30
+    a  1  ; date:2024-01-05 extra, date2:1/6, :leading colon, k:v
+    ; cont:inued
+    b  -1  ; plain
+
+2024-01-02 y  ;tight:tag,a:b
+    c  1
+    ; date: 2024/2/3 spaced value
+    d
+$ HLEDGER_FASTPATH=check hledger -f- reg
+2024-01-01 x                    b                               -1            -1
+2024-01-02 y                    d                               -1            -2
+2024-01-05 x                    a                                1            -1
+2024-02-03 y                    c                                1             0
+
+# ** 8. The same, showing the tag values in parse order.
+<
+2024-01-01 x  ; type:sale, note : no name, k1:v1,k2: v2 ,  k3:
+    ; second line tag:yes, time: 12:30
+    a  1  ; date:2024-01-05 extra, date2:1/6, :leading colon, k:v
+    ; cont:inued
+    b  -1  ; plain
+
+2024-01-02 y  ;tight:tag,a:b
+    c  1
+    ; date: 2024/2/3 spaced value
+    d
+$ HLEDGER_FASTPATH=check hledger -f- tags --values --parsed
+sale
+v1
+v2
+yes
+12:30
+2024-01-05 extra
+1/6
+v
+inued
+tag
+b
+2024/2/3 spaced value

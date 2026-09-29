@@ -1,0 +1,19 @@
+/* hledger.css - a sample style sheet for hledger's HTML output.
+   HTML reports (eg from bal or holdings) are styled by a hledger.css
+   file in the same directory, if present. It can override the builtin
+   styles, which prevent wrapping within dates (td.date) and individual
+   commodity amounts (span.amount). Some examples: */
+
+/* Allow wrapping within amounts again. */
+/* span.amount { white-space: normal; } */
+
+/* Draw the rules above totals and below headings thinner. Borders are
+   classes: border-{top,bottom,left,right}-{single,double}. */
+/* .border-top-double    { border-top: 1px solid; } */
+/* .border-bottom-double { border-bottom: 1px solid; } */
+
+/* Stripe table rows. */
+/* tr:nth-child(even) td { background-color: #eee; } */
+
+/* Use a different font. */
+/* table { font-family: "DejaVu Sans", sans-serif; } */

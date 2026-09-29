@@ -13,13 +13,13 @@
 
 $ hledger -f- print -c '10 00'
 2021-07-09 no symbol
-    (a)          12 34.
+    (a)                                        12 34.
 
 2021-07-09 Euro
-    (a)    EUR 1.234,56
+    (a)                                    EUR 1.234,56
 
 2021-07-09 Dollar
-    (a)      $ 1,234.56
+    (a)                                      $ 1,234.56
 
 >=
 
@@ -33,10 +33,10 @@ $ hledger -f- print -c '10 00'
 
 $ hledger -f- print -c 'EUR 1.000,00' -c '$ 1,000.00'
 2021-07-09 Euro
-    (a)    EUR 1.234,56
+    (a)                                    EUR 1.234,56
 
 2021-07-09 Dollar
-    (a)      $ 1,234.56
+    (a)                                      $ 1,234.56
 
 >=
 
@@ -47,7 +47,7 @@ $ hledger -f- print -c 'EUR 1.000,00' -c '$ 1,000.00'
 
 $ hledger -f- print -c 'EUR 1.000,00' -c 'EUR 1,000.00'
 2021-07-09 Euro
-    (a)      EUR 1,234.
+    (a)                                    EUR 1,234.
 
 >=
 
@@ -58,6 +58,6 @@ $ hledger -f- print -c 'EUR 1.000,00' -c 'EUR 1,000.00'
 
 $ hledger -f- print -c '$1,000.0' -c 'A1000.0'
 2021-09-12 buy A
-    (a)    A1.234 @ $1,234.56
+    (a)                                           A1.234 @ $1,234.56
 
 >=

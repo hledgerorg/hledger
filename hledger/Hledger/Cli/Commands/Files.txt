@@ -1,7 +1,16 @@
 files
 
-List all files included in the journal. With a REGEX argument, only file
-names matching the regular expression (case sensitive) are shown.
+List all input files used by the journal(s). With a REGEX argument, only
+file names matching the regular expression (case sensitive) are shown.
 
 Flags:
 no command-specific flags
+
+Examples:
+
+$ hledger -f main.journal files
+/home/user/finance/main.journal
+/home/user/finance/2024.journal
+
+$ hledger -f main.journal files 2024
+/home/user/finance/2024.journal

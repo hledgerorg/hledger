@@ -4,7 +4,7 @@
 trigger:
   branches:
     include:
-    - master
+    - main
     # - releases/*
   batch: true
   paths:
@@ -22,7 +22,6 @@ trigger:
     - cabal-install.sh
     - cabal.project
     - checks/*
-    - dev.hs
     - doc/*
     - examples/*
     - hledger-system.mk
@@ -107,7 +106,7 @@ steps:
 # https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#trigger
 # Scheduled builds are not yet supported in YAML syntax. After you create your YAML build pipeline, you can use the designer to specify a scheduled trigger.
 # Someone must view a page in your organization regularly for CI and scheduled builds to run.
-# The YAML file in my branch is different than the YAML file in my master branch, which one is used?
+# The YAML file in my branch is different than the YAML file in my main branch, which one is used?
 #   When you have configured a CI trigger or a PR trigger, the YAML file that is in the branch being pushed is used.
 #     For CI triggers, the YAML file that is in the branch you are pushing is evaluated to see if a CI build should be run.
 #     For PR triggers, the YAML file that is in the source branch of the PR is evaluated to see if a PR build should be run.
@@ -121,7 +120,7 @@ steps:
 #   #autoCancel: boolean # indicates whether additional pushes to a PR should cancel in-progress runs for the same PR. Defaults to true
 #   branches:
 #     include:
-#     - master
+#     - main
 #     - releases/*
 #   paths:
 #     include:

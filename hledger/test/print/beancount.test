@@ -9,13 +9,16 @@ $ hledger -f- print -O beancount
 >2 /bad top-level account/
 >=1
 
-# ** 2. Otherwise, accounts are modified/encoded to suit beancount, and open directives are added.
+# ** 2. Otherwise, accounts are modified/encoded to suit beancount.
+# With --export, options and open directives are added.
 <
 2000-01-01
   assets          0 ABC
   equity:$-€:$    0 USD
 
-$ hledger -f- print -O beancount
+$ hledger -f- print -O beancount --export
+;option "inferred_tolerance_default" "*:0.005"
+
 2000-01-01 open Assets:A
 2000-01-01 open Equity:C24-C20ac:C24
 
@@ -34,11 +37,9 @@ $ hledger -f- print -O beancount
   assets    0 "size 2 pencils"
 
 $ hledger -f- print -O beancount
-2000-01-01 open Assets:A
-
 2000-01-01 *
     Assets:A               0 USD
-    Assets:A                 0 C
+    Assets:A                0 CC
     Assets:A               0 C21
     Assets:A    0 SIZE-2-PENCILS
 
@@ -53,8 +54,6 @@ $ hledger -f- print -O beancount
   [c]
 
 $ hledger -f- print -O beancount
-2000-01-01 open Assets:A
-
 2000-01-01 *
     Assets:A           0 USD
 
@@ -72,10 +71,6 @@ $ hledger -f- print -O beancount
     Assets                     €-1
 
 $ hledger -f- print -O beancount
-2000-01-01 open Assets:A
-2000-01-01 open Equity:Conversion:C20ac-C24:C24
-2000-01-01 open Equity:Conversion:C20ac-C24:C20ac
-
 2000-01-01 *
     Assets:A                                    1 USD
     Equity:Conversion:C20ac-C24:C24            -1 USD
@@ -94,10 +89,6 @@ $ hledger -f- print -O beancount
     Assets                     €-1
 
 $ hledger -f- print -O beancount
-option "operating_currency" "EUR"
-
-2000-01-01 open Assets:A
-
 2000-01-01 *
     Assets:A    1 USD @@ 1 EUR
     Assets:A            -1 EUR
@@ -127,7 +118,6 @@ $ hledger -f- print -O beancount
 # The original hledger comments are also preserved.
 # Hidden internal tags, and also user-created tags that begin with _, are not converted.
 # Account tags inherited by postings are visibly added to the postings, unlike normal hledger print.
-# Account tags are not yet propagated to open directives.
 <
 account assets       ; type:A
 account assets:cash  ; type:C
@@ -144,9 +134,6 @@ account assets:cash  ; type:C
   assets:cash            0  ; a: ptag
 
 $ hledger -f- print -O beancount
-2000-01-01 open Assets:Cash
-    type: "C"
-
 2000-01-01 * "transaction tags"
     a-a:            "v colon: thing"
     c1f600:         ""
@@ -162,7 +149,266 @@ $ hledger -f- print -O beancount
 
 2000-01-02 * "posting tags"  ; a: ttag
     ma: "ttag"
-    Assets:Cash             0 C  ; a: ptag
+    Assets:Cash            0 CC  ; a: ptag
       ma: "ptag"
+
+>=
+
+# ** 9. Beancount output shows tags as beancount metadata (as well as in the comment);
+# and does not expose posting tags that weren't in the comment, such as those inherited from commodity and account.
+# With --export, account tags appear as metadata on the open directives.
+<
+commodity AAPL  ; lots:
+account assets:broker  ; type: Asset
+
+2026-01-01 Buy stock
+    assets:broker     10 AAPL {$100}
+    assets:cash      -$1000
+
+$ hledger -f- print -O beancount --verbose-tags --export
+;option "inferred_tolerance_default" "*:0.005"
+
+2026-01-01 commodity AAPL
+    lots: ""
+
+2026-01-01 open Assets:Broker
+    type: "Asset"
+2026-01-01 open Assets:Cash
+
+2026-01-01 * "Buy stock"
+    Assets:Broker    10 AAPL {100 USD}  ; ptype: acquire
+      ptype: "acquire"
+    Assets:Cash              -1000 USD
+
+>=
+
+# ** 10. With --export, price directives are converted to beancount price directives, sorted by date.
+<
+P 2026-01-15 AAPL 170.00 USD
+P 2026-01-10 EUR 1.08 USD
+
+2026-01-01
+    assets:cash    $100
+    equity:opening
+
+$ hledger -f- print -O beancount --export
+;option "inferred_tolerance_default" "*:0.005"
+
+2026-01-01 open Assets:Cash
+2026-01-01 open Equity:Opening
+
+2026-01-10 price EUR 1.08 USD
+2026-01-15 price AAPL 170.00 USD
+
+2026-01-01 *
+    Assets:Cash            100 USD
+    Equity:Opening
+
+>=
+
+# ** 11. "revenue" and "revenues" top-level account names are converted to "Income".
+<
+2026-01-01
+    assets:cash       $100
+    revenue:salary
+
+2026-01-02
+    assets:cash       $200
+    revenues:consulting
+
+$ hledger -f- print -O beancount
+2026-01-01 *
+    Assets:Cash           100 USD
+    Income:Salary
+
+2026-01-02 *
+    Assets:Cash               200 USD
+    Income:Consulting
+
+>=
+
+# ** 12. Single-character commodity names are doubled to meet beancount's 2-character minimum.
+<
+2026-01-01
+    assets:cash    1 K
+    equity:opening
+
+P 2026-01-01 K 2.00 USD
+
+$ hledger -f- print -O beancount
+2026-01-01 *
+    Assets:Cash               1 KK
+    Equity:Opening
+
+>=
+
+# ** 13. Non-ASCII letters in metadata names are hex-encoded (#2576).
+# Beancount metadata keys must match [a-z][a-z0-9_-]*, so non-ASCII letters
+# like ä cannot just be lowercased; they must be encoded as c<HEXBYTES>.
+# Non-ASCII characters in values are fine - Beancount accepts UTF-8 in strings.
+<
+2024-01-01 Test ; Empfänger: Schäfer
+    assets:cash    -1 EUR
+    expenses:test   1 EUR
+
+$ hledger -f- print -O beancount
+2024-01-01 * "Test"  ; Empfänger: Schäfer
+    empfce4nger: "Schäfer"
+    Assets:Cash            -1 EUR
+    Expenses:Test           1 EUR
+
+>=
+
+# ** 14. Underscores and spaces in account names are converted to dashes (#2596).
+<
+2024-01-01
+    assets:wells_fargo:fima_usd    1 USD
+    equity:opening balances
+
+$ hledger -f- print -O beancount
+2024-01-01 *
+    Assets:Wells-fargo:Fima-usd           1 USD
+    Equity:Opening-balances
+
+>=
+
+# ** 15. With --export, the year 0 date of price directives inferred from commodity alias:
+# tags is converted to 0001-01-01, which Beancount accepts.
+<
+commodity EUR 1.00  ; alias: €
+
+2024-01-01
+    assets:cash     €1
+    equity:opening
+
+$ hledger -f- print -O beancount --export
+;option "inferred_tolerance_default" "*:0.005"
+
+2024-01-01 commodity EUR
+    alias: "€"
+
+2024-01-01 open Assets:Cash
+2024-01-01 open Equity:Opening
+
+0001-01-01 price EUR 1 EUR
+
+2024-01-01 *
+    Assets:Cash              1 EUR
+    Equity:Opening
+
+>=
+
+# ** 16. With --export, commodity directives are generated for declared commodities (with their tags as metadata),
+# and open directives for declared as well as used accounts, each on its earliest posting date
+# (or the earliest transaction date), with a lots: account tag becoming the booking method.
+# Other directives (like payee) have no Beancount equivalent and are dropped.
+<
+account assets:cash    ; type:A
+account assets:broker  ; type:A, lots:FIFO
+account expenses:unused
+commodity AAPL  ; note:tech
+payee Broker
+
+2026-01-01 opening
+    assets:cash    $5000
+    equity:opening
+
+2026-01-02 Broker | buy
+    assets:broker    10 AAPL {$100}
+    assets:cash      -$1000
+
+$ hledger -f- print -O beancount --export
+;option "inferred_tolerance_default" "*:0.005"
+
+2026-01-01 commodity AAPL
+    note: "tech"
+
+2026-01-02 open Assets:Broker "FIFO"
+    type: "A"
+2026-01-01 open Assets:Cash
+    type: "A"
+2026-01-01 open Equity:Opening
+2026-01-01 open Expenses:Unused
+
+2026-01-01 * "opening"
+    Assets:Cash           5000 USD
+    Equity:Opening
+
+2026-01-02 * "Broker" "buy"
+    Assets:Broker    10 AAPL {100 USD}
+    Assets:Cash              -1000 USD
+
+>=
+
+# ** 17. With --export, top-level comment lines (including those preceding a transaction) and
+# comment blocks are converted to Beancount comments, and blank lines are normalised.
+<
+; semicolon comment
+# hash comment
+* org heading
+
+comment
+a comment block
+end comment
+; preceding comment
+* preceding heading
+2026-01-01
+    assets:cash    $1
+    equity:opening
+
+$ hledger -f- print -O beancount --export
+;option "inferred_tolerance_default" "*:0.005"
+
+2026-01-01 open Assets:Cash
+2026-01-01 open Equity:Opening
+
+; semicolon comment
+; # hash comment
+; * org heading
+
+; a comment block
+
+; preceding comment
+; * preceding heading
+2026-01-01 *
+    Assets:Cash              1 USD
+    Equity:Opening
+
+>=
+
+# ** 18. When the conversion fails, no output file is written.
+<
+2000-01-01
+  other        0 ABC
+
+$ rm -f beancount-18.tmp; hledger -f- print -O beancount -o beancount-18.tmp; test -e beancount-18.tmp && echo EXISTS || echo MISSING
+MISSING
+>2 /bad top-level account/
+>= 0
+
+# ** 19. An account whose top-level name is not one of Beancount's, but whose account type is known
+# (declared, or inherited from a parent), is prefixed with the corresponding Beancount top-level account,
+# in transactions and (with --export) in open directives. Accounts of unknown type are an error (see 1).
+<
+account bonds        ; type:A
+account bank loans   ; type:L
+
+2000-01-01
+  bonds:treasury     10 USD
+  bank loans:car    -10 USD
+
+$ hledger -f- print -O beancount --export
+;option "inferred_tolerance_default" "*:0.005"
+
+2000-01-01 open Assets:Bonds
+    type: "A"
+2000-01-01 open Assets:Bonds:Treasury
+2000-01-01 open Liabilities:Bank-loans
+    type: "L"
+2000-01-01 open Liabilities:Bank-loans:Car
+
+2000-01-01 *
+    Assets:Bonds:Treasury               10 USD
+    Liabilities:Bank-loans:Car         -10 USD
 
 >=

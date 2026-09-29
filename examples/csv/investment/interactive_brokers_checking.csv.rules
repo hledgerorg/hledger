@@ -1,0 +1,22 @@
+if
+! ^Deposits . Withdrawals,Data,[A-Z]{3},
+  skip
+
+# Deposits & Withdrawals,Header,Currency,Settle Date,Description,Amount
+fields deposits_withdrawals,header,currency_,settle_date,description_,amount_
+
+date			%settle_date
+date-format		%F
+decimal-mark		.
+description    		IBKR | %description_ 
+account1  		assets:IBKR:checking
+amount1   		%amount_
+
+account2  		assets:transfers:ABNAIBKR
+
+; optional currency cleanup
+if %currency_ EUR
+  currency €
+
+if %currency_ USD
+  currency $

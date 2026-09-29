@@ -21,7 +21,6 @@ If not, see <https://www.gnu.org/licenses/>.
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE MultiWayIf #-}
 
 module Hledger.UI.Main where
 
@@ -37,29 +36,37 @@ import Data.Function ((&))
 import Data.List (find)
 import Data.List.Extra (nubSort)
 import Data.Maybe (fromMaybe)
-import qualified Data.Text as T
-import Graphics.Vty (Mode (Mouse), Vty (outputIface), Output (setMode))
+import Data.Text qualified as T
+import Graphics.Vty (Event (EvKey), Mode (Mouse), Vty (outputIface), Output (setMode))
 import Graphics.Vty.CrossPlatform (mkVty)
+#ifndef mingw32_HOST_OS
+import Control.Exception (throwIO)
+import Graphics.Vty.Platform.Unix (mkVtyWithSettings)
+import Graphics.Vty.Platform.Unix.Settings (UnixSettings(..), VtyUnixConfigurationError(..))
+import System.Environment (lookupEnv)
+import System.IO.Error (catchIOError)
+import System.Posix.IO (OpenMode(ReadOnly), OpenFileFlags(..), defaultFileFlags, openFd, stdOutput)
+import System.Posix.Terminal (getTerminalName, queryTerminal)
+import System.Posix.Types (Fd)
+#endif
 import Lens.Micro ((^.))
 import System.Directory (canonicalizePath)
 import System.Environment (withProgName)
 import System.FilePath (takeDirectory)
-import System.FSNotify (Event(Modified), watchDir, withManager, EventIsDirectory (IsFile))
-import Brick hiding (bsDraw)
-import qualified Brick.BChan as BC
+import System.FSNotify (Event(Added, Modified), watchDir, withManager, EventIsDirectory (IsFile))
+import Brick
+import Brick.BChan qualified as BC
 
 import Hledger
 import Hledger.Cli hiding (progname,prognameandversion)
+import Hledger.Cli.Commands.Quickref (showQuickref)
 import Hledger.UI.Theme
 import Hledger.UI.UIOptions
 import Hledger.UI.UITypes
-import Hledger.UI.UIState (uiState, getDepth)
-import Hledger.UI.UIUtils (dbguiEv, showScreenStack, showScreenSelection)
+import Hledger.UI.UIState (uiState, uiDisplayJournal)
+import Hledger.UI.UIUtils (dbguiEv, journalIsFromStdin, showScreenStack, showScreenSelection, uiInstallWarningCollector, uiTakeWarnings)
 import Hledger.UI.MenuScreen
 import Hledger.UI.AccountsScreen
-import Hledger.UI.CashScreen
-import Hledger.UI.BalancesheetScreen
-import Hledger.UI.IncomestatementScreen
 import Hledger.UI.RegisterScreen
 import Hledger.UI.TransactionScreen
 import Hledger.UI.ErrorScreen
@@ -76,7 +83,7 @@ writeChan = BC.writeBChan
 
 
 hledgerUiMain :: IO ()
-hledgerUiMain = exitOnError $ withGhcDebug' $ withProgName "hledger-ui.log" $ do  -- force Hledger.Utils.Debug.* to log to hledger-ui.log
+hledgerUiMain = handleExit $ withGhcDebug' $ withProgName "hledger-ui.log" $ do  -- force Hledger.Utils.Debug.* to log to hledger-ui.log
   when (ghcDebugMode == GDPauseAtStart) $ ghcDebugPause'
 
 #if MIN_VERSION_base(4,20,0)
@@ -100,8 +107,6 @@ hledgerUiMain = exitOnError $ withGhcDebug' $ withProgName "hledger-ui.log" $ do
   -- when (debug_ $ cliopts_ opts) $ printf "%s\n" prognameandversion >> printf "opts: %s\n" (show opts)
 
   usecolor <- useColorOnStdout
-  -- When ANSI colour/styling is available and enabled, encourage user's $PAGER to use it (for command line help).
-  when usecolor setupPager
   -- And when it's not, disable colour in the TUI ?
   -- Theme.hs's themes currently hard code various colours and styles provided by vty,
   -- which probably are disabled automatically when terminal doesn't support them.
@@ -111,21 +116,78 @@ hledgerUiMain = exitOnError $ withGhcDebug' $ withProgName "hledger-ui.log" $ do
   -- always generate forecasted periodic transactions; their visibility will be toggled by the UI.
   let copts' = copts{inputopts_=iopts{forecast_=forecast_ iopts <|> Just nulldatespan}}
 
+  -- always load the journal with full lot detail retained; the UI collapses it for display
+  -- (toggled by the L key), so the uncollapsed journal stays available without re-reading files.
+  let loadcopts = copts'{rawopts_ = setboolopt "lots" (rawopts_ copts')}
+
   case True of
+    _ | boolopt "quickref" rawopts -> showQuickref
     _ | boolopt "help"    rawopts -> runPager $ showModeUsage uimode ++ "\n"
-    _ | boolopt "tldr"    rawopts -> runTldrForPage "hledger-ui"
+    _ | boolopt "examples" rawopts -> runTldrForPage "hledger-ui"
     _ | boolopt "info"    rawopts -> runInfoForTopic "hledger-ui" Nothing
     _ | boolopt "man"     rawopts -> runManForTopic  "hledger-ui" Nothing
+    _ | boolopt "webman"  rawopts -> void $ openBrowserOn $ webManualUrl "hledger-ui" Nothing
     _ | boolopt "version" rawopts -> putStrLn prognameandversion
     -- _ | boolopt "binary-filename" rawopts -> putStrLn (binaryfilename progname)
-    _                                         -> withJournalDo copts' (runBrickUi opts)
+    _                                         -> do
+        -- From here on, warnings (from loading or later reloading the journal) should be
+        -- collected for display in the UI, not printed to stderr where they would be
+        -- hidden or would disrupt the terminal display.
+        uiInstallWarningCollector
+        withJournal loadcopts $ \j ->
+          -- Refresh the startup ReportSpec against the loaded journal so any
+          -- cur: terms are expanded for the journal's commodity aliases.
+          let opts' = case reportSpecExpandCurQueries j (reportspec_ copts') of
+                        Right rs -> opts{uoCliOpts = (uoCliOpts opts){reportspec_ = rs}}
+                        Left _   -> opts
+          in runBrickUi opts' j
 
   when (ghcDebugMode == GDPauseAtEnd) $ ghcDebugPause'
 
-runBrickUi :: UIOpts -> Journal -> IO ()
-runBrickUi uopts0@UIOpts{uoCliOpts=copts@CliOpts{inputopts_=_iopts,reportspec_=rspec@ReportSpec{_rsReportOpts=ropts}}} j =
-  do
-  let
+-- | Make an action like @mkVty mempty@, but reading keyboard input from the
+-- controlling terminal's device rather than from stdin. Used when the journal data
+-- was read from stdin, which leaves that handle consumed and closed.
+-- The terminal is opened once, here; the returned action can be run repeatedly
+-- (eg when resuming after a suspend). Unix only; on Windows this is just mkVty.
+ttyVtyMaker :: IO (IO Vty)
+#ifdef mingw32_HOST_OS
+ttyVtyMaker = return $ mkVty mempty
+#else
+ttyVtyMaker = do
+  term  <- lookupEnv "TERM" >>= maybe (throwIO MissingTermEnvVar) return
+  ttyfd <- openTerminal
+  return $ mkVtyWithSettings mempty UnixSettings
+    { settingVmin      = 1
+    , settingVtime     = 100
+    , settingInputFd   = ttyfd
+    , settingOutputFd  = stdOutput
+    , settingTermName  = term
+    }
+
+-- | Open the controlling terminal for reading, without making it our controlling
+-- terminal if we have none, and not inherited by child processes.
+-- Prefer the terminal's real device path (eg /dev/ttys003) over /dev/tty:
+-- macOS's kqueue can't wait on the latter, so vty's input thread would block
+-- in read() and shutdown would hang until the next key press.
+-- Fall back to /dev/tty if the device can't be opened (eg after su).
+openTerminal :: IO Fd
+openTerminal = do
+  isterm <- queryTerminal stdOutput
+  mdev   <- if isterm then Just <$> getTerminalName stdOutput else return Nothing
+  let open p = openFd p ReadOnly defaultFileFlags{noctty = True, cloexec = True}
+  case mdev of
+    Nothing  -> open "/dev/tty"
+    Just dev -> open dev `catchIOError` \_ -> open "/dev/tty"
+#endif
+
+-- | Build hledger-ui's startup state: normalise the options, choose the initial
+-- screen, and set up the stack of previous screens as if the user had navigated
+-- down to it from the menu. Uses the startup report date (@copts^.rsDay@), so it is
+-- deterministic and reusable outside the brick app (eg from tests). Keep synced with msNew.
+uiInitialState :: UIOpts -> Journal -> UIState
+uiInitialState uopts0@UIOpts{uoCliOpts=copts@CliOpts{reportspec_=rspec@ReportSpec{_rsReportOpts=ropts}}} j =
+  uiState uopts j prevscrs currscr
+  where
     today = copts^.rsDay
 
     -- hledger-ui's query handling is currently in flux, mixing old and new approaches.
@@ -172,7 +234,7 @@ runBrickUi uopts0@UIOpts{uoCliOpts=copts@CliOpts{inputopts_=_iopts,reportspec_=r
             _rsReportOpts=ropts{
                depth_    = queryDepth $ _rsQuery rspec,  -- query's depth part
                period_   = periodfromoptsandargs,       -- query's date part
-               no_elide_ = True,  -- avoid squashing boring account names, for a more regular tree (unlike hledger)
+               no_elide_ = accountlistmode_ ropts == ALTree,   -- avoid squashing boring account names, for a more regular tree (unlike hledger)
                empty_    = not $ empty_ ropts,  -- show zero items by default, hide them with -E (unlike hledger)
                declared_ = True  -- always show declared accounts even if unused
                }
@@ -186,19 +248,26 @@ runBrickUi uopts0@UIOpts{uoCliOpts=copts@CliOpts{inputopts_=_iopts,reportspec_=r
         filteredQuery q = simplifyQuery $ And [queryFromFlags ropts, filtered q]
           where filtered = filterQuery (\x -> not $ queryIsDepth x || queryIsDate x)
 
+    -- The journal collapsed for display per the current lots toggle; the initial screens
+    -- are built from it, while uiState keeps the uncollapsed journal for the L toggle.
+    jdisplay = uiDisplayJournal uopts j
+
     -- Choose the initial screen to display.
     -- We also set up a stack of previous screens, as if you had navigated down to it from the top.
     -- Note the previous screens list is ordered nearest-first, with the top-most (menu) screen last.
     -- Keep all of this synced with msNew.
     rawopts = rawopts_ $ uoCliOpts $ uopts
+    -- The screen-selecting flag given last wins, so eg a config file's choice
+    -- can be overridden on the command line.
+    mscreenflag = choiceopt (\n -> if n `elem` ["cash","bs","is","all","register"] then Just n else Nothing) rawopts
     (prevscrs, currscr) =
       dbg1With (showScreenStack "initial" showScreenSelection . uncurry2 (uiState defuiopts nulljournal)) $
-      if
+      case mscreenflag of
         -- An accounts screen is specified. Its previous screen will be the menu screen with it selected.
-        | boolopt "cash" rawopts -> ([msSetSelectedScreen csItemIndex menuscr], csacctsscr)
-        | boolopt "bs"   rawopts -> ([msSetSelectedScreen bsItemIndex menuscr], bsacctsscr)
-        | boolopt "is"   rawopts -> ([msSetSelectedScreen isItemIndex menuscr], isacctsscr)
-        | boolopt "all"  rawopts -> ([msSetSelectedScreen asItemIndex menuscr], allacctsscr)
+        Just "cash" -> ([msSetSelectedScreen csItemIndex menuscr], csacctsscr)
+        Just "bs"   -> ([msSetSelectedScreen bsItemIndex menuscr], bsacctsscr)
+        Just "is"   -> ([msSetSelectedScreen isItemIndex menuscr], isacctsscr)
+        Just "all"  -> ([msSetSelectedScreen asItemIndex menuscr], allacctsscr)
 
         -- A register screen is specified with --register=ACCT. The initial screen stack will be:
         --
@@ -206,11 +275,11 @@ runBrickUi uopts0@UIOpts{uoCliOpts=copts@CliOpts{inputopts_=_iopts,reportspec_=r
         --    ACCTSSCR (the accounts screen containing ACCT), with ACCT selected
         --     register screen for ACCT
         --
-        | Just apat <- uoRegister uopts ->
+        Just "register" | Just apat <- uoRegister uopts ->
           let
             -- the account being requested
             acct = fromMaybe (error' $ "--register "++apat++" did not match any account")  -- PARTIAL:
-              . firstMatch $ journalAccountNamesDeclaredOrImplied j
+              . firstMatch $ journalAccountNamesDeclaredOrImplied jdisplay
               where
                 firstMatch = case toRegexCI $ T.pack apat of
                     Right re -> find (regexMatchText re)
@@ -219,16 +288,20 @@ runBrickUi uopts0@UIOpts{uoCliOpts=copts@CliOpts{inputopts_=_iopts,reportspec_=r
             -- the register screen for acct
             regscr = 
               rsSetAccount acct False $
-              rsNew uopts today j acct forceinclusive
+              rsNew uopts today jdisplay acct forceinclusive
                 where
-                  forceinclusive = case getDepth ui of
+                  -- Take the depth from uopts, not `getDepth ui`: ui depends on regscr
+                  -- (this binding), so referencing ui here ties a knot that StrictData's
+                  -- strict UIState fields turn into a <<loop>> at startup (#1825).
+                  forceinclusive = case dsFlatDepth (depth_ regropts) of
                                     Just de -> accountNameLevel acct >= de
                                     Nothing -> False
+                    where regropts = _rsReportOpts $ reportspec_ $ uoCliOpts uopts
 
             -- The accounts screen containing acct.
             -- Keep these selidx values synced with the menu items in msNew.
             (acctsscr, selidx) =
-              case journalAccountType j acct of
+              case journalAccountType jdisplay acct of
                 Just t | isBalanceSheetAccountType t    -> (bsacctsscr, 1)
                 Just t | isIncomeStatementAccountType t -> (isacctsscr, 2)
                 _                                       -> (allacctsscr,0)
@@ -239,28 +312,41 @@ runBrickUi uopts0@UIOpts{uoCliOpts=copts@CliOpts{inputopts_=_iopts,reportspec_=r
           in ([acctsscr, menuscr'], regscr)
 
         -- Otherwise, start on the menu screen.
-        | otherwise -> ([], menuscr)
+        _ -> ([], menuscr)
 
         where
           menuscr     = msNew
-          allacctsscr = asNew uopts today j Nothing
-          csacctsscr  = csNew uopts today j Nothing
-          bsacctsscr  = bsNew uopts today j Nothing
-          isacctsscr  = isNew uopts today j Nothing
+          allacctsscr = asNew AllAccounts             uopts today jdisplay Nothing
+          csacctsscr  = asNew CashAccounts            uopts today jdisplay Nothing
+          bsacctsscr  = asNew BalancesheetAccounts    uopts today jdisplay Nothing
+          isacctsscr  = asNew IncomestatementAccounts uopts today jdisplay Nothing
 
-    ui = uiState uopts j prevscrs currscr
-    app = brickApp (uoTheme uopts)
+
+runBrickUi :: UIOpts -> Journal -> IO ()
+runBrickUi uopts0 j =
+  do
+  -- show any warnings collected while loading the journal (until the first keypress)
+  startupwarnings <- uiTakeWarnings
+
+  let
+    ui  = (uiInitialState uopts0 j){aWarnings=startupwarnings}
+    app = brickApp (uoTheme uopts0)
 
   -- print (length (show ui)) >> exitSuccess  -- show any debug output to this point & quit
 
-  let 
+  let
+  -- how to make a Vty terminal controller: the usual way, or when the journal
+  -- came from stdin, reading keys from the terminal device instead
+  mkvty <- if journalIsFromStdin j then ttyVtyMaker else return (mkVty mempty)
+
+  let
     -- helper: make a Vty terminal controller with mouse support enabled
     makevty = do
-      v <- mkVty mempty
+      v <- mkvty
       setMode (outputIface v) Mouse True
       return v
 
-  if not (uoWatch uopts)
+  if not (uoWatch uopts0)
   then do
     vty <- makevty
     void $ customMain vty makevty Nothing app ui
@@ -295,9 +381,9 @@ runBrickUi uopts0@UIOpts{uoCliOpts=copts@CliOpts{inputopts_=_iopts,reportspec_=r
       -- with Debounce at the default 1ms it clears transient errors itself
       -- but gets tied up for ages
       withManager $ \mgr -> do
-        files <- mapM (canonicalizePath . fst) $ jfiles j
-        let directories = nubSort $ map takeDirectory files
-        dbg1IO "files" files
+        fs <- mapM canonicalizePath $ filter (/= "-") $ journalAllFilePaths j
+        let directories = nubSort $ map takeDirectory fs
+        dbg1IO "files" fs
         dbg1IO "directories to watch" directories
 
         forM_ directories $ \d -> watchDir
@@ -305,9 +391,8 @@ runBrickUi uopts0@UIOpts{uoCliOpts=copts@CliOpts{inputopts_=_iopts,reportspec_=r
           d
           -- predicate: ignore changes not involving our files
           (\case
-            Modified f _ IsFile -> f `elem` files
-            -- Added    f _ -> f `elem` files
-            -- Removed  f _ -> f `elem` files
+            Added f _ IsFile -> f `elem` fs -- for editors which write the whole file from scratch on saves
+            Modified f _ IsFile -> f `elem` fs -- for editors which modify existing files in place
             -- we don't handle adding/removing journal files right now
             -- and there might be some of those events from tmp files
             -- clogging things up so let's ignore them
@@ -336,25 +421,46 @@ brickApp mtheme = App {
 uiHandle :: BrickEvent Name AppEvent -> EventM Name UIState ()
 uiHandle ev = do
   dbguiEv $ "\n==== " ++ show ev
+  -- dismiss any displayed warnings on the next key press (which is otherwise handled as usual)
+  case ev of
+    VtyEvent (EvKey _ _) -> modify $ \u -> if null (aWarnings u) then u else u{aWarnings=[]}
+    _ -> return ()
   ui <- get
   case aScreen ui of
-    MS _ -> msHandle ev
-    AS _ -> asHandle ev
-    CS _ -> csHandle ev
-    BS _ -> bsHandle ev
-    IS _ -> isHandle ev
-    RS _ -> rsHandle ev
-    TS _ -> tsHandle ev
-    ES _ -> esHandle ev
+    MS sst -> msHandle sst ev
+    AS sst -> asHandle sst ev
+    RS sst -> rsHandle sst ev
+    TS sst -> tsHandle sst ev
+    ES sst -> esHandle sst ev
 
 uiDraw :: UIState -> [Widget Name]
-uiDraw ui =
-  case aScreen ui of
-    MS _ -> msDraw ui
-    AS _ -> asDraw ui
-    CS _ -> csDraw ui
-    BS _ -> bsDraw ui
-    IS _ -> isDraw ui
-    RS _ -> rsDraw ui
-    TS _ -> tsDraw ui
-    ES _ -> esDraw ui
+uiDraw ui = case reverse $ aWarnings ui of
+    []           -> screenlayers
+    latest:older -> warningOverlay latest (length older) : screenlayers
+  where
+    screenlayers =
+      case aScreen ui of
+        MS sst -> msDraw sst ui
+        AS sst -> asDraw sst ui
+        RS sst -> rsDraw sst ui
+        TS sst -> tsDraw sst ui
+        ES sst -> esDraw sst ui
+
+-- | An overlay layer showing the given (most recent) warning message,
+-- and how many more there are, on the screen's bottom line until the next keypress.
+warningOverlay :: String -> Int -> Widget Name
+warningOverlay msg nolder =
+  Widget Greedy Greedy $ do
+    c <- getContext
+    render $
+      translateLayer (Location (0, c^.availHeightL - 1)) $
+      withAttr (attrName "warning") $ str $
+      " Warning: " ++ takeWhile (/='\n') msg ++ morestr ++ " "
+  where
+    morestr = if nolder > 0 then " (and " ++ show nolder ++ " more)" else ""
+
+#if !MIN_VERSION_brick(3,0,0)
+-- | brick 3.0 renamed translateBy to translateLayer.
+translateLayer :: Location -> Widget n -> Widget n
+translateLayer = translateBy
+#endif
