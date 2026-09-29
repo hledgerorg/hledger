@@ -11,6 +11,8 @@ forms, which must each be written on one line, are:
 
   Haskell:  tr T "TEXT"          trc T "CTX" "TEXT"     trf T "TEXT" ...
             trn T N "ONE" "MANY" i18n "TEXT"            i18nc "CTX" "TEXT"
+            (T, the Translations argument, may be omitted when the module binds
+            a local helper such as `tr = I18n.tr translations_`)
             HMsg "TEXT"          HMsgc "CTX" "TEXT"     (hledger-web, also in hamlet's _{...})
 
 A comment starting with "TRANSLATORS:" (after "--" in Haskell, "$#" in
@@ -42,12 +44,16 @@ STR = r'"((?:[^"\\\n]|\\.)*)"'
 EXPR = r'(?:[\w\'.]+|\((?:[^()"]|\([^()"]*\))*\))'
 WS = r'\s+'
 
+# The Translations argument is optional: renderers commonly bind a local
+# `tr = I18n.tr translations_` and then write `tr "text"`.
+TRS = r'(?:' + EXPR + WS + r')?'
+
 PATTERNS = [
     # (regex, kind) where kind names the captured groups
-    (re.compile(r'\btr' + WS + EXPR + WS + STR), "msgid"),
-    (re.compile(r'\btrc' + WS + EXPR + WS + STR + WS + STR), "ctx msgid"),
-    (re.compile(r'\btrf' + WS + EXPR + WS + STR), "msgid"),
-    (re.compile(r'\btrn' + WS + EXPR + WS + EXPR + WS + STR + WS + STR), "msgid plural"),
+    (re.compile(r'\btr' + WS + TRS + STR), "msgid"),
+    (re.compile(r'\btrc' + WS + TRS + STR + WS + STR), "ctx msgid"),
+    (re.compile(r'\btrf' + WS + TRS + STR), "msgid"),
+    (re.compile(r'\btrn' + WS + TRS + EXPR + WS + STR + WS + STR), "msgid plural"),
     (re.compile(r'\bi18n' + WS + STR), "msgid"),
     (re.compile(r'\bi18nc' + WS + STR + WS + STR), "ctx msgid"),
     # hledger-web's message types, in Haskell code and in hamlet's _{HMsg "..."}
