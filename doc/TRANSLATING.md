@@ -61,9 +61,24 @@ Language files are named by their language tag: `de.po` for German,
 for Simplified Chinese. A plain two-letter tag is usually right; add a
 region or script only when the language really differs by it.
 
+The name matters: the file's name is the tag that `--lang` selects it
+by. A file named `fr_FR.po` is selected by `--lang fr-FR`, but not by
+`--lang fr`. Translation tools often suggest names in the style of
+locale codes, like `zh_CN.po` or `pt_BR.po`; use hledger's form instead:
+
+| Tools may suggest | Name the file |
+|---|---|
+| `fr_FR.po`, `de_DE.po`, ... | `fr.po`, `de.po`, ... |
+| `pt_BR.po` | `pt-BR.po` |
+| `zh_CN.po` | `zh-Hans.po` |
+| `zh_TW.po` | `zh-Hant.po` |
+| `no.po`, `nb_NO.po` | `nb.po` |
+
 **With Poedit:** File > New From POT/PO File, choose `hledger.pot`, pick
-your language when asked, and save as `fr.po`. Poedit fills in the file
-header, including the plural rule for your language.
+your language when asked, and save as `fr.po` (changing the name Poedit
+suggests, if needed). Poedit fills in the file header, including the
+plural rule for your language. The header's `Language:` line can stay
+as Poedit writes it; hledger goes by the file name.
 
 **With a text editor:** copy `hledger.pot` to `fr.po` and edit the block
 at the top:
@@ -237,7 +252,10 @@ without `--lang`, or look at Poedit's counter of untranslated entries.
 
 ## Step 4: send it in
 
-When you are happy with it, contribute the file:
+When you are happy with it, contribute the file. First make sure it is
+up to date with the latest template (see
+[Keeping a translation up to date](#keeping-a-translation-up-to-date)),
+since hledger's text may have changed since you started.
 
 - If you use GitHub: add it as `hledger-lib/locale/fr.po` and open a pull
   request. Two one-line changes are also needed to build it into hledger,
@@ -245,6 +263,10 @@ When you are happy with it, contribute the file:
   under `extra-source-files` in `hledger-lib/package.yaml`, and add
   `("fr", $(embedFileRelativeBytes "locale/fr.po"))` to
   `builtinCatalogSources` in `hledger-lib/Hledger/Utils/I18n.hs`.
+  The file name and the tag given there must both be the language's tag
+  in hledger's form (see step 1), or `--lang` can not select it.
+  `just i18n-check` reports a catalog that is not registered, and one
+  that is not up to date; the unit tests check the tag.
 - Otherwise, attach the file to an issue or a message on the
   [mail list](https://hledger.org/support.html), and someone will add it.
 
@@ -272,8 +294,10 @@ refresh your file:
   does the same.
 
 In the hledger repository, `just i18n-merge` refreshes every built-in
-catalog this way and `just i18n-check` lists stale entries and counts
-untranslated ones, so a maintainer can tell you what a language needs.
+catalog this way. `just i18n-check` checks that the template is up to
+date, and for each catalog lists stale entries, counts untranslated
+ones, and reports it if it is not built in, so a maintainer can tell you
+what a language needs.
 
 ## For developers
 
@@ -302,12 +326,20 @@ translatable:
 - Never translate: journal-format output, csv/tsv/json headings, error
   messages, anything a program parses. Never insert a translation into
   HTML unescaped.
+- When you add, change or remove a translatable string, or its
+  `TRANSLATORS:` comment, run `just i18n-pot` and commit the regenerated
+  template with the change. Translators work from the template on main,
+  so one left behind gives them an incomplete list.
 - Tooling: `just i18n-pot` regenerates `hledger-lib/locale/hledger.pot`
   from the sources with `tools/i18n-extract.py`; `just i18n-check`
-  compares the catalogs with it; `just i18n-merge` runs msgmerge on them;
-  `just i18n-pseudo` writes a catalog that brackets every string, so
-  `hledger ... --lang xx` shows any output that is still hard-coded.
-- The unit tests parse every built-in catalog and check that
-  translations keep their placeholders; `hledger/test/i18n.test`,
-  the yesod tests and `hledger-web/test/browser/i18n.spec.js` cover the
-  German output end to end.
+  fails if the template differs from what `i18n-pot` would write, if a
+  catalog has stale entries, or if a catalog file is not built in, and
+  counts untranslated entries; `just i18n-merge` runs msgmerge on the
+  catalogs; `just i18n-pseudo` writes a catalog that brackets every
+  string, so `hledger ... --lang xx` shows any output that is still
+  hard-coded.
+- The unit tests parse every built-in catalog and check that its tag is
+  in hledger's normalized form and that translations keep their
+  placeholders; `hledger/test/i18n.test`, the yesod tests and
+  `hledger-web/test/browser/i18n.spec.js` cover the German output end to
+  end, and `i18n.test` checks that Chinese is selectable.

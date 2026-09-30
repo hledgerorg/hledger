@@ -112,3 +112,17 @@ Jährliche Kapitalflussrechnung 2008
 
 $ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal is -p 'every 3 days' --lang de | head -1
 Periodische Einnahmenüberschussrechnung 2008
+
+# ** 12. Simplified Chinese is built in, and the usual spellings of its tag select it.
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang zh | head -1
+2008-12-31 资产负债表
+
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang zh_CN | head -1
+2008-12-31 资产负债表
+
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang zh-Hans | head -1
+2008-12-31 资产负债表
+
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang xx
+>2 /available: de, en, zh-Hans\)/
+>= 1

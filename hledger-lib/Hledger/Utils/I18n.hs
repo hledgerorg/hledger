@@ -246,7 +246,8 @@ msgKey mctx s = maybe s (\c -> c <> "\x04" <> s) mctx
 -- | The built-in catalogs, embedded at build time.
 builtinCatalogSources :: [(Text, ByteString)]
 builtinCatalogSources =
-  [ ("de", $(embedFileRelativeBytes "locale/de.po"))
+  [ ("de",      $(embedFileRelativeBytes "locale/de.po"))
+  , ("zh-Hans", $(embedFileRelativeBytes "locale/zh-Hans.po"))
   ]
 
 -- | The built-in catalogs, parsed. A catalog that fails to parse is
@@ -781,6 +782,8 @@ tests_I18n = testGroup "I18n" [
   ]
   where
     checkBuiltin (lang, bs) = do
+      -- --lang values are normalized before lookup, so a tag that is not can never be selected
+      assertEqual ("built-in catalog tag " ++ show lang ++ " is not normalized") (Just lang) (normalizeLangTag lang)
       s <- either (\e -> assertFailure $ T.unpack lang ++ ": not UTF-8: " ++ show e) return $ TE.decodeUtf8' bs
       t <- either assertFailure return $ parsePo (T.unpack lang) lang s
       let msgid k = T.takeWhileEnd (/= '\x04') k

@@ -60,3 +60,12 @@ reports (`W23`), which is hard-coded in the period rendering; German
 would want `KW23`. Interval words precede a report title ("Monatliche
 Bilanz") and are inflected for the feminine, which all four report titles
 happen to share.
+
+## Simplified Chinese
+
+Contributed by Chunhui Ouyang, as `zh_CN.po`; renamed to `zh-Hans.po`,
+the tag that `zh`, `zh_CN` and `zh-CN` all resolve to. It was made from
+an older template, so after merging the current one some newer
+hledger-web strings are untranslated, and some are fuzzy (a suggested
+translation, not used until a translator confirms it). These show in
+English for now.

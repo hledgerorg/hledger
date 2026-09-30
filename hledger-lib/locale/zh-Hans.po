@@ -17,683 +17,825 @@ msgstr ""
 "X-Generator: Poedit 3.9\n"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:174
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
 msgid "January"
 msgstr "1 月"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:174
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
 msgid "February"
 msgstr "2 月"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:174
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
 msgid "March"
 msgstr "3 月"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:175
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
 msgid "April"
 msgstr "4 月"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:175
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
 msgid "May"
 msgstr "5 月"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:175
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
 msgid "June"
 msgstr "6 月"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:176
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
 msgid "July"
 msgstr "7 月"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:176
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
 msgid "August"
 msgstr "8 月"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:176
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
 msgid "September"
 msgstr "9 月"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:177
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
 msgid "October"
 msgstr "10 月"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:177
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
 msgid "November"
 msgstr "11 月"
 
 #. stand-alone (nominative) month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:177
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
 msgid "December"
 msgstr "12 月"
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:181
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month abbrev"
 msgid "Jan"
 msgstr "1 月"
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:181
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month abbrev"
 msgid "Feb"
 msgstr "2 月"
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:181
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month abbrev"
 msgid "Mar"
 msgstr "3 月"
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:182
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month abbrev"
 msgid "Apr"
 msgstr "4 月"
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:182
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month abbrev"
 msgid "May"
 msgstr "5 月"
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:182
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month abbrev"
 msgid "Jun"
 msgstr "6 月"
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:183
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month abbrev"
 msgid "Jul"
 msgstr "7 月"
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:183
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month abbrev"
 msgid "Aug"
 msgstr "8 月"
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:183
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month abbrev"
 msgid "Sep"
 msgstr "9 月"
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:184
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month abbrev"
 msgid "Oct"
 msgstr "10 月"
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:184
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month abbrev"
 msgid "Nov"
 msgstr "11 月"
 
 #. short stand-alone month names, as used in a column heading.
-#: hledger-lib/Hledger/Utils/I18n.hs:184
+#: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month abbrev"
 msgid "Dec"
 msgstr "12 月"
 
 #. the report title, eg "Monthly Balance Sheet 2024 (Historical Ending Balances), valued at period ends". {clarification} brings its own leading space when present.
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:151
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #, python-brace-format
 msgid "{report} {dates}{clarification}{valuation}"
 msgstr "{dates}{clarification}{valuation} {report}"
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:174
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Period-End Value Changes)"
 msgstr "（期末价值变动）"
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:175
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Cumulative Period-End Value Changes)"
 msgstr "（期末价值累计变动）"
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:176
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Incremental Gain)"
 msgstr "（增量收益）"
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:177
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Cumulative Gain)"
 msgstr "（累积增益）"
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:178
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Historical Gain)"
 msgstr "（历史收益）"
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:179
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Balance Changes)"
 msgstr "（平衡性调整）"
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:180
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Cumulative Ending Balances)"
 msgstr "（累计期末余额）"
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:181
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Historical Ending Balances)"
 msgstr "（历史期末余额）"
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:186
-#: hledger/Hledger/Cli/Commands/Balance.hs:903
-#: hledger/Hledger/Cli/Commands/Balance.hs:1111
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", converted to cost"
 msgstr "，转换为成本"
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:189
-#: hledger/Hledger/Cli/Commands/Balance.hs:906
-#: hledger/Hledger/Cli/Commands/Balance.hs:1114
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at posting date"
 msgstr "，按发布日估值"
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:191
-#: hledger/Hledger/Cli/Commands/Balance.hs:908
-#: hledger/Hledger/Cli/Commands/Balance.hs:1115
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at period ends"
 msgstr "，按期末估值"
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:192
-#: hledger/Hledger/Cli/Commands/Balance.hs:909
-#: hledger/Hledger/Cli/Commands/Balance.hs:1116
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", current value"
 msgstr "，当前值"
 
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:193
-#: hledger/Hledger/Cli/Commands/Balance.hs:910
-#: hledger/Hledger/Cli/Commands/Balance.hs:1117
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 #, python-brace-format
 msgid ", valued at {date}"
 msgstr "，估值日期为 {date}"
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:308
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "Net:"
 msgstr "净值："
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:413
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Budget Report"
 msgstr "预算报告"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:426
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Multi-period Balance Report"
 msgstr "多期间余额报表"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:438
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Balance Report"
 msgstr "余额报告"
 
 #. the multi-period balance report title, eg "Balance changes in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/Commands/Balance.hs:889
+#: hledger/Hledger/Cli/Commands/Balance.hs
 #, python-brace-format
 msgid "{report} in {dates}{valuation}:"
 msgstr "{dates} {valuation} {report}："
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:893
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Period-end value changes"
 msgstr "期末价值变动"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:894
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Cumulative period-end value changes"
 msgstr "期末累计价值变动"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:895
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Incremental gain"
 msgstr "增量收益"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:896
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Cumulative gain"
 msgstr "累积增益"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:897
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Historical gain"
 msgstr "历史收益"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:898
+#. the label before a report's accumulation mode links, and the links' text and tooltips.
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Balance changes"
 msgstr "平衡性调整"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:899
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (cumulative)"
 msgstr "期末余额（累计）"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:900
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (historical)"
 msgstr "期末余额（历史数据）"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs:961
-#: hledger/Hledger/Cli/Commands/Balance.hs:1151
-msgctxt "column heading"
-msgid "Commodity"
-msgstr "商品"
-
-#: hledger/Hledger/Cli/Commands/Balance.hs:971
-#: hledger/Hledger/Cli/Commands/Balance.hs:1153
-#: hledger-web/Hledger/Web/Handler/RegisterR.hs:58
-msgctxt "column heading"
-msgid "Total"
-msgstr "总计"
-
-#: hledger/Hledger/Cli/Commands/Balance.hs:972
-#: hledger/Hledger/Cli/Commands/Balance.hs:1154
-msgctxt "column heading"
-msgid "Average"
-msgstr "平均"
-
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/Commands/Balance.hs:1107
+#: hledger/Hledger/Cli/Commands/Balance.hs
 #, python-brace-format
 msgid "Budget performance in {dates}{valuation}:"
 msgstr "{dates}{valuation} 期间的预算执行情况："
 
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/Commands/Balance/Internal.hs
+msgctxt "column heading"
+msgid "Commodity"
+msgstr "商品"
+
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/Commands/Balance/Internal.hs
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
+msgctxt "column heading"
+msgid "Total"
+msgstr "总计"
+
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/Commands/Balance/Internal.hs
+msgctxt "column heading"
+msgid "Average"
+msgstr "平均"
+
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:28
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Balance Sheet"
 msgstr "资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:29
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Daily Balance Sheet"
 msgstr "每日资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:30
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Weekly Balance Sheet"
 msgstr "每周资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:31
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Biweekly Balance Sheet"
 msgstr "双周资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:32
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Monthly Balance Sheet"
 msgstr "月度资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:33
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Bimonthly Balance Sheet"
 msgstr "双月资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:34
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Quarterly Balance Sheet"
 msgstr "季度资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:35
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Half-yearly Balance Sheet"
 msgstr "半年度资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:36
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Yearly Balance Sheet"
 msgstr "半年度资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:37
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Biennial Balance Sheet"
 msgstr "两年期资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:38
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Periodic Balance Sheet"
 msgstr "定期资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:41
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:42
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Assets"
 msgstr "资产"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs:48
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:49
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Liabilities"
 msgstr "负债"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:29
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Balance Sheet With Equity"
 msgstr "包含权益的资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:30
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Daily Balance Sheet With Equity"
 msgstr "含权益的每日资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:31
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Weekly Balance Sheet With Equity"
 msgstr "包含权益的每周资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:32
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Biweekly Balance Sheet With Equity"
 msgstr "包含权益的每两周资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:33
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Monthly Balance Sheet With Equity"
 msgstr "含权益的月度资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:34
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Bimonthly Balance Sheet With Equity"
 msgstr "含权益的双月资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:35
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Quarterly Balance Sheet With Equity"
 msgstr "含权益的季度资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:36
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Half-yearly Balance Sheet With Equity"
 msgstr "含权益的半年度资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:37
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Yearly Balance Sheet With Equity"
 msgstr "含权益的年度资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:38
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Biennial Balance Sheet With Equity"
 msgstr "含权益的两年期资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:39
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Periodic Balance Sheet With Equity"
 msgstr "包含权益的定期资产负债表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs:56
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Equity"
 msgstr "权益"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:32
+#: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Cashflow Statement"
 msgstr "现金流量表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:33
+#: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Daily Cashflow Statement"
 msgstr "每日现金流量表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:34
+#: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Weekly Cashflow Statement"
 msgstr "每周现金流量表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:35
+#: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Biweekly Cashflow Statement"
 msgstr "双周现金流量表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:36
+#: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Monthly Cashflow Statement"
 msgstr "月度现金流量表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:37
+#: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Bimonthly Cashflow Statement"
 msgstr "双月现金流量表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:38
+#: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Quarterly Cashflow Statement"
 msgstr "季度现金流量表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:39
+#: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Half-yearly Cashflow Statement"
 msgstr "半年度现金流量表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:40
+#: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Yearly Cashflow Statement"
 msgstr "年度现金流量表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:41
+#: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Biennial Cashflow Statement"
 msgstr "两年期现金流量表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:42
+#: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Periodic Cashflow Statement"
 msgstr "定期现金流量表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Cashflow.hs:45
+#: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Cash flows"
 msgstr "现金流"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:28
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Income Statement"
 msgstr "损益表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:29
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Daily Income Statement"
 msgstr "每日损益表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:30
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Weekly Income Statement"
 msgstr "每周损益表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:31
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Biweekly Income Statement"
 msgstr "双周损益表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:32
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Monthly Income Statement"
 msgstr "月度损益表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:33
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Bimonthly Income Statement"
 msgstr "双月损益表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:34
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Quarterly Income Statement"
 msgstr "季度损益表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:35
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Half-yearly Income Statement"
 msgstr "半年度损益表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:36
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Yearly Income Statement"
 msgstr "年度损益表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:37
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Biennial Income Statement"
 msgstr "两年期损益表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:38
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Periodic Income Statement"
 msgstr "定期损益表"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:41
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Revenues"
 msgstr "收入"
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Incomestatement.hs:48
+#: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Expenses"
 msgstr "支出"
 
-#: hledger/Hledger/Cli/Commands/Register.hs:115
+#: hledger/Hledger/Cli/Commands/Register.hs
 msgid "Register"
 msgstr "日记账"
 
-#: hledger-ui/Hledger/UI/AccountsScreen.hs:68
+#: hledger-ui/Hledger/UI/AccountsScreen.hs
 msgid "account balances"
 msgstr "账户余额"
 
-#: hledger-ui/Hledger/UI/AccountsScreen.hs:69
+#: hledger-ui/Hledger/UI/AccountsScreen.hs
 msgid "account changes"
 msgstr "账户变更"
 
-#: hledger-ui/Hledger/UI/AccountsScreen.hs:70
+#: hledger-ui/Hledger/UI/AccountsScreen.hs
 msgid "cash balances"
 msgstr "现金余额"
 
-#: hledger-ui/Hledger/UI/AccountsScreen.hs:71
+#: hledger-ui/Hledger/UI/AccountsScreen.hs
 msgid "balance sheet balances"
 msgstr "balance sheet balances"
 
-#: hledger-ui/Hledger/UI/AccountsScreen.hs:72
+#: hledger-ui/Hledger/UI/AccountsScreen.hs
 msgid "income statement changes"
 msgstr "损益表变动"
 
 #. the menu screen's entries; translated when drawn.
-#: hledger-ui/Hledger/UI/UIScreens.hs:93
+#: hledger-ui/Hledger/UI/UIScreens.hs
 msgid "Cash accounts"
 msgstr "现金账户"
 
 #. the menu screen's entries; translated when drawn.
-#: hledger-ui/Hledger/UI/UIScreens.hs:94
+#: hledger-ui/Hledger/UI/UIScreens.hs
 msgid "Balance sheet accounts"
 msgstr "资产负债表账户"
 
 #. the menu screen's entries; translated when drawn.
-#: hledger-ui/Hledger/UI/UIScreens.hs:95
+#: hledger-ui/Hledger/UI/UIScreens.hs
 msgid "Income statement accounts"
 msgstr "损益表账户"
 
 #. the menu screen's entries; translated when drawn.
-#: hledger-ui/Hledger/UI/UIScreens.hs:96
+#: hledger-ui/Hledger/UI/UIScreens.hs
 msgid "All accounts"
 msgstr "所有账户"
 
-#: hledger-web/Hledger/Web/Handler/AddR.hs:65
+#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/App.hs
+#, fuzzy
+#| msgid "Balance Sheet"
+msgid "Balance sheet"
+msgstr "资产负债表"
+
+#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/App.hs
+msgid "Show assets, liabilities, and net worth"
+msgstr ""
+
+#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/App.hs
+#, fuzzy
+#| msgid "Balance Sheet With Equity"
+msgid "Balance sheet with equity"
+msgstr "包含权益的资产负债表"
+
+#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/App.hs
+msgid "Show assets, liabilities, and equity"
+msgstr ""
+
+#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/App.hs
+#, fuzzy
+#| msgid "Income Statement"
+msgid "Income statement"
+msgstr "损益表"
+
+#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/App.hs
+msgid "Show revenues and expenses"
+msgstr ""
+
+#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/App.hs
+#, fuzzy
+#| msgid "Cashflow Statement"
+msgid "Cashflow statement"
+msgstr "现金流量表"
+
+#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/App.hs
+msgid "Show changes in liquid assets"
+msgstr ""
+
+#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
+#. the browser tab title of this page.
+#: hledger-web/Hledger/Web/App.hs hledger-web/Hledger/Web/Handler/BalanceR.hs
+msgid "Balance report"
+msgstr "余额报告"
+
+#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/App.hs
+#, fuzzy
+#| msgid "Show the balance report"
+msgid "Show the balance report: any accounts, by period"
+msgstr "显示余额报告"
+
+#: hledger-web/Hledger/Web/Paging.hs
+#, python-brace-format
+msgid "Showing {first} to {last} of {total} transactions"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Paging.hs
+#, python-brace-format
+msgid "Show page {n}"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Paging.hs
+#, python-brace-format
+msgid "Page {n}"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Paging.hs
+#, python-brace-format
+msgid "Show only {year}"
+msgstr ""
+
+#: hledger-web/Hledger/Web/ReportPage.hs
+msgid "Could not parse the period expression:"
+msgstr "无法解析周期表达式："
+
+#: hledger-web/Hledger/Web/ReportPage.hs
+#, fuzzy
+#| msgid "Ending balances (cumulative)"
+msgid "Unknown balance accumulation mode:"
+msgstr "期末余额（累计）"
+
+#: hledger-web/Hledger/Web/ReportPage.hs
+msgid "Show this report for this period"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/AddR.hs
 msgid "Transaction added."
 msgstr "交易已添加。"
 
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs:38
-#: hledger-web/Hledger/Web/Handler/JournalR.hs:30
-#: hledger-web/Hledger/Web/Handler/RegisterR.hs:39
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs
+#: hledger-web/Hledger/Web/Handler/JournalR.hs
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
 #, python-brace-format
 msgid "{title}, filtered"
 msgstr "{title}，已筛选"
 
 #. the browser tab title of this page.
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs:48
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs
 msgid "balance - hledger-web"
 msgstr "余额 - hledger-web"
 
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs:54
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs:99
-msgid "Balance report"
-msgstr "余额报告"
-
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs:56
-msgid "Could not parse the period expression:"
-msgstr "无法解析周期表达式："
-
-#: hledger-web/Hledger/Web/Handler/EditR.hs:44
-#: hledger-web/Hledger/Web/Handler/UploadR.hs:57
+#: hledger-web/Hledger/Web/Handler/EditR.hs
+#: hledger-web/Hledger/Web/Handler/UploadR.hs
 #, python-brace-format
 msgid "Failed to load journal: {error}"
 msgstr "无法加载日记账：{error}"
 
-#: hledger-web/Hledger/Web/Handler/EditR.hs:47
+#: hledger-web/Hledger/Web/Handler/EditR.hs
 #, python-brace-format
 msgid "Saved journal {file}"
 msgstr "已保存日记账 {file}"
 
-#: hledger-web/Hledger/Web/Handler/EditR.hs:52
-#: hledger-web/Hledger/Web/Handler/MiscR.hs:56
+#: hledger-web/Hledger/Web/Handler/EditR.hs
+#: hledger-web/Hledger/Web/Handler/MiscR.hs
 msgid "Edit journal"
 msgstr "编辑日记账"
 
-#: hledger-web/Hledger/Web/Handler/JournalR.hs:27
+#: hledger-web/Hledger/Web/Handler/JournalR.hs
 msgid "General Journal"
 msgstr "通用日记账"
 
-#: hledger-web/Hledger/Web/Handler/JournalR.hs:28
+#: hledger-web/Hledger/Web/Handler/JournalR.hs
 #, python-brace-format
 msgid "Transactions in {account}"
 msgstr "{account} 的交易"
 
-#: hledger-web/Hledger/Web/Handler/JournalR.hs:29
+#: hledger-web/Hledger/Web/Handler/JournalR.hs
 #, python-brace-format
 msgid "Transactions in {account} (excluding subaccounts)"
 msgstr "{account} 账户的交易（不含子账户）"
 
 #. the browser tab title of this page.
-#: hledger-web/Hledger/Web/Handler/JournalR.hs:40
+#: hledger-web/Hledger/Web/Handler/JournalR.hs
 msgid "journal - hledger-web"
 msgstr "日记账 - hledger-web"
 
-#: hledger-web/Hledger/Web/Handler/RegisterR.hs:36
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgid "all accounts"
 msgstr "所有账户"
 
-#: hledger-web/Hledger/Web/Handler/RegisterR.hs:38
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
 #, python-brace-format
 msgid "{account} (excluding subaccounts)"
 msgstr "{account}（不包括子账户）"
 
-#: hledger-web/Hledger/Web/Handler/RegisterR.hs:56
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
 msgid "Historical Total"
 msgstr "历史总计"
 
-#: hledger-web/Hledger/Web/Handler/RegisterR.hs:57
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
 msgid "Period Total"
 msgstr "期间总计"
 
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
+msgid "Show the running balance from the start of this period"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
+msgid "Show the running balance including everything before this period"
+msgstr ""
+
 #. the browser tab title of this page.
-#: hledger-web/Hledger/Web/Handler/RegisterR.hs:62
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgid "register - hledger-web"
 msgstr "登记册 - hledger-web"
 
-#: hledger-web/Hledger/Web/Handler/UploadR.hs:52
+#. the browser tab titles of the statement pages.
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
+#, fuzzy
+#| msgid "balance - hledger-web"
+msgid "balance sheet - hledger-web"
+msgstr "余额 - hledger-web"
+
+#. the browser tab titles of the statement pages.
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
+#, fuzzy
+#| msgid "balance - hledger-web"
+msgid "balance sheet with equity - hledger-web"
+msgstr "余额 - hledger-web"
+
+#. the browser tab titles of the statement pages.
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
+#, fuzzy
+#| msgid "income statement changes"
+msgid "income statement - hledger-web"
+msgstr "损益表变动"
+
+#. the browser tab titles of the statement pages.
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
+#, fuzzy
+#| msgid "balance - hledger-web"
+msgid "cashflow statement - hledger-web"
+msgstr "余额 - hledger-web"
+
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
+msgid ""
+"All the accounts this report shows have zero balances, which are hidden. "
+"Press e to show them."
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
+msgid ""
+"No accounts of the types this report shows were found. Declare account "
+"types, or use hledger's standard top-level account names. "
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
+#, fuzzy
+#| msgid "match account types"
+msgid "How hledger finds account types"
+msgstr "匹配账户类型"
+
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
+msgid "Nothing matches this search in this period."
+msgstr ""
+
+#: hledger-web/Hledger/Web/Handler/UploadR.hs
 #, python-brace-format
 msgid ""
 "Encoding error: '{error}'. If your file is not UTF-8 encoded, try the 'edit "
@@ -702,230 +844,275 @@ msgstr ""
 "编码错误：'{error}'。如果您的文件不是 UTF-8 编码，请尝试使用“编辑表单”，浏览"
 "器应会处理转码。"
 
-#: hledger-web/Hledger/Web/Handler/UploadR.hs:60
+#: hledger-web/Hledger/Web/Handler/UploadR.hs
 #, python-brace-format
 msgid "File {file} uploaded successfully"
 msgstr "文件 {file} 上传成功"
 
-#: hledger-web/Hledger/Web/Handler/UploadR.hs:65
+#: hledger-web/Hledger/Web/Handler/UploadR.hs
 msgid "Upload journal"
 msgstr "上传 journal"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs:39
-#: hledger-web/templates/default-layout.hamlet:69
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Close"
 msgstr "关闭"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs:40
-#: hledger-web/templates/journal.hamlet:7
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
+#: hledger-web/templates/journal.hamlet
 msgid "Add a transaction"
 msgstr "Add a transaction"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs:53
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
 #, python-brace-format
 msgid "Account {n}"
 msgstr "账户 {n}"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs:54
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
 #, python-brace-format
 msgid "Amount {n}"
 msgstr "数量 {n}"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs:60
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
 msgid "Invalid date format"
 msgstr "日期格式无效"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs:62
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
 msgctxt "placeholder"
 msgid "Date"
 msgstr "Date"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs:63
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
 msgctxt "placeholder"
 msgid "Description"
 msgstr "描述"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs:117
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
 msgid "Missing amount"
 msgstr "缺失金额"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs:118
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
 msgid "Missing account"
 msgstr "账户丢失"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs:148
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
 #, python-brace-format
 msgid "Invalid value: {error}"
 msgstr "无效值：{error}"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs:173
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
 msgid "Postings validation failed"
 msgstr "过账验证失败"
 
-#. the label before the balance page's report links.
-#: hledger-web/Hledger/Web/Widget/Common.hs:101
+#. the label before a page's report links.
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Report:"
 msgstr "报告："
 
-#. the balance page's report links: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/Widget/Common.hs:108
-msgid "Balance"
-msgstr "余额"
+#. the label before a report's interval links.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Interval:"
+msgstr ""
 
-#. the balance page's report links: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/Widget/Common.hs:108
-msgid "Show the balance report"
-msgstr "显示余额报告"
+#. the interval links above a report: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show one column for the whole period"
+msgstr ""
 
-#. the balance page's report links: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/Widget/Common.hs:109
+#. the interval links above a report: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "interval"
+msgid "None"
+msgstr ""
+
+#. the interval links above a report: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Yearly"
 msgstr "每年"
 
-#. the balance page's report links: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/Widget/Common.hs:109
-msgid "Show the yearly balance report"
-msgstr "显示年度余额报告"
+#. the interval links above a report: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show a column per year"
+msgstr ""
 
-#. the balance page's report links: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/Widget/Common.hs:110
+#. the interval links above a report: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Quarterly"
 msgstr "每季"
 
-#. the balance page's report links: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/Widget/Common.hs:110
-msgid "Show the quarterly balance report"
-msgstr "显示季度余额报告"
+#. the interval links above a report: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show a column per quarter"
+msgstr ""
 
-#. the balance page's report links: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/Widget/Common.hs:111
+#. the interval links above a report: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Monthly"
 msgstr "每月度"
 
-#. the balance page's report links: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/Widget/Common.hs:111
-msgid "Show the monthly balance report"
-msgstr "显示月度余额报告"
+#. the interval links above a report: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show a column per month"
+msgstr ""
 
-#. the balance page's report links: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/Widget/Common.hs:112
+#. the interval links above a report: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Weekly"
 msgstr "每周"
 
-#. the balance page's report links: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/Widget/Common.hs:112
-msgid "Show the weekly balance report"
-msgstr "显示每周余额报告"
+#. the interval links above a report: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show a column per week"
+msgstr ""
 
-#. the balance page's report links: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/Widget/Common.hs:113
+#. the interval links above a report: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Daily"
 msgstr "每日"
 
-#. the balance page's report links: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/Widget/Common.hs:113
-msgid "Show the daily balance report"
-msgstr "显示每日余额报表"
+#. the interval links above a report: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show a column per day"
+msgstr ""
 
-#: hledger-web/templates/add-form.hamlet:11
+#. the label before a report's accumulation mode links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show:"
+msgstr ""
+
+#. the label before a report's accumulation mode links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show how much each balance changed in each period"
+msgstr ""
+
+#. the label before a report's accumulation mode links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#, fuzzy
+#| msgid "Ending balances (cumulative)"
+msgid "Ending balances"
+msgstr "期末余额（累计）"
+
+#. the label before a report's accumulation mode links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid ""
+"Show each balance at the end of each period, including everything before it"
+msgstr ""
+
+#: hledger-web/templates/add-form.hamlet
 msgid "Pick a date"
 msgstr "选择一个日期"
 
-#: hledger-web/templates/add-form.hamlet:39
+#: hledger-web/templates/add-form.hamlet
 msgid "Add to:"
 msgstr "添加："
 
-#: hledger-web/templates/add-form.hamlet:46
-#: hledger-web/templates/edit-form.hamlet:17
+#: hledger-web/templates/add-form.hamlet hledger-web/templates/edit-form.hamlet
 msgid "Save"
 msgstr "保存"
 
-#: hledger-web/templates/balance-report.hamlet:4
+#: hledger-web/templates/balance-report.hamlet
 msgid "Show general journal entries, most recent first"
 msgstr "显示总账分录，最近的分录在前"
 
-#: hledger-web/templates/balance-report.hamlet:5
+#: hledger-web/templates/balance-report.hamlet
 msgid "Journal"
 msgstr "日记账"
 
-#: hledger-web/templates/balance-report.hamlet:15
+#: hledger-web/templates/balance-report.hamlet
 msgid "Show transactions affecting this account and subaccounts"
 msgstr "显示影响此账户及子账户的交易"
 
-#: hledger-web/templates/balance-report.hamlet:19
+#: hledger-web/templates/balance-report.hamlet
 msgid "Show transactions affecting this account but not subaccounts"
 msgstr "显示影响此账户但不影响子账户的交易"
 
-#: hledger-web/templates/balance-report.hamlet:19
+#: hledger-web/templates/balance-report.hamlet
 msgid "only"
 msgstr "仅"
 
-#: hledger-web/templates/default-layout.hamlet:49
+#: hledger-web/templates/balance-report.hamlet
+#, fuzzy
+#| msgid "match transactions where all postings match"
+msgid "Show the transactions that make up this balance"
+msgstr "匹配所有过账项均相符的交易"
+
+#: hledger-web/templates/balance-report.hamlet
+msgid "Show the transactions that make up this total"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet
+msgid ""
+"hledger-web is no longer running. It exits after fifteen minutes with no "
+"browser window showing it, or when stopped. To continue, start it again and "
+"reload this page."
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet
 msgctxt "search box"
 msgid "Search"
 msgstr "搜索"
 
-#: hledger-web/templates/default-layout.hamlet:50
+#: hledger-web/templates/default-layout.hamlet
 msgid "Enter hledger search patterns to filter the data below"
 msgstr "输入 hledger 搜索模式以筛选下方数据"
 
-#: hledger-web/templates/default-layout.hamlet:55
+#: hledger-web/templates/default-layout.hamlet
 msgid "Clear search terms"
 msgstr "清除搜索词"
 
-#: hledger-web/templates/default-layout.hamlet:57
+#: hledger-web/templates/default-layout.hamlet
 msgid "Apply search terms"
 msgstr "应用搜索词"
 
-#: hledger-web/templates/default-layout.hamlet:60
+#: hledger-web/templates/default-layout.hamlet
 msgid "Manage journal files"
 msgstr "管理 journal 文件"
 
-#: hledger-web/templates/default-layout.hamlet:63
+#: hledger-web/templates/default-layout.hamlet
 msgid "Show search and general help"
 msgstr "显示搜索与常规帮助"
 
-#: hledger-web/templates/default-layout.hamlet:71
+#: hledger-web/templates/default-layout.hamlet
 msgid "Help"
 msgstr "帮助"
 
-#: hledger-web/templates/default-layout.hamlet:77
+#: hledger-web/templates/default-layout.hamlet
 msgid "Keyboard shortcuts"
 msgstr "快捷键"
 
-#: hledger-web/templates/default-layout.hamlet:79
+#: hledger-web/templates/default-layout.hamlet
 msgid "or maybe"
 msgstr "或者也许"
 
-#: hledger-web/templates/default-layout.hamlet:79
+#: hledger-web/templates/default-layout.hamlet
 msgid "view this help (escape or click to exit)"
 msgstr "查看此帮助（按 Esc 键或点击以退出）"
 
-#: hledger-web/templates/default-layout.hamlet:80
+#: hledger-web/templates/default-layout.hamlet
 msgid "go to the Journal view (home)"
 msgstr "转到日记账视图（主页）"
 
-#: hledger-web/templates/default-layout.hamlet:81
+#: hledger-web/templates/default-layout.hamlet
 msgid "add a transaction (escape to cancel)"
 msgstr "添加交易（按 Esc 键取消）"
 
-#: hledger-web/templates/default-layout.hamlet:82
+#: hledger-web/templates/default-layout.hamlet
 msgid "toggle sidebar"
 msgstr "切换侧边栏"
 
-#: hledger-web/templates/default-layout.hamlet:83
+#: hledger-web/templates/default-layout.hamlet
 msgid "focus search form"
 msgstr "聚焦搜索表单"
 
-#: hledger-web/templates/default-layout.hamlet:84
+#: hledger-web/templates/default-layout.hamlet
 msgid "hide empty accounts in sidebar"
 msgstr "聚焦搜索表单"
 
-#: hledger-web/templates/default-layout.hamlet:86
+#: hledger-web/templates/default-layout.hamlet
 msgid "General"
 msgstr "通用"
 
-#: hledger-web/templates/default-layout.hamlet:88
+#: hledger-web/templates/default-layout.hamlet
 msgid ""
 "The Journal view shows general journal entries, representing zero-sum "
 "movements of money (or other commodity) between hierarchical accounts"
@@ -933,62 +1120,81 @@ msgstr ""
 "“日记账”视图显示了普通日记账分录，代表了层级账户之间资金（或其他商品）的零和"
 "变动"
 
-#: hledger-web/templates/default-layout.hamlet:89
+#: hledger-web/templates/default-layout.hamlet
 msgid "The sidebar shows the resulting accounts and their final balances"
 msgstr "侧边栏显示了生成的账户及其最终余额"
 
-#: hledger-web/templates/default-layout.hamlet:90
+#: hledger-web/templates/default-layout.hamlet
+msgid ""
+"The sidebar's report links show the balance sheet, income statement, and "
+"cashflow statement, each linking to the other reports"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet
 msgid "Parent account balances include subaccount balances"
 msgstr "父账户余额包含子账户余额"
 
-#: hledger-web/templates/default-layout.hamlet:91
+#: hledger-web/templates/default-layout.hamlet
 msgid "Multiple currencies in balances are displayed one above the other"
 msgstr "余额中的多种货币呈上下排列显示"
 
-#: hledger-web/templates/default-layout.hamlet:92
+#: hledger-web/templates/default-layout.hamlet
 msgid ""
 "Click account name links to see transactions affecting that account, with "
 "running balance"
 msgstr "点击账户名称链接，即可查看影响该账户的交易记录及实时余额"
 
-#: hledger-web/templates/default-layout.hamlet:93
+#: hledger-web/templates/default-layout.hamlet
+msgid ""
+"Click an amount to see the transactions it is made of, in a register ending "
+"on that amount"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet
 msgid "Click date links to see journal entries on that date"
 msgstr "点击日期链接，查看该日期的日志条目"
 
-#: hledger-web/templates/default-layout.hamlet:96
+#: hledger-web/templates/default-layout.hamlet
+msgid ""
+"The balance sheet and income statement show liabilities, equity, and "
+"revenues as positive amounts; their registers show them negative, as hledger "
+"does"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet
 msgctxt "help heading"
 msgid "Search"
 msgstr "搜索"
 
-#: hledger-web/templates/default-layout.hamlet:98
+#: hledger-web/templates/default-layout.hamlet
 msgid "Search patterns with spaces should be enclosed in quotes."
 msgstr "包含空格的搜索模式应使用引号括起来"
 
-#: hledger-web/templates/default-layout.hamlet:99
+#: hledger-web/templates/default-layout.hamlet
 msgid "match account names"
 msgstr "匹配账户名称"
 
-#: hledger-web/templates/default-layout.hamlet:100
+#: hledger-web/templates/default-layout.hamlet
 msgid "match account types"
 msgstr "匹配账户类型"
 
-#: hledger-web/templates/default-layout.hamlet:101
+#: hledger-web/templates/default-layout.hamlet
 msgid "match dates"
 msgstr "匹配日期"
 
-#: hledger-web/templates/default-layout.hamlet:102
+#: hledger-web/templates/default-layout.hamlet
 msgid "match status"
 msgstr "匹配状态"
 
-#: hledger-web/templates/default-layout.hamlet:103
+#: hledger-web/templates/default-layout.hamlet
 msgid "match transaction codes"
 msgstr "匹配交易代码"
 
-#: hledger-web/templates/default-layout.hamlet:104
+#: hledger-web/templates/default-layout.hamlet
 msgid "or"
 msgstr "或者"
 
-#: hledger-web/templates/default-layout.hamlet:104
+#: hledger-web/templates/default-layout.hamlet
 msgid ""
 "match any visible field (account, amount, comment, description, code), or a "
 "date if REGEX is also a period expression"
@@ -996,138 +1202,211 @@ msgstr ""
 "匹配交易描述匹配任意可见字段（账户、金额、备注、描述、代码），或者在正则表达"
 "式同时为周期表达式时匹配日期"
 
-#: hledger-web/templates/default-layout.hamlet:105
+#: hledger-web/templates/default-layout.hamlet
 msgid "match transaction descriptions"
 msgstr "匹配交易描述"
 
-#: hledger-web/templates/default-layout.hamlet:106
+#: hledger-web/templates/default-layout.hamlet
 msgid "match payee part of descriptions"
 msgstr "匹配描述中的收款人部分"
 
-#: hledger-web/templates/default-layout.hamlet:107
+#: hledger-web/templates/default-layout.hamlet
 msgid "match note part of descriptions"
 msgstr "匹配描述中的备注部分"
 
-#: hledger-web/templates/default-layout.hamlet:108
+#: hledger-web/templates/default-layout.hamlet
 msgid ""
 "match unsigned magnitudes, or with signed N, signed amounts. For single-"
 "commodity amounts only."
 msgstr ""
 "匹配无符号数值，或结合有符号“与”运算及有符号数值。仅适用于单一商品数量。"
 
-#: hledger-web/templates/default-layout.hamlet:109
+#: hledger-web/templates/default-layout.hamlet
 msgid ""
 "match currencies/commodities. Must match the whole symbol/name. To match "
 "dollar sign, write"
 msgstr "匹配货币/商品。必须匹配完整的代码/名称。若要匹配美元符号，请书写"
 
-#: hledger-web/templates/default-layout.hamlet:110
+#: hledger-web/templates/default-layout.hamlet
 msgid "match tags, or tag and value"
 msgstr "匹配标签，或标签与值"
 
-#: hledger-web/templates/default-layout.hamlet:111
+#: hledger-web/templates/default-layout.hamlet
 msgid "match postings' realness/virtualness"
 msgstr "匹配发布内容的真实性与虚拟性"
 
-#: hledger-web/templates/default-layout.hamlet:112
+#: hledger-web/templates/default-layout.hamlet
 msgid "prepend not: to negate a search term"
 msgstr "在搜索词前加上 not：用于否定该搜索词"
 
-#: hledger-web/templates/default-layout.hamlet:113
+#: hledger-web/templates/default-layout.hamlet
 msgid "match with a boolean query (and, or, not, (..))"
 msgstr "与布尔查询（and、or、not、(..)）匹配"
 
-#: hledger-web/templates/default-layout.hamlet:114
+#: hledger-web/templates/default-layout.hamlet
 msgid "match transactions where any posting matches"
 msgstr "匹配任意过账项相符的交易"
 
-#: hledger-web/templates/default-layout.hamlet:115
+#: hledger-web/templates/default-layout.hamlet
 msgid "match transactions where all postings match"
 msgstr "匹配所有过账项均相符的交易"
 
-#: hledger-web/templates/default-layout.hamlet:116
+#: hledger-web/templates/default-layout.hamlet
 msgid "clip account names at this depth"
 msgstr "在此层级截断账户名称"
 
-#: hledger-web/templates/edit-form.hamlet:3
+#: hledger-web/templates/edit-form.hamlet
 msgid "Edit file"
 msgstr "编辑文件"
 
-#: hledger-web/templates/edit-form.hamlet:6
-#: hledger-web/templates/upload-form.hamlet:5
+#: hledger-web/templates/edit-form.hamlet
+#: hledger-web/templates/upload-form.hamlet
 msgid "Are you sure? This will overwrite your journal!"
 msgstr "确定吗？这会覆盖你的日记！"
 
-#: hledger-web/templates/edit-form.hamlet:14
+#: hledger-web/templates/edit-form.hamlet
 msgid "File format help"
 msgstr "文件格式帮助"
 
-#: hledger-web/templates/edit-form.hamlet:16
+#: hledger-web/templates/edit-form.hamlet
 msgid "Go back"
 msgstr "回退"
 
-#: hledger-web/templates/journal.hamlet:6
+#: hledger-web/templates/journal.hamlet
 msgid "Add a new transaction to the journal"
 msgstr "向日记账添加一笔新交易"
 
-#: hledger-web/templates/journal.hamlet:12
-#: hledger-web/templates/register.hamlet:12
+#: hledger-web/templates/journal.hamlet hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "Date"
 msgstr "日期"
 
-#: hledger-web/templates/journal.hamlet:13
-#: hledger-web/templates/register.hamlet:14
+#: hledger-web/templates/journal.hamlet hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "Description"
 msgstr "描述"
 
-#: hledger-web/templates/journal.hamlet:14
+#: hledger-web/templates/journal.hamlet
 msgctxt "column heading"
 msgid "Account"
 msgstr "账户"
 
-#: hledger-web/templates/journal.hamlet:15
+#: hledger-web/templates/journal.hamlet
 msgctxt "column heading"
 msgid "Amount"
 msgstr "金额"
 
-#: hledger-web/templates/manage.hamlet:2
+#: hledger-web/templates/journal.hamlet
+#, fuzzy
+#| msgid "Show general journal entries, most recent first"
+msgid "Show the journal entries on this date"
+msgstr "显示总账分录，最近的分录在前"
+
+#: hledger-web/templates/manage.hamlet
 msgid "Your journal's files"
 msgstr "你的日记账文件"
 
-#: hledger-web/templates/manage.hamlet:9
+#: hledger-web/templates/manage.hamlet
 msgctxt "column heading"
 msgid "File"
 msgstr "文件"
 
-#: hledger-web/templates/manage.hamlet:18
+#: hledger-web/templates/manage.hamlet
 msgid "Edit"
 msgstr "编辑"
 
-#: hledger-web/templates/manage.hamlet:20
-#: hledger-web/templates/upload-form.hamlet:12
+#: hledger-web/templates/manage.hamlet hledger-web/templates/upload-form.hamlet
 msgid "Upload"
 msgstr "上传"
 
-#: hledger-web/templates/manage.hamlet:22
+#: hledger-web/templates/manage.hamlet
 msgid "Download"
 msgstr "下载"
 
-#: hledger-web/templates/register.hamlet:15
+#: hledger-web/templates/paging.hamlet
+#, fuzzy
+#| msgid "match transaction codes"
+msgid "Show the newer transactions"
+msgstr "匹配交易代码"
+
+#: hledger-web/templates/paging.hamlet
+msgid "Newer"
+msgstr ""
+
+#: hledger-web/templates/paging.hamlet
+#, fuzzy
+#| msgid "match transaction codes"
+msgid "Show the older transactions"
+msgstr "匹配交易代码"
+
+#: hledger-web/templates/paging.hamlet
+msgid "Older"
+msgstr ""
+
+#: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "To/From Account(s)"
 msgstr "转入/转出账户"
 
-#: hledger-web/templates/register.hamlet:16
+#: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "Amount Out/In"
 msgstr "流出/流入金额"
 
-#: hledger-web/templates/upload-form.hamlet:2
+#: hledger-web/templates/register.hamlet
+#, fuzzy
+#| msgid "Click date links to see journal entries on that date"
+msgid "Show this entry and the other journal entries on its date"
+msgstr "点击日期链接，查看该日期的日志条目"
+
+#: hledger-web/templates/register.hamlet
+msgid "Balance brought forward"
+msgstr ""
+
+#: hledger-web/templates/register.hamlet
+#, fuzzy
+#| msgid "match transaction descriptions"
+msgid "Show the transactions before this period"
+msgstr "匹配交易描述"
+
+#: hledger-web/templates/upload-form.hamlet
 msgid "Upload to file"
 msgstr "上传文件"
 
-#: hledger-web/templates/upload-form.hamlet:9
+#: hledger-web/templates/upload-form.hamlet
 msgid "Select file"
 msgstr "选择文件"
+
+#: hledger-web/templates/years.hamlet
+#, fuzzy
+#| msgid "Yearly"
+msgctxt "years row"
+msgid "Years:"
+msgstr "每年"
+
+#: hledger-web/templates/years.hamlet
+msgid "Show all years"
+msgstr ""
+
+#: hledger-web/templates/years.hamlet
+msgctxt "years row"
+msgid "All"
+msgstr ""
+
+#~ msgid "Balance"
+#~ msgstr "余额"
+
+#~ msgid "Show the yearly balance report"
+#~ msgstr "显示年度余额报告"
+
+#~ msgid "Show the quarterly balance report"
+#~ msgstr "显示季度余额报告"
+
+#~ msgid "Show the monthly balance report"
+#~ msgstr "显示月度余额报告"
+
+#~ msgid "Show the weekly balance report"
+#~ msgstr "显示每周余额报告"
+
+#~ msgid "Show the daily balance report"
+#~ msgstr "显示每日余额报表"

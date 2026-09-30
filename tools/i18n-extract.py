@@ -31,8 +31,12 @@ to "[TEXT]"; running hledger with it shows which output is still English.
 
 --check compares the given .po files with the extracted entries and
 reports entries that no longer exist in the source (which msgmerge would
-mark obsolete) and how many are untranslated; it exits 1 if any are
-stale.
+mark obsolete) and how many are untranslated. For catalogs in
+hledger-lib/locale, it also checks that each is built in (registered in
+package.yaml and I18n.hs). A .pot file given to --check must be exactly
+what extraction writes now, so a template that was not regenerated after
+a string changed is caught. It exits 1 if any entries are stale, any
+catalog is not built in, or the template is out of date.
 """
 
 import argparse
@@ -353,12 +357,19 @@ def read_po_keys(path):
     return keys
 
 
+def by_key(k):
+    return (k[0] or '', k[1])
+
+
 def check(po_paths, source_paths):
-    wanted = {(e.ctx, e.msgid) for e in extract(source_paths)}
+    entries = extract(source_paths)
+    wanted = {(e.ctx, e.msgid) for e in entries}
     status = 0
     for po in po_paths:
+        if po.endswith('.pot'):
+            status = max(status, check_template(po, entries, wanted))
+            continue
         have = read_po_keys(po)
-        by_key = lambda k: (k[0] or '', k[1])
         stale = sorted((k for k in have if k not in wanted), key=by_key)
         missing = sorted((k for k in wanted if k not in have), key=by_key)
         untranslated = sorted((k for k, ok in have.items() if not ok and k in wanted), key=by_key)
@@ -369,7 +380,57 @@ def check(po_paths, source_paths):
             status = 1
         for k in missing:
             print("  missing: %s" % format_key(k))
+        for problem in registration_problems(po):
+            print("  " + problem)
+            status = 1
     return status
+
+
+def check_template(pot, entries, wanted):
+    """Check that a template is exactly what extraction would write now,
+    reporting the entries it lacks or should no longer have. Returns 1 if
+    it is out of date."""
+    with open(pot, encoding='utf-8') as f:
+        if f.read() == render(entries):
+            print("%s: up to date" % pot)
+            return 0
+    have = set(read_po_keys(pot))
+    missing = sorted(wanted - have, key=by_key)
+    stale = sorted(have - wanted, key=by_key)
+    print("%s: out of date with the sources, run just i18n-pot "
+          "(%d entries missing, %d stale)" % (pot, len(missing), len(stale)))
+    for k in missing:
+        print("  missing: %s" % format_key(k))
+    for k in stale:
+        print("  stale: %s" % format_key(k))
+    if not missing and not stale:
+        print("  (the entries are the same, but their comments or source references changed)")
+    return 1
+
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOCALE_DIR = os.path.join(REPO, 'hledger-lib', 'locale')
+
+
+def registration_problems(po):
+    """For a catalog in hledger-lib/locale, the ways it is not built in:
+    each must be listed, by its file name, in package.yaml's
+    extra-source-files and in builtinCatalogSources in I18n.hs, with a tag
+    equal to its file name. (The unit tests check that the tag is normalized.)"""
+    if os.path.dirname(os.path.abspath(po)) != LOCALE_DIR:
+        return []
+    name = os.path.basename(po)
+    tag = name[:-len('.po')]
+    with open(os.path.join(REPO, 'hledger-lib', 'package.yaml'), encoding='utf-8') as f:
+        packageyaml = f.read()
+    with open(os.path.join(REPO, 'hledger-lib', 'Hledger', 'Utils', 'I18n.hs'), encoding='utf-8') as f:
+        i18nhs = f.read()
+    problems = []
+    if not re.search(r'^- locale/' + re.escape(name) + r'\s*$', packageyaml, re.M):
+        problems.append("not built in: add - locale/%s to extra-source-files in hledger-lib/package.yaml" % name)
+    if not re.search(r'\("' + re.escape(tag) + r'",\s*\$\(embedFileRelativeBytes "locale/' + re.escape(name) + r'"\)\)', i18nhs):
+        problems.append('not built in: add ("%s", $(embedFileRelativeBytes "locale/%s")) to builtinCatalogSources in hledger-lib/Hledger/Utils/I18n.hs' % (tag, name))
+    return problems
 
 
 def format_key(k):

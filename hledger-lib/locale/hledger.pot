@@ -641,6 +641,26 @@ msgstr ""
 msgid "Show the balance report: any accounts, by period"
 msgstr ""
 
+#: hledger-web/Hledger/Web/Paging.hs
+#, python-brace-format
+msgid "Showing {first} to {last} of {total} transactions"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Paging.hs
+#, python-brace-format
+msgid "Show page {n}"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Paging.hs
+#, python-brace-format
+msgid "Page {n}"
+msgstr ""
+
+#: hledger-web/Hledger/Web/Paging.hs
+#, python-brace-format
+msgid "Show only {year}"
+msgstr ""
+
 #: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Could not parse the period expression:"
 msgstr ""
@@ -963,6 +983,10 @@ msgid "Show the transactions that make up this total"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet
+msgid "hledger-web is no longer running. It exits after fifteen minutes with no browser window showing it, or when stopped. To continue, start it again and reload this page."
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet
 msgctxt "search box"
 msgid "Search"
 msgstr ""
@@ -1213,6 +1237,22 @@ msgstr ""
 msgid "Download"
 msgstr ""
 
+#: hledger-web/templates/paging.hamlet
+msgid "Show the newer transactions"
+msgstr ""
+
+#: hledger-web/templates/paging.hamlet
+msgid "Newer"
+msgstr ""
+
+#: hledger-web/templates/paging.hamlet
+msgid "Show the older transactions"
+msgstr ""
+
+#: hledger-web/templates/paging.hamlet
+msgid "Older"
+msgstr ""
+
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "To/From Account(s)"
@@ -1241,4 +1281,18 @@ msgstr ""
 
 #: hledger-web/templates/upload-form.hamlet
 msgid "Select file"
+msgstr ""
+
+#: hledger-web/templates/years.hamlet
+msgctxt "years row"
+msgid "Years:"
+msgstr ""
+
+#: hledger-web/templates/years.hamlet
+msgid "Show all years"
+msgstr ""
+
+#: hledger-web/templates/years.hamlet
+msgctxt "years row"
+msgid "All"
 msgstr ""

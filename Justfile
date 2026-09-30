@@ -391,9 +391,9 @@ STACKTEST := STACK + ' test --fast'
 @i18n-pot:
     tools/i18n-extract.py -o hledger-lib/locale/hledger.pot
 
-# check the translation catalogs against the sources: stale entries fail, untranslated ones are counted
+# check the translation template and catalogs against the sources: an outdated template, stale entries or an unregistered catalog fail; untranslated entries are counted
 @i18n-check:
-    tools/i18n-extract.py --check hledger-lib/locale/*.po
+    tools/i18n-extract.py --check hledger-lib/locale/hledger.pot hledger-lib/locale/*.po
 
 # merge new and changed source strings into the translation catalogs (needs gettext's msgmerge)
 @i18n-merge: i18n-pot
