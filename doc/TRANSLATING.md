@@ -141,7 +141,10 @@ it where your language needs it. For example, "Transactions in
 {account}" becomes "Buchungen in {account}" in German, and a language
 that puts the date first can write "{dates} {report}" for the
 title template. Do not translate the word inside the braces. Poedit
-warns you if a placeholder goes missing.
+warns you if a placeholder goes missing, and so does hledger: a
+translation that does not have exactly the English text's placeholders
+is not used (the English text is shown instead), and hledger prints a
+warning naming it.
 
 ### Contexts
 
@@ -245,7 +248,9 @@ itself reads the file on every run.
 If hledger prints a warning that it is ignoring your catalog, the file
 has a syntax problem, usually an unclosed quote or a stray line; the
 warning names the line. Poedit will not save an invalid file, so this
-mostly happens with hand-edited ones.
+mostly happens with hand-edited ones. If instead it warns that it is
+ignoring some translations, those have missing, extra or misspelled
+placeholders (see Placeholders above); the rest of the catalog is used.
 
 To find what is still in English, compare with the same commands run
 without `--lang`, or look at Poedit's counter of untranslated entries.

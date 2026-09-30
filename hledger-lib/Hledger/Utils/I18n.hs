@@ -287,7 +287,8 @@ overrideCatalogFiles = do
 
 -- | Read the user's catalog for this language tag, if there is one and it
 -- is usable, returning it with its path. Problems are reported as
--- warnings and the catalog ignored.
+-- warnings and the catalog ignored; or, for a translation whose
+-- placeholders are wrong, just that translation.
 readOverrideCatalog :: Text -> IO (Maybe (FilePath, Translations))
 readOverrideCatalog lang = do
   files <- overrideCatalogFiles
@@ -303,7 +304,12 @@ readOverrideCatalog lang = do
             Left _ -> Nothing <$ warnIO ("ignoring translation catalog " ++ f ++ ": it is not valid UTF-8")
             Right t -> case parsePo f lang t of
               Left err -> Nothing <$ warnIO ("ignoring translation catalog " ++ f ++ ":\n" ++ err)
-              Right c  -> return (Just (f, c))
+              Right c  -> do
+                let (c', problems) = withoutPlaceholderMismatches c
+                unless (null problems) $ warnIO $
+                  "translation catalog " ++ f ++ ": ignoring translations whose {placeholders} differ from the English text's:\n"
+                  ++ intercalate "\n" (map ("  " ++) problems)
+                return (Just (f, c'))
 
 -- | The language tags for which a catalog exists, built-in or in the
 -- user's override directory. Always includes "en".
@@ -361,6 +367,39 @@ mergeTranslations base override = Translations
   , trPlurals     = M.union (trPlurals override) (trPlurals base)
   , trPluralForms = trPluralForms override <|> trPluralForms base
   }
+
+-- | Remove the translations whose placeholders do not match their English
+-- text's, since using them would drop filled-in values (like a report's
+-- dates) or show a placeholder literally. A translation must have exactly
+-- the English text's placeholders; a plural form may have only those and
+-- {n}. Also returns a description of each translation removed.
+withoutPlaceholderMismatches :: Translations -> (Translations, [String])
+withoutPlaceholderMismatches t =
+  ( t{trMessages = okmsgs, trPlurals = okplurals}
+  , map describe (M.toList (badmsgs `M.difference` trPlurals t)) ++ map describePlural (M.toList badplurals) )
+  where
+    (okplurals, badplurals) = M.partitionWithKey (\k vs -> all (fitsPlural k) vs) (trPlurals t)
+    -- A plural entry's first form is also stored as a message; it is judged,
+    -- and kept or removed, as part of the plural entry.
+    (okmsgs, badmsgs) = M.partitionWithKey okmsg (trMessages t)
+    okmsg k v
+      | k `M.member` trPlurals t = k `M.member` okplurals
+      | otherwise                = placeholders v == expected k
+    fitsPlural k v = placeholders v `S.isSubsetOf` S.insert "n" (expected k)
+    expected = placeholders . keyMsgid
+    describe (k, v) =
+      show (keyMsgid k) ++ ": the translation has " ++ showPlaceholders (placeholders v)
+      ++ ", but the English text has " ++ showPlaceholders (expected k)
+    describePlural (k, vs) =
+      show (keyMsgid k) ++ ": a plural form has " ++ showPlaceholders (S.unions [placeholders v | v <- vs, not (fitsPlural k v)])
+      ++ ", but only these are allowed: " ++ showPlaceholders (S.insert "n" (expected k))
+    showPlaceholders s
+      | S.null s  = "none"
+      | otherwise = unwords ["{" ++ T.unpack p ++ "}" | p <- S.toList s]
+
+-- | The msgid part of a catalog key, without any context.
+keyMsgid :: Text -> Text
+keyMsgid = T.takeWhileEnd (/= '\x04')
 
 -- ** PO parsing
 
@@ -777,6 +816,27 @@ tests_I18n = testGroup "I18n" [
      langPrefsFromEnv [("LC_ALL", ""), ("LANG", "de")] @?= ["de"]
      langPrefsFromEnv [] @?= []
 
+  ,testCase "withoutPlaceholderMismatches" $ do
+     t <- either assertFailure return $ parsePo "t" "de" $ T.unlines
+       [ "msgid \"In {account}\"",        "msgstr \"In {account}\""
+       , "msgid \"{report} {dates}\"",    "msgstr \"{bogus} {report}\""
+       , "msgid \"Totals\"",              "msgstr \"Summen {x}\""
+       , "msgid \"{n} day\"", "msgid_plural \"{n} days\"", "msgstr[0] \"{n} Tag\"", "msgstr[1] \"{n} Tage\""
+       , "msgid \"one {x}\"", "msgid_plural \"{n} {x}s\"", "msgstr[0] \"ein {y}\"", "msgstr[1] \"{n} {x}\""
+       ]
+     let (t', problems) = withoutPlaceholderMismatches t
+     tr t' "In {account}" @?= "In {account}"
+     tr t' "{report} {dates}" @?= "{report} {dates}"
+     tr t' "Totals" @?= "Totals"
+     trn t' 2 "{n} day" "{n} days" @?= "2 Tage"
+     trn t' 2 "one {x}" "{n} {x}s" @?= "2 {x}s"
+     tr t' "one {x}" @?= "one {x}"
+     problems @?=
+       [ "\"Totals\": the translation has {x}, but the English text has none"
+       , "\"{report} {dates}\": the translation has {bogus} {report}, but the English text has {dates} {report}"
+       , "\"one {x}\": a plural form has {y}, but only these are allowed: {n} {x}"
+       ]
+
   ,testCase "built-in catalogs" $
      mapM_ checkBuiltin builtinCatalogSources
   ]
@@ -786,13 +846,7 @@ tests_I18n = testGroup "I18n" [
       assertEqual ("built-in catalog tag " ++ show lang ++ " is not normalized") (Just lang) (normalizeLangTag lang)
       s <- either (\e -> assertFailure $ T.unpack lang ++ ": not UTF-8: " ++ show e) return $ TE.decodeUtf8' bs
       t <- either assertFailure return $ parsePo (T.unpack lang) lang s
-      let msgid k = T.takeWhileEnd (/= '\x04') k
-      mapM_ (\(k, v) -> assertEqual ("placeholders differ in " ++ T.unpack lang ++ " translation of " ++ show (msgid k))
-                          (placeholders (msgid k)) (placeholders v))
-            (M.toList (trMessages t))
-      mapM_ (\(k, vs) -> mapM_ (\v -> assertBool ("unknown placeholder in " ++ T.unpack lang ++ " plural of " ++ show (msgid k))
-                                       (placeholders v `S.isSubsetOf` S.insert "n" (placeholders (msgid k)))) vs)
-            (M.toList (trPlurals t))
+      assertEqual (T.unpack lang ++ " translations with wrong placeholders") [] (snd $ withoutPlaceholderMismatches t)
 
 samplePo :: Text
 samplePo = T.unlines
