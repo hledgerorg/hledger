@@ -98,7 +98,7 @@ Each string is one entry. Here is one from the template:
 
 ```po
 #. the report title, eg "Monthly Balance Sheet 2024 (Historical Ending Balances), valued at period ends". {clarification} brings its own leading space when present.
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs:151
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #, python-brace-format
 msgid "{report} {dates}{clarification}{valuation}"
 msgstr ""
@@ -112,7 +112,7 @@ msgstr ""
 - `#.` lines are notes from the developers about where and how the text
   is used. Read them; they say things like "this precedes a report
   title" or "stand-alone month name, used as a column heading".
-- `#:` lines say where in the source the text comes from. You can ignore them.
+- `#:` lines name the source files the text comes from. You can ignore them.
 - `#, python-brace-format` means the text contains placeholders.
 
 In Poedit the same entry appears as a row; the notes show in the right
