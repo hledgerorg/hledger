@@ -192,7 +192,7 @@ td.date {
   padding-top: 1em;
 }
 .balancereport > tbody > tr.subtotal > td {
-  border-top: 1px solid #687385;
+  border-top: 1px solid var(--muted);
 }
 
 /* A row of links above a report or under a page heading: to the other
@@ -305,9 +305,8 @@ tr:target > td {
   font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
   font-size: 12px;
   line-height: 1.45;
-  color: #333;
-  background-color: #fff;
-  border: 1px solid rgba(0, 0, 0, .2);
+  background-color: var(--surface);
+  border: 1px solid var(--dialog-border);
   border-radius: 4px;
   box-shadow: 0 3px 9px rgba(0, 0, 0, .2);
   /* Like a browser tooltip, it is never in the pointer's way. */
@@ -325,7 +324,7 @@ tr:target > td {
   bottom: 0;
   left: 0;
   padding: 0 10px;
-  background-color: #fff;
+  background-color: var(--surface);
 }
 
 code {

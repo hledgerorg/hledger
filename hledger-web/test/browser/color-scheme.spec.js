@@ -91,6 +91,12 @@ const views = {
     await page.locator('#addform button[type=submit]').click();
     await expect(page.locator('#addform .has-error')).toBeVisible();
   },
+  // hledger.js draws it only while the pointer rests on an entry
+  'entry tooltip': async page => {
+    await page.goto('/journal');
+    await page.locator('#main-content tr.title td').nth(1).hover();
+    await expect(page.locator('.entry-tooltip')).toBeVisible();
+  },
   'register': page => page.goto('/register?q=inacct:assets:bank:checking'),
   'balance report': page => page.goto('/balance?period=monthly'),
   'balance report error': page => page.goto('/balance?period=nonsense'),
