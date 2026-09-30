@@ -33,7 +33,8 @@ You can add [query arguments](#queries) to select a subset of transactions or ac
 Note that transaction-specific query terms like `date:` will exclude
 declared-but-unused accounts, which don't have that field.
 
-With `--directives`, it shows valid account directives which could be pasted into a journal file.
+With `--directives`, it shows valid account directives which could be pasted into a journal file,
+including any [account aliases](#account-aliases) as `alias:` tags.
 This is useful together with `--undeclared` when updating your account declarations
 to satisfy `hledger check accounts`.
 

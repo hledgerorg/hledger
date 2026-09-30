@@ -134,13 +134,7 @@ hledgerUiMain = handleExit $ withGhcDebug' $ withProgName "hledger-ui.log" $ do 
         -- collected for display in the UI, not printed to stderr where they would be
         -- hidden or would disrupt the terminal display.
         uiInstallWarningCollector
-        withJournal loadcopts $ \j ->
-          -- Refresh the startup ReportSpec against the loaded journal so any
-          -- cur: terms are expanded for the journal's commodity aliases.
-          let opts' = case reportSpecExpandCurQueries j (reportspec_ copts') of
-                        Right rs -> opts{uoCliOpts = (uoCliOpts opts){reportspec_ = rs}}
-                        Left _   -> opts
-          in runBrickUi opts' j
+        withJournal loadcopts (runBrickUi opts)
 
   when (ghcDebugMode == GDPauseAtEnd) $ ghcDebugPause'
 

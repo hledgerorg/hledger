@@ -118,11 +118,11 @@ pagingLinks trs here qparam Page{..} = $(hamletFile "templates/paging.hamlet")
 -- parse. The years row counts what a search matches in any year by the
 -- same report the page shows, so a handler runs its report again on this,
 -- and the counts are what each year link's page shows.
-datelessQuery :: Day -> Journal -> Text -> Maybe Query
-datelessQuery today j qparam
+datelessQuery :: Day -> Text -> Maybe Query
+datelessQuery today qparam
   | length rest == length terms = Nothing
   | otherwise = case parseQuery today (T.unwords rest) of
-      Right (q, _) -> Just . simplifyQuery $ queryExpandCurAliases j q
+      Right (q, _) -> Just $ simplifyQuery q
       Left _       -> Nothing
   where
     terms = filter (not . T.null) $ Query.words'' queryprefixes qparam

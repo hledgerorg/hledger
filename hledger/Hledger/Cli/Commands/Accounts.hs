@@ -126,20 +126,21 @@ accounts opts@CliOpts{rawopts_=rawopts, reportspec_=ReportSpec{_rsQuery=query,_r
       where
         indent      = T.replicate (2 * (max 0 (accountNameLevel a - drop_ ropts) - 1)) " "
         droppedName = accountNameDrop (drop_ ropts) a
-    showType a =
-      case (types, journalAccountType j a) of
-        (True, Just t) -> pad a <> "    ; type: " <> T.pack (show t)
-        _ -> ""
-    showAcctDeclOrder a
-      | locations =
-        (if types then "," else pad a <> "    ;") <>
-        case lookup a $ jdeclaredaccounts j of
-          Just adi ->
-            " declared at " <> (T.pack $ sourcePosPretty $ adisourcepos adi) <>  -- TODO: hide the column number
-            ", overall declaration order " <> (T.pack $ show $ adideclarationorder adi)
-          Nothing -> " undeclared"
-      | otherwise = ""
+    -- the account's type (with --types), aliases (with --directives) and declaration location (with --locations),
+    -- as a comment
+    showComment a = case typeitem ++ aliasitems ++ locationitem of
+      []    -> ""
+      items -> pad a <> "    ; " <> T.intercalate ", " items
+      where
+        typeitem   = ["type: " <> T.pack (show t) | types, Just t <- [journalAccountType j a]]
+        aliasitems = ["alias: " <> v | directives, (n, v) <- journalAccountTags j a, T.toLower n == "alias"]
+        locationitem
+          | locations = [case lookup a $ jdeclaredaccounts j of
+              Just adi -> "declared at " <> (T.pack $ sourcePosPretty $ adisourcepos adi) <>  -- TODO: hide the column number
+                          ", overall declaration order " <> (T.pack $ show $ adideclarationorder adi)
+              Nothing  -> "undeclared"]
+          | otherwise = []
     pad a = T.replicate (maxwidth - T.length (showName a)) " "
     maxwidth = maximum $ map (T.length . showName) clippedaccts
 
-  forM_ clippedaccts $ \a -> T.putStrLn $ showKeyword <> showName a <> showType a <> showAcctDeclOrder a
+  forM_ clippedaccts $ \a -> T.putStrLn $ showKeyword <> showName a <> showComment a

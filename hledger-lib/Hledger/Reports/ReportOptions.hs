@@ -43,7 +43,6 @@ module Hledger.Reports.ReportOptions (
   updateReportSpec,
   updateReportSpecWith,
   rawOptsToReportSpec,
-  reportSpecExpandCurQueries,
   balanceAccumulationOverride,
   flat_,
   tree_,
@@ -692,8 +691,8 @@ journalValueAndFilterPostingsWith = _journalValueAndFilterPostingsWith1431
 --   where
 --     -- with -r, replace each posting with its sibling postings
 --     filterJournalPostings' = if related_ ropts then filterJournalRelatedPostings else filterJournalPostings
---     amtsymq = dbg1 "amtsymq" $ filterQuery queryIsAmtOrCurOrSym q
---     reportq = dbg1 "reportq" $ filterQuery (not . queryIsAmtOrCurOrSym) q
+--     amtsymq = dbg1 "amtsymq" $ filterQuery queryIsAmtOrCur q
+--     reportq = dbg1 "reportq" $ filterQuery (not . queryIsAmtOrCur) q
 
 -- 1.43
 -- XXX #2396 This goes wrong with cur:. filterJournal*Postings keep all postings containing the matched commodity,
@@ -708,7 +707,7 @@ _journalValueAndFilterPostingsWith1431 rspec@ReportSpec{_rsQuery = q, _rsReportO
   journalApplyValuationFromOptsWith rspec . filterjournal q
   where
     filterjournal q2 =
-      filterJournalAmounts (filterQuery queryIsAmtOrCurOrSym q2) .  -- an extra amount filtering pass for #2396
+      filterJournalAmounts (filterQuery queryIsAmtOrCur q2) .  -- an extra amount filtering pass for #2396
       (if related_ ropts then filterJournalRelatedPostings q2 else filterJournalPostings q2)
 
 -- | Convert this journal's postings' amounts to cost and/or to value, if specified
@@ -1121,18 +1120,3 @@ updateReportSpecWith = overEither reportOpts
 -- string if there are regular expression errors.
 rawOptsToReportSpec :: Day -> Bool -> RawOpts -> Either String ReportSpec
 rawOptsToReportSpec day coloronstdout = reportOptsToSpec day . rawOptsToReportOpts day coloronstdout
-
--- | Associate this journal with this ReportSpec, returning a refreshed
--- ReportSpec whose @_rsQuery@ is rebuilt from the user's @querystring_@
--- and has any @cur:@ terms expanded against the journal's current
--- commodity-alias declarations.
---
--- This is the canonical way to (re)attach a journal to a ReportSpec:
--- @querystring_@ is the source of truth, and @_rsQuery@ is a derived
--- cache that goes stale whenever the journal's commodity/alias
--- declarations change. Long-lived sessions (hledger-ui watch,
--- hledger-web) should call this on every reload.
-reportSpecExpandCurQueries :: Journal -> ReportSpec -> Either String ReportSpec
-reportSpecExpandCurQueries j rs = do
-  rs' <- reportOptsToSpec (_rsDay rs) (_rsReportOpts rs)
-  Right rs'{_rsQuery = queryExpandCurAliases j (_rsQuery rs')}

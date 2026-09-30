@@ -173,7 +173,7 @@ printSummary j q pds = do
     base    = journalBaseCurrencyCode j
     -- Just the cur: terms of the query; non-cur terms become Any so
     -- they don't reject every commodity.
-    symq    = filterQuery queryIsCurOrSym q
+    symq    = filterQuery queryIsCur q
     codes   = sort . nub . filter (/= base) . filter (matchesCommodity symq)
               . map toCurrencyCode
               $ journalCommoditiesUsed j

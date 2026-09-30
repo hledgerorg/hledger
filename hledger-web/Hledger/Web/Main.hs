@@ -104,14 +104,7 @@ hledgerWebMain = handleExit $ withGhcDebug' $ do
 
 -- | The hledger web command.
 web :: WebOpts -> Journal -> IO ()
-web opts0 j = do
-  -- Refresh the startup ReportSpec against the loaded journal so cur:
-  -- terms in the startup query are expanded against the journal's
-  -- commodity aliases.
-  let copts = cliopts_ opts0
-      opts  = case reportSpecExpandCurQueries j (reportspec_ copts) of
-                Right rs -> opts0{cliopts_ = copts{reportspec_ = rs}}
-                Left _   -> opts0
+web opts j = do
   let depthlessinitialq = filterQuery (not . queryIsDepth) . _rsQuery . reportspec_ $ cliopts_ opts
       j' = filterJournalTransactions depthlessinitialq j
       h = host_ opts

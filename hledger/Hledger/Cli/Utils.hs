@@ -120,7 +120,7 @@ withJournal opts cmd = do
 -- | Warn on stderr if -X/--value requests a valuation commodity for which
 -- valuation will certainly have no effect: one appearing in no P directive
 -- or cost (from which conversion prices could come) and in which no
--- amounts are already denominated. Also suggest a journal commodity
+-- amounts are already denominated, and which is not a commodity alias. Also suggest a journal commodity
 -- equivalent under ISO 4217 currency code normalisation, if any
 -- (eg $ for USD).
 maybeWarnUnknownValuationCommodity :: CliOpts -> Journal -> IO ()
@@ -128,7 +128,8 @@ maybeWarnUnknownValuationCommodity opts j =
   case valuationTypeValuationCommodity =<< value_ (_rsReportOpts $ reportspec_ opts) of
     Just c
       | c `S.notMember` journalCommoditiesFromPriceDirectives j
-      , c `S.notMember` journalCommoditiesFromTransactions j ->
+      , c `S.notMember` journalCommoditiesFromTransactions j
+      , c `notElem` concatMap commodityAliases (jdeclaredcommodities j) ->
           warnIO $ "no conversion prices to \"" <> T.unpack c <> "\" can be found." <> suggestion c
     _ -> return ()
   where

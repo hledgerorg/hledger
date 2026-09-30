@@ -43,7 +43,7 @@ getJournalR = do
       -- The years the search matches in, ignoring any date term in it.
       years = map tdate $
         maybe alltxns (\dq -> entriesReport rspec{_rsQuery = filterQuery (not . queryIsDepth) dq} j) $
-        datelessQuery today j qparam
+        datelessQuery today qparam
       transactionFrag = transactionFragment j
 
   defaultLayout $ do

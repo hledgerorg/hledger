@@ -26,12 +26,9 @@ module Hledger.Data.Journal (
   addTransaction,
   journalDbg,
   journalInferMarketPricesFromTransactions,
-  journalInferAliasPrices,
+  journalApplyCommodityAliases,
   commodityAliases,
   commoditiesAndAliases,
-  journalCommodityAliasGroups,
-  journalCommodityAliasGroup,
-  queryExpandCurAliases,
   journalInferCommodityStyles,
   journalStyleAmounts,
   journalCommodityStyles,
@@ -152,10 +149,11 @@ import Control.Applicative ((<|>))
 import Control.Monad.Except (ExceptT(..))
 import Control.Monad.State.Strict (StateT)
 import Data.Char (toUpper, isDigit)
+import Data.Decimal (normalizeDecimal)
 import Data.Default (Default(..))
 import Data.Foldable (toList)
 import Data.Function ((&))
-import Data.List (find, intercalate, minimumBy, nub, partition, sort, sortBy, union, (\\))
+import Data.List (find, intercalate, minimumBy, sort, sortBy, union, (\\))
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
 #endif
@@ -519,9 +517,6 @@ journalCommoditiesFromTransactions j = S.fromList $ map acommodity $ journalPost
 -- 1. The "to" commodity that appears most often in P (price) directives, if any.
 -- 2. Otherwise, the commodity that appears most often in posting and cost amounts.
 -- 3. Otherwise, Nothing.
--- The synthetic bridge directives generated from commodity @alias:@ tags
--- (see journalInferAliasPrices) are excluded from step 1, so that declaring
--- aliases doesn't sway the guess.
 -- Commodity symbols are normalised to ISO 4217 codes where possible,
 -- so that equivalent symbols are tallied together; the symbol returned
 -- is the first-occurring one that normalises to the winning code.
@@ -533,11 +528,8 @@ journalBaseCurrency j = pick priceTargetComms <|> pick postingAndCostComms
       code <- mostFrequent $ map toCurrencyCode syms
       sym  <- find ((== code) . toCurrencyCode) syms
       Just (sym, code)
-    priceTargetComms    = map (acommodity . pdamount) realPriceDirectives
+    priceTargetComms    = map (acommodity . pdamount) $ jpricedirectives j
     postingAndCostComms = map acommodity $ journalPostingAndCostAmounts j
-
-    -- Price directives, excluding the bridges inferred from commodity alias: tags.
-    realPriceDirectives = snd $ journalPartitionAliasPrices j
 
     -- Most frequent element, ties broken by first-occurrence order.
     -- A single pass for efficiency: each map entry stores (negate count, first index),
@@ -1260,7 +1252,6 @@ journalModifyTransactions verbosetags d j =
          (journalAccountType j)
          (journalInheritedAccountTags j)
          (journalCommodityStyles j)
-         (queryExpandCurAliases j)
          d verbosetags (jtxnmodifiers j) (jtxns j) of
     Right ts -> Right j{jtxns=ts}
     Left err -> Left err
@@ -1312,12 +1303,16 @@ postingShareStyles styles = postingTransformAmount $ \(Mixed m) -> Mixed $ M.map
 journalCommodityStyles :: Journal -> M.Map CommoditySymbol AmountStyle
 journalCommodityStyles j =
   -- XXX could be some redundancy here, cf journalStyleInfluencingAmounts
-  globalstyles <> declaredstyles <> defaultcommoditystyle <> inferredstyles
+  styles <> aliasstyles
   where
+    styles                = globalstyles <> declaredstyles <> defaultcommoditystyle <> inferredstyles
     globalstyles          = jglobalcommoditystyles j
     declaredstyles        = M.mapMaybe cformat $ jdeclaredcommodities j
     defaultcommoditystyle = M.fromList $ catMaybes [jparsedefaultcommodity j]
     inferredstyles        = jinferredcommoditystyles j
+    -- commodity aliases without a style of their own (shown when valuing in them with -X) use their commodity's style
+    aliasstyles           = M.fromList [ (a, st) | c <- M.elems (jdeclaredcommodities j), Just st <- [M.lookup (csymbol c) styles]
+                                                 , a <- commodityAliases c ]
 
 -- | Like journalCommodityStyles, but attach a particular rounding strategy to the styles,
 -- affecting how they will affect display precisions when applied.
@@ -1326,10 +1321,13 @@ journalCommodityStylesWith r = amountStylesSetRounding r . journalCommodityStyle
 
 -- | Collect and save inferred amount styles for each commodity based on
 -- P directive amounts, posting amounts but not cost amounts, and maybe the last D amount, in that commodity.
+-- Styles inferred previously for commodities which no longer appear in these are kept
+-- (eg for commodity aliases, whose amounts have been converted, so that print can show them as written).
 -- Can return an error message eg if inconsistent number formats are found.
 journalInferCommodityStyles :: Journal -> Either String Journal
 journalInferCommodityStyles j =
-  Right j{jinferredcommoditystyles = dbg7 "journalInferCommodityStyles" $ M.mapWithKey withExplicitPrecision allstyles}
+  Right j{jinferredcommoditystyles = dbg7 "journalInferCommodityStyles" $
+            M.mapWithKey withExplicitPrecision allstyles `M.union` jinferredcommoditystyles j}
   where
     -- Styles are inferred from all amounts (for formatting like symbol placement,
     -- decimal mark, digit groups), but precision only from explicitly-written amounts:
@@ -1396,71 +1394,79 @@ commoditiesAndAliases j =
                 , a <- commodityAliases c
                 ]
 
--- | A lookup from each declared commodity symbol or alias to its full
--- alias group. Groups from separate commodity directives that share
--- any symbol (eg an alias which is also independently declared as a
--- canonical, perhaps to set its own display style) are merged into
--- one connected component, so the group is symmetric under any
--- starting symbol.
-journalCommodityAliasGroups :: Journal -> M.Map CommoditySymbol [CommoditySymbol]
-journalCommodityAliasGroups j =
-  let rawGroups = [csymbol c : commodityAliases c | c <- M.elems (jdeclaredcommodities j)]
-      merged    = mergeOverlapping rawGroups
-  in M.fromList [(s, g) | g <- merged, s <- g]
-  where
-    -- Repeatedly fold each group into the accumulator, merging it with
-    -- any existing groups that share a symbol. Quadratic in the number
-    -- of declared commodities, which is small in practice.
-    mergeOverlapping :: [[CommoditySymbol]] -> [[CommoditySymbol]]
-    mergeOverlapping = foldr addGroup []
-      where
-        addGroup g acc =
-          let (overlapping, rest) = partition (any (`elem` g)) acc
-          in nub (concat (g : overlapping)) : rest
-
--- | Look up the alias group containing a commodity symbol; returns
--- @[s]@ if the symbol does not appear in any declared group.
-journalCommodityAliasGroup :: Journal -> CommoditySymbol -> [CommoditySymbol]
-journalCommodityAliasGroup j s =
-  M.findWithDefault [s] s (journalCommodityAliasGroups j)
-
--- | Rewrite Cur terms in a query to also match all alias-group siblings
--- of any declared symbol matched by the original regex, using this
--- journal's commodity declarations. Sym terms are left untouched.
--- See 'queryExpandCurForAliases' for the rewrite strategy.
-queryExpandCurAliases :: Journal -> Query -> Query
-queryExpandCurAliases j =
-  let groups = journalCommodityAliasGroups j
-      declared = M.keys groups
-  in queryExpandCurForAliases declared (\s -> M.findWithDefault [s] s groups)
-
--- | For each declared commodity with one or more @alias:@ tags,
--- inject a synthetic P price directive, from the canonical symbol to each alias,
--- at the alias's declared quantity (usually 1), into the journal,
--- so the valuation engine can easily convert between them (eg @USD@ to @$@).
--- (See 'commodityAliasPriceDirectives'.)
+-- | Convert all amounts written in a commodity alias to the commodity it is an alias of.
+-- For an alias with a quantity (other than 1), amount quantities are divided by it,
+-- and unit costs, cost bases and market prices of the alias are multiplied by it.
+-- This is done for posting amounts, with their costs, cost bases and balance assertions;
+-- periodic transaction and auto posting rules (whose multipliers' symbols are just renamed);
+-- and price directives. A converted posting keeps its original form in poriginal, for print.
 --
--- An alias matching a separately declared canonical commodity is
--- silently allowed: the price directive is still added; the canonical
--- commodity continues to exist in its own right.
---
--- Returns 'Left' with a verbose error if the same alias is declared
--- for two different commodities.
-journalInferAliasPrices :: Journal -> Either String Journal
-journalInferAliasPrices j =
-  case [(a, cs) | (a, cs) <- M.toList grouped, length cs > 1] of
-    ((a, cs):_) -> Left $ aliasConflictMsg a cs
-    [] -> Right j{jpricedirectives = jpricedirectives j <> concatMap commodityAliasPriceDirectives comms}
+-- Returns 'Left' with a verbose error if the same alias is declared on more than one commodity,
+-- or if an alias is also declared as a commodity with aliases of its own.
+journalApplyCommodityAliases :: Journal -> Either String Journal
+journalApplyCommodityAliases j
+  | ((a, cs):_) <- conflicts = Left $ unlines $
+      [ "Alias '" <> T.unpack a <> "' is declared on more than one commodity:", ""] <> map commodityExcerpt cs
+  | (c:_) <- chained = Left $ unlines
+      [ "Commodity '" <> T.unpack (csymbol c) <> "' has aliases, but is also an alias of another commodity:", ""
+      , commodityExcerpt c ]
+  | M.null aliases = Right j
+  | otherwise = Right j
+      { jtxns            = map (transactionMapPostings convertPosting) $ jtxns j
+      , jperiodictxns    = [pt{ptpostings = map convertPosting $ ptpostings pt} | pt <- jperiodictxns j]
+      , jtxnmodifiers    = [tm{tmpostingrules = map convertRule $ tmpostingrules tm} | tm <- jtxnmodifiers j]
+      , jpricedirectives = map convertPrice $ jpricedirectives j
+      }
   where
-    comms   = M.elems (jdeclaredcommodities j)
-    grouped = M.fromListWith (++) [(a, [c]) | c <- comms, a <- commodityAliases c]
-    aliasConflictMsg a cs = unlines $
-      [ "Alias '" <> T.unpack a <> "' is declared on more than one commodity:"
-      , ""
-      ] <> map (T.unpack . renderOne) cs
-    renderOne c =
-      let (f, l, _, ex) = makeCommodityTagErrorExcerpt c "alias"
-      in T.pack f <> ":" <> T.pack (show l) <> ":\n" <> ex
+    comms     = M.elems $ jdeclaredcommodities j
+    conflicts = [(a, cs) | (a, cs) <- M.toList $ M.fromListWith (++) [(a, [c]) | c <- comms, a <- commodityAliases c], length cs > 1]
+    chained   = [c | c <- comms, not (null $ caliases c), csymbol c `M.member` aliases]
+    commodityExcerpt c = let (f, l, _, ex) = makeCommodityTagErrorExcerpt c "alias" in f <> ":" <> show l <> ":\n" <> T.unpack ex
+
+    -- each alias symbol, with its commodity and the number of alias units equal to one unit of that
+    aliases = M.fromList [(acommodity a, (csymbol c, aquantity a)) | c <- comms, a <- caliases c]
+    isAlias = (`M.member` aliases) . acommodity
+
+    -- Convert an amount from an alias to its commodity, also returning the alias quantity (or 1).
+    convertSymbol a = case M.lookup (acommodity a) aliases of
+      Nothing     -> (a, 1)
+      Just (c, 1) -> (a{acommodity = c}, 1)
+      Just (c, q) -> (a{acommodity = c, aquantity = aquantity a / q}, q)
+    -- Show all of a calculated amount's decimal digits (up to 8), but no trailing zeros.
+    withAllDigits a = amountSetPrecision (Precision $ min defaultMaxDisplayPrecision $ amountInternalPrecision a') a'
+      where a' = a{aquantity = normalizeDecimal $ aquantity a}
+    -- Multiply a per-unit price by an alias quantity.
+    scaleBy 1 a = a
+    scaleBy q a = withAllDigits a{aquantity = aquantity a * q}
+    -- Convert a cost, price or balance assertion amount, showing all its digits if it was divided.
+    convertExactAmount a = case convertSymbol a of
+      (a', 1) -> a'
+      (a', _) -> withAllDigits a'
+    convertAmount a =
+      let (a', q) = convertSymbol a
+      in a'{ acost      = convertCost q <$> acost a
+           , acostbasis = (\cb -> cb{cbCost = scaleBy q . convertExactAmount <$> cbCost cb}) <$> acostbasis a
+           }
+    convertCost q (UnitCost u)  = UnitCost $ scaleBy q $ convertExactAmount u
+    convertCost _ (TotalCost t) = TotalCost $ convertExactAmount t
+    hasAlias a = isAlias a || any (isAlias . costAmount) (acost a) || any isAlias (acostbasis a >>= cbCost)
+      where costAmount (UnitCost u) = u
+            costAmount (TotalCost t) = t
+
+    convertPosting p
+      | any hasAlias (amountsRaw $ pamount p) || any (isAlias . baamount) (pbalanceassertion p) =
+          p{ pamount           = mapMixedAmount convertAmount $ pamount p
+           , pbalanceassertion = (\ba -> ba{baamount = convertExactAmount $ baamount ba}) <$> pbalanceassertion p
+           , poriginal         = Just $ originalPosting p
+           }
+      | otherwise = p
+    convertRule r@TMPostingRule{tmprPosting = p, tmprIsMultiplier = ismult}
+      | ismult    = r{tmprPosting = p{pamount = mapMixedAmount (fst . convertSymbol) $ pamount p}}
+      | otherwise = r{tmprPosting = convertPosting p}
+    convertPrice pd@PriceDirective{pdcommodity = from, pdamount = a} =
+      case M.lookup from aliases of
+        Nothing     -> pd{pdamount = convertExactAmount a}
+        Just (c, q) -> pd{pdcommodity = c, pdamount = scaleBy q $ convertExactAmount a}
 
 -- | Convert all this journal's amounts to cost using their attached prices, if any.
 journalToCost :: ConversionOp -> Journal -> Journal

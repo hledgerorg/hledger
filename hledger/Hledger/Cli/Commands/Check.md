@@ -76,7 +76,8 @@ Also, strict mode ensures that the `assertions` and `lots` checks run (overridin
 
 These are not wanted by everyone, but can be run using the `check` command:
 
-- **tags** - all tags used must be [declared](#tag-directive).
+- **tags** - all tags used must be [declared](#tag-directive)
+  (tags on transactions, postings, and account and commodity directives; except the [special tags](#tag-names)).
   This prevents mis-spelled tag names.
   Note hledger fairly often finds unintended tags in comments.
 

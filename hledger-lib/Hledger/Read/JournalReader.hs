@@ -571,15 +571,24 @@ accountdirectivep = do
           modifiedaccountnamep True
 
   -- maybe a comment, on this and/or following lines
-  (cmt, tags) <- lift transactioncommentp
+  commentoff <- getOffset
+  (cmt, commenttags) <- lift transactioncommentp
 
-  -- maybe Ledger-style subdirectives (ignored)
-  skipMany indentedlinep
+  -- maybe Ledger-style subdirectives: alias NAME declares an account alias, and is kept as an alias: tag;
+  -- the others are ignored
+  subdirectivealiases <- catMaybes <$> many (try aliassubdirectivep <|> (Nothing <$ indentedlinep))
+  let tags = commenttags ++ [("alias", a) | a <- subdirectivealiases]
 
   -- an account type may have been set by account type code or a tag;
   -- the latter takes precedence
   let
     metype = parseAccountTypeCode <$> lookup accountTypeTagName tags
+
+  -- alias: tags declare account aliases, like alias directives at this point
+  let acctaliases = [v | (n, v) <- tags, T.toLower n == "alias"]
+  when (any T.null acctaliases) $ customFailure $ parseErrorAt commentoff
+    "an alias: tag on an account directive should have an account name as its value, eg alias: checking"
+  mapM_ (addAccountAlias . (`BasicAlias` acct)) acctaliases
 
   -- update the journal
   addAccountDeclaration (acct, cmt, tags, pos)
@@ -658,6 +667,15 @@ addTagDeclaration (t, cmt) =
 
 indentedlinep :: JournalParser m String
 indentedlinep = lift skipNonNewlineSpaces1 >> (rstrip <$> lift restofline)
+
+-- | Parse a Ledger-style @alias NAME@ subdirective (an indented line) of an account directive,
+-- returning the alias name.
+aliassubdirectivep :: JournalParser m (Maybe AccountName)
+aliassubdirectivep = do
+  lift skipNonNewlineSpaces1
+  string "alias"
+  lift skipNonNewlineSpaces1
+  Just . T.pack . rstrip <$> lift restofline
 
 -- | Parse a one-line or multi-line commodity directive.
 --

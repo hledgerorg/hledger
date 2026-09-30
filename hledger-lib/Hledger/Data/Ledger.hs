@@ -60,7 +60,7 @@ ledgerFromJournal :: Query -> Journal -> Ledger
 ledgerFromJournal q j = nullledger{ljournal=j'', laccounts=as}
   where
     (q',depthq)  = (filterQuery (not . queryIsDepth) q, filterQuery queryIsDepth q)
-    j'  = filterJournalAmounts (filterQuery queryIsCurOrSym q) $ -- remove amount parts which the query's cur:/sym: terms would exclude
+    j'  = filterJournalAmounts (filterQuery queryIsCur q) $ -- remove amount parts which the query's cur: terms would exclude
           filterJournalPostings q' j
     -- Ledger does not use date-separated balances, so dates are left empty
     as  = accountsFromPostings (const $ Just nulldate) $ journalPostings j'

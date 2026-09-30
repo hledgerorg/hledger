@@ -25,7 +25,7 @@ import Hledger.Data.Amount
 import Hledger.Data.Dates
 import Hledger.Data.Transaction (txnTieKnot, transactionAddHiddenAndMaybeVisibleTag)
 import Hledger.Query (Query, filterQuery, matchesAmount, matchesPostingExtra,
-                      parseQuery, queryIsAmt, queryIsCurOrSym, simplifyQuery)
+                      parseQuery, queryIsAmt, queryIsCur, simplifyQuery)
 import Hledger.Data.Posting (commentJoin, commentAddTag, postingAddTags, modifiedTransactionTagName)
 import Hledger.Utils (dbg6, wrap)
 
@@ -38,17 +38,14 @@ import Hledger.Utils (dbg6, wrap)
 -- | Apply all the given transaction modifiers, in turn, to each transaction.
 -- Or if any of them fails to be parsed, return the first error. A reference
 -- date is provided to help interpret relative dates in transaction modifier
--- queries. The provided query rewriter is applied to each parsed modifier
--- query (typically used to make @cur:@ terms alias-aware against the
--- enclosing journal).
+-- queries.
 modifyTransactions :: (AccountName -> Maybe AccountType)
                    -> (AccountName -> [Tag])
                    -> M.Map CommoditySymbol AmountStyle
-                   -> (Query -> Query)
                    -> Day -> Bool -> [TransactionModifier] -> [Transaction]
                    -> Either String [Transaction]
-modifyTransactions atypes atags styles rewriteq d verbosetags tmods ts = do
-  fs <- mapM (transactionModifierToFunction atypes atags styles rewriteq d verbosetags) tmods  -- convert modifiers to functions, or return a parse error
+modifyTransactions atypes atags styles d verbosetags tmods ts = do
+  fs <- mapM (transactionModifierToFunction atypes atags styles d verbosetags) tmods  -- convert modifiers to functions, or return a parse error
   let
     modifytxn t =
       t' & if t'/=t then transactionAddHiddenAndMaybeVisibleTag verbosetags (modifiedTransactionTagName,"") else id
@@ -71,7 +68,7 @@ modifyTransactions atypes atags styles rewriteq d verbosetags tmods ts = do
 -- >>> import Data.Text.IO qualified as T
 -- >>> t = nulltransaction{tpostings=["ping" `post` usd 1]}
 -- >>> tmpost acc amt = TMPostingRule (acc `post` amt) False
--- >>> test = either putStr (T.putStr.showTransaction) . fmap ($ t) . transactionModifierToFunction (const Nothing) (const []) mempty id nulldate True
+-- >>> test = either putStr (T.putStr.showTransaction) . fmap ($ t) . transactionModifierToFunction (const Nothing) (const []) mempty nulldate True
 -- >>> test $ TransactionModifier "" ["pong" `tmpost` usd 2]
 -- 0000-01-01
 --     ping                                          $1.00
@@ -90,11 +87,10 @@ modifyTransactions atypes atags styles rewriteq d verbosetags tmods ts = do
 transactionModifierToFunction :: (AccountName -> Maybe AccountType)
                               -> (AccountName -> [Tag])
                               -> M.Map CommoditySymbol AmountStyle
-                              -> (Query -> Query)
                               -> Day -> Bool -> TransactionModifier
                               -> Either String (Transaction -> Transaction)
-transactionModifierToFunction atypes atags styles rewriteq refdate verbosetags TransactionModifier{tmquerytxt, tmpostingrules} = do
-  q <- rewriteq . simplifyQuery . fst <$> parseQuery refdate tmquerytxt
+transactionModifierToFunction atypes atags styles refdate verbosetags TransactionModifier{tmquerytxt, tmpostingrules} = do
+  q <- simplifyQuery . fst <$> parseQuery refdate tmquerytxt
   let
     fs = map (\tmpr -> addAccountTags . tmPostingRuleToFunction verbosetags styles q tmquerytxt tmpr) tmpostingrules
     addAccountTags p = p `postingAddTags` atags (paccount p)
@@ -123,7 +119,7 @@ tmPostingRuleToFunction verbosetags styles query querytxt tmpr =
   where
     pr = tmprPosting tmpr
     qry = "= " <> querytxt
-    symq = filterQuery (liftA2 (||) queryIsCurOrSym queryIsAmt) query
+    symq = filterQuery (liftA2 (||) queryIsCur queryIsAmt) query
     account' = if accountTemplate `T.isInfixOf` paccount pr
                  then \p -> T.replace accountTemplate (paccount p) $ paccount pr
                  else const $ paccount pr

@@ -84,7 +84,7 @@ getRegisterR = do
       -- two years is counted once and shown in both.
       years = map triDate $
         maybe allitems (\dq -> accountTransactionsReport rspec{_rsQuery = dq} j acctQuery) $
-        datelessQuery today j qparam
+        datelessQuery today qparam
       balancelabel
         | historical               = trc trs "column heading" "Historical Total"
         | isJust (inAccount qopts) = trc trs "column heading" "Period Total"

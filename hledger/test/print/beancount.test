@@ -272,33 +272,7 @@ $ hledger -f- print -O beancount
 
 >=
 
-# ** 15. With --export, the year 0 date of price directives inferred from commodity alias:
-# tags is converted to 0001-01-01, which Beancount accepts.
-<
-commodity EUR 1.00  ; alias: €
-
-2024-01-01
-    assets:cash     €1
-    equity:opening
-
-$ hledger -f- print -O beancount --export
-;option "inferred_tolerance_default" "*:0.005"
-
-2024-01-01 commodity EUR
-    alias: "€"
-
-2024-01-01 open Assets:Cash
-2024-01-01 open Equity:Opening
-
-0001-01-01 price EUR 1 EUR
-
-2024-01-01 *
-    Assets:Cash              1 EUR
-    Equity:Opening
-
->=
-
-# ** 16. With --export, commodity directives are generated for declared commodities (with their tags as metadata),
+# ** 15. With --export, commodity directives are generated for declared commodities (with their tags as metadata),
 # and open directives for declared as well as used accounts, each on its earliest posting date
 # (or the earliest transaction date), with a lots: account tag becoming the booking method.
 # Other directives (like payee) have no Beancount equivalent and are dropped.
@@ -340,7 +314,7 @@ $ hledger -f- print -O beancount --export
 
 >=
 
-# ** 17. With --export, top-level comment lines (including those preceding a transaction) and
+# ** 16. With --export, top-level comment lines (including those preceding a transaction) and
 # comment blocks are converted to Beancount comments, and blank lines are normalised.
 <
 ; semicolon comment
@@ -376,7 +350,7 @@ $ hledger -f- print -O beancount --export
 
 >=
 
-# ** 18. When the conversion fails, no output file is written.
+# ** 17. When the conversion fails, no output file is written.
 <
 2000-01-01
   other        0 ABC
@@ -386,7 +360,7 @@ MISSING
 >2 /bad top-level account/
 >= 0
 
-# ** 19. An account whose top-level name is not one of Beancount's, but whose account type is known
+# ** 18. An account whose top-level name is not one of Beancount's, but whose account type is known
 # (declared, or inherited from a parent), is prefixed with the corresponding Beancount top-level account,
 # in transactions and (with --export) in open directives. Accounts of unknown type are an error (see 1).
 <

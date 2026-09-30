@@ -58,8 +58,7 @@ makeAccountTagErrorExcerpt (a, adi) _t = (f, l, merrcols, ex)
       --   col2 = undefined -- col + T.length tagname - 1      
 
 showAccountDirective (a, AccountDeclarationInfo{..}) =
-  "account " <> a
-  <> (if not $ T.null adicomment then "    ; " <> adicomment else "")
+  showDirectiveWithComment ("account " <> a) "    ; " adicomment
 
 -- | Given a commodity and a problem tag within it:
 -- render it as a megaparsec-style excerpt, showing the original line number.
@@ -75,8 +74,17 @@ makeCommodityTagErrorExcerpt comm _t = (f, l, merrcols, ex)
 
 showCommodityDirective :: Commodity -> Text
 showCommodityDirective Commodity{..} =
-  "commodity " <> csymbol
-  <> (if not $ T.null ccomment then "  ; " <> ccomment else "")
+  showDirectiveWithComment ("commodity " <> csymbol) "  ; " ccomment
+
+-- | Render a directive's first line with its comment:
+-- the comment's first line (if not empty) after the given separator on the same line,
+-- and any further comment lines indented below it.
+showDirectiveWithComment :: Text -> Text -> Text -> Text
+showDirectiveWithComment directive sep comment =
+  case T.lines comment of
+    []     -> directive
+    (l:ls) -> T.intercalate "\n" $
+      (if T.null l then directive else directive <> sep <> l) : map ("    ; " <>) ls
 
 -- | Decorate a data excerpt with megaparsec-style left margin, line number,
 -- and marker/underline for the column(s) if known, for inclusion in an error message.

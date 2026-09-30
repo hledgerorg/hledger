@@ -125,7 +125,6 @@ budgetGoalQuery = filterQuery selectsAccountOrPeriod
       Type{}      -> True
       Date{}      -> True
       Date2{}     -> True
-      Sym{}       -> True
       Cur{}       -> True
       None        -> True
       Not q'      -> selectsAccountOrPeriod q'

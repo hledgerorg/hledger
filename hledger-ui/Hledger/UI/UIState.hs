@@ -295,17 +295,8 @@ updateReportPeriod updatePeriod = fromRight err . overEither period updatePeriod
   where err = error' "updateReportPeriod: updating period should not result in an error"
 
 -- | Apply a new filter query, or return the failing query.
--- Also re-expands cur: terms against the journal's commodity aliases,
--- so a freshly typed @cur:@ query is alias-aware even when the journal
--- has been reloaded since startup.
 setFilter :: String -> UIState -> Either String UIState
-setFilter s ui = do
-  ui' <- first (const s) $ setEither querystring (words'' queryprefixes $ T.pack s) ui
-  let copts  = uoCliOpts (aopts ui')
-      rspec  = reportspec_ copts
-      rspec' = rspec{_rsQuery = queryExpandCurAliases (ajournal ui') (_rsQuery rspec)}
-      opts'  = (aopts ui'){uoCliOpts = copts{reportspec_ = rspec'}}
-  Right ui'{aopts = opts'}
+setFilter s = first (const s) . setEither querystring (words'' queryprefixes $ T.pack s)
 
 -- | Reset some filters & toggles.
 resetFilter :: UIState -> UIState
@@ -419,22 +410,13 @@ resetScreens d ui@UIState{astartupopts=origopts, auncollapsedjournal=jraw, aScre
 -- not from any other screen, so the whole stack refreshes uniformly here.
 regenerateScreens :: Day -> UIState -> UIState
 regenerateScreens d ui@UIState{aopts=opts, auncollapsedjournal=jraw, aScreen=s,aPrevScreens=ss} =
-  -- Re-derive _rsQuery from the user's querystring_ and re-expand cur:
-  -- terms against the (possibly reloaded) journal's commodity aliases.
-  -- If re-derivation fails, fall back to the existing query.
-  let copts    = uoCliOpts opts
-      rspec    = reportspec_ copts
-      rspec'   = case reportSpecExpandCurQueries jraw rspec of
-                   Right rs -> rs
-                   Left _   -> rspec
-      opts'    = opts{uoCliOpts = copts{reportspec_ = rspec'}}
-      -- the display journal, derived here so it always matches the stored journal and options
-      jdisplay = uiDisplayJournal opts' jraw
+  let -- the display journal, derived here so it always matches the stored journal and options
+      jdisplay = uiDisplayJournal opts jraw
       -- Regenerate the active screen and the whole hidden stack strictly, so no
       -- previous-generation screen/list/journal is retained after a reload (#1825).
-      s'  = screenUpdate opts' d jdisplay s
-      ss' = strictMapScreens (screenUpdate opts' d jdisplay) ss
-  in s' `seq` ss' `seq` ui{aopts=opts', ajournal=jdisplay, aScreen=s', aPrevScreens=ss'}
+      s'  = screenUpdate opts d jdisplay s
+      ss' = strictMapScreens (screenUpdate opts d jdisplay) ss
+  in s' `seq` ss' `seq` ui{ajournal=jdisplay, aScreen=s', aPrevScreens=ss'}
 
 -- | Like @map@ over a screen stack, but strict in the list spine and in each regenerated
 -- screen (forced to WHNF), so the lazy-map accumulation of previous-generation screens is

@@ -45,8 +45,8 @@ module Hledger.Query (
   queryIsDepth,
   queryIsReal,
   queryIsAmt,
-  queryIsCurOrSym,
-  queryIsAmtOrCurOrSym,
+  queryIsCur,
+  queryIsAmtOrCur,
   queryIsStartDateOnly,
   queryIsTransactionRelated,
   -- * accessors
@@ -72,7 +72,6 @@ module Hledger.Query (
   matchesTag,
   -- patternsMatchTags,
   matchesPriceDirective,
-  queryExpandCurForAliases,
   words'',
   queryprefixes,
   -- * tests
@@ -84,7 +83,6 @@ import Control.Applicative
 import Data.Default (Default(..))
 import Data.Either (partitionEithers)
 import Data.List (partition, intercalate)
-import Data.List.Extra (nubOrd)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -124,8 +122,7 @@ data Query =
   | DepthAcct Regexp Int      -- ^ match if the account matches and account depth is less than or equal to this value (usually used as a display option)
   | Real Bool                 -- ^ match postings with this "realness" value
   | Amt OrdPlus Quantity      -- ^ match if the amount's numeric quantity is less than/greater than/equal to/unsignedly equal to some value
-  | Sym Regexp           -- ^ match if the commodity symbol is fully matched by this regexp.
-  | Cur Regexp                -- ^ match if the commodity symbol, or any symbol in its alias group, is fully matched by this regexp. Alias awareness is applied by 'queryExpandCurForAliases' once a Journal is available.
+  | Cur Regexp                -- ^ match if the commodity symbol is fully matched by this regexp.
   | Find Regexp (Maybe DateSpan) -- ^ match if any visible text field (account, amount, comment, description, code) is infix-matched by this regexp, or if the date is within this span (present when the pattern also parses as a period expression)
   -- compound queries (expr:)
   | Not Query                 -- ^ negate this match
@@ -274,7 +271,6 @@ queryprefixes = map (<>":") [
     ,"date"
     ,"date2"
     ,"status"
-    ,"sym"
     ,"cur"
     ,"real"
     ,"empty"
@@ -332,7 +328,6 @@ parseQueryTerm _ (T.stripPrefix "amt:" -> Just s) = case parseAmountQueryTerm s 
   Right (ord, q) -> Right (Amt ord q, [])
   Left err       -> Left err
 parseQueryTerm _ (T.stripPrefix "depth:" -> Just s) = (,[]) <$> parseDepthSpecQuery s
-parseQueryTerm _ (T.stripPrefix "sym:" -> Just s) = (,[]) . Sym <$> toRegexCI ("^" <> s <> "$")
 parseQueryTerm _ (T.stripPrefix "cur:" -> Just s) = (,[]) . Cur <$> toRegexCI ("^" <> s <> "$") -- support cur: as an alias
 parseQueryTerm _ (T.stripPrefix "tag:" -> Just s) = (,[]) <$> parseTag s
 parseQueryTerm _ (T.stripPrefix "type:" -> Just s) = (,[]) <$> parseTypeCodes s
@@ -662,29 +657,6 @@ filterQueryOrNotQuery p0 = simplifyQuery . filterQueryOrNotQuery' p0
     filterQueryOrNotQuery' p (Not q) | p q = Not $ filterQueryOrNotQuery p q
     filterQueryOrNotQuery' p q = if p q then q else Any
 
--- | Rewrite Cur terms in a query so they also match the alias-group
--- siblings of any declared commodity symbol matched by the original
--- regex. The first argument is the list of declared commodity symbols
--- to consider (including aliases). The second maps each such symbol
--- to its alias group (canonical + aliases).
---
--- In more detail:
--- a Cur r is expanded to @Or [Cur r, Cur ^a$, Cur ^b$, ...]@ where
--- a, b, ... are the alias-group siblings of any declared symbol matched
--- by r that are not themselves matched by r. The original Cur r is kept
--- so non-declared symbols still match if r matches them.
-queryExpandCurForAliases :: [CommoditySymbol] -> (CommoditySymbol -> [CommoditySymbol]) -> Query -> Query
-queryExpandCurForAliases declared groupOf = transformQuery expandSym
-  where
-    expandSym (Cur r) =
-      let matched  = filter (regexMatchText r) declared
-          siblings = concatMap groupOf matched
-          extras   = [s | s <- nubOrd siblings, not (regexMatchText r s)]
-      in if null extras
-         then Cur r
-         else Or (Cur r : [Cur (toRegexCI' ("^" <> regexEscape s <> "$")) | s <- extras])
-    expandSym q = q
-
 -- * predicates
 
 -- | Does this simple query predicate match any part of this possibly compound query ?
@@ -758,13 +730,12 @@ queryIsAmt :: Query -> Bool
 queryIsAmt (Amt _ _) = True
 queryIsAmt _         = False
 
-queryIsCurOrSym :: Query -> Bool
-queryIsCurOrSym (Cur _)      = True
-queryIsCurOrSym (Sym _) = True
-queryIsCurOrSym _ = False
+queryIsCur :: Query -> Bool
+queryIsCur (Cur _) = True
+queryIsCur _       = False
 
-queryIsAmtOrCurOrSym :: Query -> Bool
-queryIsAmtOrCurOrSym = liftA2 (||) queryIsAmt queryIsCurOrSym
+queryIsAmtOrCur :: Query -> Bool
+queryIsAmtOrCur = liftA2 (||) queryIsAmt queryIsCur
 
 -- | Does this query specify a start date and nothing else (that would
 -- filter postings prior to the date) ?
@@ -789,7 +760,7 @@ queryIsTransactionRelated = matchesQuery (
   ||| queryIsDesc
   ||| queryIsReal
   ||| queryIsAmt
-  ||| queryIsCurOrSym
+  ||| queryIsCur
   )
 
 (|||) :: (a->Bool) -> (a->Bool) -> (a->Bool)
@@ -893,7 +864,6 @@ inAccountQuery (QueryOptInterval _   : rest) = inAccountQuery rest
 
 matchesCommodity :: Query -> CommoditySymbol -> Bool
 matchesCommodity (Cur r)          s = regexMatchText r s
-matchesCommodity (Sym r)     s = regexMatchText r s
 matchesCommodity (Find r _)       s = regexMatchText r s
 matchesCommodity (Any)            _ = True
 matchesCommodity (None)           _ = False
@@ -925,7 +895,6 @@ matchesAmount (AnyPosting  qs) a = all (`matchesAmount` a) qs
 matchesAmount (AllPostings qs) a = all1 (`matchesAmount` a) qs
 matchesAmount (Amt ord n) a = compareAmount ord n a
 matchesAmount (Cur r) a = matchesCommodity (Cur r) (acommodity a)
-matchesAmount (Sym r) a = matchesCommodity (Sym r) (acommodity a)
 matchesAmount _ _ = True
 
 -- | Is this amount's quantity less than, greater than, equal to, or unsignedly equal to this number ?
@@ -1029,7 +998,6 @@ matchesPosting q@(Depth _) Posting{paccount=a} = q `matchesAccount` a
 matchesPosting q@(DepthAcct _ _) Posting{paccount=a} = q `matchesAccount` a
 matchesPosting q@(Amt _ _) Posting{pamount=as} = q `matchesMixedAmount` as
 matchesPosting (Cur r) Posting{pamount=as} = any (matchesCommodity (Cur r) . acommodity) $ amountsRaw as
-matchesPosting (Sym r) Posting{pamount=as} = any (matchesCommodity (Sym r) . acommodity) $ amountsRaw as
 matchesPosting (Tag n v) p = case (reString n, v) of
   ("payee", Just v') -> maybe False (regexMatchText v' . transactionPayee) $ ptransaction p
   ("note", Just v') -> maybe False (regexMatchText v' . transactionNote) $ ptransaction p
@@ -1078,7 +1046,6 @@ matchesTransaction q@(Amt _ _) t = any (q `matchesPosting`) $ tpostings t
 matchesTransaction q@(Depth _) t = any (q `matchesPosting`) $ tpostings t
 matchesTransaction q@(DepthAcct _ _) t = any (q `matchesPosting`) $ tpostings t
 matchesTransaction q@(Cur _) t = any (q `matchesPosting`) $ tpostings t
-matchesTransaction q@(Sym _) t = any (q `matchesPosting`) $ tpostings t
 matchesTransaction (Tag n v) t = case (reString n, v) of
   ("payee", Just v') -> regexMatchText v' $ transactionPayee t
   ("note", Just v') -> regexMatchText v' $ transactionNote t
@@ -1175,7 +1142,6 @@ matchesPriceDirective (AnyPosting  qs) p = all (`matchesPriceDirective` p) qs
 matchesPriceDirective (AllPostings qs) p = all1 (`matchesPriceDirective` p) qs
 matchesPriceDirective q@(Amt _ _) p      = matchesAmount q (pdamount p)
 matchesPriceDirective q@(Cur _) p        = matchesCommodity q (pdcommodity p)
-matchesPriceDirective q@(Sym _) p   = matchesCommodity q (pdcommodity p)
 matchesPriceDirective (Date spn) p       = spanContainsDate spn (pddate p)
 matchesPriceDirective _ _                = True
 
@@ -1336,15 +1302,6 @@ tests_Query = testGroup "Query" [
       assertBool "" $ (toSym "\\$") `matchesPosting` nullposting{pamount=mixedAmount $ usd 1} -- have to quote $ for regexpr
       assertBool "" $ (toSym "shekels") `matchesPosting` nullposting{pamount=mixedAmount nullamt{acommodity="shekels"}}
       assertBool "" $ not $ (toSym "shek") `matchesPosting` nullposting{pamount=mixedAmount nullamt{acommodity="shekels"}}
-    ,testCase "sym:" $ do
-      let toSymE = fst . either error' id . parseQueryTerm (fromGregorian 2000 01 01) . ("sym:"<>)
-      -- sym: parses to a Sym constructor (matches a specific commodity symbol)
-      case toSymE "USD" of
-        Sym _ -> return ()
-        q          -> assertFailure $ "expected Sym, got " <> show q
-      -- and matches its target like Cur would
-      assertBool "" $ (toSymE "shekels") `matchesPosting` nullposting{pamount=mixedAmount nullamt{acommodity="shekels"}}
-      assertBool "" $ not $ (toSymE "shek") `matchesPosting` nullposting{pamount=mixedAmount nullamt{acommodity="shekels"}}
     ,testCase "any: and all: match a posting by looking at its siblings" $ do
       let foodp = nullposting{paccount="expenses:food"}
           tie ps = txnTieKnot nulltransaction{tpostings=ps}
@@ -1363,23 +1320,6 @@ tests_Query = testGroup "Query" [
       -- a posting with no parent transaction, eg one generated by a report, is tested on its own
       assertBool "" $ (AnyPosting [Acct $ toRegex' "food"]) `matchesPosting` foodp
       assertBool "" $ not $ anycash `matchesPosting` foodp
-    ,testCase "queryExpandCurForAliases" $ do
-      -- A group lookup where $ has aliases USD and U$.
-      let group s | s `elem` ["$","USD","U$"] = ["$","USD","U$"]
-                  | otherwise                 = [s]
-          declared = ["$","USD","U$"]
-          curUSD = Cur (toRegexCI' "^USD$")
-      -- Cur matching USD gets expanded to Or including the canonical and other alias.
-      case queryExpandCurForAliases declared group curUSD of
-        Or qs -> assertBool "expansion includes original Cur" (curUSD `elem` qs)
-              >> assertEqual "expansion has 3 disjuncts" 3 (length qs)
-        q     -> assertFailure $ "expected Or expansion, got " <> show q
-      -- Sym is untouched even when its regex matches a declared alias.
-      let exactUSD = Sym (toRegexCI' "^USD$")
-      assertEqual "" exactUSD (queryExpandCurForAliases declared group exactUSD)
-      -- No expansion when the regex matches a non-declared symbol with no aliases.
-      let curJPY = Cur (toRegexCI' "^JPY$")
-      assertEqual "" curJPY (queryExpandCurForAliases declared group curJPY)
   ]
 
   ,testCase "matchesTransaction" $ do

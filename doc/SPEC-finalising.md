@@ -45,33 +45,34 @@ journalFinalise
   -- Account types and amount styles (pure, no errors)
   4.  journalAddAccountTypes            -- builds jaccounttypes map
   5.  journalStyleAmounts               -- infer preliminary commodity display styles, and apply to postings
+  6.  journalApplyCommodityAliases      -- convert amounts written in commodity aliases to their commodity
 
   -- Generate forecast transactions
-  6.  journalAddForecast                -- if --forecast, generate forecast transactions from periodic rules
+  7.  journalAddForecast                -- if --forecast, generate forecast transactions from periodic rules
 
   -- Account tags
-  7.  journalPostingsAddAccountTags     -- propagate account tags to postings
+  8.  journalPostingsAddAccountTags     -- propagate account tags to postings
 
   -- Pre-balancing cost/equity tagging
-  8.  journalTagCostsAndEquityAndMaybeInferCosts(1st)  -- tag conversion equity postings + redundant costs (helps balancer ignore them)
+  9.  journalTagCostsAndEquityAndMaybeInferCosts(1st)  -- tag conversion equity postings + redundant costs (helps balancer ignore them)
 
   -- Lot cost basis and transacted cost inference, gain posting tagging (before balancing; always run,
   -- so lot entries balance the same with or without --ignore-lots;
   -- lenient with --ignore-lots: their errors are skipped, leaving the affected postings unchanged)
-  9.  journalInferBasisFromAccountNames  -- if account name has a {…} lot subaccount, parse cost basis from it
-  10. journalInferPostingsTransactedCost -- infer cost from cost basis of acquire postings
-  11. journalCheckAcquireBasis           -- (default lot check; skipped by --ignore-lots) error if an acquire-shaped
+  10. journalInferBasisFromAccountNames  -- if account name has a {…} lot subaccount, parse cost basis from it
+  11. journalInferPostingsTransactedCost -- infer cost from cost basis of acquire postings
+  12. journalCheckAcquireBasis           -- (default lot check; skipped by --ignore-lots) error if an acquire-shaped
                                          -- asset posting writes a cost basis and a transacted cost which differ
                                          -- (before balancing, so this is reported rather than an unbalanced entry)
-  12. journalTagGainPostings             -- in disposals, tag user-written gain postings _ptype:gain,
+  13. journalTagGainPostings             -- in disposals, tag user-written gain postings _ptype:gain,
                                          -- so the balancer sets them aside (disposals balance at cost basis)
 
   -- Generate auto postings
-  13. journalAddAutoPostings            -- if --auto, do transaction balancing (preliminary) to infer some missing amounts/costs,
+  14. journalAddAutoPostings            -- if --auto, do transaction balancing (preliminary) to infer some missing amounts/costs,
                                         -- then apply auto posting rules. Calls journalBalanceTransactions.
 
   -- Transaction balancing (main)
-  14. journalBalanceTransactionsAndDeferAssertions
+  15. journalBalanceTransactionsAndDeferAssertions
                                         -- infer remaining balancing amounts, balancing costs, and balance assignment amounts;
                                         -- and check transactions balanced and (unless --ignore-assertions) balance assertions satisfied.
                                         -- A balance assertion failure is not raised here: the first one is recorded and
@@ -82,14 +83,13 @@ journalFinalise
                                         -- balancing cost inference is skipped, so mismatched transfers load.
 
   -- Lot classification (default; skipped by --ignore-lots/-I; restored by --strict or `check lots`)
-  15. journalClassifyLotPostings         -- tag lot postings as acquire/dispose/transfer-from/transfer-to
+  16. journalClassifyLotPostings         -- tag lot postings as acquire/dispose/transfer-from/transfer-to
 
   -- Post-balancing enrichment
-  16. journalInferCommodityStyles        -- infer canonical commodity styles, now with all amounts present
-  17. journalPostingsAddCommodityTags    -- propagate commodity tags to postings
-  18. journalTagCostsAndEquityAndMaybeInferCosts(2nd)   -- if --infer-costs, infer costs from equity conversion postings
-  19. journalInferMarketPricesFromTransactions  -- infer market prices from costs
-  20. journalInferAliasPrices            -- inject price bridges for alias: tags on commodity directives
+  17. journalInferCommodityStyles        -- infer canonical commodity styles, now with all amounts present
+  18. journalPostingsAddCommodityTags    -- propagate commodity tags to postings
+  19. journalTagCostsAndEquityAndMaybeInferCosts(2nd)   -- if --infer-costs, infer costs from equity conversion postings
+  20. journalInferMarketPricesFromTransactions  -- infer market prices from costs
   21. journalRenumberAccountDeclarations  -- renumber account declarations for consistent ordering
 
   -- Lot calculation and checking (default; skipped by --ignore-lots/-I; restored by --strict or `check lots`)
@@ -107,7 +107,7 @@ journalFinalise
   -- Equity inference (after lot processing, so a disposal's conversion postings can use its cost basis)
   27. journalInferEquityFromCosts        -- if --infer-equity, infer equity conversion postings from costs
 
-  28. (re-raise deferred assertion failure)  -- if step 14 recorded a balance assertion failure
+  28. (re-raise deferred assertion failure)  -- if step 15 recorded a balance assertion failure
                                        -- and no later stage errored, report it now
 ```
 
@@ -116,7 +116,7 @@ journalFinalise
 Before running the pipeline, `journalFinalise` checks `journalHasLotFeatures`: does any
 commodity have a `lots:` tag, any account declaration a `lots:` tag, or any posting (in
 transactions, periodic transaction rules or auto posting rules) a cost basis annotation or a
-lot subaccount name ? If not, the lot stages (9, 10, 11, 14, 22-24, 26 and 27) are skipped,
+lot subaccount name ? If not, the lot stages (10, 11, 12, 15, 22-24, 26 and 27) are skipped,
 since they would leave the journal unchanged; on large journals this saves about a fifth of
 the read time. Likewise the balancer skips its per-entry gain tagging and fee splitting for
 entries with no cost basis annotations when no commodity is lotful.

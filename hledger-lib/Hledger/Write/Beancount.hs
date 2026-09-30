@@ -32,7 +32,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Data.Text.Lazy.Builder qualified as TB
-import Data.Time.Calendar (Day, fromGregorian)
+import Data.Time.Calendar (fromGregorian)
 import Safe (maximumBound)
 import Text.DocLayout (realLength)
 import Text.Printf
@@ -214,20 +214,13 @@ beancountCommentLine l = if ";" `T.isPrefixOf` T.stripStart l then l else "; " <
 -- | Render a PriceDirective in Beancount format: DATE price COMMODITY AMOUNT
 showPriceDirectiveBeancount :: PriceDirective -> Text
 showPriceDirectiveBeancount pd =
-  showDate (dateToBeancount $ pddate pd)
+  showDate (pddate pd)
   <> " price "
   <> commodityToBeancount (pdcommodity pd)
   <> " "
   <> wbToText (showAmountB beancountPriceFmt $ amountToBeancount $ pdamount pd)
   where
     beancountPriceFmt = defaultFmt{ displayZeroCommodity=True, displayForceDecimalMark=True, displayQuotes=False }
-
--- | Convert a date to one Beancount will accept.
--- Beancount rejects year 0, which is the date hledger gives to the price
--- directives it infers from commodity alias: tags; those become 0001-01-01.
-dateToBeancount :: Day -> Day
-dateToBeancount d | d == fromGregorian 0 1 1 = fromGregorian 1 1 1
-                  | otherwise                = d
 
 nl = "\n"
 

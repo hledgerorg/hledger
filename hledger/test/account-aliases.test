@@ -313,3 +313,80 @@ $ hledger -f- --alias '/{202[2-5]/=2022' print
 This regular expression is invalid or unsupported, please correct it: \{202\[2-5\]
 /
 >=1
+
+# alias: tags on account directives
+
+# ** 22. An alias: tag on an account directive declares an alias for that account,
+#        like an alias directive at that point; it also matches subaccounts.
+<
+account assets:bank:checking    ; alias: checking
+
+2024-01-01
+    checking:sub    1
+    checking
+
+$ hledger -f- print
+2024-01-01
+    assets:bank:checking:sub                       1
+    assets:bank:checking
+
+>=
+
+# ** 23. Each alias: tag declares one alias; there can be several.
+<
+account assets:bank:checking    ; alias: checking, alias: chk
+
+2024-01-01
+    checking    1
+    chk
+
+$ hledger -f- accounts
+assets:bank:checking
+
+# ** 24. Ledger's alias subdirective is accepted, and is treated as an alias: tag.
+#        Other subdirectives are still ignored.
+<
+account expenses:food
+    alias food
+    note the note
+
+2024-01-01
+    food    1
+    cash
+
+$ hledger -f- accounts --directives
+account cash
+account expenses:food    ; alias: food
+
+# ** 25. Like alias directives, these aliases apply only to the following entries
+#        in the same file and its included files, not to parent or sibling files.
+<
+2024-01-01
+    checking    1
+    cash
+
+$ hledger -f account-aliases-included.j -f- accounts
+assets:bank:checking
+cash
+checking
+
+# ** 26. A tag alias declared before an account directive rewrites that directive's account name too.
+<
+alias bank = assets:bank
+account bank:checking    ; alias: checking
+
+2024-01-01
+    checking    1
+    cash
+
+$ hledger -f- accounts --directives
+account assets:bank:checking    ; alias: checking
+account cash
+
+# ** 27. An alias: tag without a value is an error.
+<
+account assets:bank:checking    ; alias:
+
+$ hledger -f- accounts
+>2 /an alias: tag on an account directive should have an account name as its value/
+>=1
