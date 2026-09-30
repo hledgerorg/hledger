@@ -580,7 +580,7 @@ msgstr "现金余额"
 
 #: hledger-ui/Hledger/UI/AccountsScreen.hs
 msgid "balance sheet balances"
-msgstr "balance sheet balances"
+msgstr "资产负债表余额"
 
 #: hledger-ui/Hledger/UI/AccountsScreen.hs
 msgid "income statement changes"
@@ -608,51 +608,43 @@ msgstr "所有账户"
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
-#, fuzzy
-#| msgid "Balance Sheet"
 msgid "Balance sheet"
 msgstr "资产负债表"
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Show assets, liabilities, and net worth"
-msgstr ""
+msgstr "列示资产、负债和净值"
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
-#, fuzzy
-#| msgid "Balance Sheet With Equity"
 msgid "Balance sheet with equity"
 msgstr "包含权益的资产负债表"
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Show assets, liabilities, and equity"
-msgstr ""
+msgstr "显示资产、负债和权益"
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
-#, fuzzy
-#| msgid "Income Statement"
 msgid "Income statement"
 msgstr "损益表"
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Show revenues and expenses"
-msgstr ""
+msgstr "显示收入和支出"
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
-#, fuzzy
-#| msgid "Cashflow Statement"
 msgid "Cashflow statement"
 msgstr "现金流量表"
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Show changes in liquid assets"
-msgstr ""
+msgstr "显示流动资产的变动"
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #. the browser tab title of this page.
@@ -662,44 +654,40 @@ msgstr "余额报告"
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
-#, fuzzy
-#| msgid "Show the balance report"
 msgid "Show the balance report: any accounts, by period"
-msgstr "显示余额报告"
+msgstr "显示余额报表：按期间显示任意账户"
 
 #: hledger-web/Hledger/Web/Paging.hs
 #, python-brace-format
 msgid "Showing {first} to {last} of {total} transactions"
-msgstr ""
+msgstr "显示第 {first} 至 {last} 笔交易（共 {total} 笔）"
 
 #: hledger-web/Hledger/Web/Paging.hs
 #, python-brace-format
 msgid "Show page {n}"
-msgstr ""
+msgstr "显示第 {n} 页"
 
 #: hledger-web/Hledger/Web/Paging.hs
 #, python-brace-format
 msgid "Page {n}"
-msgstr ""
+msgstr "第 {n} 页"
 
 #: hledger-web/Hledger/Web/Paging.hs
 #, python-brace-format
 msgid "Show only {year}"
-msgstr ""
+msgstr "仅显示 {year}"
 
 #: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Could not parse the period expression:"
 msgstr "无法解析周期表达式："
 
 #: hledger-web/Hledger/Web/ReportPage.hs
-#, fuzzy
-#| msgid "Ending balances (cumulative)"
 msgid "Unknown balance accumulation mode:"
-msgstr "期末余额（累计）"
+msgstr "未知的余额累积模式："
 
 #: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Show this report for this period"
-msgstr ""
+msgstr "显示该期间的这份报告"
 
 #: hledger-web/Hledger/Web/Handler/AddR.hs
 msgid "Transaction added."
@@ -774,11 +762,11 @@ msgstr "期间总计"
 
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgid "Show the running balance from the start of this period"
-msgstr ""
+msgstr "显示本期开始以来的累计余额"
 
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgid "Show the running balance including everything before this period"
-msgstr ""
+msgstr "显示包含本期之前所有项目的累计余额。"
 
 #. the browser tab title of this page.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
@@ -787,53 +775,46 @@ msgstr "登记册 - hledger-web"
 
 #. the browser tab titles of the statement pages.
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
-#, fuzzy
-#| msgid "balance - hledger-web"
 msgid "balance sheet - hledger-web"
-msgstr "余额 - hledger-web"
+msgstr "资产负债表 - hledger-web"
 
 #. the browser tab titles of the statement pages.
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
-#, fuzzy
-#| msgid "balance - hledger-web"
 msgid "balance sheet with equity - hledger-web"
-msgstr "余额 - hledger-web"
+msgstr "包含权益的资产负债表 - hledger-web"
 
 #. the browser tab titles of the statement pages.
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
-#, fuzzy
-#| msgid "income statement changes"
 msgid "income statement - hledger-web"
-msgstr "损益表变动"
+msgstr "损益表 - hledger-web"
 
 #. the browser tab titles of the statement pages.
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
-#, fuzzy
-#| msgid "balance - hledger-web"
 msgid "cashflow statement - hledger-web"
-msgstr "余额 - hledger-web"
+msgstr "现金流量表 - hledger-web"
 
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
 msgid ""
 "All the accounts this report shows have zero balances, which are hidden. "
 "Press e to show them."
 msgstr ""
+"本报告中显示的所有账户余额均为零，且处于隐藏状态。请按“e”键显示这些账户。"
 
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
 msgid ""
 "No accounts of the types this report shows were found. Declare account "
 "types, or use hledger's standard top-level account names. "
 msgstr ""
+"未找到本报告所显示的那些类型的账户。请声明账户类型，或使用 hledger 标准的顶层"
+"账户名称。"
 
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
-#, fuzzy
-#| msgid "match account types"
 msgid "How hledger finds account types"
-msgstr "匹配账户类型"
+msgstr "hledger 如何识别账户类型"
 
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
 msgid "Nothing matches this search in this period."
-msgstr ""
+msgstr "在此期间，没有符合此搜索条件的内容。"
 
 #: hledger-web/Hledger/Web/Handler/UploadR.hs
 #, python-brace-format
@@ -851,7 +832,7 @@ msgstr "文件 {file} 上传成功"
 
 #: hledger-web/Hledger/Web/Handler/UploadR.hs
 msgid "Upload journal"
-msgstr "上传 journal"
+msgstr "上传日记账"
 
 #: hledger-web/Hledger/Web/Widget/AddForm.hs
 #: hledger-web/templates/default-layout.hamlet
@@ -861,7 +842,7 @@ msgstr "关闭"
 #: hledger-web/Hledger/Web/Widget/AddForm.hs
 #: hledger-web/templates/journal.hamlet
 msgid "Add a transaction"
-msgstr "Add a transaction"
+msgstr "添加交易"
 
 #: hledger-web/Hledger/Web/Widget/AddForm.hs
 #, python-brace-format
@@ -880,7 +861,7 @@ msgstr "日期格式无效"
 #: hledger-web/Hledger/Web/Widget/AddForm.hs
 msgctxt "placeholder"
 msgid "Date"
-msgstr "Date"
+msgstr "日期"
 
 #: hledger-web/Hledger/Web/Widget/AddForm.hs
 msgctxt "placeholder"
@@ -912,18 +893,18 @@ msgstr "报告："
 #. the label before a report's interval links.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Interval:"
-msgstr ""
+msgstr "间隔："
 
 #. the interval links above a report: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Show one column for the whole period"
-msgstr ""
+msgstr "针对整个期间显示列"
 
 #. the interval links above a report: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "interval"
 msgid "None"
-msgstr ""
+msgstr "没有任何"
 
 #. the interval links above a report: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -933,7 +914,7 @@ msgstr "每年"
 #. the interval links above a report: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Show a column per year"
-msgstr ""
+msgstr "按年份显示列"
 
 #. the interval links above a report: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -943,7 +924,7 @@ msgstr "每季"
 #. the interval links above a report: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Show a column per quarter"
-msgstr ""
+msgstr "按季度显示列"
 
 #. the interval links above a report: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -953,7 +934,7 @@ msgstr "每月度"
 #. the interval links above a report: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Show a column per month"
-msgstr ""
+msgstr "按月显示列"
 
 #. the interval links above a report: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -963,7 +944,7 @@ msgstr "每周"
 #. the interval links above a report: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Show a column per week"
-msgstr ""
+msgstr "按周显示列"
 
 #. the interval links above a report: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -973,30 +954,28 @@ msgstr "每日"
 #. the interval links above a report: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Show a column per day"
-msgstr ""
+msgstr "按天显示列"
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Show:"
-msgstr ""
+msgstr "显示："
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Show how much each balance changed in each period"
-msgstr ""
+msgstr "展示每个期间各项余额的变化幅度"
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
-#, fuzzy
-#| msgid "Ending balances (cumulative)"
 msgid "Ending balances"
-msgstr "期末余额（累计）"
+msgstr "期末余额"
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid ""
 "Show each balance at the end of each period, including everything before it"
-msgstr ""
+msgstr "显示每个期间结束时的余额，包括该期间之前的所有内容"
 
 #: hledger-web/templates/add-form.hamlet
 msgid "Pick a date"
@@ -1031,14 +1010,12 @@ msgid "only"
 msgstr "仅"
 
 #: hledger-web/templates/balance-report.hamlet
-#, fuzzy
-#| msgid "match transactions where all postings match"
 msgid "Show the transactions that make up this balance"
-msgstr "匹配所有过账项均相符的交易"
+msgstr "显示构成此余额的交易"
 
 #: hledger-web/templates/balance-report.hamlet
 msgid "Show the transactions that make up this total"
-msgstr ""
+msgstr "显示构成此总额的各项交易"
 
 #: hledger-web/templates/default-layout.hamlet
 msgid ""
@@ -1046,6 +1023,8 @@ msgid ""
 "browser window showing it, or when stopped. To continue, start it again and "
 "reload this page."
 msgstr ""
+"hledger-web 已停止运行。如果十五分钟内没有浏览器窗口显示它，或者程序被手动停"
+"止，它就会退出。若要继续使用，请重新启动程序并刷新此页面。"
 
 #: hledger-web/templates/default-layout.hamlet
 msgctxt "search box"
@@ -1129,6 +1108,7 @@ msgid ""
 "The sidebar's report links show the balance sheet, income statement, and "
 "cashflow statement, each linking to the other reports"
 msgstr ""
+"侧边栏中的报表链接指向资产负债表、损益表和现金流量表，且各报表之间相互链接"
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "Parent account balances include subaccount balances"
@@ -1148,7 +1128,7 @@ msgstr "点击账户名称链接，即可查看影响该账户的交易记录及
 msgid ""
 "Click an amount to see the transactions it is made of, in a register ending "
 "on that amount"
-msgstr ""
+msgstr "点击某个金额，即可在以该金额为终值的明细列表中查看构成该金额的各项交易"
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "Click date links to see journal entries on that date"
@@ -1160,6 +1140,8 @@ msgid ""
 "revenues as positive amounts; their registers show them negative, as hledger "
 "does"
 msgstr ""
+"资产负债表和损益表将负债、权益和收入显示为正数；而在账目明细中，它们则显示为"
+"负数，这与 hledger 的处理方式一致"
 
 #: hledger-web/templates/default-layout.hamlet
 msgctxt "help heading"
@@ -1297,10 +1279,8 @@ msgid "Amount"
 msgstr "金额"
 
 #: hledger-web/templates/journal.hamlet
-#, fuzzy
-#| msgid "Show general journal entries, most recent first"
 msgid "Show the journal entries on this date"
-msgstr "显示总账分录，最近的分录在前"
+msgstr "显示该日期的日记条目"
 
 #: hledger-web/templates/manage.hamlet
 msgid "Your journal's files"
@@ -1324,24 +1304,20 @@ msgid "Download"
 msgstr "下载"
 
 #: hledger-web/templates/paging.hamlet
-#, fuzzy
-#| msgid "match transaction codes"
 msgid "Show the newer transactions"
-msgstr "匹配交易代码"
+msgstr "显示较新的交易"
 
 #: hledger-web/templates/paging.hamlet
 msgid "Newer"
-msgstr ""
+msgstr "较新"
 
 #: hledger-web/templates/paging.hamlet
-#, fuzzy
-#| msgid "match transaction codes"
 msgid "Show the older transactions"
-msgstr "匹配交易代码"
+msgstr "显示较早的交易"
 
 #: hledger-web/templates/paging.hamlet
 msgid "Older"
-msgstr ""
+msgstr "较旧的"
 
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
@@ -1354,20 +1330,16 @@ msgid "Amount Out/In"
 msgstr "流出/流入金额"
 
 #: hledger-web/templates/register.hamlet
-#, fuzzy
-#| msgid "Click date links to see journal entries on that date"
 msgid "Show this entry and the other journal entries on its date"
-msgstr "点击日期链接，查看该日期的日志条目"
+msgstr "显示此条目及同一日期的其他日记条目"
 
 #: hledger-web/templates/register.hamlet
 msgid "Balance brought forward"
-msgstr ""
+msgstr "上期结转余额"
 
 #: hledger-web/templates/register.hamlet
-#, fuzzy
-#| msgid "match transaction descriptions"
 msgid "Show the transactions before this period"
-msgstr "匹配交易描述"
+msgstr "显示此期间之前的交易"
 
 #: hledger-web/templates/upload-form.hamlet
 msgid "Upload to file"
@@ -1378,20 +1350,18 @@ msgid "Select file"
 msgstr "选择文件"
 
 #: hledger-web/templates/years.hamlet
-#, fuzzy
-#| msgid "Yearly"
 msgctxt "years row"
 msgid "Years:"
-msgstr "每年"
+msgstr "年："
 
 #: hledger-web/templates/years.hamlet
 msgid "Show all years"
-msgstr ""
+msgstr "显示所有年份"
 
 #: hledger-web/templates/years.hamlet
 msgctxt "years row"
 msgid "All"
-msgstr ""
+msgstr "全部"
 
 #~ msgid "Balance"
 #~ msgstr "余额"
