@@ -682,8 +682,10 @@ commoditydirectiveonelinep = do
     amt <- amountp' StyleAmount
     pure $ (off, pos, amt)
   lift skipNonNewlineSpaces
+  commentoff <- getOffset
   (comment, tags) <- lift transactioncommentp
-  let comm = Commodity{csymbol=acommodity, cformat=Just $ dbg7 "style from commodity directive" astyle, ccomment=comment, ctags=tags, csourcepos=pos}
+  commaliases <- commodityaliasesp commentoff acommodity tags
+  let comm = Commodity{csymbol=acommodity, cformat=Just $ dbg7 "style from commodity directive" astyle, ccomment=comment, ctags=tags, caliases=commaliases, csourcepos=pos}
   if isNothing $ asdecimalmark astyle
   then customFailure $ parseErrorAt off pleaseincludedecimalpoint
   else modify' (\j -> j{jdeclaredcommodities=M.insert acommodity comm $ jdeclaredcommodities j
@@ -710,11 +712,13 @@ commoditydirectivemultilinep = do
   pos <- getSourcePos'
   lift skipNonNewlineSpaces1
   sym <- lift commoditysymbolp
+  commentoff <- getOffset
   (comment, tags) <- lift transactioncommentp
+  commaliases <- commodityaliasesp commentoff sym tags
   -- read all subdirectives, saving format subdirectives as Lefts
   subdirectives <- many $ indented (eitherP (formatdirectivep sym) (lift restofline))
   let mfmt = lastMay $ lefts subdirectives
-  let comm = Commodity{csymbol=sym, cformat=mfmt, ccomment=comment, ctags=tags, csourcepos=pos}
+  let comm = Commodity{csymbol=sym, cformat=mfmt, ccomment=comment, ctags=tags, caliases=commaliases, csourcepos=pos}
   modify' (\j -> j{jdeclaredcommodities=M.insert sym comm $ jdeclaredcommodities j
                   ,jdeclaredcommoditytags=if null tags then jdeclaredcommoditytags j
                                           else M.insert sym tags $ jdeclaredcommoditytags j})
@@ -737,6 +741,39 @@ formatdirectivep expectedsym = do
       else return $ dbg7 "style from format subdirective" astyle
     else customFailure $ parseErrorAt off $
          printf "commodity directive symbol \"%s\" and format directive symbol \"%s\" should be the same" expectedsym acommodity
+
+-- | Parse the values of a commodity directive's alias: tags, if any.
+-- Each value is one commodity symbol, optionally with a positive quantity:
+-- the number of alias units equal to one unit of the commodity (1 if omitted).
+-- These are returned as amounts, keeping the style they were written with.
+-- A 1:1 alias to the commodity itself, or a repeat of an earlier alias, is ignored.
+-- Errors are reported at the given offset (the start of the directive's comment).
+commodityaliasesp :: Int -> CommoditySymbol -> [Tag] -> JournalParser m [Amount]
+commodityaliasesp off sym tags = do
+  j <- get
+  commaliases <- nubOn symqty . filter ((/= (sym, 1)) . symqty) <$> mapM (aliasvalue j) [v | (n, v) <- tags, T.toLower n == "alias"]
+  let aliassyms = map acommodity commaliases
+  if sym `elem` aliassyms then customFailure $ errAt $ printf "%s can't be an alias of itself with a quantity other than 1" (quote sym)
+  else case aliassyms \\ nub aliassyms of
+    a:_ -> customFailure $ errAt $ printf "alias %s is declared more than once, with different quantities" (quote a)
+    []  -> pure commaliases
+  where
+    errAt = parseErrorAt off
+    symqty a = (acommodity a, aquantity a)
+    nubOn f = nubBy (\a b -> f a == f b)
+    quote t = "\"" <> T.unpack t <> "\""
+    aliasvalue j v = case runParser (evalStateT aliasp j) "" v of
+      Right a | not (T.null $ acommodity a) && aquantity a > 0 -> pure a
+      _ -> customFailure $ errAt $ printf (unlines
+             ["could not parse commodity alias %s."
+             ,"Each alias: tag should contain one commodity symbol, optionally with a positive quantity,"
+             ,"the number of alias units equal to one %s. Eg: alias: $, alias: 100 cents"
+             ]) (quote v) (T.unpack sym)
+    aliasp = do
+      let spaces = lift skipNonNewlineSpaces
+      spaces
+      try ((\a -> nullamt{acommodity=a, aquantity=1}) <$> lift commoditysymbolp <* spaces <* eof)
+        <|> (simpleamountp MultiplierAmount <* spaces <* eof)
 
 -- More Ledger directives, ignore for now:
 -- apply fixed, apply tag, assert, bucket, A, capture, check, define, expr

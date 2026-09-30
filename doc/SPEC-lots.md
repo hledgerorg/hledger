@@ -289,14 +289,16 @@ The terms "hledger lot syntax", "cost basis", "lot name", "lot selector" can som
 they all involve the same notation, which has different meanings depending on context.
 
 A selector's cost is compared with a lot's stored cost by commodity and quantity,
-accepting either an exact match or the stored cost's display-rounded value
-(`lotCostsMatch` in Lots.hs). The latter is needed because an inferred cost can
-have more decimal digits than are displayed (eg $10/3 renders as $3.33333333 in
-the lot name): displayed lot names can thus always be written back in a journal
-and still identify their lot, while stored costs keep full internal precision
-for gain calculation (#2689). The same comparison is used when checking a
-written lot subaccount or transfer destination annotation against the resolved
-lot.
+accepting an exact match, the stored cost's display-rounded value, or the stored
+cost rounded to the selector's own number of decimal places (`lotCostsMatch` in
+Lots.hs). This is needed because an inferred cost can have more decimal digits
+than are displayed (eg $10/3 renders as $3.33333333 in the lot name): displayed
+lot names, and coarser written costs such as `{$3.33}`, can thus be written in a
+journal and still identify their lot, while stored costs keep full internal
+precision for gain calculation (#2689). It is the same agreement rule the
+acquire basis check applies between a written basis and the transacted cost.
+The same comparison is used when checking a written lot subaccount or transfer
+destination annotation against the resolved lot.
 
 Because of the rounded-value acceptance, a cost-only selector (eg `{$3.33333333}`)
 can in principle match two distinct lots whose costs differ only beyond the
@@ -316,17 +318,19 @@ style is wider (`widenLotCbCost`). Consequences:
 - Within one journal, gains are computed from the full-precision stored cost:
   buy 3 ABC for $10, sell all at $4/unit, gain is $2 (to internal precision).
 
-- Across a file boundary, only the displayed digits survive: `close --lots`
-  (or copying `print --lots` output) serializes the basis as its rendered lot
-  name, so re-reading creates a lot whose basis is exactly the displayed value.
-  A 10/3 basis becomes exactly $3.33333333, and the same sale in the new file
-  yields $2.00000001. This quantization is bounded (at most half an ULP of the
-  displayed precision, per unit) and one-time: the requantized basis is a
-  finite decimal and round-trips losslessly thereafter. Carrying the basis as
-  an exact total cost (`{{...}}`) could avoid this for intact lots, but the
-  `{{...}}` form currently has known bugs (see lots-dispose.test test 35) and
-  cannot help partially-consumed lots (a slice of a repeating basis is again
-  non-terminating).
+- Across a file boundary, the displayed digits are what is written: `close
+  --lots` (or copying `print`/`print --lots` output) serializes the basis as
+  its rendered annotation or lot name. When the transacted cost is written
+  too (an acquisition's `@@`), re-reading restores the exact basis from it
+  (see Acquire basis check). Otherwise re-reading creates a lot whose basis
+  is exactly the displayed value: a 10/3 basis becomes exactly $3.33333333,
+  and the same sale in the new file yields $2.00000001. This quantization is
+  bounded (at most half an ULP of the displayed precision, per unit) and
+  one-time: the requantized basis is a finite decimal and round-trips
+  losslessly thereafter. Carrying the basis as an exact total cost (`{{...}}`)
+  could avoid this for intact lots, but the `{{...}}` form currently has known
+  bugs (see lots-dispose.test test 35) and cannot help partially-consumed
+  lots (a slice of a repeating basis is again non-terminating).
 
 - Changing a commodity's declared display precision changes how inferred costs
   render in lot names (widening beyond, or narrowing back across, the digits
@@ -884,27 +888,20 @@ with carryover basis, NSO exercises, RSU vesting, wash-sale adjustments,
 etc.) are best expressed by adding a separate income/equity/asset posting
 that funds the difference.
 
-The check uses strict Decimal equality, not the precision-tolerant
-`mixedAmountLooksZero` comparison used by transaction balancing and the
-recorded-gain check. Those tolerances are bounded within a single entry,
-but a basis discrepancy persists in the lot store and amplifies at
-disposal (gain = `(sale − basis) × qty`), and there is no downstream
-"basis assertion" check that would surface accumulated drift. Strict
-equality treats sub-precision inexactness as the same kind of error as
-a typo.
+The two are compared at the precision of the written basis: if the exact
+transacted unit cost rounds to the written basis, they agree, and the
+exact transacted cost then replaces the written basis on the posting. So
+a rounded basis annotation never enters the lot store (no drift compounds
+at disposal), and print output re-reads losslessly: a non-terminating unit
+cost such as $3122.50 / 8.9 is rendered by print, as a `{}` annotation or
+in a lot subaccount name, to 8 decimal places, and re-read alongside its
+exact `@@` cost it agrees at 8 places and the exact cost is restored.
+(Before 2026-09-29 the comparison was exact, which rejected exactly these
+round trips once the check became a default.) A basis that disagrees even
+at its own precision, eg `{$60} @ $50` or `{{$53}} @@ $50`, is an error.
 
-When the per-unit basis would be a non-terminating decimal (eg
-$50 / 7 = $7.142857...), record it cleanly via one of:
-
-- `{}` — let hledger infer basis from the transacted cost (same precise
-  division).
-- `{{TotalCost}}` — record the total basis; hledger derives the
-  per-unit value with the same precise division.
-- An explicit `{$7.142857143}` at sufficient precision.
-
-An explicit `{$7.14}` paired with `@@ $50` deliberately fails the check
-— the rounded annotation forgets a per-unit fraction that would
-compound across disposals.
+When the per-unit basis would be a non-terminating decimal, the cleanest
+forms remain `{}` (infer it from the transacted cost) or `{{TotalCost}}`.
 
 This check is part of default lot processing (so skipped by `--ignore-lots`,
 like the other lot checks). Other PTA apps (hledger 1, Ledger) accept

@@ -1496,3 +1496,20 @@ commodity AAPL  ; lots:
 P 2026-03-01 AAPL $80
 $ hledger -f- bal assets:stock --gain -N --lots
                 $100  assets:stock:{2026-01-02, $60}
+
+# ** 74. A lot selector agrees with a lot's cost at the selector's own
+# precision, like a written basis with the transacted cost: buying at
+# {$7.14} @@ $50 stores the exact $50/7 basis, and selling with {$7.14}
+# selects that lot; the gain is computed from the exact basis.
+<
+commodity AAA  ; lots:
+
+2026-01-01 buy
+    assets:a    7 AAA {$7.14} @@ $50
+    assets:c
+
+2026-02-01 sell
+    assets:a   -7 AAA {$7.14} @@ $70
+    assets:c
+$ hledger -f- bal type:G -N
+                $-20  revenues:gain

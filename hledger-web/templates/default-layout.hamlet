@@ -42,17 +42,21 @@ $if elem ViewPermission perms
     })();
 
 <div#main-content .col-xs-12.#{mainShowmd}.#{mainShowsm}>
+  $# Shown by hledger.js while the page can't reach the server.
+  $if browsemode
+    <div #server-stopped .alert.alert-warning role=alert hidden>
+      _{HMsg "hledger-web is no longer running. It exits after fifteen minutes with no browser window showing it, or when stopped. To continue, start it again and reload this page."}
   $maybe m <- msg
     <div #message .alert.alert-info>#{m}
   $if elem ViewPermission perms
     <form#searchform.input-group method=GET>
       <input .form-control name=q value=#{qparam} placeholder=_{HMsgc "search box" "Search"}
         title=_{HMsg "Enter hledger search patterns to filter the data below"}>
-      $forall (name, value) <- periodParams
+      $forall (name, value) <- keptParams
         <input type=hidden name=#{name} value=#{value}>
       <div .input-group-btn>
         $if not (T.null qparam)
-          <a href=@?{(here, periodParams)} .btn .btn-default title=_{HMsg "Clear search terms"}>
+          <a href=@?{(here, keptParams)} .btn .btn-default title=_{HMsg "Clear search terms"}>
             <span .glyphicon .glyphicon-remove-circle>
         <button .btn .btn-default type=submit title=_{HMsg "Apply search terms"}>
           <span .glyphicon .glyphicon-search>
@@ -87,10 +91,13 @@ $if elem ViewPermission perms
               <ul>
                 <li> _{HMsg "The Journal view shows general journal entries, representing zero-sum movements of money (or other commodity) between hierarchical accounts"}
                 <li> _{HMsg "The sidebar shows the resulting accounts and their final balances"}
+                <li> _{HMsg "The sidebar's report links show the balance sheet, income statement, and cashflow statement, each linking to the other reports"}
                 <li> _{HMsg "Parent account balances include subaccount balances"}
                 <li> _{HMsg "Multiple currencies in balances are displayed one above the other"}
                 <li> _{HMsg "Click account name links to see transactions affecting that account, with running balance"}
+                <li> _{HMsg "Click an amount to see the transactions it is made of, in a register ending on that amount"}
                 <li> _{HMsg "Click date links to see journal entries on that date"}
+                <li> _{HMsg "The balance sheet and income statement show liabilities, equity, and revenues as positive amounts; their registers show them negative, as hledger does"}
           <div .col-xs-6>
             <p>
               <b>_{HMsgc "help heading" "Search"}

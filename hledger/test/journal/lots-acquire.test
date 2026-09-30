@@ -412,17 +412,22 @@ $ hledger -f- check
 
 $ hledger -f- check
 
-# *** 31. An explicit {per-unit-basis} that rounds away part of the
-# per-unit value is still rejected, since the rounding error would
-# compound at disposal.
+# *** 31. An explicit {per-unit-basis} which agrees with the transacted
+# cost at the precision written is accepted, and the exact transacted unit
+# cost is used as the basis, so nothing is lost.
 <
+commodity AAA  ; lots:
+
 2026-01-01
     assets    7 AAA {$7.14} @@ $50
     cash    -$50
 
-$ hledger -f- print
->2 /differs from its transacted cost/
->=1
+$ hledger -f- print -x --lots
+2026-01-01
+    assets:{2026-01-01, $7.14285714}               7 AAA {$7.14285714} @@ $50
+    cash                                        $-50
+
+>=
 
 # *** 32. When the per-unit cost inferred from `@@ TotalCost` has more
 # decimal digits than the total's display precision, the derived
@@ -532,3 +537,34 @@ commodity ABC ; lots:
 
 $ hledger -f- bal --lots -N assets:broker
                2 ABC  assets:broker:{2026-01-01, "0002", $5}
+
+# ** 38. print output re-reads when a unit cost is non-terminating: the
+# basis annotation is rendered to 8 decimal places, which agrees with the
+# exact @@ cost at that precision, so the exact cost is used and the gain
+# is the same as from the original entry.
+<
+commodity XYZ  ; lots:
+
+2026-01-01 buy
+    assets:cash     $-3122.50
+    assets:broker      8.9 XYZ {$350.84269663} @@ $3122.50
+
+2026-02-01 sell
+    assets:broker   -8.9 XYZ @@ $4000
+    assets:cash
+$ hledger -f- bal type:G -N
+            $-877.50  revenues:gain
+
+# ** 39. Likewise print --lots output, where the rounded basis is in the lot subaccount name.
+<
+commodity XYZ  ; lots:
+
+2026-01-01 buy
+    assets:cash                                $-3122.50
+    assets:broker:{2026-01-01, $350.84269663}       8.9 XYZ @@ $3122.50
+
+2026-02-01 sell
+    assets:broker   -8.9 XYZ @@ $4000
+    assets:cash
+$ hledger -f- bal type:G -N
+            $-877.50  revenues:gain

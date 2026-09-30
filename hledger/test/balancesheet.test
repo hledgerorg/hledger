@@ -376,3 +376,78 @@ Balance Sheet 2020-01-01
 =============++============
  Liabilities ||            
 -------------++------------
+
+# ** 16. With --base-url, a section total links to the register of the
+# section's account types, in the report's historical mode.
+<
+2025-01-10 salary
+  assets:bank  100
+  income:salary
+
+2025-01-25 loan
+  assets:bank  50
+  liabilities:loan
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f - bs -M -O html --base-url ''
+> /<a href="register\?q=type:L\+date:2025-01&amp;accum=historical" title="Show the transactions behind this total, which the register shows with the opposite sign">/
+>= 0
+
+# ** 17. A figure in a section shown with normally negative accounts says
+# the register shows it with the opposite sign, and links with the
+# section's type term, as the section's totals do.
+<
+2025-01-10 salary
+  assets:bank  100
+  income:salary
+
+2025-01-25 loan
+  assets:bank  50
+  liabilities:loan
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f - bs -M -O html --base-url ''
+> /<a href="register\?q=inacct:liabilities:loan\+date:2025-01\+type:L&amp;accum=historical" title="Show the transactions behind this balance, which the register shows with the opposite sign">/
+>= 0
+
+# ** 18. The net total links to the register of all the sections' types.
+<
+2025-01-10 salary
+  assets:bank  100
+  income:salary
+
+2025-01-25 loan
+  assets:bank  50
+  liabilities:loan
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f - bs -M -O html --base-url ''
+> /<a href="register\?q=type:AL\+date:2025-02&amp;accum=historical" title="Show the transactions behind this total">/
+>= 0
+
+# ** 19. A period heading links to the register for that period.
+<
+2025-01-10 salary
+  assets:bank  100
+  income:salary
+
+2025-01-25 loan
+  assets:bank  50
+  liabilities:loan
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f - bs -M -O html --base-url ''
+> /<th><a href="register\?q=date:2025-01" title="Show the transactions in this period">2025-01-31</
+>= 0

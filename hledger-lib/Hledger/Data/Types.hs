@@ -325,6 +325,7 @@ data Commodity = Commodity {
   cformat    :: Maybe AmountStyle,
   ccomment   :: Text,              -- ^ any comment lines following the commodity directive
   ctags      :: [Tag],             -- ^ tags extracted from the comment, if any
+  caliases   :: [Amount],          -- ^ aliases declared by alias: tags: each alias's symbol, and the number of its units equal to one unit of this commodity, as written
   csourcepos :: SourcePos          -- ^ source position of the commodity directive
   } deriving (Show,Eq,Generic) --,Ord)
 

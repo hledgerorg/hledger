@@ -69,8 +69,10 @@ extra-source-files:
     templates/edit-form.hamlet
     templates/journal.hamlet
     templates/manage.hamlet
+    templates/paging.hamlet
     templates/register.hamlet
     templates/upload-form.hamlet
+    templates/years.hamlet
     hledger-web.1
     hledger-web.txt
     hledger-web.info
@@ -105,9 +107,12 @@ library
       Hledger.Web.Handler.JournalR
       Hledger.Web.Handler.MiscR
       Hledger.Web.Handler.RegisterR
+      Hledger.Web.Handler.StatementsR
       Hledger.Web.Handler.UploadR
       Hledger.Web.Import
       Hledger.Web.Main
+      Hledger.Web.Paging
+      Hledger.Web.ReportPage
       Hledger.Web.Settings
       Hledger.Web.Settings.StaticFiles
       Hledger.Web.Test
@@ -137,6 +142,7 @@ library
     , conduit
     , conduit-extra >=1.1
     , containers >=0.5.9
+    , cookie
     , data-default
     , directory >=1.2.3.0
     , entropy

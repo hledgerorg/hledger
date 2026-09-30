@@ -11,6 +11,8 @@ forms, which must each be written on one line, are:
 
   Haskell:  tr T "TEXT"          trc T "CTX" "TEXT"     trf T "TEXT" ...
             trn T N "ONE" "MANY" i18n "TEXT"            i18nc "CTX" "TEXT"
+            (T, the Translations argument, may be omitted when the module binds
+            a local helper such as `tr = I18n.tr translations_`)
             HMsg "TEXT"          HMsgc "CTX" "TEXT"     (hledger-web, also in hamlet's _{...})
 
 A comment starting with "TRANSLATORS:" (after "--" in Haskell, "$#" in
@@ -19,7 +21,10 @@ below it, up to the next blank line; so one comment above a function or a
 list covers every string in it. Lines between "i18n-extract: off" and "i18n-extract: on" comments
 are skipped. Entries whose text has {placeholders} get the
 python-brace-format flag, which makes Poedit and Weblate check that a
-translation keeps them.
+translation keeps them. Each entry's #: line names the source files the
+text appears in, without line numbers (like xgettext --add-location=file),
+so that the template changes only when strings are added, removed, or move
+to another file, and branches that regenerate it rarely conflict.
 
 --pseudo writes a pseudo-locale catalog instead, translating every entry
 to "[TEXT]"; running hledger with it shows which output is still English.
@@ -42,12 +47,16 @@ STR = r'"((?:[^"\\\n]|\\.)*)"'
 EXPR = r'(?:[\w\'.]+|\((?:[^()"]|\([^()"]*\))*\))'
 WS = r'\s+'
 
+# The Translations argument is optional: renderers commonly bind a local
+# `tr = I18n.tr translations_` and then write `tr "text"`.
+TRS = r'(?:' + EXPR + WS + r')?'
+
 PATTERNS = [
     # (regex, kind) where kind names the captured groups
-    (re.compile(r'\btr' + WS + EXPR + WS + STR), "msgid"),
-    (re.compile(r'\btrc' + WS + EXPR + WS + STR + WS + STR), "ctx msgid"),
-    (re.compile(r'\btrf' + WS + EXPR + WS + STR), "msgid"),
-    (re.compile(r'\btrn' + WS + EXPR + WS + EXPR + WS + STR + WS + STR), "msgid plural"),
+    (re.compile(r'\btr' + WS + TRS + STR), "msgid"),
+    (re.compile(r'\btrc' + WS + TRS + STR + WS + STR), "ctx msgid"),
+    (re.compile(r'\btrf' + WS + TRS + STR), "msgid"),
+    (re.compile(r'\btrn' + WS + TRS + EXPR + WS + STR + WS + STR), "msgid plural"),
     (re.compile(r'\bi18n' + WS + STR), "msgid"),
     (re.compile(r'\bi18nc' + WS + STR + WS + STR), "ctx msgid"),
     # hledger-web's message types, in Haskell code and in hamlet's _{HMsg "..."}
@@ -184,7 +193,8 @@ def scan_file(path, entries, order):
                     sys.stderr.write("%s:%d: warning: %r has two different plural forms\n" % (path, i + 1, msgid))
                 elif plural and not e.plural:
                     e.plural = plural
-                e.refs.append((path, i + 1))
+                if path not in e.refs:
+                    e.refs.append(path)
                 c = note
                 if c and c not in e.comments:
                     e.comments.append(c)
@@ -235,7 +245,7 @@ def render(entries, pseudo=False):
         block = []
         for c in e.comments:
             block.append('#. ' + c)
-        block.append('#: ' + ' '.join('%s:%d' % r for r in e.refs))
+        block.append('#: ' + ' '.join(e.refs))
         if PLACEHOLDER.search(e.msgid) or (e.plural and PLACEHOLDER.search(e.plural)):
             block.append('#, python-brace-format')
         if e.ctx is not None:

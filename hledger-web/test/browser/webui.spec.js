@@ -31,10 +31,10 @@ test.describe('page initialization', () => {
     expect(pageErrors).toEqual([]);
   });
 
-  // Register rows use bare-numeric ids (id="3"), and '#3' is not a valid CSS
-  // selector, so any code passing location.hash to querySelector must guard
-  // it. A failure here leaves the page half-initialized: no date picker, no
-  // keyboard shortcuts, no sidebar handlers.
+  // A url hash can be anything, eg an old bookmark's numeric row id, and
+  // '#3' is not a valid CSS selector, so any code passing location.hash to
+  // querySelector must guard it. A failure here leaves the page
+  // half-initialized: no date picker, no keyboard shortcuts, no sidebar handlers.
   test('register url with a numeric transaction hash initializes fully', async ({ page }) => {
     await page.goto('/register?q=inacct:assets:bank:checking#3');
     expect(pageErrors).toEqual([]);
@@ -273,6 +273,71 @@ test.describe('sidebar', () => {
     await page.locator('body').press('e');
     // the toggle is remembered server-side via the hideemptyaccts cookie
     await page.goto('/journal');
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('links to the financial statements, marking the one shown', async ({ page }) => {
+    // at a laptop width the sidebar is narrow; the report labels must still fit
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await page.goto('/journal');
+    const clipped = await page.locator('#sidebar-menu td.top').evaluateAll(
+      tds => tds.filter(td => td.scrollWidth > td.clientWidth).map(td => td.textContent.trim()));
+    expect(clipped).toEqual([]);
+    await page.locator('#sidebar-menu a', { hasText: 'Income statement' }).click();
+    await expect(page).toHaveURL(/\/incomestatement$/);
+    await expect(page.locator('#main-content h2')).toContainText('Income Statement');
+    await expect(page.locator('#sidebar-menu tr.inacct a')).toHaveText('Income statement');
+    // from a report, the other reports are one click away in the Report row
+    await page.locator('#main-content .report-links a', { hasText: 'Balance sheet with equity' }).click();
+    await expect(page).toHaveURL(/\/balancesheetequity$/);
+    expect(pageErrors).toEqual([]);
+  });
+
+});
+
+// Hovering a transaction shows its journal entry in a tooltip drawn by
+// hledger.js, in a fixed-width font (#2716). It behaves like a browser's own
+// tooltip: it appears after a pause, and goes when the pointer leaves or clicks.
+test.describe('entry tooltip', () => {
+
+  test('hovering a journal entry shows it, until the pointer leaves or clicks', async ({ page }) => {
+    await page.goto('/journal');
+    const tip = page.locator('.entry-tooltip');
+    const row = page.locator('#main-content tr.title', { hasText: 'Cafe Luna' });
+    const description = row.locator('td').nth(1);
+    // the row has no title of its own, so no browser tooltip shows as well
+    await expect(row).not.toHaveAttribute('title');
+    await description.hover();
+    await expect(tip).toBeVisible();
+    await expect(tip).toContainText('Cafe Luna');
+    await expect(tip).toContainText('expenses:food:dining');
+    await page.locator('#main-content h2').hover();
+    await expect(tip).toBeHidden();
+    // after a click it stays away while the pointer is still on the row
+    await description.hover();
+    await expect(tip).toBeVisible();
+    await page.mouse.down();
+    await page.mouse.up();
+    await expect(tip).toBeHidden();
+    await row.locator('td.date').hover();
+    await page.waitForTimeout(800);
+    await expect(tip).toBeHidden();
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('a register row shows its entry too, but over an account link the link\'s title applies', async ({ page }) => {
+    await page.goto('/register?q=inacct:assets:bank:checking');
+    const tip = page.locator('.entry-tooltip');
+    const row = page.locator('#main-content tbody tr', { hasText: 'Cafe Luna' });
+    await row.locator('td.description').hover();
+    await expect(tip).toBeVisible();
+    await expect(tip).toContainText('Cafe Luna');
+    const link = row.locator('td.account a');
+    await expect(link).toHaveAttribute('title', 'expenses:food:dining');
+    await link.hover();
+    await expect(tip).toBeHidden();
+    await page.waitForTimeout(800);
+    await expect(tip).toBeHidden();
     expect(pageErrors).toEqual([]);
   });
 

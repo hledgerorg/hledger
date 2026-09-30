@@ -159,12 +159,12 @@ web opts0 j = do
   let warpsettings = setHost (fromString h) (setPort p defaultSettings)
   if server_mode_ opts == ServeBrowse
     then do
-      putStrLn "This server will exit after 2m with no browser windows open (or press ctrl-c)"
+      putStrLn "This server will exit after 15m with no browser windows open (or press ctrl-c)"
       putStrLn "Opening web browser..."
       hFlush stdout
       -- returns normally only after the idle exit (ctrl-c or a server failure raises instead)
       serveAndBrowse warpsettings (snd <$> mtcpsock) u app
-      putStrLn "No browser windows were open for 2m, exiting. (Use --serve to serve without this timeout.)"
+      putStrLn "No browser windows were open for 15m, exiting. (Use --serve to serve without this timeout.)"
 
     else do
       putStrLn "Press ctrl-c to quit"
@@ -195,8 +195,8 @@ web opts0 j = do
         (Nothing, Nothing)        -> Network.Wai.Handler.Warp.runSettings warpsettings app
 
 -- | Browse mode: serve the app, open the default web browser on it once it
--- is listening, and return when no browser window has shown it for two
--- minutes. A page says it is open by pinging /_ping while it is (see
+-- is listening, and return when no browser window has shown it for
+-- browseIdleSeconds. A page says it is open by pinging /_ping while it is (see
 -- browsePingInit in static/hledger.js). The pings are answered here, before
 -- they reach the app, and the time of the latest one is kept.
 -- With --port 0 the listening socket is already bound (to the port the OS
@@ -236,10 +236,13 @@ waitForIdle lastping = do
         (max lp (woke + browsePingSeconds + 5 - browseIdleSeconds), ())
     waitForIdle lastping
 
--- | How long browse mode keeps serving after the last ping. The pages ping
--- every browsePingSeconds, so a few pings can go missing before this runs out.
+-- | How long browse mode keeps serving after the last ping. The pages ask to
+-- ping every browsePingSeconds, but browsers slow down the timers of pages in
+-- background tabs, and Safari may let one run only every five minutes or so.
+-- This must outlast that, or the server would exit under a page that is
+-- still open.
 browseIdleSeconds :: Double
-browseIdleSeconds = 120
+browseIdleSeconds = 15 * 60
 
 -- | How often an open page pings, as set in hledger.js.
 browsePingSeconds :: Double

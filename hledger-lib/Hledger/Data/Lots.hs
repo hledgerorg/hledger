@@ -128,13 +128,13 @@ import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Char (isDigit)
-import Data.Decimal (roundTo)
+import Data.Decimal (decimalPlaces, normalizeDecimal, roundTo)
 import Data.Time.Calendar (Day, fromGregorianValid)
 import Text.Printf (printf)
 
 import Hledger.Data.AccountName (accountNameType, parentAccountNames)
 import Hledger.Data.AccountType (isAssetType, isEquityType, isLiabilityType)
-import Hledger.Data.Amount (AmountFormat(..), maPlus, mixedAmountStripCosts, amountRoundedQuantity, amountSetPrecisionMin, amountSetQuantity, amountsRaw, divideAmountAndUpdatePrecision, isNegativeAmount, maNegate, maSum, mapMixedAmount, mixedAmount, mixedAmountCost, mixedAmountIsZero, mixedAmountLooksZero, multiplyQuantities, nullmixedamt, noCostFmt, oneLineNoCostFmt, showAmountWith, showAmountsDistinctly, showMixedAmountOneLine, showMixedAmountsDistinctly)
+import Hledger.Data.Amount (AmountFormat(..), mixed, maPlus, mixedAmountStripCosts, amountRoundedQuantity, amountSetPrecisionMin, amountSetQuantity, amountsRaw, divideAmountAndUpdatePrecision, isNegativeAmount, maNegate, maSum, mapMixedAmount, mixedAmount, mixedAmountCost, mixedAmountIsZero, mixedAmountLooksZero, multiplyQuantities, nullmixedamt, noCostFmt, oneLineNoCostFmt, showAmountWith, showAmountsDistinctly, showMixedAmountOneLine, showMixedAmountsDistinctly)
 import Hledger.Data.Errors (makeAccountTagErrorExcerpt, makeCommodityTagErrorExcerpt, makePostingErrorExcerptByIndex, makeTransactionErrorExcerpt, transactionFindPostingIndex)
 import Hledger.Data.Journal (journalAccountLotsTags, journalAccountType, journalAccountUsesNoLots, journalBaseGainAccount, journalCommodityLotsMethod, journalCommodityStylesWith, journalCommodityUsesLots, journalInheritedAccountTags, journalLotfulCommodities, journalMapPostings, journalMapTransactions, journalPostings, journalTieTransactions, parseReductionMethod)
 import Hledger.Data.Posting (costPostingTagName, generatedPostingTagName, hasAmount, isReal, isVirtual, lotParentAssertionTagName, lotsplitPostingTagName, nullposting, originalPosting, postingAddHiddenAndMaybeVisibleTag, postingHasTag, postingStripCosts, feesplitPostingTagName)
@@ -444,16 +444,23 @@ parseLotName parseAmt t = do
 
 -- | Do two lot cost amounts refer to the same cost, for lot identification ?
 -- True if their commodities match and their quantities are equal exactly,
--- or one equals the other's display-rounded value. The latter lets a
--- displayed lot name (eg an inferred $10/3 cost rendered as $3.33333333)
--- be written back in a journal and still identify the lot, while stored
--- lot costs keep full precision for exact gain arithmetic (#2689).
+-- or one equals the other's display-rounded value, or one equals the other
+-- rounded to its own number of decimal places. The latter two let a
+-- displayed lot name (eg an inferred $10/3 cost rendered as $3.33333333),
+-- or a coarser written cost (eg $3.33), be written back in a journal and
+-- still identify the lot, while stored lot costs keep full precision for
+-- exact gain arithmetic (#2689). This is the same agreement rule as
+-- 'journalCheckAcquireBasis' applies between a written basis and the
+-- transacted cost.
 lotCostsMatch :: Amount -> Amount -> Bool
 lotCostsMatch x y =
   acommodity x == acommodity y &&
   (aquantity x == aquantity y
    || aquantity x == amountRoundedQuantity y
-   || amountRoundedQuantity x == aquantity y)
+   || amountRoundedQuantity x == aquantity y
+   || aquantity x == roundTo (places x) (aquantity y)
+   || roundTo (places y) (aquantity x) == aquantity y)
+  where places = decimalPlaces . normalizeDecimal . aquantity
 
 -- | Merge two 'CostBasis' values. For each field, if both are @Just@, they
 -- must agree (returns error if not); otherwise takes whichever is @Just@.
@@ -1216,34 +1223,49 @@ multipleAmountlessErr t =
 
 -- | Check that no acquire-shaped posting (a real posting with a positive
 -- amount, in an asset account) writes both a per-unit cost basis and a
--- transacted cost which differ. In an acquisition these are the same thing, what the units cost;
--- a difference would be unaccounted for, and a typo in either would
--- silently miscalculate gains. (Real-world cases of a basis differing from
--- what was paid, like a gift with carryover basis, are written with the
--- difference funded by a separate posting.)
+-- transacted cost which disagree. In an acquisition these are the same
+-- thing, what the units cost; a typo in either would silently miscalculate
+-- gains. (Real-world cases of a basis differing from what was paid, like a
+-- gift with carryover basis, are written with the difference funded by a
+-- separate posting.)
+--
+-- They may agree only at the precision of the written basis: typically a
+-- non-terminating unit cost rendered to 8 decimal places by print (as a
+-- basis annotation or in a lot subaccount name), re-read alongside its
+-- exact @@ total cost. Then the exact transacted unit cost replaces the
+-- written basis, so nothing is lost in the round trip.
 --
 -- This runs before transaction balancing, so that such an entry gets this
 -- error rather than an unbalanced-transaction error; it needs only the
 -- amounts as written (after 'journalInferPostingsTransactedCost').
 journalCheckAcquireBasis :: Journal -> Either String Journal
-journalCheckAcquireBasis j = mapM_ checkTxn (jtxns j) >> Right j
+journalCheckAcquireBasis j = do
+  ts <- mapM checkTxn (jtxns j)
+  Right j{jtxns = ts}
   where
-    checkTxn t = case badps of
-      []                              -> Right ()
-      ((idx, p, basis, transacted):_) -> Left (acquireBasisErr t idx p basis transacted)
+    checkTxn t = do
+      ps <- mapM checkPosting (zip [0..] (tpostings t))
+      Right $ txnTieKnot t{tpostings = ps}
       where
-        badps =
-          [ (idx, p, basis, transacted)
-          | (idx, p) <- zip [0..] (tpostings t)
-          , isReal p
-          , maybe False isAssetType (journalAccountType j (lotBaseAccount (paccount p)))
-          , a <- amountsRaw (pamount p)
-          , aquantity a > 0  -- acquire-shaped (a disposal's basis and sale price are expected to differ)
-          , Just basis <- [acostbasis a >>= cbCost]
-          , Just tc <- [acost a]
-          , let transacted = amountCostToUnitCost (abs (aquantity a)) tc
-          , aquantity basis /= aquantity transacted
-          ]
+        checkPosting (idx, p)
+          | isReal p && isAssetPosting p = do
+              as <- mapM (checkAmount idx p) (amountsRaw (pamount p))
+              Right p{pamount = mixed as}
+          | otherwise = Right p
+        isAssetPosting p = maybe False isAssetType (journalAccountType j (lotBaseAccount (paccount p)))
+        checkAmount idx p a = case (acostbasis a, acost a) of
+          (Just cb@CostBasis{cbCost = Just basis}, Just tc)
+            | aquantity a > 0  -- acquire-shaped (a disposal's basis and sale price are expected to differ)
+            , let transacted = amountCostToUnitCost (aquantity a) tc
+            -> checkBasis cb basis transacted
+          _ -> Right a
+          where
+            checkBasis cb basis transacted
+              | aquantity basis == aquantity transacted = Right a
+              | roundTo (writtenPlaces basis) (aquantity transacted) == aquantity basis
+                  = Right a{acostbasis = Just cb{cbCost = Just transacted}}
+              | otherwise = Left (acquireBasisErr t idx p basis transacted)
+        writtenPlaces = decimalPlaces . normalizeDecimal . aquantity
 
     acquireBasisErr t idx p basis transacted =
       printf "%s:%d:\n%s\n" f l (T.unpack ex)

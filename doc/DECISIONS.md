@@ -96,8 +96,10 @@ price; hledger instead keeps one meaning for `@` (the transacted cost) and
 puts market prices in `P` directives, so it rejects the entry rather than
 adopting a second meaning. Making it an error also catches typos in either
 annotation, which would otherwise silently miscalculate gains. The
-comparison is exact (see SPEC-lots "Acquire basis check"). Old files still
-load with `--ignore-lots`.
+comparison is at the precision of the written basis, and the exact
+transacted cost is then used, so print output with a rounded basis re-reads
+losslessly (see SPEC-lots "Acquire basis check"). Old files still load with
+`--ignore-lots`.
 
 ### Amount keys are commodity plus transacted cost only
 

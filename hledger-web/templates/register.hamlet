@@ -1,8 +1,11 @@
 <h2>
   #{header}
 
+^{yearsRow trs RegisterR qparam years}
+^{pagingLinks trs RegisterR qparam page}
+
 <div>
-  ^{registerChartHtml qparam (T.unpack balancelabel) $ accountTransactionsReportByCommodity items}
+  ^{registerChartHtml qparam accumParams transactionFrag (T.unpack balancelabel) $ accountTransactionsReportByCommodity items}
 
 <div.table-responsive>
   <table .table.table-condensed>
@@ -15,25 +18,43 @@
         <th>_{HMsgc "column heading" "To/From Account(s)"}
         <th .amount>_{HMsgc "column heading" "Amount Out/In"}
         <th .amount>
-          #{balancelabel}
+          <a href=@?{accumToggle} title="#{accumToggleTitle}">#{balancelabel}
 
     <tbody>
       $forall (torig, tacct, split, _acct, amt, bal) <- items
-        <tr ##{tindex torig} title="#{showTransaction torig}">
+        <tr ##{transactionFrag torig} data-entry="#{showTransaction torig}">
           <td .date nowrap>
-            <a href="@?{(JournalR, [("q", T.unwords $ removeInacct qparam)])}##{transactionFrag torig}">
+            <a href="@?{(JournalR, [("q", journalDayQuery qparam (tdate torig))])}##{transactionFrag torig}"
+               title=_{HMsg "Show this entry and the other journal entries on its date"}>
               #{show (tdate tacct)}
           <td .description>
             #{textElideRight 30 (tdescription tacct)}
           <td .account>
             $forall (Posting { paccount = acc }, (summName,comma)) <- otherTransAccounts torig
-              <a href="@?{acctlink acc}##{tindex torig}" title="#{acc}">
+              <a href="@?{acctlink acc torig}##{transactionFrag torig}" title="#{acc}">
                 #{summName}</a>#{comma}
           <td .amount>
             $if not split || not (mixedAmountLooksZero amt)
               ^{mixedAmountAsHtml amt}
           <td .amount>
             ^{mixedAmountAsHtml bal}
+      $if historical && lastpage
+        $maybe start <- mstart
+          <tr .broughtforward>
+            <td .date nowrap>
+              #{show (snd start)}
+            <td .description>
+              _{HMsg "Balance brought forward"}
+            <td .account>
+            <td .amount>
+            <td .amount>
+              $if mixedAmountLooksZero startbal
+                ^{mixedAmountAsHtml startbal}
+              $else
+                <a href=@?{broughtForwardLink start} title=_{HMsg "Show the transactions before this period"}>
+                  ^{mixedAmountAsHtml startbal}
+
+^{pagingLinks trs RegisterR qparam page}
 
 $if elem AddPermission perms
   ^{addModal AddR j today}

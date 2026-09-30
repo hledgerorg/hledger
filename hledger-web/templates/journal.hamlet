@@ -6,6 +6,9 @@ $if elem AddPermission perms
      data-toggle="modal" data-target="#addmodal" title=_{HMsg "Add a new transaction to the journal"}>
     _{HMsg "Add a transaction"}
 
+^{yearsRow trs JournalR qparam years}
+^{pagingLinks trs JournalR qparam page}
+
 <div .table-responsive>
   <table .transactionsreport .table .table-condensed>
     <thead>
@@ -15,9 +18,11 @@ $if elem AddPermission perms
       <th .amount>_{HMsgc "column heading" "Amount"}
 
     $forall torig <- items
-      <tr .title ##{transactionFrag torig} title="#{showTransaction torig}">
+      <tr .title ##{transactionFrag torig} data-entry="#{showTransaction torig}">
         <td .date nowrap>
-          #{show (tdate torig)}
+          <a href="@?{(JournalR, [("q", journalDayQuery qparam (tdate torig))])}##{transactionFrag torig}"
+             title=_{HMsg "Show the journal entries on this date"}>
+            #{show (tdate torig)}
         <td colspan=2>
           #{textElideRight 60 (tdescription torig)}
         <td .amount>
@@ -28,10 +33,12 @@ $if elem AddPermission perms
           <td>
           <td>
             &nbsp;
-            <a href="@?{acctlink acc}##{tindex torig}" title="#{acc}">
+            <a href="@?{acctlink acc torig}##{transactionFrag torig}" title="#{acc}">
               #{elideAccountName 40 acc}
           <td .amount>
             ^{mixedAmountAsHtml amt}
+
+^{pagingLinks trs JournalR qparam page}
 
 $if elem AddPermission perms
   ^{addModal AddR j today}

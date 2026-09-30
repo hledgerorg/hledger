@@ -15,6 +15,7 @@ cash flows.)
 module Hledger.Cli.Commands.Cashflow (
   cashflowmode
  ,cashflow
+ ,cashflowSpec
 ) where
 
 import System.Console.CmdArgs.Explicit
@@ -24,6 +25,7 @@ import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.CompoundBalanceCommand
 
+cashflowSpec :: CompoundBalanceCommandSpec
 cashflowSpec = CompoundBalanceCommandSpec {
   cbcdoc      = $(embedFileRelative "Hledger/Cli/Commands/Cashflow.txt"),
   -- TRANSLATORS: the report title, with its reporting interval if any. Each is a

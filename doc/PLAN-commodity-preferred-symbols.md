@@ -223,3 +223,6 @@ counts as "print-like", aggregation semantics in MixedAmount).
 - A future explicit `preferred:` tag on commodity directives, overriding
   the positional rule? (not needed for either phase; a clean later
   addition if a real use case arises.)
+- Since 2026-09, an alias can have a quantity (`commodity USD 1.00 ; alias: 0.001 kilobucks`),
+  so alias group members are no longer always 1:1, and the "no quantity change" design above
+  doesn't hold for them. Scale quantities by the alias rate, or normalize only 1:1 members ?

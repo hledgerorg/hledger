@@ -89,7 +89,7 @@ journalFinalise
   17. journalPostingsAddCommodityTags    -- propagate commodity tags to postings
   18. journalTagCostsAndEquityAndMaybeInferCosts(2nd)   -- if --infer-costs, infer costs from equity conversion postings
   19. journalInferMarketPricesFromTransactions  -- infer market prices from costs
-  20. journalInferAliasPrices            -- inject 1:1 bridges for alias: tags on commodity directives
+  20. journalInferAliasPrices            -- inject price bridges for alias: tags on commodity directives
   21. journalRenumberAccountDeclarations  -- renumber account declarations for consistent ordering
 
   -- Lot calculation and checking (default; skipped by --ignore-lots/-I; restored by --strict or `check lots`)

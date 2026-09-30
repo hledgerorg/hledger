@@ -1,6 +1,6 @@
 # * commodity directive alias: tag
 
-# ** 1. A 1:1 price directive is injected for each declared alias,
+# ** 1. A 1:1 price directive, from canonical to alias, is injected for each declared alias,
 #       so values can chain across symbol/code variants.
 <
 commodity USD1.00
@@ -13,7 +13,7 @@ P 2024-01-01 EUR 1.10 USD
     b
 
 $ hledger -f- prices
-P 0000-01-01 $ USD1
+P 0000-01-01 USD $1
 P 2024-01-01 EUR USD1.10
 
 # ** 2. The bridge lets `bal -X EUR` value $-amounts in EUR via $ -> USD -> EUR.
@@ -31,11 +31,11 @@ $ hledger -f- bal -X EUR --no-total
              100 EUR  a
             -100 EUR  b
 
-# ** 3. Multiple aliases can be declared on a single commodity, space-separated.
-#       Quoted symbols (with internal spaces or special chars) are preserved as one.
+# ** 3. Multiple aliases can be declared on a single commodity, with one alias: tag each.
+#       Symbols with spaces or special chars can be enclosed in double quotes.
 <
 commodity USD1.00
-    ; alias: $ "US$" USDOLLAR
+    ; alias: $, alias: "US$", alias: USDOLLAR
 
 2024-06-01
     a   100 USDOLLAR
@@ -43,23 +43,23 @@ commodity USD1.00
     c
 
 $ hledger -f- prices
-P 0000-01-01 $ USD1
-P 0000-01-01 US$ USD1
-P 0000-01-01 USDOLLAR USD1
+P 0000-01-01 USD $1
+P 0000-01-01 USD US$1
+P 0000-01-01 USD 1 USDOLLAR
 
 # ** 4. Aliases are materialised as price directives even if not used
 #       in any posting.
 <
 commodity USD1.00
-    ; alias: $ UNUSED
+    ; alias: $, alias: UNUSED
 
 2024-06-01
     a   $100
     b
 
 $ hledger -f- prices
-P 0000-01-01 $ USD1
-P 0000-01-01 UNUSED USD1
+P 0000-01-01 USD $1
+P 0000-01-01 USD UNUSED1
 
 # ** 5. The same alias declared on two different canonicals is a finalization
 #       error with a verbose message including both source positions.
@@ -91,19 +91,19 @@ commodity EUR1.00
     b   EUR-100
 
 $ hledger -f- prices
-P 0000-01-01 EUR USD1
+P 0000-01-01 USD EUR1
 
 # ** 7. A self-alias (matching the directive's own symbol) is silently ignored.
 <
 commodity USD1.00
-    ; alias: USD $
+    ; alias: USD, alias: $
 
 2024-01-01
     a   USD100
     b   $-100
 
 $ hledger -f- prices
-P 0000-01-01 $ USD1
+P 0000-01-01 USD $1
 
 # ** 8. With a commodity alias declared, valuation can convert between the
 # alias and canonical symbols at a 1:1 rate.
@@ -122,7 +122,7 @@ $ hledger -f- bal -X EUR --no-total
 
 # ** 9. cur:CANONICAL also matches postings written with the canonical's aliases.
 <
-commodity $1000.00  ; alias: USD U$
+commodity $1000.00  ; alias: USD, alias: U$
 
 2024-01-01
     assets:cash         USD10
@@ -134,7 +134,7 @@ $ hledger -f- bal cur:'\$' --no-total
 
 # ** 10. cur:ALIAS also matches postings written in the canonical commodity.
 <
-commodity $1000.00  ; alias: USD U$
+commodity $1000.00  ; alias: USD, alias: U$
 
 2024-01-01
     assets:cash         $10
@@ -273,3 +273,98 @@ $ hledger -f- bal cur:USD --no-total
             USD10.00  a
          USDOLLAR-10  b
 
+# ** 21. An alias can have a quantity: the number of alias units equal to one unit
+#        of the canonical commodity. Its price directive uses that quantity, exactly as written.
+<
+commodity USD 1.00  ; alias: 0.001 kilobucks, alias: 0.000001 "meelleon dollars"
+
+commodity h 1.00  ; alias: 60 min
+
+$ hledger -f- prices
+P 0000-01-01 USD 0.001 kilobucks
+P 0000-01-01 USD 0.000001 "meelleon dollars"
+P 0000-01-01 h 60 min
+
+# ** 22. So valuation can convert either way, eg between hours and minutes.
+<
+commodity h 1.00  ; alias: 60 min
+
+2024-01-01
+    a   90 min
+    b   2 h
+    c
+
+$ hledger -f- bal -X h --no-total
+              h 1.50  a
+              h 2.00  b
+             h -3.50  c
+
+# ** 23.
+$ hledger -f- bal -X min --no-total
+              90 min  a
+             120 min  b
+            -210 min  c
+
+# ** 24. -V values an alias in its canonical commodity, and leaves the canonical commodity unvalued
+#        (the alias price, from canonical to alias, doesn't make the alias its default valuation commodity).
+$ hledger -f- bal -V --no-total
+              h 1.50  a
+              h 2.00  b
+             h -3.50  c
+
+# ** 25. Valuation can chain through an alias with a quantity.
+<
+commodity USD 1.00  ; alias: 0.001 kilobucks
+
+P 2024-01-01 USD 0.9 EUR
+
+2024-06-01
+    a   2 kilobucks
+    b
+
+$ hledger -f- bal -X EUR --no-total
+          1800.0 EUR  a
+         -1800.0 EUR  b
+
+# ** 26. Each alias: tag must contain just one alias.
+<
+commodity USD 1.00  ; alias: $ US$
+
+$ hledger -f- check
+>2 /could not parse commodity alias "\$ US\$"/
+>=1
+
+# ** 27. An alias's quantity must be positive.
+<
+commodity USD 1.00  ; alias: 0 X
+
+$ hledger -f- check
+>2 /could not parse commodity alias "0 X"/
+>=1
+
+# ** 28. A commodity can't be its own alias with a quantity other than 1.
+<
+commodity USD 1.00  ; alias: 2 USD
+
+$ hledger -f- check
+>2 /"USD" can't be an alias of itself/
+>=1
+
+# ** 29. An alias can't be declared twice with different quantities.
+<
+commodity USD 1.00  ; alias: 2 X, alias: 3 X
+
+$ hledger -f- check
+>2 /alias "X" is declared more than once, with different quantities/
+>=1
+
+# ** 30. Declaring an alias doesn't stop -V from using prices inferred from costs.
+<
+commodity USD 1.00  ; alias: $
+
+2024-01-01
+    a   10 EUR @ 1.1 USD
+    b
+
+$ hledger -f- bal -V --infer-market-prices a --no-total
+           USD 11.00  a

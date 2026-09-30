@@ -61,7 +61,7 @@ webflags =
   [ flagNone
       ["serve-browse"]
       (setboolopt "serve-browse")
-      (serveprefix ++ "serve the web UI and JSON API, and open a browser, and exit if inactive for 2m (default)")
+      (serveprefix ++ "serve the web UI and JSON API, and open a browser, and exit if inactive for 15m (default)")
   , flagNone
       ["serve"]
       (setboolopt "serve")

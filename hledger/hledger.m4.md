@@ -2178,29 +2178,48 @@ Note, these tags will be queryable but won't be shown in `print` output, even wi
 
 ### Commodity aliases
 
-An `alias:` tag on a commodity directive declares one or more aliases
-(alternate symbols) for the commodity. Here USD has three aliases:
-  
-    commodity USD 1.00    ; alias: $ US$ "us dollars"
-
-A 1:1 market price is inferred between each these (it can be seen with
-the `prices` command); so `-X` reports can freely convert between them.
-This is useful eg if your journal and your downloaded market price
-data use different symbols for a commodity.
-
-Multiple aliases can be separated by whitespace.  Symbols containing
-spaces should be enclosed in double or single quotes:
+An `alias:` tag on a commodity directive declares an alias (an alternate symbol) for the commodity.
+You can add more `alias:` tags to declare more aliases.
+Symbols containing spaces or other special characters should be enclosed in double quotes.
+Here USD has three aliases:
 
 ```journal
-commodity USD1.00
-    ; alias: $ US$ "US DOLLAR"
+commodity USD 1.00    ; alias: $, alias: US$, alias: "us dollars"
 ```
+
+hledger infers a 1:1 market price from the commodity to each alias
+(you can see these with the `prices` command), so `-X` reports can freely convert between them.
+This is useful eg if your journal and your downloaded market price data use different symbols for a commodity.
+
+An alias can also have a quantity, for a unit of a different size.
+This is the number of alias units equal to one unit of the commodity, and the inferred market price uses it.
+Eg, here a kilobuck is 1000 dollars and an hour is 60 minutes:
+
+```journal
+commodity USD 1.00    ; alias: 0.001 kilobucks
+commodity h 1.00      ; alias: 60 min
+```
+
+You can choose which symbol is the commodity and which is the alias.
+The quantity is used exactly as written, so if one direction needs a repeating decimal
+(like 1/60 hours per minute), consider choosing the other direction.
+If your journal uses decimal commas, remember that a comma ends a tag's value; 
+you can write a fractional quantity with an exponent instead, eg `alias: 1E-3 kilobucks`.
+
+`-V` values each alias in its commodity (unless another market price for the alias says otherwise),
+and doesn't value the commodity in its aliases.
 
 Aliased symbols are also accepted by `hledger check commodities`, so you
 don't need a separate `commodity` directive for each alias.
+But an alias does not declare a commodity display style or decimal mark;
+to set those, add a `commodity` directive for the alias too:
 
-If the same alias is declared on two different commodities, hledger reports
-an error.
+```journal
+commodity USD 1.00    ; alias: 0.001 kilobucks
+commodity 1.000 kilobucks
+```
+
+In queries, [`cur:`](#cur-query) matches a commodity together with all of its aliases.
 
 ### Commodity error checking
 
@@ -4964,7 +4983,7 @@ eg to match the dollar sign, write `cur:\\$` or `cur:'\$'`.
 When commodity aliases have been declared, via an `alias:` tag on a
 [commodity directive](#commodity-directive)), `cur:` will match the
 canonical commodity or any of its aliases.
-So if `commodity $1000.00  ; alias: USD U` is declared,
+So if `commodity $1000.00  ; alias: USD, alias: U` is declared,
 the queries `cur:\\$`, `cur:USD`, `cur:U` and `cur:U.+` will all match
 amounts like `$1` or `1 USD` or `1 U`.
 \
@@ -5921,6 +5940,9 @@ follows, in this order of preference:
 3. If there are no P directives at all (any commodity or date) and the
    `--infer-market-prices` flag is used: the price commodity from the latest
    transaction-inferred price for A on or before valuation date.
+   (The prices inferred from [commodity aliases](#commodity-aliases) don't count as P directives here.)
+
+4. If A is a [commodity alias](#commodity-aliases): the commodity it is an alias of.
 
 This means:
 
@@ -6479,7 +6501,8 @@ A positive lot posting in an asset account creates a new lot.
 The asset posting's cost is the lot's cost basis; hledger balances the transaction and calculates gains with it.
 It can be written as a cost basis annotation (`{UNITCOST}` or `{{{{TOTALCOST}}}}`)
 or as a transacted cost (`@ UNITCOST` or `@@ TOTALCOST`); in an acquisition these mean the same thing.
-Usually you write just one and the other is inferred; if both are written, they must be the same.
+Usually you write just one and the other is inferred; if both are written, they must agree
+(at the precision you wrote the basis with; the exact transacted cost is then used as the basis).
 (The total cost forms are useful when the unit cost is non-terminating.)
 The cost can also be inferred from a lot subaccount name, or, for a lotful commodity,
 from the transaction's other postings - so even a bare positive posting (no `{}` or `@`) can be an acquire.
@@ -7402,7 +7425,7 @@ Other adjustments hledger makes:
   if you have any, the conversion postings are omitted.
   Currently at most one cost + conversion postings group per transaction is supported.
 
-- **Price directives:** the 1:1 prices which hledger infers from [commodity aliases](#commodity-aliases)
+- **Price directives:** the prices which hledger infers from [commodity aliases](#commodity-aliases)
   are normally dated `0000-01-01`; in Beancount output they are dated `0001-01-01`.
 
 - **Directives:** with `print --export`, hledger generates a `commodity` directive for each declared commodity,

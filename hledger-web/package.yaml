@@ -152,6 +152,7 @@ library:
   - yesod-form   >=1.4 && < 1.8
   - hspec
   - yesod-test
+  - cookie
 
 executables:
   hledger-web:

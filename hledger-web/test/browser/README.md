@@ -11,13 +11,21 @@ highlighting.
   data handed to the autocomplete's javascript. `fixture.journal` deliberately
   contains html/javascript payloads for this. Also the Content-Security-Policy: it is
   sent, nothing on any page violates it, and a script without the nonce is blocked.
+- `color-scheme.spec.js` — the dark color scheme: no page or dialog is left light or
+  hard to read in it, and the register chart is drawn again when the scheme changes, and
+  for printing.
+- `paging.spec.js` — the journal and register views page their transactions (#586):
+  what only a browser shows, a paged page loading without policy violations or
+  errors, the register chart drawn from the page's rows, and a link to a
+  transaction on another page scrolling to it. This spec starts a second
+  hledger-web on a generated journal of 2300 transactions.
 - `helpers.js`, `server.js` — shared by the specs: collecting policy violations and page
   errors, and starting hledger-web.
 - `browse-mode.spec.js` — the default mode (no `--serve`), where each page pings
-  the server while it is open so that it keeps serving. This spec starts a second
-  hledger-web, with `--port 0` and the browser launcher stubbed, and checks that
-  the browser is opened at the port the OS chose; it is skipped on Windows, where
-  the launch cannot be intercepted.
+  the server while it is open so that it keeps serving, and says so when it can't
+  reach the server. This spec starts a second hledger-web, with `--port 0` and the
+  browser launcher stubbed, and checks that the browser is opened at the port the
+  OS chose; it is skipped on Windows, where the launch cannot be intercepted.
 
 Nothing here is part of `stack build` or `stack test`; the suite is opt-in and needs
 node only to run it.

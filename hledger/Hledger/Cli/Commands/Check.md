@@ -47,7 +47,7 @@ These important checks are performed by default, by almost all hledger commands:
 
 - **lots** - all [lot](#lots-and-capital-gains) entries are valid.
   Checks lot posting classifications, lot movements, that an acquisition
-  writing both a cost basis and a transacted cost has them equal
+  writing both a cost basis and a transacted cost has them agree
   (a mismatch would silently miscalculate gains), and that any user-written
   realised gain amount on a disposal matches the calculated gain.
   This check can be disabled by `-I` or `--ignore-lots`.

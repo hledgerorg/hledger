@@ -97,12 +97,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  entryTooltipInit();
   registerChartInit();
 });
 
 // The entry targeted by the url hash is marked by a :target rule in
-// hledger.css, which needs no javascript. Note that register rows have
-// numeric ids, so location.hash must not be passed to querySelector.
+// hledger.css, which needs no javascript. A hash can be anything, eg an
+// old bookmark's numeric row id, so location.hash must not be passed to
+// querySelector.
 
 // The account sidebar's scroll position is preserved across page navigations
 // by an inline script right after the sidebar's markup in
@@ -232,6 +234,123 @@ function getCookie(name) {
 }
 
 //----------------------------------------------------------------------
+// ENTRY TOOLTIP
+//
+// Hovering a transaction in the journal or a register shows its journal
+// entry, the way a browser shows a title attribute, but in a fixed-width
+// font so that the amounts line up as they do in the journal. The rows carry
+// the entry in a data-entry attribute; in a title attribute the browser would
+// draw it itself, in a proportional font and wrapped at its own narrow width.
+// As with titles, the innermost one applies: over an account link, the
+// link's title (the full account name) shows instead.
+
+function entryTooltipInit() {
+  if (!document.querySelector('[data-entry]')) { return; }
+  var tip = document.createElement('div');
+  tip.className = 'entry-tooltip';
+  tip.setAttribute('aria-hidden', 'true');
+  tip.hidden = true;
+  document.body.appendChild(tip);
+
+  var row = null;         // the element with an entry under the pointer
+  var timer = null;       // set while waiting to show its entry
+  var clicked = false;    // set by a click, until the pointer leaves the row
+  var x, y;               // the pointer position, where the entry appears
+
+  function show() {
+    timer = null;
+    entryTooltipFill(tip, row.getAttribute('data-entry'));
+    entryTooltipPlace(tip, x, y);
+  }
+  function hide() {
+    clearTimeout(timer);
+    timer = null;
+    tip.hidden = true;
+  }
+
+  // Mouse only. A touch has no hover, and changing the page when a touch
+  // arrives over a link makes iOS treat the first tap as a hover, so the link
+  // would take two taps.
+  function track(e) {
+    if (e.pointerType !== 'mouse') { return; }
+    x = e.clientX;
+    y = e.clientY;
+    var el = e.target.closest('[title], [data-entry]');
+    var over = el && el.hasAttribute('data-entry') ? el : null;
+    if (over !== row) {
+      // Moving on to the next entry while one is showing shows the next at
+      // once, as with browser tooltips; otherwise it appears after a pause.
+      var showing = !tip.hidden;
+      hide();
+      row = over;
+      clicked = false;
+      if (row) {
+        if (showing) { show(); } else { timer = setTimeout(show, 500); }
+      }
+    } else if (row && tip.hidden && !timer && !clicked) {
+      // Still over the row after a scroll or a key press hid it.
+      timer = setTimeout(show, 500);
+    }
+  }
+  document.addEventListener('pointerover', track);
+  document.addEventListener('pointermove', track);
+
+  // Also like a browser tooltip, it goes away when the pointer leaves the
+  // window, and on a click, a key press or a scroll. After a click it stays
+  // away until the pointer leaves the row, so as not to cover a selection
+  // being made. Scroll events don't bubble, and the main pane scrolls by
+  // itself, hence the capture.
+  document.addEventListener('pointerout', function(e) {
+    if (!e.relatedTarget) { hide(); row = null; }
+  });
+  document.addEventListener('pointerdown', function() {
+    hide();
+    clicked = true;
+  });
+  document.addEventListener('keydown', hide);
+  document.addEventListener('scroll', hide, true);
+  window.addEventListener('blur', hide);
+}
+
+// Put an entry's lines in the tooltip.
+function entryTooltipFill(tip, entry) {
+  tip.textContent = '';
+  entry.replace(/\s+$/, '').split('\n').forEach(function(line) {
+    var div = document.createElement('div');
+    // Set as text, so that journal content cannot be parsed as markup.
+    div.textContent = line;
+    // A line too long for the window wraps, and its continuation is indented
+    // past the line's own indentation, so the entry keeps its shape.
+    var indent = (line.match(/^ */)[0].length + 2) + 'ch';
+    div.style.paddingLeft = indent;
+    div.style.textIndent = '-' + indent;
+    tip.appendChild(div);
+  });
+}
+
+// Show the tooltip below the pointer, or above it if there is no room below,
+// and keep it within the window.
+function entryTooltipPlace(tip, x, y) {
+  var margin = 8;
+  var vw = document.documentElement.clientWidth;
+  var vh = document.documentElement.clientHeight;
+  tip.style.maxWidth = (vw - 2 * margin) + 'px';
+  tip.style.maxHeight = (vh - 2 * margin) + 'px';
+  tip.style.left = '0';
+  tip.style.top = '0';
+  tip.hidden = false;
+  var w = tip.offsetWidth;
+  var h = tip.offsetHeight;
+  var top = y + 20;  // clear of the pointer's arrow
+  if (top + h > vh - margin) { top = y - margin - h; }
+  if (top < margin) { top = vh - margin - h; }
+  tip.style.left = Math.max(margin, Math.min(x, vw - margin - w)) + 'px';
+  tip.style.top = top + 'px';
+  // An entry taller than the window is cut off; the css marks the cut.
+  tip.classList.toggle('clipped', tip.scrollHeight > tip.clientHeight);
+}
+
+//----------------------------------------------------------------------
 // REGISTER CHART
 //
 // The register page's balance chart, drawn with flot. chart.hamlet renders
@@ -245,13 +364,12 @@ function registerChartInit() {
   // flot needs a container with a size, so do nothing while it is hidden.
   if (!$chartdiv.length || !$chartdiv.is(':visible')) { return; }
   var $label = $('#register-chart-label');
-  $label.text($chartdiv.attr('data-title'));
   var commodities = JSON.parse($chartdiv.attr('data-series'));
   // Each commodity is drawn as two flot series over the same points: a
   // stepped line for the running balance, and one clickable, hoverable point
   // per transaction. A point is [timestamp, balance, amount text, balance
-  // text, transaction text, transaction index]: flot reads the first two,
-  // the tooltip and click handlers the rest.
+  // text, transaction text, the transaction's row id]: flot reads the first
+  // two, the tooltip and click handlers the rest.
   var series = [];
   commodities.forEach(function(c, i) {
     series.push({
@@ -264,17 +382,32 @@ function registerChartInit() {
       lines: { show: false }, points: { show: true },
     });
   });
-  var plot = registerChart($chartdiv, series);
-  registerChartLegend($label, plot);
+  // The page follows a change of color scheme by itself, and prints in the
+  // light one, but the chart is drawn on a canvas; draw it again for those.
+  var draw = function() {
+    $label.text($chartdiv.attr('data-title'));
+    registerChartLegend($label, registerChart($chartdiv, series));
+  };
+  draw();
+  ['(prefers-color-scheme: dark)', 'print'].forEach(function(query) {
+    window.matchMedia(query).addEventListener('change', draw);
+  });
   $chartdiv.bind('plotclick', registerChartClick);
   $chartdiv.bind('plotselected', registerChartSelect);
 }
 
 function registerChart($container, series) {
+  // The colors come from the palette in hledger.css, for the current scheme.
+  var style = getComputedStyle(document.documentElement);
+  var color = function(name) { return style.getPropertyValue(name).trim(); };
   // https://github.com/flot/flot/blob/master/API.md
   return $container.plot(
     series,
     {
+      series: {
+        // hollow points: filled with the page's own background
+        points: { fillColor: color('--bg') },
+      },
       xaxis: {
         mode: "time",
         timeformat: "%Y/%m/%d",
@@ -288,27 +421,28 @@ function registerChart($container, series) {
         show: false
       },
       grid: {
+        color: color('--chart-grid'),
         markings: function () {
           var now = Date.now();
           return [
             {
               xaxis: { to: now }, // past
               yaxis: { to: 0 },   // <0
-              color: '#ffdddd',
+              color: color('--chart-past-negative'),
             },
             {
               xaxis: { from: now }, // future
               yaxis: { from: 0 },   // >0
-              color: '#e0e0e0',
+              color: color('--chart-future'),
             },
             {
               xaxis: { from: now }, // future
               yaxis: { to: 0 },     // <0
-              color: '#e8c8c8',
+              color: color('--chart-future-negative'),
             },
             {
               yaxis: { from: 0, to: 0 }, // =0
-              color: '#bb0000',
+              color: color('--chart-zero'),
               lineWidth:1
             },
           ];
@@ -320,6 +454,8 @@ function registerChart($container, series) {
       // https://github.com/krzysu/flot.tooltip
       tooltip: true,
       tooltipOpts: {
+        // its look is in hledger.css (#flotTip), where the palette reaches it
+        defaultTheme: false,
         xDateFormat: "%Y/%m/%d",
         content:
           function(label, x, y, flotitem) {
@@ -368,15 +504,13 @@ function registerChartSelect(ev, ranges) {
   // Those x values are unix timestamps (milliseconds since epoch) enclosing the data points' timestamps.
   // Those are generated by dayToUtcNoonTimestamp, and are UTC times representing the transaction dates.
   var from = new Date(ranges.xaxis.from);
-  var fromy = from.getUTCFullYear();
-  var fromm = from.getUTCMonth() + 1;
-  var fromd = from.getUTCDate();
   var to = new Date(ranges.xaxis.to + 1 * 24 * 60 * 60 * 1000);
-  var toy = to.getUTCFullYear();
-  var tom = to.getUTCMonth() + 1;
-  var tod = to.getUTCDate();
-
-  var range = fromy + "/" + fromm + "/" + fromd + "-" + toy + "/" + tom + "/" + tod;
+  // as a date: term reads it: YYYY-MM-DD..YYYY-MM-DD, the end exclusive
+  var iso = function(d) {
+    return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') +
+      '-' + String(d.getUTCDate()).padStart(2, '0');
+  };
+  var range = iso(from) + '..' + iso(to);
   // The base link is this register's url without its date terms; add ours.
   var url = new URL($('#register-chart').attr('data-baselink'), document.baseURI);
   var q = url.searchParams.get('q');
@@ -388,20 +522,37 @@ function registerChartSelect(ev, ranges) {
 // BROWSE MODE
 
 // In the default --serve-browse mode the server exits once no browser
-// window has shown it for two minutes (serveAndBrowse in Main.hs). It
-// knows a window is open because the page pings it: on load, then every
-// 30 seconds. Pages are marked for this by defaultLayout in browse mode
-// only; the server answers /_ping in that mode only. The ping goes to the
-// page's own origin, whatever address the browser reached us at (the
-// policy allows requests to our origin only), under the base url's path,
-// in case a proxy in front of us expects one.
+// window has shown it for fifteen minutes (serveAndBrowse in Main.hs). It
+// knows a window is open because the page pings it: on load, every 30
+// seconds, and whenever the page is shown again. Browsers run the timers of
+// background tabs less often, so the pings from a hidden page can be minutes
+// apart; the ping on showing makes up for that as soon as the page is seen.
+// Pages are marked for this by defaultLayout in browse mode only; the server
+// answers /_ping in that mode only. The ping goes to the page's own origin,
+// whatever address the browser reached us at (the policy allows requests to
+// our origin only), under the base url's path, in case a proxy in front of
+// us expects one.
+//
+// A ping that can't reach the server means it has stopped, so the page shows
+// the #server-stopped notice, and hides it again if a later ping gets through
+// (eg after the server was restarted on the same address).
 function browsePingInit() {
   if (!document.body.hasAttribute('data-browse-mode')) { return; }
   var base = new URL(document.hledgerWebBaseurl, document.baseURI);
   var url = base.pathname.replace(/\/$/, '') + '/_ping';
+  var notice = document.getElementById('server-stopped');
   var ping = function() {
-    fetch(url, { cache: 'no-store' }).catch(function() {});
+    fetch(url, { cache: 'no-store' }).then(
+      function() { if (notice) { notice.hidden = true; } },
+      function() { if (notice) { notice.hidden = false; } });
   };
   ping();
   setInterval(ping, 30000);
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') { ping(); }
+  });
+  // A page restored from the back/forward cache didn't run meanwhile.
+  window.addEventListener('pageshow', function(e) {
+    if (e.persisted) { ping(); }
+  });
 }

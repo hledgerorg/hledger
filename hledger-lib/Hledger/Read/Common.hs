@@ -92,6 +92,7 @@ module Hledger.Read.Common (
   amountp,
   AmountParseKind(..),
   amountp',
+  simpleamountp,
   commoditysymbolp,
   costp,
   balanceassertionp,
@@ -496,7 +497,7 @@ journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,i
 
           -- Market prices and renumbering
           <&> timed  "journalInferMarketPricesFromTransactions" journalInferMarketPricesFromTransactions  -- infer market prices from commodity-exchanging transactions
-          >>= timedE "journalInferAliasPrices" journalInferAliasPrices                                    -- inject 1:1 bridges for any alias: tags on commodity directives
+          >>= timedE "journalInferAliasPrices" journalInferAliasPrices                                    -- inject price bridges for any alias: tags on commodity directives
           <&> timed  "journalRenumberAccountDeclarations" journalRenumberAccountDeclarations              -- renumber account declarations for consistent ordering
 
           -- Lot and capital gains calculation/checking

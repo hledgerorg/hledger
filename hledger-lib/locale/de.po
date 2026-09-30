@@ -622,9 +622,6 @@ msgstr "Der Periodenausdruck konnte nicht gelesen werden:"
 msgid "Report:"
 msgstr "Bericht:"
 
-msgid "Balance"
-msgstr "Salden"
-
 msgid "Yearly"
 msgstr "Jährlich"
 
@@ -639,24 +636,6 @@ msgstr "Wöchentlich"
 
 msgid "Daily"
 msgstr "Täglich"
-
-msgid "Show the balance report"
-msgstr "Saldenbericht anzeigen"
-
-msgid "Show the yearly balance report"
-msgstr "Jährlichen Saldenbericht anzeigen"
-
-msgid "Show the quarterly balance report"
-msgstr "Vierteljährlichen Saldenbericht anzeigen"
-
-msgid "Show the monthly balance report"
-msgstr "Monatlichen Saldenbericht anzeigen"
-
-msgid "Show the weekly balance report"
-msgstr "Wöchentlichen Saldenbericht anzeigen"
-
-msgid "Show the daily balance report"
-msgstr "Täglichen Saldenbericht anzeigen"
 
 msgctxt "column heading"
 msgid "Date"
@@ -763,6 +742,9 @@ msgstr "Zurück"
 msgid "Saved journal {file}"
 msgstr "Journal {file} gespeichert"
 
+msgid "hledger-web is no longer running. It exits after fifteen minutes with no browser window showing it, or when stopped. To continue, start it again and reload this page."
+msgstr "hledger-web läuft nicht mehr. Es beendet sich nach fünfzehn Minuten ohne ein Browserfenster, das es anzeigt, oder wenn es angehalten wird. Zum Weiterarbeiten starten Sie es neu und laden diese Seite erneut."
+
 msgctxt "column heading"
 msgid "Commodity"
 msgstr "Einheit"
@@ -770,3 +752,171 @@ msgstr "Einheit"
 #. The register command's spreadsheet sheet name.
 msgid "Register"
 msgstr "Register"
+
+#. hledger-web: the balance page's interval and accumulation links, and the register's balance mode.
+msgid "Interval:"
+msgstr "Intervall:"
+
+msgctxt "interval"
+msgid "None"
+msgstr "Keins"
+
+msgid "Show one column for the whole period"
+msgstr "Eine Spalte für den ganzen Zeitraum anzeigen"
+
+msgid "Show a column per year"
+msgstr "Eine Spalte pro Jahr anzeigen"
+
+msgid "Show a column per quarter"
+msgstr "Eine Spalte pro Quartal anzeigen"
+
+msgid "Show a column per month"
+msgstr "Eine Spalte pro Monat anzeigen"
+
+msgid "Show a column per week"
+msgstr "Eine Spalte pro Woche anzeigen"
+
+msgid "Show a column per day"
+msgstr "Eine Spalte pro Tag anzeigen"
+
+msgid "Show:"
+msgstr "Anzeigen:"
+
+msgid "Ending balances"
+msgstr "Endsalden"
+
+msgid "Show how much each balance changed in each period"
+msgstr "Anzeigen, wie sich jeder Saldo in jeder Periode verändert hat"
+
+msgid "Show each balance at the end of each period, including everything before it"
+msgstr "Jeden Saldo am Ende jeder Periode anzeigen, einschließlich allem davor"
+
+msgid "Unknown balance accumulation mode:"
+msgstr "Unbekannter Kumulierungsmodus:"
+
+msgid "Show the running balance from the start of this period"
+msgstr "Den laufenden Saldo ab Beginn dieses Zeitraums anzeigen"
+
+msgid "Show the running balance including everything before this period"
+msgstr "Den laufenden Saldo einschließlich allem vor diesem Zeitraum anzeigen"
+
+msgid "Balance sheet"
+msgstr "Bilanz"
+
+msgid "Balance sheet with equity"
+msgstr "Bilanz mit Eigenkapital"
+
+msgid "Income statement"
+msgstr "Einnahmenüberschussrechnung"
+
+msgid "Cashflow statement"
+msgstr "Kapitalflussrechnung"
+
+msgid "Show assets, liabilities, and net worth"
+msgstr "Vermögen, Verbindlichkeiten und Reinvermögen anzeigen"
+
+msgid "Show assets, liabilities, and equity"
+msgstr "Vermögen, Verbindlichkeiten und Eigenkapital anzeigen"
+
+msgid "Show revenues and expenses"
+msgstr "Einnahmen und Ausgaben anzeigen"
+
+msgid "Show changes in liquid assets"
+msgstr "Veränderungen der liquiden Mittel anzeigen"
+
+msgid "Show the balance report: any accounts, by period"
+msgstr "Den Saldenbericht anzeigen: beliebige Konten, nach Perioden"
+
+msgid "balance sheet - hledger-web"
+msgstr "Bilanz - hledger-web"
+
+msgid "balance sheet with equity - hledger-web"
+msgstr "Bilanz mit Eigenkapital - hledger-web"
+
+msgid "income statement - hledger-web"
+msgstr "Einnahmenüberschussrechnung - hledger-web"
+
+msgid "cashflow statement - hledger-web"
+msgstr "Kapitalflussrechnung - hledger-web"
+
+msgid "Show this report for this period"
+msgstr "Diesen Bericht für diese Periode anzeigen"
+
+msgid "All the accounts this report shows have zero balances, which are hidden. Press e to show them."
+msgstr "Alle Konten dieses Berichts haben den Saldo null und sind ausgeblendet. Drücken Sie e, um sie anzuzeigen."
+
+msgid "No accounts of the types this report shows were found. Declare account types, or use hledger's standard top-level account names. "
+msgstr "Es wurden keine Konten der Typen gefunden, die dieser Bericht zeigt. Deklarieren Sie Kontotypen oder verwenden Sie die Standardnamen der obersten Kontoebene von hledger. "
+
+msgid "How hledger finds account types"
+msgstr "Wie hledger Kontotypen erkennt"
+
+msgid "Nothing matches this search in this period."
+msgstr "In diesem Zeitraum passt nichts zu dieser Suche."
+
+msgid "Show the transactions that make up this balance"
+msgstr "Die Buchungen anzeigen, aus denen sich dieser Saldo zusammensetzt"
+
+msgid "Show the transactions that make up this total"
+msgstr "Die Buchungen anzeigen, aus denen sich diese Summe zusammensetzt"
+
+msgid "Show the journal entries on this date"
+msgstr "Die Journalbuchungen dieses Tages anzeigen"
+
+msgid "Show this entry and the other journal entries on its date"
+msgstr "Diese und die anderen Journalbuchungen dieses Tages anzeigen"
+
+msgid "Balance brought forward"
+msgstr "Saldovortrag"
+
+msgid "Show the transactions before this period"
+msgstr "Die Buchungen vor diesem Zeitraum anzeigen"
+
+msgid "Click an amount to see the transactions it is made of, in a register ending on that amount"
+msgstr "Einen Betrag anklicken, um die Buchungen zu sehen, aus denen er besteht, in einem Register, das mit diesem Betrag endet"
+
+msgid "The balance sheet and income statement show liabilities, equity, and revenues as positive amounts; their registers show them negative, as hledger does"
+msgstr "Bilanz und Einnahmenüberschussrechnung zeigen Verbindlichkeiten, Eigenkapital und Einnahmen als positive Beträge; ihre Register zeigen sie negativ, wie hledger es tut"
+
+msgid "The sidebar's report links show the balance sheet, income statement, and cashflow statement, each linking to the other reports"
+msgstr "Die Berichtslinks der Seitenleiste zeigen Bilanz, Einnahmenüberschussrechnung und Kapitalflussrechnung, jeweils mit Links zu den anderen Berichten"
+
+#. hledger-web: paging of the journal and register views.
+#, python-brace-format
+msgid "Showing {first} to {last} of {total} transactions"
+msgstr "Buchungen {first} bis {last} von {total}"
+
+msgid "Show the newer transactions"
+msgstr "Die neueren Buchungen anzeigen"
+
+msgid "Newer"
+msgstr "Neuere"
+
+msgid "Show the older transactions"
+msgstr "Die älteren Buchungen anzeigen"
+
+msgid "Older"
+msgstr "Ältere"
+
+#, python-brace-format
+msgid "Show page {n}"
+msgstr "Seite {n} anzeigen"
+
+#, python-brace-format
+msgid "Page {n}"
+msgstr "Seite {n}"
+
+msgctxt "years row"
+msgid "Years:"
+msgstr "Jahre:"
+
+msgid "Show all years"
+msgstr "Alle Jahre anzeigen"
+
+msgctxt "years row"
+msgid "All"
+msgstr "Alle"
+
+#, python-brace-format
+msgid "Show only {year}"
+msgstr "Nur {year} anzeigen"

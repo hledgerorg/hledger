@@ -223,7 +223,7 @@ showPriceDirectiveBeancount pd =
     beancountPriceFmt = defaultFmt{ displayZeroCommodity=True, displayForceDecimalMark=True, displayQuotes=False }
 
 -- | Convert a date to one Beancount will accept.
--- Beancount rejects year 0, which is the date hledger gives to the 1:1 price
+-- Beancount rejects year 0, which is the date hledger gives to the price
 -- directives it infers from commodity alias: tags; those become 0001-01-01.
 dateToBeancount :: Day -> Day
 dateToBeancount d | d == fromGregorian 0 1 1 = fromGregorian 1 1 1

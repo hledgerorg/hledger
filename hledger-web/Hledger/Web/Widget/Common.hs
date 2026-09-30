@@ -8,7 +8,10 @@ module Hledger.Web.Widget.Common
   ( accountQuery
   , accountOnlyQuery
   , balanceReportAsHtml
-  , balanceReportLinks
+  , linksRow
+  , reportLinks
+  , intervalLinks
+  , accumulationLinks
   , helplink
   , mixedAmountAsHtml
   , fromFormSuccess
@@ -18,6 +21,7 @@ module Hledger.Web.Widget.Common
   , removeDates
   , removeInacct
   , replaceInacct
+  , journalDayQuery
   ) where
 
 import Control.Monad.Except (ExceptT, mapExceptT)
@@ -25,6 +29,7 @@ import Data.Foldable (find, for_)
 import Data.List (elemIndex)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time.Calendar (Day)
 import System.FilePath (takeFileName)
 import Text.Blaze ((!), textValue)
 import Text.Blaze.Html5 qualified as H
@@ -34,8 +39,9 @@ import Text.Hamlet (hamletFile)
 import Text.Printf (printf)
 import Yesod
 
-import Hledger.Utils.I18n (Translations, tr)
+import Hledger.Utils.I18n (Translations, tr, trc)
 import Hledger
+import Hledger.Cli.Anchor qualified as Anchor
 import Hledger.Cli.Utils (writeFileWithBackupIfChanged)
 import Hledger.Web.Settings (manualurl)
 import Hledger.Query qualified as Query
@@ -78,9 +84,12 @@ helplink :: Text -> Text -> HtmlUrl r
 helplink topic label _ = H.a ! A.href u ! A.target "hledgerhelp" $ toHtml label
   where u = textValue $ manualurl <> if T.null topic then "" else T.cons '#' topic
 
--- | Render a "BalanceReport" as html.
-balanceReportAsHtml :: Eq r => (r, r) -> r -> Bool -> Translations -> Journal -> Text -> [QueryOpt] -> BalanceReport -> HtmlUrl r
-balanceReportAsHtml (journalR, registerR) here hideEmpty trs j qparam qopts (items, total) =
+-- | Render a "BalanceReport" as the sidebar: the journal and report
+-- links (each report's route, label, and title, with the parameters
+-- their links carry), then the accounts. The current page's row is marked.
+balanceReportAsHtml ::
+  Eq r => (r, r) -> r -> [(r, Text, Text)] -> [(Text, Text)] -> Bool -> Translations -> Journal -> Text -> [QueryOpt] -> BalanceReport -> HtmlUrl r
+balanceReportAsHtml (journalR, registerR) here reports reportParams hideEmpty trs j qparam qopts (items, total) =
   $(hamletFile "templates/balance-report.hamlet")
   where
     l = ledgerFromJournal Any j
@@ -89,40 +98,69 @@ balanceReportAsHtml (journalR, registerR) here hideEmpty trs j qparam qopts (ite
     isInterestingAccount acct = maybe False isInteresting $ ledgerAccount l acct
       where isInteresting a = not (all (mixedAmountLooksZero . bdexcludingsubs) . pdperiods $ adata a) || any isInteresting (asubs a)
     matchesAcctSelector acct = Just True == ((`matchesAccount` acct) <$> inAccountQuery qopts)
+    -- The journal, and the register of everything, for the sidebar's
+    -- search minus any account term; the search form's clear button is
+    -- the way out of a search.
+    journallink = (journalR, [("q", t) | let t = T.unwords $ removeInacct qparam, not (T.null t)])
+    totallink = (registerR, [("q", t) | let t = T.unwords $ removeInacct qparam, not (T.null t)])
 
--- | Links to the balance report page, single-period and for each
--- interval, carrying the current search and date span; the report being
--- shown, identified by the interval it was built with, is marked.
-balanceReportLinks :: r -> Translations -> Text -> DateSpan -> Interval -> HtmlUrl r
-balanceReportLinks balanceR trs qparam spn current =
-  $(hamletFile "templates/balance-links.hamlet")
+-- | A row of links above a report: a label, then each link's label,
+-- title, target, and whether it is the one being shown.
+-- Each label and title is a whole phrase, not a word slotted into a
+-- sentence: an adjective that fits one language's sentence does not fit
+-- another's, so a translation cannot be assembled from parts.
+linksRow :: Text -> [(Text, Text, (r, [(Text, Text)]), Bool)] -> HtmlUrl r
+linksRow rowlabel items = $(hamletFile "templates/balance-links.hamlet")
+
+-- | Links to the report pages, given as route, label, and title,
+-- keeping the given parameters; the page being shown is marked.
+reportLinks :: Eq r => Translations -> r -> [(Text, Text)] -> [(r, Text, Text)] -> HtmlUrl r
+reportLinks trs here kept menu =
+  -- TRANSLATORS: the label before a page's report links.
+  linksRow (tr trs "Report:") [ (tr trs label, tr trs title, (route, kept), route == here) | (route, label, title) <- menu ]
+
+-- | Links to the same report page for each reporting interval, keeping
+-- the search, the period's date span, and the given parameters; the
+-- interval being shown is marked.
+intervalLinks :: Translations -> r -> [(Text, Text)] -> Text -> DateSpan -> Interval -> HtmlUrl r
+intervalLinks trs route kept qparam spn current =
+  -- TRANSLATORS: the label before a report's interval links.
+  linksRow (tr trs "Interval:")
+    [ (label, title, link mword, ivl == current) | (label, title, mword, ivl) <- intervals ]
   where
-    -- TRANSLATORS: the label before the balance page's report links.
-    reportlabel = tr trs "Report:"
-    -- Each link's label and title is a whole phrase, not a word slotted
-    -- into a sentence: an adjective that fits one language's sentence does
-    -- not fit another's, so a translation cannot be assembled from parts.
-    -- TRANSLATORS: the balance page's report links: each link's text, and its tooltip.
-    reports :: [(Text, Text, Maybe Text, Interval)]
-    reports =
-      [ (tr trs "Balance",   tr trs "Show the balance report",           Nothing,          NoInterval)
-      , (tr trs "Yearly",    tr trs "Show the yearly balance report",    Just "yearly",    Years 1)
-      , (tr trs "Quarterly", tr trs "Show the quarterly balance report", Just "quarterly", Quarters 1)
-      , (tr trs "Monthly",   tr trs "Show the monthly balance report",   Just "monthly",   Months 1)
-      , (tr trs "Weekly",    tr trs "Show the weekly balance report",    Just "weekly",    Weeks 1)
-      , (tr trs "Daily",     tr trs "Show the daily balance report",     Just "daily",     Days 1)
+    -- TRANSLATORS: the interval links above a report: each link's text, and its tooltip.
+    intervals :: [(Text, Text, Maybe Text, Interval)]
+    intervals =
+      [ (trc trs "interval" "None", tr trs "Show one column for the whole period", Nothing,          NoInterval)
+      , (tr trs "Yearly",    tr trs "Show a column per year",               Just "yearly",    Years 1)
+      , (tr trs "Quarterly", tr trs "Show a column per quarter",            Just "quarterly", Quarters 1)
+      , (tr trs "Monthly",   tr trs "Show a column per month",              Just "monthly",   Months 1)
+      , (tr trs "Weekly",    tr trs "Show a column per week",               Just "weekly",    Weeks 1)
+      , (tr trs "Daily",     tr trs "Show a column per day",                Just "daily",     Days 1)
       ]
     -- Each link keeps the period's date span, so that changing the
     -- interval does not silently widen the report to the whole journal.
     -- "monthly 2025-01-01..2025-12-31" is a period expression like any other.
-    spantext = if spn == nulldatespan then "" else showDateSpan spn
+    spantext = if spn == nulldatespan then "" else showDateSpanForQuery spn
     periodparam mword = case (mword, spantext) of
       (Nothing,   "") -> []
       (Nothing,   sp) -> [("period", sp)]
       (Just w,    "") -> [("period", w)]
       (Just w,    sp) -> [("period", w <> " " <> sp)]
     link mword =
-      (balanceR, periodparam mword ++ [("q", qparam) | not (T.null qparam)])
+      (route, periodparam mword ++ [("q", qparam) | not (T.null qparam)] ++ kept)
+
+-- | Links to the same report page showing balance changes or ending
+-- balances, keeping the given parameters; the one being shown is marked.
+accumulationLinks :: Translations -> r -> [(Text, Text)] -> BalanceAccumulation -> HtmlUrl r
+accumulationLinks trs route kept current =
+  -- TRANSLATORS: the label before a report's accumulation mode links, and the links' text and tooltips.
+  linksRow (tr trs "Show:")
+    [ (tr trs "Balance changes", tr trs "Show how much each balance changed in each period",
+        (route, kept), current /= Historical)
+    , (tr trs "Ending balances", tr trs "Show each balance at the end of each period, including everything before it",
+        (route, kept ++ [("accum", "historical")]), current == Historical)
+    ]
 
 accountQuery :: AccountName -> Text
 accountQuery = ("inacct:" <>) .  quoteIfSpaced
@@ -150,19 +188,24 @@ transactionFragment j Transaction{tindex, tsourcepos} =
     -- or 0 if this txn has no known file (eg a forecasted txn)
     tfileindex = maybe 0 (+1) $ elemIndex (sourceName $ fst tsourcepos) (journalFilePaths j)
 
+-- | The search's terms without its date terms, each quoted if it needs to be.
 removeDates :: Text -> [Text]
-removeDates =
-    map quoteIfSpaced .
-    filter (\term ->
-        not $ T.isPrefixOf "date:" term || T.isPrefixOf "date2:" term) .
-    Query.words'' queryprefixes
+removeDates = map quoteIfSpaced . Anchor.removeDates . searchTerms
 
+-- | The search's terms without those naming an account, each quoted if it needs to be.
 removeInacct :: Text -> [Text]
-removeInacct =
-    map quoteIfSpaced .
-    filter (\term ->
-        not $ T.isPrefixOf "inacct:" term || T.isPrefixOf "inacctonly:" term) .
-    Query.words'' queryprefixes
+removeInacct = map quoteIfSpaced . Anchor.removeInacct . searchTerms
+
+-- | The search's terms; none for an empty search.
+searchTerms :: Text -> [Text]
+searchTerms = filter (not . T.null) . Query.words'' queryprefixes
+
+-- | The search for the journal page narrowed to a day: the day's date
+-- term in place of any date terms, and without any account term, which
+-- the journal page does not use.
+journalDayQuery :: Text -> Day -> Text
+journalDayQuery qparam d =
+  T.unwords $ ("date:" <> showDate d) : removeDates (T.unwords $ removeInacct qparam)
 
 replaceInacct :: Text -> Text -> Text
 replaceInacct q acct = T.unwords $ acct : removeInacct q

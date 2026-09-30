@@ -519,7 +519,7 @@ journalCommoditiesFromTransactions j = S.fromList $ map acommodity $ journalPost
 -- 1. The "to" commodity that appears most often in P (price) directives, if any.
 -- 2. Otherwise, the commodity that appears most often in posting and cost amounts.
 -- 3. Otherwise, Nothing.
--- The synthetic 1:1 bridge directives generated from commodity @alias:@ tags
+-- The synthetic bridge directives generated from commodity @alias:@ tags
 -- (see journalInferAliasPrices) are excluded from step 1, so that declaring
 -- aliases doesn't sway the guess.
 -- Commodity symbols are normalised to ISO 4217 codes where possible,
@@ -536,13 +536,8 @@ journalBaseCurrency j = pick priceTargetComms <|> pick postingAndCostComms
     priceTargetComms    = map (acommodity . pdamount) realPriceDirectives
     postingAndCostComms = map acommodity $ journalPostingAndCostAmounts j
 
-    -- Price directives, excluding the 1:1 bridges inferred from commodity alias: tags.
-    realPriceDirectives = filter (not . isCommodityAliasPrice) $ jpricedirectives j
-    isCommodityAliasPrice pd =
-      aquantity (pdamount pd) == 1 && (pdcommodity pd, acommodity (pdamount pd)) `S.member` commodityAliasPairs
-    commodityAliasPairs = S.fromList [ (a, csymbol c)
-                                     | c <- M.elems (jdeclaredcommodities j)
-                                     , a <- commodityAliases c ]
+    -- Price directives, excluding the bridges inferred from commodity alias: tags.
+    realPriceDirectives = snd $ journalPartitionAliasPrices j
 
     -- Most frequent element, ties broken by first-occurrence order.
     -- A single pass for efficiency: each map entry stores (negate count, first index),
@@ -1386,38 +1381,9 @@ journalInferMarketPricesFromTransactions j =
        journalPostings j
    }
 
--- | Aliases declared on a commodity directive via one or more @alias:@
--- tags. Each tag's value is split on whitespace, with double- or
--- single-quoted spans preserved as one token (eg @\"K c\"@).
--- Self-aliases (matching the directive's own symbol) and empty pieces
--- are dropped. Unmatched quotes are tolerated.
+-- | Aliases declared on a commodity directive by its @alias:@ tags.
 commodityAliases :: Commodity -> [CommoditySymbol]
-commodityAliases c =
-  [ a
-  | (n, v) <- ctags c
-  , T.toLower n == "alias"
-  , a <- splitAliases v
-  , a /= csymbol c
-  ]
-
--- | Split an @alias:@ tag value into individual aliases. Whitespace
--- separates tokens; double or single quotes group whitespace into a
--- single token. Total — never throws.
-splitAliases :: T.Text -> [CommoditySymbol]
-splitAliases = go . T.dropWhile isSpace
-  where
-    isSpace c = c == ' ' || c == '\t'
-    go t = case T.uncons t of
-      Nothing       -> []
-      Just ('"', r) -> takeQuoted '"' r
-      Just ('\'',r) -> takeQuoted '\'' r
-      Just _        ->
-        let (tok, rest) = T.break isSpace t
-        in tok : go (T.dropWhile isSpace rest)
-    takeQuoted q r =
-      let (tok, rest) = T.break (== q) r
-          rest'       = T.dropWhile isSpace (T.drop 1 rest)
-      in (if T.null tok then id else (tok :)) (go rest')
+commodityAliases = map acommodity . caliases
 
 -- | All commodity symbols that this journal treats as declared:
 -- both the canonical 'jdeclaredcommodities' keys and any 'alias:'
@@ -1468,10 +1434,11 @@ queryExpandCurAliases j =
       declared = M.keys groups
   in queryExpandCurForAliases declared (\s -> M.findWithDefault [s] s groups)
 
--- | For each declared commodity with one or more @alias:@ tag values,
--- inject a synthetic 1:1 P price directive, from alias to canonical
--- symbol, into the journal, so the valuation engine can easily convert
--- between these commodity symbol variants (eg @$@ to @USD@).
+-- | For each declared commodity with one or more @alias:@ tags,
+-- inject a synthetic P price directive, from the canonical symbol to each alias,
+-- at the alias's declared quantity (usually 1), into the journal,
+-- so the valuation engine can easily convert between them (eg @USD@ to @$@).
+-- (See 'commodityAliasPriceDirectives'.)
 --
 -- An alias matching a separately declared canonical commodity is
 -- silently allowed: the price directive is still added; the canonical
@@ -1483,22 +1450,10 @@ journalInferAliasPrices :: Journal -> Either String Journal
 journalInferAliasPrices j =
   case [(a, cs) | (a, cs) <- M.toList grouped, length cs > 1] of
     ((a, cs):_) -> Left $ aliasConflictMsg a cs
-    [] ->
-      let aliasprices =
-            [ PriceDirective
-                { pdsourcepos = csourcepos c
-                , pddate      = nullday
-                , pdcommodity = a
-                , pdamount    = nullamt{acommodity = csymbol c, aquantity = 1}
-                }
-            | (a, c) <- pairs
-            ]
-      in Right j{jpricedirectives = jpricedirectives j <> aliasprices}
+    [] -> Right j{jpricedirectives = jpricedirectives j <> concatMap commodityAliasPriceDirectives comms}
   where
-    pairs   = [ (a, c) | c <- M.elems (jdeclaredcommodities j)
-                       , a <- commodityAliases c ]
-    grouped = M.fromListWith (++) [(a, [c]) | (a,c) <- pairs]
-    nullday = fromGregorian 0 1 1
+    comms   = M.elems (jdeclaredcommodities j)
+    grouped = M.fromListWith (++) [(a, [c]) | c <- comms, a <- commodityAliases c]
     aliasConflictMsg a cs = unlines $
       [ "Alias '" <> T.unpack a <> "' is declared on more than one commodity:"
       , ""

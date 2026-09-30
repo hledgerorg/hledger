@@ -1,0 +1,335 @@
+# * balance report links with --base-url
+
+# ** 1. Column headings link to the register for the column's period, as a
+# period expression that reads back as the same span: a week is written
+# out with its exclusive end date, not as an ISO week name.
+<
+2025-01-15 a
+  assets:cash  10
+  income
+
+2025-01-22 b
+  assets:cash  20
+  income
+
+$ hledger -f- bal -W -O html --base-url ''
+> /<a href="register\?q=date:2025-01-13\.\.2025-01-20" title="[^"]*">2025-W03</
+>= 0
+
+# ** 2. The heading keeps its display form; only the link's term changes.
+<
+2025-01-15 a
+  assets:cash  10
+  income
+
+2025-02-20 b
+  assets:cash  20
+  income
+
+$ hledger -f- bal -M --period-titles=dates -O html --base-url ''
+> /<a href="register\?q=date:2025-01" title="[^"]*">2025-01-01\.\.2025-01-31</
+>= 0
+
+# ** 3. A span that is not a calendar period keeps its last day: the
+# heading shows the inclusive end date, the term the exclusive one.
+<
+2025-01-15 a
+  assets:cash  10
+  income
+
+2025-02-20 b
+  assets:cash  20
+  income
+
+$ hledger -f- bal -M -p 2025-01-15..2025-03-01 -O html --base-url ''
+> /<a href="register\?q=date:2025-01-15\.\.2025-02-15" title="[^"]*">2025-01-15\.\.2025-02-14</
+>= 0
+
+# ** 4. The same term in the tidy layout's period column.
+<
+2025-01-15 a
+  assets:cash  10
+  income
+
+$ hledger -f- bal -W --layout=tidy -O html --base-url ''
+> /<a href="register\?q=inacct:assets:cash\+date:2025-01-13\.\.2025-01-20" title="[^"]*">2025-W03</
+>= 0
+
+# ** 5. An inacct: term in the query is not carried into the links, which
+# name their own account.
+<
+2025-01-15 a
+  assets:cash  10
+  income
+
+$ hledger -f- bal -O html --base-url '' inacct:assets
+> /<a href="register\?q=inacct:assets:cash" title="[^"]*">assets:cash</
+>= 0
+
+# ** 6. Without --base-url, no links.
+<
+2025-01-15 a
+  assets:cash  10
+  income
+
+$ hledger -f- bal -W -O html
+> !/<a href/
+>= 0
+
+# ** 7. Each figure links to the register that derives it: the account's
+# transactions in the column's period.
+<
+2025-01-10 salary
+  assets:bank:checking  100
+  income:salary
+
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank:checking
+
+$ hledger -f- bal -M -O html --base-url ''
+> /<a href="register\?q=inacct:assets:bank:checking\+date:2025-02" title="Show the transactions that make up this amount">/
+>= 0
+
+# ** 8. A list-mode parent whose subaccount has its own row shows its own
+# postings only, and links with inacctonly:.
+<
+2025-01-10 salary
+  assets:bank:checking  100
+  income:salary
+
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank:checking
+
+$ hledger -f- bal -M -O html --base-url ''
+> /<a href="register\?q=inacctonly:assets:bank" title="Show transactions affecting this account but not subaccounts">assets:bank</
+>= 0
+
+# ** 9. Its figures likewise.
+<
+2025-01-10 salary
+  assets:bank:checking  100
+  income:salary
+
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank:checking
+
+$ hledger -f- bal -M -O html --base-url ''
+> /<a href="register\?q=inacctonly:assets:bank\+date:2025-01" title="Show the transactions that make up this amount">/
+>= 0
+
+# ** 10. A figure that looks zero has an empty register, and no link.
+<
+2025-01-10 salary
+  assets:bank:checking  100
+  income:salary
+
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank:checking
+
+$ hledger -f- bal -M -O html --base-url ''
+> !/inacctonly:assets:bank\+date:2025-02/
+>= 0
+
+# ** 11. The totals row links each column's total to the register of
+# everything in the report's query for that period.
+<
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f- bal -M -O html --base-url '' expenses
+> /<a href="register\?q=date:2025-02\+expenses" title="Show the transactions that make up this total">/
+>= 0
+
+# ** 12. A row total links to the whole report span. (An average has no
+# register, so no link.)
+<
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f- bal -M -T -A -O html --base-url ''
+> /<a href="register\?q=inacct:assets:bank\+date:2025-01-01\.\.2025-03-01" title="Show the transactions that make up this amount">/
+>= 0
+
+# ** 12b. The average has none.
+<
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f- bal -M -T -A -O html --base-url ''
+> !/class="amount rowaverage"><a /
+>= 0
+
+# ** 13. With historical balances, the links ask the register for its
+# historical mode, so that its running balance ends on the figure.
+<
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f- bal -M -H -O html --base-url ''
+> /<a href="register\?q=inacct:assets:bank\+date:2025-02&amp;accum=historical" title="Show the transactions behind this balance">/
+>= 0
+
+# ** 14. The account name's link too.
+<
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f- bal -M -H -O html --base-url ''
+> /<a href="register\?q=inacct:assets:bank&amp;accum=historical" title="Show transactions affecting this account and subaccounts">assets:bank</
+>= 0
+
+# ** 15. A cumulative figure's register runs from the report's start.
+<
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f- bal -M --cumulative -O html --base-url ''
+> /<a href="register\?q=inacct:assets:bank\+date:2025-01-01\.\.2025-03-01" title="Show the transactions that make up this amount">/
+>= 0
+
+# ** 15b. The first column's figure links to the first period alone.
+<
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  assets:bank  -10
+  expenses:food
+
+$ hledger -f- bal -M --cumulative -O html --base-url ''
+> /<a href="register\?q=inacct:assets:bank\+date:2025-01" title="Show the transactions that make up this amount">/
+>= 0
+
+# ** 16. Figures that are not sums of postings do not link.
+<
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+$ hledger -f- bal -M --count -O html --base-url ''
+> !/<a href="register\?q=inacct:assets:bank\+date:/
+>= 0
+
+# ** 17. Account names still do.
+<
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+$ hledger -f- bal -M --count -O html --base-url ''
+> /<a href="register\?q=inacct:assets:bank" title="[^"]*">assets:bank</
+>= 0
+
+# ** 18. A depth-clipped row sums its subaccounts, and links with inacct:.
+<
+2025-01-20 fee
+  assets:bank:checking  -5
+  expenses:fees
+
+$ hledger -f- bal depth:1 -O html --base-url ''
+> /<a href="register\?q=inacct:assets\+depth:1" title="Show transactions affecting this account and subaccounts">assets</
+>= 0
+
+# ** 19. In a single-period report the figures link to the account's
+# register for the report period.
+<
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f- bal -p 2025-01 -O html --base-url '' expenses
+> /<a href="register\?q=inacct:expenses:fees\+date:2025-01\+expenses" title="Show the transactions that make up this amount">/
+>= 0
+
+# ** 20. And the total to everything's.
+<
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f- bal -p 2025-01 -O html --base-url '' expenses
+> /<a href="register\?q=date:2025-01\+expenses" title="Show the transactions that make up this total">/
+>= 0
+
+# ** 21. FODS output carries the same links.
+<
+2025-01-20 fee
+  assets:bank  -5
+  expenses:fees
+
+$ hledger -f- bal -M -O fods --base-url ''
+> /<text:a xlink:href='register\?q=inacct:assets:bank\+date:2025-01'>/
+>= 0
+
+# ** 22. A report using secondary dates asks the register to use them too.
+<
+2025-01-31=2025-02-02 late fee
+  assets:bank  -7
+  expenses:fees
+
+2025-02-15 lunch
+  expenses:food  10
+  assets:bank
+
+$ hledger -f- bal -M --date2 -O html --base-url ''
+> /<a href="register\?q=inacct:assets:bank\+date2:2025-02" title="Show the transactions that make up this amount">/
+>= 0
