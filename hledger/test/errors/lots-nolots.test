@@ -1,0 +1,10 @@
+$ hledger check lots -f lots-nolots.j
+>2 /hledger: Error: .*lots-nolots\.j:5:
+5 \| 2022-01-01 sell shares not held.*
+  \|     assets:stocks +-10 AAPL @ \$50
+  \|     assets:checking
+
+no AAPL lots available for disposal from account assets:stocks on 2022-01-01
+\(To record a short position, use a liability account.\)
+/
+>= 1

@@ -171,6 +171,7 @@ Click error names to see an example. The table headings mean:
 | [commodities](#commodities)                           | ✓          | ✓    | ✓      | ✓✓      | ✓        |
 | [lots-gain](#lots-gain)                               | ✓          | ✓    | -      | ✓       | ✓        |
 | [lots-name](#lots-name)                               | ✓          | ✓    | ✓      | ✓✓      | ✓        |
+| [lots-nolots](#lots-nolots)                           | ✓          | ✓    | -      | ✓       | ✓        |
 | [lots-tag](#lots-tag)                                 | ✓          | ✓    | -      | ✓       | ✓        |
 | [lots](#lots)                                         | ✓          | ✓    | -      | ✓       | ✓        |
 | [ordereddates](#ordereddates)                         | ✓          | ✓    | ✓      | ✓✓      | ✓        |
@@ -204,7 +205,7 @@ Click error names to see an example. The table headings mean:
 
 
 <!-- GENERATED: -->
-hledger 1.99-g50c8a6303-20260923 error messages:
+hledger 1.99-gefcbbc8e6-20260930 error messages:
 
 ### accounts
 ```
@@ -325,6 +326,20 @@ invalid lot name: not a lot
 
 A final account name part enclosed in { } must be a valid lot subaccount name.
 Please adjust the account name, or use --ignore-lots/-I.
+```
+
+
+### lots-nolots
+```
+hledger: Error: /path/to/lots-nolots.j:5:
+5 | 2022-01-01 sell shares not held (a short sale, in the wrong kind of account)
+  |     assets:stocks                                -10 AAPL @ $50
+  |     assets:checking
+
+no AAPL lots available for disposal from account assets:stocks on 2022-01-01
+(To record a short position, use a liability account.)
+
+Postings were read as: dispose, unclassified.
 ```
 
 
@@ -499,7 +514,7 @@ hledger: Error: /path/to/tdquantity.timedot:4:6:
 4 | a  1.x
   |      ^
 unexpected 'x'
-expecting "mo", ';', 'd', 'h', 'm', 's', 'w', 'y', end of input, exponent, newline, or space
+expecting "mo", 'd', 'h', 'm', 's', 'w', 'y', end of input, or newline
 ```
 
 
@@ -540,7 +555,7 @@ the parse error is:      1:10:
 1 | badamount
   |          ^
 unexpected end of input
-expecting '+', '-', or number
+expecting number
 
 you may need to change your amount*, balance*, or currency* rules, or add or change your skip rule
 ```
@@ -564,7 +579,7 @@ the parse error is:      1:11:
 1 | badbalance
   |           ^
 unexpected end of input
-expecting '+', '-', or number
+expecting number
 ```
 
 
@@ -703,7 +718,7 @@ the parse error is:      1:1:
 1 | badstatus
   | ^
 unexpected 'b'
-expecting '!', '*', or end of input
+expecting end of input
 ```
 
 
