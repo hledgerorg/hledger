@@ -10,6 +10,21 @@
 User-visible changes in the hledger command line tool and library.
 
 
+# Unreleased
+
+## Breaking changes
+
+- Partial inclusive balance assignments (`=*`) now preserve other commodities
+  in the balance including subaccounts. Previously, they could generate parent
+  postings that offset other commodity balances held in subaccounts. (#2093)
+  Re-reading affected journals can change inferred postings, counterpart amounts,
+  later assignments and reports. Review amountless `=*` postings on accounts
+  with subaccounts holding other commodities. Use `==*` when you intend to set
+  other inclusive commodity balances to zero; this does not generally reproduce
+  the previous behaviour when the parent held those commodities directly.
+  Make adjustments and their counterparts explicit when you need to preserve
+  exact historical amounts.
+
 # 1.99.4 2026-09-10
 
 ## Breaking changes
