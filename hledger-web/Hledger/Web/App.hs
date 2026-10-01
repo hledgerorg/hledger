@@ -142,14 +142,16 @@ instance Yesod App where
     here <- fromMaybe RootR <$> getCurrentRoute
     VD{opts, j, qparam, q, qopts, perms, trs} <- getViewData
     msg <- getMessage
-    -- An explicit ?_LANG= choice is remembered in a cookie, which Yesod's
-    -- languages reads on later requests; only a tag naming an available
-    -- catalog is accepted. And since the page varies by language, say so
-    -- for any cache in front of a shared server.
-    mlangparam <- lookupGetParam "_LANG"
-    for_ (mlangparam >>= \l -> resolveLang (M.keys $ appTranslations master) [l]) $ \l ->
-      addHeader "Set-Cookie" $ "_LANG=" <> l <> "; Path=/; Max-Age=31536000; SameSite=Lax"
-    addHeader "Vary" "Cookie, Accept-Language"
+    -- Unless --lang fixes the language: an explicit ?_LANG= choice is
+    -- remembered in a cookie, which Yesod's languages reads on later
+    -- requests; only a tag naming an available catalog is accepted. And
+    -- since the page varies by language, say so for any cache in front of
+    -- a shared server.
+    unless (langFixed master) $ do
+      mlangparam <- lookupGetParam "_LANG"
+      for_ (mlangparam >>= \l -> resolveLang (M.keys $ appTranslations master) [l]) $ \l ->
+        addHeader "Set-Cookie" $ "_LANG=" <> l <> "; Path=/; Max-Age=31536000; SameSite=Lax"
+      addHeader "Vary" "Cookie, Accept-Language"
     let lang = trLang trs
     showSidebar <- shouldShowSidebar
     -- The policy is sent from here rather than from a middleware, so that
@@ -225,15 +227,23 @@ instance Yesod App where
 ----------------------------------------------------------------------
 -- translations
 
--- | The translations for a viewer (as listed
+-- | The translations for a viewer. When hledger-web was started with a
+-- --lang naming a language, that one, whatever the viewer asks for.
+-- Otherwise the first available one in the viewer's preferences (as listed
 -- by Yesod's 'languages': the _LANG query parameter, cookie and session
--- variable, then the Accept-Language header): the first available one,
--- trying each preference with its subtags dropped before moving on to the
--- next. Falls back to the server's --lang.
+-- variable, then the Accept-Language header), trying each preference with
+-- its subtags dropped before moving on to the next; falling back to English,
+-- or with --lang=auto, the language of hledger-web's environment.
 translationsFor :: App -> [Lang] -> Translations
-translationsFor App{appOpts, appTranslations} langs =
-  fromMaybe serverdefault $ (`M.lookup` appTranslations) =<< resolveLang (M.keys appTranslations) langs
-  where serverdefault = translations_ $ _rsReportOpts $ reportspec_ $ cliopts_ appOpts
+translationsFor app@App{appTranslations} langs
+  | langFixed app = servertrs
+  | otherwise = fromMaybe servertrs $ (`M.lookup` appTranslations) =<< resolveLang (M.keys appTranslations) langs
+  where servertrs = translations_ $ _rsReportOpts $ reportspec_ $ cliopts_ $ appOpts app
+
+-- | Was hledger-web started with a --lang naming a language, which then
+-- applies to every page? (--lang=auto leaves the choice to each viewer.)
+langFixed :: App -> Bool
+langFixed = maybe False (/= "auto") . maybestringopt "lang" . rawopts_ . cliopts_ . appOpts
 
 -- | The translations for the current request's language.
 requestTranslations :: Handler Translations

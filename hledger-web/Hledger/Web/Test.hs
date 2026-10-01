@@ -41,7 +41,7 @@ module Hledger.Web.Test (
   hledgerWebTest
 ) where
 
-import Control.Exception (bracket_)
+import Control.Exception (bracket, bracket_)
 import Data.Aeson (encode)
 import Data.ByteString qualified as BS
 import Data.String (fromString)
@@ -55,7 +55,7 @@ import Network.HTTP.Types (HeaderName)
 import Network.Wai.Test (SResponse(..))
 import System.Directory (createDirectoryIfMissing, getTemporaryDirectory, removeDirectoryRecursive)
 import System.Entropy (getEntropy)
-import System.Environment (setEnv, unsetEnv)
+import System.Environment (lookupEnv, setEnv, unsetEnv)
 import System.FilePath ((</>))
 import Test.Hspec (describe, expectationFailure, hspec, it, shouldBe)
 import Text.Printf (printf)
@@ -415,6 +415,33 @@ hledgerWebTest = do
       bodyContains "<h2>Saldenbericht</h2>"
       bodyContains "Intervall:"
       bodyContains "title=\"Eine Spalte pro Monat anzeigen\">Monatlich</a>"
+
+  runTests "hledger-web with --lang" [("lang","de")] nulljournal $ do
+
+    yit "uses the --lang language whatever the viewer asks for, setting no language cookie" $ do
+      request $ do
+        setMethod "GET"
+        setUrl (JournalR, [("_LANG", "en")])
+        addRequestHeader ("Accept-Language", "en")
+      statusIs 200
+      bodyContains "lang=\"de\""
+      bodyContains "Buchung hinzufügen"
+      cookies <- headerValues "Set-Cookie"
+      assertEq "no language cookie" (any (T.isInfixOf "_LANG=") cookies) False
+
+  -- With --lang=auto the environment's language is only the fallback,
+  -- here English (LC_ALL=C), so that it can't be mistaken for the viewer's.
+  bracket (lookupEnv "LC_ALL" <* setEnv "LC_ALL" "C") (maybe (unsetEnv "LC_ALL") (setEnv "LC_ALL")) $ \_ ->
+    runTests "hledger-web with --lang=auto" [("lang","auto")] nulljournal $ do
+
+      yit "leaves the language to the viewer" $ do
+        request $ do
+          setMethod "GET"
+          setUrl JournalR
+          addRequestHeader ("Accept-Language", "de")
+        statusIs 200
+        bodyContains "lang=\"de\""
+        bodyContains "Buchung hinzufügen"
 
   -- A translation is viewer-controlled text: it must be rendered as text
   -- wherever it lands, including inside attributes.

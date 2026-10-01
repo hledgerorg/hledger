@@ -491,15 +491,20 @@ To capture debug output in a log file instead, you can usually redirect stderr, 
 
 hledger-web's pages can be shown in another language when a translation catalog is available
 (see [Languages](hledger.md#languages) in the hledger manual).
-The language is chosen per request, and the first of these naming an available translation wins:
+
+When hledger-web is started with `--lang LANG`, eg `--lang de`, every page is in that language,
+whatever the browser asks for.
+So you can use hledger-web in a language other than your browser's,
+or give every user of a shared server the same language.
+
+Otherwise the language is chosen per request, and the first of these naming an available translation wins:
 
 1. a `_LANG` query parameter, eg `?_LANG=de`. This choice is remembered in a `_LANG` cookie.
 2. the `_LANG` cookie
 3. the browser's `Accept-Language` header, ie the browser's or system's language settings
-4. the `--lang` option hledger-web was started with
 
-So viewers usually get their browser's language automatically, if hledger-web has it;
-otherwise English, or the language given with `--lang`.
+If none does, pages are in English, or with `--lang auto`, in the language of hledger-web's environment.
+So viewers usually get their browser's language automatically, if hledger-web has it.
 Catalogs, including any in the config directory, are loaded when hledger-web starts.
 
 # ENVIRONMENT
