@@ -10677,7 +10677,9 @@ Lots and capital gains
    Lot movements
      hledger understands three kinds of lot  movement:  acquire,  transfer,  and
      dispose.   Other real-world lot events can usually be modelled using combi-
-     nations of these (see Other lot events below).
+     nations of these (see Other lot events below).   These  are  described  for
+     lots  in asset accounts; in liability accounts, which hold short positions,
+     the signs are reversed.
 
    Acquire
      A positive lot posting in an asset account creates a new lot.
@@ -10818,6 +10820,59 @@ Lots and capital gains
      pose postings only (the quantity times the difference between selling price
      and  cost  basis,  summed);  acquire  postings in the same entry don't con-
      tribute.
+
+   Short positions
+     A short position - units sold before they are bought, with the broker lend-
+     ing them - is recorded as lots in a liability account (type L, declared  or
+     inferred  from the account name).  There the signs are reversed: a negative
+     lot posting opens a short lot (it is an acquire, whose cost  basis  is  the
+     short-sale  price),  and  a positive lot posting closes it, by buying units
+     back (it is a disposal, whose transacted price is  the  buying  price).   A
+     short  lot's  gain  is  its basis minus the buying price, so it is positive
+     when the price has fallen:
+
+            commodity XYZ  ; lots:
+
+            2026-01-02 sell short
+                liabilities:broker:XYZ    -10 XYZ @ $100
+                assets:broker:cash
+
+            P 2026-01-31 XYZ $90
+
+            2026-02-02 cover
+                liabilities:broker:XYZ     10 XYZ @ $90
+                assets:broker:cash
+                revenues:gain
+
+            $ hledger -f short.journal print -x
+            2026-01-02 sell short
+                liabilities:broker:XYZ                       -10 XYZ {$100} @ $100
+                assets:broker:cash                         $1000
+
+            2026-02-02 cover
+                liabilities:broker:XYZ                        10 XYZ {2026-01-02, $100} @ $90
+                assets:broker:cash                         $-900
+                revenues:gain                              $-100
+
+     Reports work as for long positions.  While the  position  is  open,  bs  -B
+     shows  the  liability  at cost ($1000), offsetting the cash received; bs -V
+     shows it at market value ($900), so the net worth includes  the  unrealised
+     gain;  bal --gain shows that gain ($100); and holdings shows negative units
+     and cost (but no XIRR, which is not meaningful for a short position).   Af-
+     ter covering, the realised gain is in revenues:gain, and bse balances.
+
+     Everything  else  is  as for lots in asset accounts: cost basis annotations
+     and lot subaccounts, lot selectors and cost  basis  methods,  generated  or
+     user-written gain postings, and lots: NONE to opt out.  Note that HIFO cov-
+     ers  the  highest  short-sale  price first, which realises the largest gain
+     first; use SPECID to choose.  Long lots and short lots of the same  commod-
+     ity are separate pools, so they may use different methods.
+
+     Transferring  a short position between accounts is not yet supported: cover
+     it in one account and open it in the other, with prices.  (close --lots can
+     move short lots to and from equity, though.)  A negative posting in an  as-
+     set  account  holding no lots is still an error, since it is usually a mis-
+     take.
 
    Other lot events
      Other real-world events - a gift received  with  a  carryover  cost  basis,
@@ -11194,7 +11249,11 @@ Lots and capital gains
        them.   If the basis really differs from what was paid, adjust your entry
        (see Acquire).
 
-     * To silence lot processing while fixing other problems, use  -I  or  --ig-
+     * "no ...  lots available for disposal" means a sale from an account  hold-
+       ing none of the commodity.  If it is a short sale, record it in a liabil-
+       ity account (see Short positions).
+
+     * To  silence  lot  processing while fixing other problems, use -I or --ig-
        nore-lots.
 
 Generating data
@@ -11204,13 +11263,13 @@ Generating data
      * Missing amounts, costs, cost basis, and capital gain amounts are inferred
        automatically when possible.
 
-     * Lot  subaccounts  are  also  inferred (invisibly by default; --lots makes
+     * Lot subaccounts are also inferred (invisibly  by  default;  --lots  makes
        them visible in reports).
 
-     * The --infer-equity flag infers missing conversion  equity  postings  from
+     * The  --infer-equity  flag  infers missing conversion equity postings from
        @/@@ costs.
 
-     * The  --infer-costs flag infers missing costs from conversion equity post-
+     * The --infer-costs flag infers missing costs from conversion equity  post-
        ings.
 
      * The --infer-market-prices flag infers P price directives from costs.
@@ -11218,58 +11277,58 @@ Generating data
      * The --auto flag adds extra postings to transactions matched by auto post-
        ing rules.
 
-     * The --forecast option generates transactions  from  periodic  transaction
+     * The  --forecast  option  generates transactions from periodic transaction
        rules.
 
      * The balance --budget report infers budget goals from periodic transaction
        rules.
 
-     * Commands  like close, rewrite, and hledger-interest generate transactions
+     * Commands like close, rewrite, and hledger-interest generate  transactions
        or postings.
 
-     * CSV data is converted to transactions by applying CSV conversion  rules..
+     * CSV  data is converted to transactions by applying CSV conversion rules..
        etc.
 
-     Such  generated  data  is temporary, existing only at report time.  You can
-     convert it to permanent recorded data  by,  eg,  capturing  the  output  of
-     hledger  print  and  saving it in your journal file.  This can sometimes be
+     Such generated data is temporary, existing only at report  time.   You  can
+     convert  it  to  permanent  recorded  data  by, eg, capturing the output of
+     hledger print and saving it in your journal file.  This  can  sometimes  be
      useful as a data entry aid.
 
-     If you are curious what data is being generated and why, run hledger  print
-     -a  (equivalent  to --explicit --lots --verbose-tags).  -x/--explicit shows
-     inferred amounts and conversion prices, --lots shows  lot  subaccounts  and
-     lot-specific  postings,  and  --verbose-tags  shows  the  hidden tags which
+     If  you are curious what data is being generated and why, run hledger print
+     -a (equivalent to --explicit --lots --verbose-tags).   -x/--explicit  shows
+     inferred  amounts  and  conversion prices, --lots shows lot subaccounts and
+     lot-specific postings, and  --verbose-tags  shows  the  hidden  tags  which
      hledger uses for analysing transactions .
 
 Forecasting
-     Forecasting, or speculative future reporting, can be useful for  estimating
+     Forecasting,  or speculative future reporting, can be useful for estimating
      future balances, or for exploring different future scenarios.
 
-     The  simplest  and  most  flexible way to do it with hledger is to manually
-     record a bunch of future-dated transactions.  You could  keep  these  in  a
-     separate  future.journal and include that with -f only when you want to see
+     The simplest and most flexible way to do it with  hledger  is  to  manually
+     record  a  bunch  of  future-dated transactions.  You could keep these in a
+     separate future.journal and include that with -f only when you want to  see
      them.
 
    --forecast
      There is another way: with the --forecast option, hledger can generate tem-
-     porary "forecast transactions" for reporting purposes, according  to  peri-
+     porary  "forecast  transactions" for reporting purposes, according to peri-
      odic transaction rules defined in the journal.  Each rule can generate mul-
-     tiple  recurring  transactions, so by changing one rule you can change many
+     tiple recurring transactions, so by changing one rule you can  change  many
      forecasted transactions.
 
-     Forecast transactions usually start after ordinary  transactions  end.   By
+     Forecast  transactions  usually  start after ordinary transactions end.  By
      default, they begin after your latest-dated ordinary transaction, or today,
-     whichever  is  later, and they end six months from today.  (The exact rules
+     whichever is later, and they end six months from today.  (The  exact  rules
      are a little more complicated, and are given below.)
 
      This is the "forecast period", which need not be the same as the report pe-
-     riod.  You can override it - eg to forecast farther into the future, or  to
+     riod.   You can override it - eg to forecast farther into the future, or to
      force forecast transactions to overlap your ordinary transactions - by giv-
-     ing  the  --forecast  option  a  period  expression  argument, like --fore-
+     ing the --forecast  option  a  period  expression  argument,  like  --fore-
      cast=..2099 or --forecast=2023-02-15...  Note that the = is required.
 
    Inspecting forecast transactions
-     print is the best  command  for  inspecting  and  troubleshooting  forecast
+     print  is  the  best  command  for  inspecting and troubleshooting forecast
      transactions.  Eg:
 
             ~ monthly from 2022-12-20    rent
@@ -11303,7 +11362,7 @@ Forecasting
                 expenses:rent                  $1000
 
      Here there are no ordinary transactions, so the forecasted transactions be-
-     gin  on  the  first occurrence after today's date.  (You won't normally use
+     gin on the first occurrence after today's date.  (You  won't  normally  use
      --today; it's just to make these examples reproducible.)
 
    Forecast reports
@@ -11327,18 +11386,18 @@ Forecasting
                            || $1000  $1000  $1000  $1000  $1000
 
    Forecast tags
-     Forecast transactions generated by --forecast have a  hidden  tag,  _gener-
-     ated-transaction.   So if you ever need to match forecast transactions, you
+     Forecast  transactions  generated  by --forecast have a hidden tag, _gener-
+     ated-transaction.  So if you ever need to match forecast transactions,  you
      could use tag:_generated-transaction (or just tag:generated) in a query.
 
-     For troubleshooting, you can add the --verbose-tags  flag.   Then,  visible
-     generated-transaction  tags  will  be added also, so you can view them with
+     For  troubleshooting,  you  can add the --verbose-tags flag.  Then, visible
+     generated-transaction tags will be added also, so you can  view  them  with
      the print command.  Their value indicates which periodic rule was responsi-
      ble.
 
    Forecast period, in detail
      Forecast start/end dates are chosen so as to do something useful by default
-     in almost all situations, while also being flexible.  Here are (with  luck)
+     in  almost all situations, while also being flexible.  Here are (with luck)
      the exact rules, to help with troubleshooting:
 
      The forecast period starts on:
@@ -11370,7 +11429,7 @@ Forecasting
      * otherwise: 180 days (~6 months) from today.
 
    Forecast troubleshooting
-     When  --forecast  is  not  doing  what you expect, one of these tips should
+     When --forecast is not doing what you expect,  one  of  these  tips  should
      help:
 
      * Remember to use the --forecast option.
@@ -11379,7 +11438,7 @@ Forecasting
 
      * Test with print --forecast.
 
-     * Check for typos or  too-restrictive  start/end  dates  in  your  periodic
+     * Check  for  typos  or  too-restrictive  start/end  dates in your periodic
        transaction rule.
 
      * Leave at least 2 spaces between the rule's period expression and descrip-
@@ -11388,13 +11447,13 @@ Forecasting
      * Check  for  future-dated  ordinary  transactions  suppressing  forecasted
        transactions.
 
-     * Try setting explicit report start and/or end dates with  -b,  -e,  -p  or
+     * Try  setting  explicit  report  start and/or end dates with -b, -e, -p or
        date:
 
-     * Try  adding the -E flag to encourage display of empty periods/zero trans-
+     * Try adding the -E flag to encourage display of empty periods/zero  trans-
        actions.
 
-     * Try setting  explicit  forecast  start  and/or  end  dates  with  --fore-
+     * Try  setting  explicit  forecast  start  and/or  end  dates  with --fore-
        cast=START..END
 
      * Consult Forecast period, in detail, above.
@@ -11402,19 +11461,19 @@ Forecasting
      * Check inside the engine: add --debug=2 (eg).
 
 Budgeting
-     With  the balance command's --budget report, each periodic transaction rule
-     generates recurring budget goals in specified accounts, and goals  and  ac-
+     With the balance command's --budget report, each periodic transaction  rule
+     generates  recurring  budget goals in specified accounts, and goals and ac-
      tual performance can be compared.  See the balance command's doc below.
 
-     You  can  generate budget goals and forecast transactions at the same time,
-     from the same or different  periodic  transaction  rules:  hledger  bal  -M
+     You can generate budget goals and forecast transactions at the  same  time,
+     from  the  same  or  different  periodic  transaction rules: hledger bal -M
      --budget --forecast ...
 
      See also: Budgeting on hledger.org.
 
 Posting types
-     hledger  detects  and tags certain kinds of postings, to help it understand
-     complex transactions.  Here is quick  overview  of  the  posting  detection
+     hledger detects and tags certain kinds of postings, to help  it  understand
+     complex  transactions.   Here  is  quick  overview of the posting detection
      rules.
 
      By default, these tags are hidden (with a _ prefix), so they can be queried
@@ -11423,24 +11482,27 @@ Posting types
 
      Tag            Detected pattern                           Effect
      ------------------------------------------------------------------------------------
-     con-           A  pair  of  adjacent, single-commodity,   Helps  transaction  bal-
-     ver-           costless postings to Conversion-type ac-   ancer   infer  costs  or
-     sion-post-     counts,  with  a  nearby   corresponding   avoid redundancy in com-
-     ing            costful   or  potentially  corresponding   modity conversions
+     con-           A pair  of  adjacent,  single-commodity,   Helps  transaction  bal-
+     ver-           costless postings to Conversion-type ac-   ancer  infer  costs   or
+     sion-post-     counts,   with  a  nearby  corresponding   avoid redundancy in com-
+     ing            costful  or  potentially   corresponding   modity conversions
                     costless posting
-     cost-post-     A  costful  posting  whose  amount   and   Helps  transaction  bal-
-     ing            transacted  cost correspond to a conver-   ancer  infer  costs   or
-                    sion postings pair; or a costless  post-   avoid redundancy in com-
+     cost-post-     A   costful  posting  whose  amount  and   Helps  transaction  bal-
+     ing            transacted cost correspond to a  conver-   ancer   infer  costs  or
+                    sion  postings pair; or a costless post-   avoid redundancy in com-
                     ing matching one of the pair               modity conversions
      gener-         Postings generated at runtime              Helps  users  understand
-     ated-post-                                                or find  postings  added
+     ated-post-                                                or  find  postings added
      ing                                                       at runtime by hledger
-     ptype:ac-      Positive  postings with lot annotations,   Creates a new lot
+     ptype:ac-      Positive postings with lot  annotations,   Creates a new lot
      quire          or in a lotful commodity, with no match-
-                    ing counterposting
+                    ing  counterposting (negative, in a lia-
+                    bility account: a short position)
      ptype:dis-     Negative postings with lot  annotations,   Selects  and reduces ex-
      pose           or in a lotful commodity, with no match-   isting lots
-                    ing counterposting
+                    ing  counterposting (positive, in a lia-
+                    bility account: covering a  short  posi-
+                    tion)
      ptype:trans-   The negative posting of a pair of  coun-   Moves  lots  between ac-
      fer-from       terpostings, at least one with lot anno-   counts, preserving  cost
                     tation or a lotful commodity; or a nega-   basis

@@ -13514,6 +13514,8 @@ hledger understands three kinds of lot movement: acquire, transfer, and
 dispose.
 Other real\-world lot events can usually be modelled using combinations
 of these (see Other lot events below).
+These are described for lots in asset accounts; in liability accounts,
+which hold short positions, the signs are reversed.
 .SS Acquire
 A positive lot posting in an asset account creates a new lot.
 .IP
@@ -13680,6 +13682,68 @@ When the gain posting is inferred, it is calculated from the entry\(aqs
 dispose postings only (the quantity times the difference between selling
 price and cost basis, summed); acquire postings in the same entry
 don\(aqt contribute.
+.SS Short positions
+A short position \- units sold before they are bought, with the broker
+lending them \- is recorded as lots in a \f[I]liability\f[R] account
+(type \f[CR]L\f[R], declared or inferred from the account name).
+There the signs are reversed: a \f[I]negative\f[R] lot posting opens a
+short lot (it is an acquire, whose cost basis is the short\-sale price),
+and a \f[I]positive\f[R] lot posting closes it, by buying units back (it
+is a disposal, whose transacted price is the buying price).
+A short lot\(aqs gain is its basis minus the buying price, so it is
+positive when the price has fallen:
+.IP
+.EX
+commodity XYZ  ; lots:
+
+2026\-01\-02 sell short
+    liabilities:broker:XYZ    \-10 XYZ \(at $100
+    assets:broker:cash
+
+P 2026\-01\-31 XYZ $90
+
+2026\-02\-02 cover
+    liabilities:broker:XYZ     10 XYZ \(at $90
+    assets:broker:cash
+    revenues:gain
+.EE
+.IP
+.EX
+$ hledger \-f short.journal print \-x
+2026\-01\-02 sell short
+    liabilities:broker:XYZ                       \-10 XYZ {$100} \(at $100
+    assets:broker:cash                         $1000
+
+2026\-02\-02 cover
+    liabilities:broker:XYZ                        10 XYZ {2026\-01\-02, $100} \(at $90
+    assets:broker:cash                         $\-900
+    revenues:gain                              $\-100
+.EE
+.PP
+Reports work as for long positions.
+While the position is open, \f[CR]bs \-B\f[R] shows the liability at
+cost ($1000), offsetting the cash received; \f[CR]bs \-V\f[R] shows it
+at market value ($900), so the net worth includes the unrealised gain;
+\f[CR]bal \-\-gain\f[R] shows that gain ($100); and \f[CR]holdings\f[R]
+shows negative units and cost (but no XIRR, which is not meaningful for
+a short position).
+After covering, the realised gain is in \f[CR]revenues:gain\f[R], and
+\f[CR]bse\f[R] balances.
+.PP
+Everything else is as for lots in asset accounts: cost basis annotations
+and lot subaccounts, lot selectors and cost basis methods, generated or
+user\-written gain postings, and \f[CR]lots: NONE\f[R] to opt out.
+Note that HIFO covers the highest short\-sale price first, which
+realises the largest gain first; use SPECID to choose.
+Long lots and short lots of the same commodity are separate pools, so
+they may use different methods.
+.PP
+Transferring a short position between accounts is not yet supported:
+cover it in one account and open it in the other, with prices.
+(\f[CR]close \-\-lots\f[R] can move short lots to and from equity,
+though.)
+A negative posting in an \f[I]asset\f[R] account holding no lots is
+still an error, since it is usually a mistake.
 .SS Other lot events
 Other real\-world events \- a gift received with a carryover cost basis,
 bonus shares, a stock split, capitalising an in\-kind transfer fee \-
@@ -14192,6 +14256,12 @@ Write just one of them.
 If the basis really differs from what was paid, adjust your entry (see
 Acquire).
 .IP \(bu 2
+\(dqno ...
+lots available for disposal\(dq means a sale from an account holding
+none of the commodity.
+If it is a short sale, record it in a liability account (see Short
+positions).
+.IP \(bu 2
 To silence lot processing while fixing other problems, use
 \f[CR]\-I\f[R] or \f[CR]\-\-ignore\-lots\f[R].
 .SH Generating data
@@ -14481,7 +14551,8 @@ T{
 \f[CR]ptype:acquire\f[R]
 T}@T{
 Positive postings with lot annotations, or in a lotful commodity, with
-no matching counterposting
+no matching counterposting (negative, in a liability account: a short
+position)
 T}@T{
 Creates a new lot
 T}
@@ -14489,7 +14560,8 @@ T{
 \f[CR]ptype:dispose\f[R]
 T}@T{
 Negative postings with lot annotations, or in a lotful commodity, with
-no matching counterposting
+no matching counterposting (positive, in a liability account: covering a
+short position)
 T}@T{
 Selects and reduces existing lots
 T}

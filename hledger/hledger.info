@@ -13180,13 +13180,16 @@ File: hledger.info,  Node: Lot movements,  Next: Cost basis methods,  Prev: Writ
 
 hledger understands three kinds of lot movement: acquire, transfer, and
 dispose.  Other real-world lot events can usually be modelled using
-combinations of these (see Other lot events below).
+combinations of these (see Other lot events below).  These are described
+for lots in asset accounts; in liability accounts, which hold short
+positions, the signs are reversed.
 
 * Menu:
 
 * Acquire::
 * Transfer::
 * Dispose::
+* Short positions::
 * Other lot events::
 
 
@@ -13327,7 +13330,7 @@ Capitalising an in-kind transfer fee is possible too, but fiddly; see
 Other lot events.
 
 
-File: hledger.info,  Node: Dispose,  Next: Other lot events,  Prev: Transfer,  Up: Lot movements
+File: hledger.info,  Node: Dispose,  Next: Short positions,  Prev: Transfer,  Up: Lot movements
 
 32.3.3 Dispose
 --------------
@@ -13359,9 +13362,69 @@ price and cost basis, summed); acquire postings in the same entry don't
 contribute.
 
 
-File: hledger.info,  Node: Other lot events,  Prev: Dispose,  Up: Lot movements
+File: hledger.info,  Node: Short positions,  Next: Other lot events,  Prev: Dispose,  Up: Lot movements
 
-32.3.4 Other lot events
+32.3.4 Short positions
+----------------------
+
+A short position - units sold before they are bought, with the broker
+lending them - is recorded as lots in a _liability_ account (type 'L',
+declared or inferred from the account name).  There the signs are
+reversed: a _negative_ lot posting opens a short lot (it is an acquire,
+whose cost basis is the short-sale price), and a _positive_ lot posting
+closes it, by buying units back (it is a disposal, whose transacted
+price is the buying price).  A short lot's gain is its basis minus the
+buying price, so it is positive when the price has fallen:
+
+commodity XYZ  ; lots:
+
+2026-01-02 sell short
+    liabilities:broker:XYZ    -10 XYZ @ $100
+    assets:broker:cash
+
+P 2026-01-31 XYZ $90
+
+2026-02-02 cover
+    liabilities:broker:XYZ     10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+
+$ hledger -f short.journal print -x
+2026-01-02 sell short
+    liabilities:broker:XYZ                       -10 XYZ {$100} @ $100
+    assets:broker:cash                         $1000
+
+2026-02-02 cover
+    liabilities:broker:XYZ                        10 XYZ {2026-01-02, $100} @ $90
+    assets:broker:cash                         $-900
+    revenues:gain                              $-100
+
+   Reports work as for long positions.  While the position is open, 'bs
+-B' shows the liability at cost ($1000), offsetting the cash received;
+'bs -V' shows it at market value ($900), so the net worth includes the
+unrealised gain; 'bal --gain' shows that gain ($100); and 'holdings'
+shows negative units and cost (but no XIRR, which is not meaningful for
+a short position).  After covering, the realised gain is in
+'revenues:gain', and 'bse' balances.
+
+   Everything else is as for lots in asset accounts: cost basis
+annotations and lot subaccounts, lot selectors and cost basis methods,
+generated or user-written gain postings, and 'lots: NONE' to opt out.
+Note that HIFO covers the highest short-sale price first, which realises
+the largest gain first; use SPECID to choose.  Long lots and short lots
+of the same commodity are separate pools, so they may use different
+methods.
+
+   Transferring a short position between accounts is not yet supported:
+cover it in one account and open it in the other, with prices.  ('close
+--lots' can move short lots to and from equity, though.)  A negative
+posting in an _asset_ account holding no lots is still an error, since
+it is usually a mistake.
+
+
+File: hledger.info,  Node: Other lot events,  Prev: Short positions,  Up: Lot movements
+
+32.3.5 Other lot events
 -----------------------
 
 Other real-world events - a gift received with a carryover cost basis,
@@ -13831,6 +13894,9 @@ wrong:
      acquisition wrote both a '{}' basis and an '@' cost which don't
      agree.  Write just one of them.  If the basis really differs from
      what was paid, adjust your entry (see Acquire).
+   * "no ...  lots available for disposal" means a sale from an account
+     holding none of the commodity.  If it is a short sale, record it in
+     a liability account (see Short positions).
    * To silence lot processing while fixing other problems, use '-I' or
      '--ignore-lots'.
 
@@ -14114,10 +14180,13 @@ Tag    Detected pattern                          Effect
                                                  at runtime by hledger
 'ptype:acquire'Positive postings with lot annotations,Creates a new lot
        or in a lotful commodity, with no
-       matching counterposting
+       matching counterposting (negative, in a
+       liability account: a short position)
 'ptype:dispose'Negative postings with lot annotations,Selects and reduces
        or in a lotful commodity, with no         existing lots
-       matching counterposting
+       matching counterposting (positive, in a
+       liability account: covering a short
+       position)
 'ptype:transfer-from'The negative posting of a pair ofMoves lots between
        counterpostings, at least one with lot    accounts, preserving
        annotation or a lotful commodity; or a    cost basis
@@ -15612,74 +15681,75 @@ Node: Lot subaccounts503256
 Node: Several ways to write lot entries504524
 Node: Disabling lot tracking506121
 Node: Lot movements507489
-Node: Acquire507917
-Node: Transfer510710
-Node: Transfer fees511916
-Node: Capitalising fees513170
-Node: Dispose513869
-Node: Other lot events515294
-Node: Cost basis methods515755
-Node: Changing the cost basis method519178
-Node: Gains520724
-Node: Gain accounts522602
-Node: Recording gains523840
-Node: Lot reports525699
-Node: Realised gains526478
-Node: Unrealised gains527708
-Node: Lot details529884
-Node: Lot labels530164
-Node: Cost basis precision531120
-Node: Lot postings and balance assertions532163
-Node: Troubleshooting lots533198
-Node: Generating data534864
-Node: Forecasting536699
-Node: --forecast537355
-Node: Inspecting forecast transactions538456
-Node: Forecast reports539789
-Node: Forecast tags540898
-Node: Forecast period in detail541518
-Node: Forecast troubleshooting542606
-Node: Budgeting543677
-Node: Posting types544232
-Node: PART 5 MORE ABOUT THE COMMAND LINE546889
-Node: Output547080
-Node: Output destination547285
-Node: Output format547845
-Node: Text output549775
-Node: Box-drawing characters550971
-Node: Colour551473
-Node: Paging552204
-Node: HTML output553747
-Node: CSV / TSV output554395
-Node: FODS output554651
-Node: Ledger output555585
-Node: Beancount output556137
-Node: SQL output560861
-Node: JSON output561602
-Node: Debug output562309
-Node: Command line tips563427
-Node: Special characters563796
-Node: Escaping shell special characters564798
-Node: Escaping regular expression special characters566159
-Node: Escaping in other situations567676
-Node: Unicode characters568976
-Node: Regular expressions570409
-Node: hledger's regular expressions573601
-Node: Argument files575274
-Node: Shell completions576188
-Node: PART 6 COMMON TASKS576697
-Node: Setting LEDGER_FILE577145
-Node: Set LEDGER_FILE on unix577661
-Node: Set LEDGER_FILE on mac578176
-Node: Set LEDGER_FILE on Windows578730
-Node: Reconciling580369
-Node: Closing a journal file582704
-Node: hledger 1 and hledger 2583171
-Node: Migrating hledger 1 data to hledger 2583723
-Node: Switching back to hledger 1585819
-Node: Keeping data usable with both587174
-Node: BUGS587898
-Node: Troubleshooting589550
+Node: Acquire508061
+Node: Transfer510854
+Node: Transfer fees512060
+Node: Capitalising fees513314
+Node: Dispose514013
+Node: Short positions515437
+Node: Other lot events517961
+Node: Cost basis methods518430
+Node: Changing the cost basis method521853
+Node: Gains523399
+Node: Gain accounts525277
+Node: Recording gains526515
+Node: Lot reports528374
+Node: Realised gains529153
+Node: Unrealised gains530383
+Node: Lot details532559
+Node: Lot labels532839
+Node: Cost basis precision533795
+Node: Lot postings and balance assertions534838
+Node: Troubleshooting lots535873
+Node: Generating data537732
+Node: Forecasting539567
+Node: --forecast540223
+Node: Inspecting forecast transactions541324
+Node: Forecast reports542657
+Node: Forecast tags543766
+Node: Forecast period in detail544386
+Node: Forecast troubleshooting545474
+Node: Budgeting546545
+Node: Posting types547100
+Node: PART 5 MORE ABOUT THE COMMAND LINE549893
+Node: Output550084
+Node: Output destination550289
+Node: Output format550849
+Node: Text output552779
+Node: Box-drawing characters553975
+Node: Colour554477
+Node: Paging555208
+Node: HTML output556751
+Node: CSV / TSV output557399
+Node: FODS output557655
+Node: Ledger output558589
+Node: Beancount output559141
+Node: SQL output563865
+Node: JSON output564606
+Node: Debug output565313
+Node: Command line tips566431
+Node: Special characters566800
+Node: Escaping shell special characters567802
+Node: Escaping regular expression special characters569163
+Node: Escaping in other situations570680
+Node: Unicode characters571980
+Node: Regular expressions573413
+Node: hledger's regular expressions576605
+Node: Argument files578278
+Node: Shell completions579192
+Node: PART 6 COMMON TASKS579701
+Node: Setting LEDGER_FILE580149
+Node: Set LEDGER_FILE on unix580665
+Node: Set LEDGER_FILE on mac581180
+Node: Set LEDGER_FILE on Windows581734
+Node: Reconciling583373
+Node: Closing a journal file585708
+Node: hledger 1 and hledger 2586175
+Node: Migrating hledger 1 data to hledger 2586727
+Node: Switching back to hledger 1588823
+Node: Keeping data usable with both590178
+Node: BUGS590902
+Node: Troubleshooting592554
 
 End Tag Table
 
