@@ -661,9 +661,6 @@ hledgerWebTest = do
   -- The journal, register, and sidebar link to one another: a date to that
   -- day's journal entries, an account to its register, an amount to the
   -- register that derives it, an entry to itself on either page.
-  -- The journal, register, and sidebar link to one another: a date to that
-  -- day's journal entries, an account to its register, an amount to the
-  -- register that derives it, an entry to itself on either page.
   let base = defbaseurl defhost defport
       -- an entry's id (transaction-FILE-INDEX), as the pages compute it
       frag desc = maybe (error' $ "no transaction " ++ desc) (transactionFragment bj) $
