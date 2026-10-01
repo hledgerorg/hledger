@@ -1408,8 +1408,10 @@ lotcostp postingqty =
 
     -- Divide with full Decimal precision (so `{{T}}` and `@@T` give equal
     -- per-unit Decimals for the strict basis check), and widen display
-    -- precision to show the quotient's digits.
-    convertToUnitCost = divideAmountAndUpdatePrecision postingqty
+    -- precision to show the quotient's digits. A total basis is unsigned,
+    -- like a total cost: divide by the quantity's magnitude so a negative
+    -- posting (a disposal, or a short open) gets a positive unit basis.
+    convertToUnitCost = divideAmountAndUpdatePrecision (abs postingqty)
 
 -- Parse a Ledger-style [LOTDATE].
 lotdatep :: JournalParser m Day

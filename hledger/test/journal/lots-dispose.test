@@ -638,22 +638,10 @@ $ hledger -f- print --lots
 
 >=
 
-# ** 35. TODO: {{ }} total cost basis syntax should let us work around test
-# 25's imprecision issue. But currently hledger normalises {{ total }} to
-# { per-unit } internally, and this normalisation is flawed:
-#
-#   - It divides the total by the posting's *signed* quantity. So the acquire's
-#     9.216 FUND {{Rs16600.00}} stores per-unit Rs1801.22 but the dispose's
-#     -9.216 FUND {{Rs16600.00}} is normalised to per-unit Rs-1801.22 (wrong sign),
-#     and the dispose fails to match the acquired lot.
-#
-#   - It rounds the per-unit to the commodity's declared precision (2 decimals
-#     for Rs), so even with the sign fixed, Rs1801.22 would not equal the
-#     acquire's exact Rs16600/9.216 ≈ Rs1801.215277778..., and the Decimal
-#     artifact from test 25 would reappear.
-#
-# Until this is fixed, users have to avoid test 25's case by choosing
-# quantities and per-unit costs that multiply exactly.
+# ** 35. {{ }} total cost basis syntax works around test 25's imprecision:
+# the total is divided by the posting's unsigned quantity at full precision,
+# so the dispose's -9.216 FUND {{Rs16600.00}} selects the acquire's lot
+# (whose unit basis is displayed with at most 8 decimals).
 <
 account income:capital  ; type:G
 
@@ -667,9 +655,16 @@ account income:capital  ; type:G
     income:capital                                     Rs-2803.24
 
 $ hledger -f- print --lots
->2 /no lots matching .* for commodity FUND in account assets:fund/
->=1
+2017-04-09 buy
+    assets:fund:{2017-04-09, Rs1801.21527778}         9.216 FUND {Rs1801.21527778}
+    assets:savings                             Rs-16600.00
 
+2019-07-10 sell
+    assets:savings                             Rs19403.24
+    assets:fund:{2017-04-09, Rs1801.21527778}       -9.216 FUND {Rs1801.21527778} @@ Rs19403.24
+    income:capital                             Rs-2803.24
+
+>=
 
 # ** 36. When a declared commodity display style widens an inferred cost
 # basis (eg 'commodity 1.00 €' shows 2.5 as 2.50), disposal postings use
@@ -1513,3 +1508,28 @@ commodity AAA  ; lots:
     assets:c
 $ hledger -f- bal type:G -N
                 $-20  revenues:gain
+
+# ** 75. A total basis {{T}} on a negative posting is unsigned, like a total
+# cost: -10 AAPL {{$1000}} selects the $100 lot (not a {$-100} one).
+<
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:broker   10 AAPL {{$1000}}
+    assets:cash
+
+2026-02-01 sell
+    assets:broker  -10 AAPL {{$1000}} @@ $1500
+    assets:cash
+    revenues:gain
+$ hledger -f- print -x
+2026-01-01 buy
+    assets:broker                                 10 AAPL {$100} @ $100
+    assets:cash                               $-1000
+
+2026-02-01 sell
+    assets:broker                                -10 AAPL {2026-01-01, $100} @@ $1500
+    assets:cash                                $1500
+    revenues:gain                              $-500
+
+>=
