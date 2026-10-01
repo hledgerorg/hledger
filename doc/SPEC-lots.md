@@ -40,6 +40,7 @@ The functional differences:
 | Lot-preserving transfers | by writing the same lot annotation on both sides; no error checking | by writing the lot's cost and date on the receiving side (an omitted date becomes the transfer date) | automatic with no lot annotations needed; or if written, they are checked |
 | Gain posting | required, user-written; checked only by balancing | required, user-written; checked only by balancing | inferred if omitted; fully checked if written |
 | Lots reports | `--lots` lists each lot with its basis and date; `-B`/`-V`/`-G` give total basis, value and unrealised gain, per account not per lot; no realised gains report | holdings report (per lot, with cost and value), via bean-query or Fava | lots viewable in all reports (`--lots`); holdings report |
+| Short positions | not verified, so a negative lot balance is allowed | yes: a negative position with a cost (under the default STRICT booking); a purchase against it reduces it; the gain is user-written | yes: lots in liability accounts, opened by a sale and closed by a purchase; the gain is inferred or checked (see Short positions) |
 
 (Before 2026-09 hledger balanced acquisitions with `@` and allowed `{}` to
 differ; that left the difference unaccounted for, and matched neither Ledger
@@ -389,7 +390,8 @@ no lots tag.
 
 ## Inferring cost basis from transacted cost
 
-In postings with a positive amount, involving a lotful commodity,
+In lot-opening postings (positive; or negative in a liability account, see
+Short positions) involving a lotful commodity,
 which have a transacted cost but no explicit cost basis annotation,
 or an empty cost basis annotation (`{}`),
 we infer a cost basis from the transacted cost.
@@ -423,6 +425,9 @@ postings are tagged `gain` separately: user-written ones before balancing by
 In short: a lotful commodity entering an asset account is an **acquire**.
 A lotful commodity leaving an asset account is a **dispose**.
 A lotful commodity moving between asset accounts is a **transfer**.
+In a liability account, which holds short positions, the signs are
+reversed: a lotful commodity leaving it (a short sale) is an acquire, and
+entering it (a cover) is a dispose; see Short positions below.
 The details below handle edge cases: bare postings without `{...}`,
 equity transfers, partial transfers with fees, and cost source inference.
 
@@ -496,15 +501,34 @@ tracking with a `lots: NONE` tag. They are tried in this order:
 
 Virtual (parenthesised) postings are never classified as lot postings.
 
+**Short positions (liability accounts).** Postings in a Liability-typed
+account are classified before the rules above, by `shouldClassifyShort`,
+and take no part in them: they are never transfer counterparts (so a
+liability posting can't be paired with an asset posting, and two
+liability postings don't pair up), and they are left out of the
+same-account pairing, the counterpart maps and the sum matching. The
+rules for them mirror the asset rules with the signs reversed:
+a **negative** amount with `{...}`, or bare in a lotful commodity with a
+cost source (a price, or another commodity in the entry), is an
+`acquire` (a short sale, opening a short lot whose basis is the sale
+price); a **positive** amount with `{...}` or bare in a lotful commodity
+is a `dispose` (a cover; priceless, it is a priceless disposal). With no
+transacted price and an equity counterpart, they are `transfer-from`
+(positive) or `transfer-to` (negative) instead, so `close --clopen
+--lots` can move short lots to and from equity. The account's `lots:
+NONE` tag opts out as usual. See also Short positions below.
+
 **4. Gain accounts.**
 Postings in accounts with type `Gain` (and not otherwise classified) get
 ptype `gain`.
 
 ### Unclassified lotful postings
 
-With `--lots`, a real posting with a nonzero lotful commodity in an asset account
-that was not classified (no `_ptype` tag) is an error.
+With `--lots`, a real posting with a nonzero lotful commodity in an asset
+or liability account that was not classified (no `_ptype` tag) is an error.
 This catches lotful postings that need lot tracking but weren't recognised.
+(In a liability account, the error also notes that short lots can't be
+transferred between accounts yet.)
 
 Zero-amount lotful postings (e.g. for balance assertions like `0 AAPL = 100 AAPL`)
 are exempt: no lot movement occurs, so no classification is needed.
@@ -629,6 +653,58 @@ is skipped when:
   the cost basis is inferred from the selected lot, and the transacted cost
   (if inferred by the balancer as @@) is normalized to unit cost (@).
 
+## Short positions
+
+A short position (units sold before they are bought) is lots in a
+Liability-typed account, where the lot flow is reversed (#2756). Each
+lot-tracking account has a *lot direction* (`LotDirection` in
+AccountType.hs): Long for Asset/Cash accounts, Short for Liability
+accounts; other account types have none, and are treated as Long where
+their postings carry explicit `{}` annotations (eg equity:opening). A
+posting's amount is a *lot inflow* (opens or receives a lot) when
+quantity × direction sign > 0, and a *lot outflow* (closes or sends one)
+when < 0 (`isLotInflow`/`isLotOutflow` in Lots.hs); the sign-based rules
+in this document are stated for Long accounts.
+
+- A short sale is a negative lotful posting in a liability account: an
+  acquire, creating a short lot whose basis is the short-sale price. The
+  acquire basis check applies (`{}` and `@` must agree), and a missing `@`
+  is inferred from `{}` as for any acquisition.
+- A cover is a positive lotful posting there: a dispose, selecting from the
+  account's short lots with the usual methods. Its gain is basis minus
+  transacted cost, the same `postingDisposalGain` formula (quantity ×
+  (basis − price), with the quantity's sign) as for sales; the balancer's
+  "closing postings balance at basis, gain set aside" rule is unchanged.
+- Lot state stores short lots' quantities as positive magnitudes, like long
+  lots; the account's direction supplies the sign on the way in and out
+  (`processAcquirePosting`/`processDisposePosting`). Long lots (in asset
+  accounts) and short lots (in liability accounts) of a commodity are
+  separate pools: the global (*ALL) methods and the AVERAGEALL pool
+  consider only same-direction accounts (`lotStateForDirection`), and the
+  method coherence check groups holdings by (commodity, direction), so a
+  short pool may use a different method from the long pool.
+- Reduction methods are unchanged. HIFO on short lots covers the highest
+  short-sale price first, realising the largest gain first (as Beancount
+  does); the manual says so and points to SPECID. (A LOFO method could be
+  added if wanted.)
+- Lot subaccount names, print --lots round trips, --infer-equity, -B, -V,
+  --gain and holdings all work unchanged, since they are sign-neutral;
+  holdings' realised gain column selects dispose-tagged postings, its gain
+  percentage is relative to the cost's magnitude, and its XIRR is omitted
+  for a short (its cash flows are a long's with signs reversed, which the
+  rate equation can't distinguish, so a winning short would show as a loss).
+- Not yet supported: transferring short lots between accounts (between two
+  liability accounts, or between an asset and a liability account).
+  Liability postings take no part in transfer detection, so such an entry
+  is read as a cover plus a short sale, and fails for want of a price with
+  a note suggesting that reading. Equity transfers (`close --clopen
+  --lots`) of short lots do work.
+- A negative lotful posting in an *asset* account holding no lots remains
+  an error ("no X lots available"), now with a hint to use a liability
+  account: it is usually a mistake, and keeping the check was the main
+  reason for the liability-account design over state-driven detection
+  (see DECISIONS.md).
+
 ## Reduction methods
 
 The reduction method, also known as booking method, is the order in which lots are "reduced" (disposed or transferred from).
@@ -647,7 +723,9 @@ These are per-account: they select lots and enforce/validate their order only wi
 
 There are also variants which consider lots across all accounts: FIFOALL, LIFOALL, HIFOALL, AVERAGEALL.
 These select lots within the posting's account, but they also validate that the selected lots
-would be the ones chosen if all accounts' lots were merged into a single pool.
+would be the ones chosen if all accounts' lots were merged into a single pool
+(all accounts with the same lot direction, that is: long lots in asset accounts
+and short lots in liability accounts are separate pools, see Short positions).
 If not, an error is raised showing which lots on other accounts have higher priority.
 
 AVERAGE/AVERAGEALL maintain a single running per-unit cost shared by every
@@ -878,8 +956,9 @@ decimal places in the entry's amounts.
 ## Acquire basis check
 
 `journalCheckAcquireBasis` enforces that every acquire-shaped posting (real,
-positive, in an asset account) has per-unit cost basis equal to per-unit
-transacted cost. If `{B}` and `@T` are both written on such a posting and
+a lot inflow in an asset or liability account: positive, or negative in a
+liability account, see Short positions) has per-unit cost basis equal to
+per-unit transacted cost. If `{B}` and `@T` are both written on such a posting and
 `B ≠ T`, the check raises an error citing the offending posting. This
 prevents typos in cost basis causing wrong gain to be calculated later, and
 an unaccounted-for difference between what was paid and the basis. It runs
@@ -980,15 +1059,17 @@ Pre-balancing:
 1. **journalInferBasisFromAccountNames** — parse cost basis from any lot subaccount
    names (`{...}` components) in posting account names.
 2. **journalInferPostingsTransactedCost** — infer `@` from `{}` on acquire-shaped
-   postings (positive, cost basis with a cost, no `@`), so eg an acquire with an
+   postings (a lot inflow: positive, or negative in a liability account; cost
+   basis with a cost, no `@`), so eg an acquire with an
    elided cash amount balances at cost. Transfer destinations are recognised by
    shape and skipped: an explicit negative same-commodity same-quantity
    counterpart, or an equity posting with no cost-basis amounts (equity transfer).
    Then **journalCheckAcquireBasis** (a lot check, skipped by `--ignore-lots`)
-   errors if an acquire-shaped asset posting wrote a cost basis and a transacted
+   errors if an acquire-shaped asset or liability posting wrote a cost basis and a transacted
    cost which differ (see [Acquire basis check](#acquire-basis-check)).
 3. **journalTagGainPostings** — in disposal transactions (recognised by shape:
-   a negative lotful or cost-basis amount), tag user-written realised gain
+   a lot outflow - negative, or positive in a liability account - lotful or
+   cost-basis amount), tag user-written realised gain
    postings `_ptype:gain`, so the balancer sets them aside; error on an
    amountless one (unless lenient). Runs before auto postings, whose
    preliminary balancing needs the tags too. The per-transaction
@@ -1198,6 +1279,15 @@ Possible future work, from design discussions (2026-08):
   (The AVERAGE-vs-transfers item previously here was implemented 2026-08:
   transfers in re-average the pool, transfers out carry the pooled cost;
   see "Reduction methods".)
+
+- **Short-lot transfers.** Short positions (lots in liability accounts,
+  implemented 2026-09, #2756) can't yet be transferred between accounts.
+  Supporting that means making the transfer machinery (same-account pairs,
+  counterpart maps, sum matching, fee auto-split, transfer groups)
+  direction-aware, replacing its sign tests with lot inflow/outflow tests,
+  and deciding what a transfer between an asset and a liability account
+  means. A LOFO (lowest cost first) method would give short sellers the
+  gain-minimising counterpart of HIFO.
 
 - **Method coherence checks.** Implemented 2026-08 for the global (*ALL)
   methods: mixing one with a different method among the accounts holding a

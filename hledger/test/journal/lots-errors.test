@@ -470,6 +470,7 @@ hledger: Error: -:51:
 no ADA lots available for disposal from account assets:exchange on 2026-02-01
 Lots of ADA in other accounts:
   assets:wallet: 24 ADA in 12 lots
+(To record a short position, use a liability account.)
 
 Postings were read as: dispose, unclassified.
 >=1

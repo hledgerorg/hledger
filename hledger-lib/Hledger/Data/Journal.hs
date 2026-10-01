@@ -176,7 +176,7 @@ import Text.Megaparsec (ParsecT)
 import Hledger.Utils
 import Hledger.Data.Types
 import Hledger.Data.AccountName
-import Hledger.Data.AccountType (isEquityType)
+import Hledger.Data.AccountType (accountTypeLotDirection, isEquityType, lotDirectionSign)
 import Hledger.Data.Amount
 import Hledger.Data.Currency (CurrencyCode, toCurrencyCode)
 import Hledger.Data.Errors (makeAccountTagErrorExcerpt, makeCommodityTagErrorExcerpt)
@@ -916,7 +916,8 @@ journalPostingsAddCommodityTags j
       []   -> p
       tags -> p `postingAddTags` tags
 
--- | For positive postings with a cost basis, which don't look like lot
+-- | For lot-opening postings with a cost basis (positive; or negative in a
+-- liability account, which holds short lots), which don't look like lot
 -- transfer destinations, infer transacted cost from cost basis. This runs
 -- before transaction balancing (the inferred cost lets an acquire entry with
 -- an elided cash amount balance at cost), so lot classification hasn't
@@ -939,9 +940,11 @@ journalInferPostingsTransactedCost j = journalMapTransactions inferTxn j
       | otherwise = p'{poriginal = Just $ originalPosting p}
       where
         p' = p{pamount = mapMixedAmount amountInferTransactedCost $ pamount p}
-        needsInference a = aquantity a > 0 && isNothing (acost a) && hasCostBasisCost a
+        -- a lot inflow: positive, or negative in a liability account (a short lot)
+        needsInference a = aquantity a * lotsign > 0 && isNothing (acost a) && hasCostBasisCost a
                         && not (hasTransferFromCounterpart t p a)
                         && not (hasTransferGroupShape t p (acommodity a))
+        lotsign = maybe 1 lotDirectionSign (journalAccountType j (paccount p) >>= accountTypeLotDirection)
         amountInferTransactedCost a
           | needsInference a, Just CostBasis{cbCost=Just c} <- acostbasis a = a{acost = Just (UnitCost c)}
           | otherwise = a

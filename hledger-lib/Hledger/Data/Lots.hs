@@ -45,8 +45,8 @@ journalCalculateLots:
 
 * processDisposePosting:
   "dispose posting has no cost basis",
-  "...has no transacted price (selling price)",
-  "...has non-negative quantity",
+  "...has no transacted price (selling price)" / "(buying price, to cover the short)",
+  "...has non-negative quantity" / "non-positive quantity (a short position is covered by a positive posting)",
   "SPECID requires a lot selector",
   "lot ... has no cost basis (internal error)",
   "lot subaccount ... does not match resolved lot"
@@ -68,7 +68,8 @@ journalCalculateLots:
 
 * selectLots:
   "SPECID requires an explicit lot selector",
-  "no X lots available for transfer/disposal from account Y on DATE",
+  "no X lots available for transfer/disposal from account Y on DATE"
+  (with a hint to use a liability account for a short position),
   "no lots matching {...} for commodity X in account Y on DATE",
   "lot selector is ambiguous, matches N lots in account Y",
   "Insufficient lots for commodity X in account Y"
@@ -83,7 +84,8 @@ journalCalculateLots:
 
 * foldMPostings (via isUnclassifiedLotfulPosting):
   "X is declared lotful ... but this posting was not classified"
-  (exempt: zero-amount lotful postings)
+  (exempt: zero-amount lotful postings; in a liability account, notes that
+  short lots can't be transferred yet)
 
 -}
 
@@ -104,9 +106,12 @@ module Hledger.Data.Lots (
   journalTagGainPostings,
   transactionTagGainPostings,
   journalAddOrCheckGainPostings,
+  isDisposePosting,
   isGainPosting,
   isSetAsideGainPosting,
   lotBaseAccount,
+  lotDirectionOf,
+  journalLotDirection,
   lotSubaccountName,
   mergeCostBasis,
   parseLotName,
@@ -133,7 +138,7 @@ import Data.Time.Calendar (Day, fromGregorianValid)
 import Text.Printf (printf)
 
 import Hledger.Data.AccountName (accountNameType, parentAccountNames)
-import Hledger.Data.AccountType (isAssetType, isEquityType, isLiabilityType)
+import Hledger.Data.AccountType (LotDirection(..), accountTypeLotDirection, isAssetType, isEquityType, isLiabilityType, lotDirectionSign)
 import Hledger.Data.Amount (AmountFormat(..), mixed, maPlus, mixedAmountStripCosts, amountRoundedQuantity, amountSetPrecisionMin, amountSetQuantity, amountsRaw, divideAmountAndUpdatePrecision, isNegativeAmount, maNegate, maSum, mapMixedAmount, mixedAmount, mixedAmountCost, mixedAmountIsZero, mixedAmountLooksZero, multiplyQuantities, nullmixedamt, noCostFmt, oneLineNoCostFmt, showAmountWith, showAmountsDistinctly, showMixedAmountOneLine, showMixedAmountsDistinctly)
 import Hledger.Data.Errors (makeAccountTagErrorExcerpt, makeCommodityTagErrorExcerpt, makePostingErrorExcerptByIndex, makeTransactionErrorExcerpt, transactionFindPostingIndex)
 import Hledger.Data.Journal (journalAccountLotsTags, journalAccountType, journalAccountUsesNoLots, journalBaseGainAccount, journalCommodityLotsMethod, journalCommodityStylesWith, journalCommodityUsesLots, journalInheritedAccountTags, journalLotfulCommodities, journalMapPostings, journalMapTransactions, journalPostings, journalTieTransactions, parseReductionMethod)
@@ -190,10 +195,12 @@ journalCheckLotsMethodCoherence j = do
   where
     -- The base accounts holding each lot-tracked commodity (postings with
     -- a cost basis annotation, or a lotful commodity in an account that
-    -- hasn't opted out of lot tracking with lots: NONE).
-    holdings :: M.Map CommoditySymbol (S.Set AccountName)
+    -- hasn't opted out of lot tracking with lots: NONE), grouped by lot
+    -- direction: long lots (asset accounts) and short lots (liability
+    -- accounts) are separate pools, which may use different methods.
+    holdings :: M.Map (CommoditySymbol, LotDirection) (S.Set AccountName)
     holdings = M.fromListWith S.union
-      [ (acommodity a, S.singleton acct)
+      [ ((acommodity a, journalLotDirectionOrLong j acct), S.singleton acct)
       | p <- journalPostings j
       , let acct = lotBaseAccount (paccount p)
       , a <- amountsRaw (pamount p)
@@ -204,7 +211,7 @@ journalCheckLotsMethodCoherence j = do
                           | acct <- S.toList accts
                           , let (m, src) = resolveReductionMethodForAccount j acct c ]
 
-    checkCommodity (c, accts) =
+    checkCommodity ((c, _), accts) =
       case [r | r@(_, m, _) <- rs, methodIsGlobal m] of
         [] -> Right ()
         (gacct, gmethod, gsrc):_ ->
@@ -252,6 +259,33 @@ splitLotSubaccount a = do
 -- @\"assets:broker\"@.
 lotBaseAccount :: AccountName -> AccountName
 lotBaseAccount a = maybe a fst (splitLotSubaccount a)
+
+-- | The lot direction of an account (or of a lot subaccount's base account):
+-- Long for asset accounts, Short for liability accounts (which hold short
+-- positions), none for other account types. See 'LotDirection'.
+lotDirectionOf :: (AccountName -> Maybe AccountType) -> AccountName -> Maybe LotDirection
+lotDirectionOf lookupAccountType acct =
+  lookupAccountType (lotBaseAccount acct) >>= accountTypeLotDirection
+
+-- | The lot direction of an account in this journal. See 'lotDirectionOf'.
+journalLotDirection :: Journal -> AccountName -> Maybe LotDirection
+journalLotDirection j = lotDirectionOf (journalAccountType j)
+
+-- | The lot direction of an account in this journal, treating accounts
+-- of other types (which can hold lots only when written with explicit
+-- cost basis annotations, eg equity:opening) as Long.
+journalLotDirectionOrLong :: Journal -> AccountName -> LotDirection
+journalLotDirectionOrLong j = fromMaybe Long . journalLotDirection j
+
+-- | Does this amount open or receive a lot (an inflow) in an account with
+-- this direction ? Positive in a Long account, negative in a Short one.
+isLotInflow :: LotDirection -> Amount -> Bool
+isLotInflow dir a = aquantity a * lotDirectionSign dir > 0
+
+-- | Does this amount close or send a lot (an outflow) in an account with
+-- this direction ? Negative in a Long account, positive in a Short one.
+isLotOutflow :: LotDirection -> Amount -> Bool
+isLotOutflow dir a = aquantity a * lotDirectionSign dir < 0
 
 -- | Render a lot name in the consolidated hledger format for use as a subaccount name.
 -- Format: @{YYYY-MM-DD, COST}@ or @{YYYY-MM-DD, \"LABEL\", COST}@.
@@ -575,7 +609,9 @@ transactionAutoSplitFeeOutflows verbosetags lookupAccountType commodityIsLotful 
   where
     ps = tpostings t
     isAsset    acct = maybe False isAssetType (lookupAccountType (lotBaseAccount acct))
-    isNonAsset acct = not (isAsset acct)
+    -- A fee counterpart is in an account holding no lots (not a liability
+    -- account either: those hold short lots).
+    isNonAsset acct = isNothing (lotDirectionOf lookupAccountType acct)
     -- An account with a lots: NONE tag doesn't participate in lot tracking,
     -- unless the posting carries explicit cost basis annotations.
     optedOut p = accountUsesNoLots (lotBaseAccount (paccount p))
@@ -624,7 +660,7 @@ transactionAutoSplitFeeOutflows verbosetags lookupAccountType commodityIsLotful 
 
     addTag name = postingAddHiddenAndMaybeVisibleTag False verbosetags (name, "")
 
-    -- Find non-asset counterpart posting amounts accounting for the given
+    -- Find non-lot-account counterpart posting amounts accounting for the given
     -- fee quantity in the given commodity: the first single amount equal to
     -- it, or otherwise all of the positive amounts, if they sum to it exactly.
     findFeeCounterparts comm qty
@@ -671,6 +707,13 @@ transactionClassifyLotPostings verbosetags lookupAccountType commodityIsLotful a
     optedOut :: Posting -> Bool
     optedOut p = accountUsesNoLots (lotBaseAccount (paccount p)) && not (hasCostBasis p)
 
+    -- Is this posting in a Short (liability) account, holding short lots ?
+    -- Short lots take no part in transfer detection (transferring them is
+    -- not supported yet): such postings are never transfer counterparts,
+    -- and are classified only as acquire or dispose (see shouldClassifyShort).
+    isShortPosting :: Posting -> Bool
+    isShortPosting p = lotDirectionOf lookupAccountType (paccount p) == Just Short
+
     hasLotRelevantAmount :: Posting -> Bool
     hasLotRelevantAmount p = isReal p && not (hasBalancerCopiedBasis p) && not (optedOut p)
       && (hasCostBasis p || hasNegativeLotfulAmount p || hasPositiveLotfulAmount p)
@@ -705,6 +748,7 @@ transactionClassifyLotPostings verbosetags lookupAccountType commodityIsLotful a
         addPosting m (i, p)
           | not (isReal p) = m
           | not (hasLotRelevantAmount p) = m
+          | isShortPosting p = m
           | otherwise = foldl' (addAmt i (lotBaseAccount (paccount p))) m (amountsRaw (pamount p))
         addAmt i acct m a
           | isJust (acost a) = m
@@ -754,6 +798,7 @@ transactionClassifyLotPostings verbosetags lookupAccountType commodityIsLotful a
               | hasBalancerCopiedBasis p, not (isMirroredTransferCandidate p) = (neg, pos, noCB)
               | i `S.member` sameAcctTransferSet = (neg, pos, noCB)  -- skip same-account transfer pairs
               | optedOut p = (neg, pos, noCB)  -- skip lots: NONE accounts' postings
+              | isShortPosting p = (neg, pos, noCB)  -- short lots don't transfer
               | otherwise =
               let baseAcct = lotBaseAccount (paccount p)
                   isAsset  = maybe False isAssetType (lookupAccountType baseAcct)
@@ -816,6 +861,7 @@ transactionClassifyLotPostings verbosetags lookupAccountType commodityIsLotful a
           | i `S.member` sameAcctTransferSet = (neg, pos)
           | postingHasTag feesplitPostingTagName p = (neg, pos)
           | optedOut p = (neg, pos)
+          | isShortPosting p = (neg, pos)
           | otherwise = foldl' addAmt (neg, pos) amts
           where
             acct = lotBaseAccount (paccount p)
@@ -886,7 +932,10 @@ transactionClassifyLotPostings verbosetags lookupAccountType commodityIsLotful a
       -- a transfer-to via commodity matching.)
       guard $ any ((/= 0) . aquantity) amts
       guard $ not (optedOut p)
-      if any (isJust . acostbasis) amts
+      if isShortPosting p
+        then dbg5 ("classifyLotPostings: shouldClassify " ++ show (paccount p) ++ " short") $
+             shouldClassifyShort p amts
+      else if any (isJust . acostbasis) amts
         -- Cost basis present: classify regardless of account type (fix A)
         then dbg5 ("classifyLotPostings: shouldClassify " ++ show (paccount p) ++ " withCostBasis") $
              shouldClassifyWithCostBasis p amts
@@ -1023,15 +1072,44 @@ transactionClassifyLotPostings verbosetags lookupAccountType commodityIsLotful a
     shouldClassifyPositiveLotful p amts = do
       guard $ amountsAreLotful amts
       guard $ any (\a -> aquantity a > 0) amts
-      let commodities = S.fromList [acommodity a | a <- amts]
-          hasPrice = any (isJust . acost) amts
-          hasDiffCommodity = any (\q -> any ((`S.notMember` commodities) . acommodity) (amountsRaw (pamount q)))
-                               (filter (\q -> q /= p && hasAmount q) ps)
+      let hasPrice = any (isJust . acost) amts
           baseAcct = lotBaseAccount (paccount p)
           hasTransferFrom = any (\(c, q) -> hasTransferFromCounterpart baseAcct c q)
                               [(acommodity a, aquantity a) | a <- amts]
-      guard $ hasPrice || hasDiffCommodity || hasTransferFrom
+      guard $ hasPrice || hasOtherCommodityPosting p amts || hasTransferFrom
       return "acquire"
+
+    -- Classify a posting in a Short (liability) account, which holds short
+    -- positions: a negative amount opens a short lot (acquire), a positive
+    -- one covers it (dispose). Short lots can't be transferred between
+    -- accounts yet (see isShortPosting), but can be moved to or from
+    -- equity (close --clopen --lots): with no transacted price and an
+    -- equity counterpart, it is an equity transfer, like a long posting.
+    -- Like a long posting, a bare open needs a cost source (a transacted
+    -- price, or another commodity to infer it from); a bare cover without
+    -- a price is a priceless disposal.
+    shouldClassifyShort :: Posting -> [Amount] -> Maybe Text
+    shouldClassifyShort p amts = do
+      let hasCB    = any (isJust . acostbasis) amts
+          hasPrice = any (isJust . acost) amts
+          isInflow = any (isLotInflow Short) amts
+          isEquityTransfer = not hasPrice && hasEquityCounterpart
+      guard $ hasCB || amountsAreLotful amts
+      if isEquityTransfer
+        then return $ if isInflow then "transfer-to" else "transfer-from"
+      else if isInflow
+        then do
+          guard $ hasCB || hasPrice || hasOtherCommodityPosting p amts
+          return "acquire"
+        else return "dispose"
+
+    -- Does another amountful posting in the transaction have a commodity
+    -- other than this posting's ? (Then the balancer can infer a cost.)
+    hasOtherCommodityPosting :: Posting -> [Amount] -> Bool
+    hasOtherCommodityPosting p amts =
+      any (\q -> any ((`S.notMember` commodities) . acommodity) (amountsRaw (pamount q)))
+          (filter (\q -> q /= p && hasAmount q) ps)
+      where commodities = S.fromList [acommodity a | a <- amts]
 
     -- Check if a posting's amounts are lotful: one of their commodities has a lots: tag.
     amountsAreLotful :: [Amount] -> Bool
@@ -1087,16 +1165,18 @@ tagGain :: Bool -> Posting -> Posting
 tagGain verbosetags = postingAddHiddenAndMaybeVisibleTag True verbosetags (toHiddenTag ("ptype", "gain"))
 
 -- | Does this posting look like a lot disposal (or transfer source) ?
--- True if it has a negative amount with a cost basis annotation, or in a
+-- True if it has a lot outflow amount (negative, or positive in a liability
+-- account, which holds short lots) with a cost basis annotation, or in a
 -- lotful commodity (unless the account opts out with lots: NONE).
 -- A shape check, usable before lot classification has run.
-postingHasDisposeShape :: (CommoditySymbol -> Bool) -> (AccountName -> Bool) -> Posting -> Bool
-postingHasDisposeShape commodityIsLotful accountUsesNoLots p =
-  any (\a -> isNegativeAmount a
+postingHasDisposeShape :: (AccountName -> Maybe AccountType) -> (CommoditySymbol -> Bool) -> (AccountName -> Bool) -> Posting -> Bool
+postingHasDisposeShape lookupAccountType commodityIsLotful accountUsesNoLots p =
+  any (\a -> isLotOutflow dir a
           && (isJust (acostbasis a)
               || (commodityIsLotful (acommodity a)
                   && not (accountUsesNoLots (lotBaseAccount (paccount p))))))
       (amountsRaw (pamount p))
+  where dir = fromMaybe Long (lotDirectionOf lookupAccountType (paccount p))
 
 -- | In a disposal transaction, tag the user-written realised gain
 -- postings with @_ptype:gain@, so that the transaction balancer sets them
@@ -1153,7 +1233,7 @@ transactionTagGainPostings tagamountless verbosetags lookupAccountType commodity
   | otherwise                  = t
   where
     realps = filter isReal (tpostings t)
-    hasDisposeShape = postingHasDisposeShape commodityIsLotful accountUsesNoLots
+    hasDisposeShape = postingHasDisposeShape lookupAccountType commodityIsLotful accountUsesNoLots
     isGainTyped p = (tagamountless || hasAmount p) && lookupAccountType (paccount p) == Just Gain
     hasLotfulOrBasisAmount p =
       any (\a -> isJust (acostbasis a) || commodityIsLotful (acommodity a)) (amountsRaw (pamount p))
@@ -1174,7 +1254,7 @@ transactionTagGainPostings tagamountless verbosetags lookupAccountType commodity
             -- the whole entry, candidates included, nets to zero
             then mixedAmountIsZero (residual `maPlus` foldMap balancingAmount candidates)
             else mixedAmountIsZero residual   -- well-formed disposal: net zero
-              || isPricelessSale nonzeroresidual)  -- unpriced sale: cost inference will resolve
+              || isPricelessClose nonzeroresidual)  -- unpriced sale: cost inference will resolve
       where
         (candidates, noncandidates) = partition isCandidate realps
         residual = foldMap balancingAmount noncandidates
@@ -1183,15 +1263,18 @@ transactionTagGainPostings tagamountless verbosetags lookupAccountType commodity
           | postingHasTag costPostingTagName p = mixedAmountStripCosts (pamount p)
           | otherwise                          = mixedAmountCost (pamount p)
         nonzeroresidual = filter ((/= 0) . aquantity) (amountsRaw residual)
-        -- The residual is a lot commodity net sold and one other commodity
-        -- net received. (A net purchase with a cash fee has the opposite
-        -- signs; there the fee is not a gain.)
-        isPricelessSale as = case partition (isLotCommodity . acommodity) as of
-          ([sold], [proceeds]) -> isNegativeAmount sold && not (isNegativeAmount proceeds)
-          _                    -> False
-        isLotCommodity c = commodityIsLotful c || c `elem` disposecommodities
-        disposecommodities =
-          [acommodity a | p <- realps, hasDisposeShape p, a <- amountsRaw (pamount p)]
+        -- The residual is a lot commodity net closed (sold; or bought, to
+        -- cover a short) and one other commodity net received (or paid).
+        -- (A net purchase with a cash fee has the opposite signs; there the
+        -- fee is not a gain.)
+        isPricelessClose as = case partition (isLotCommodity . acommodity) as of
+          ([closed], [other]) -> any (`isLotOutflow` closed) disposedirs
+                                 && signum (aquantity other) == negate (signum (aquantity closed))
+          _                   -> False
+        isLotCommodity c = commodityIsLotful c || c `elem` map acommodity disposeamounts
+        disposeshaped = filter hasDisposeShape realps
+        disposeamounts = concatMap (amountsRaw . pamount) disposeshaped
+        disposedirs = [fromMaybe Long (lotDirectionOf lookupAccountType (paccount p)) | p <- disposeshaped]
 
 -- | Apply 'transactionTagGainPostings' to each transaction. In lenient
 -- (--ignore-lots) mode, amountless gain postings are left untagged, for the
@@ -1248,14 +1331,13 @@ journalCheckAcquireBasis j = do
       Right $ txnTieKnot t{tpostings = ps}
       where
         checkPosting (idx, p)
-          | isReal p && isAssetPosting p = do
-              as <- mapM (checkAmount idx p) (amountsRaw (pamount p))
+          | isReal p, Just dir <- journalLotDirection j (paccount p) = do
+              as <- mapM (checkAmount dir idx p) (amountsRaw (pamount p))
               Right p{pamount = mixed as}
           | otherwise = Right p
-        isAssetPosting p = maybe False isAssetType (journalAccountType j (lotBaseAccount (paccount p)))
-        checkAmount idx p a = case (acostbasis a, acost a) of
+        checkAmount dir idx p a = case (acostbasis a, acost a) of
           (Just cb@CostBasis{cbCost = Just basis}, Just tc)
-            | aquantity a > 0  -- acquire-shaped (a disposal's basis and sale price are expected to differ)
+            | isLotInflow dir a  -- acquire-shaped (a disposal's basis and sale price are expected to differ)
             , let transacted = amountCostToUnitCost (aquantity a) tc
             -> checkBasis cb basis transacted
           _ -> Right a
@@ -1654,7 +1736,7 @@ isUnclassifiedLotfulPosting j p =
   isReal p
   && hasAmount p
   && not (isLotPosting p)
-  && maybe False isAssetType (journalAccountType j (lotBaseAccount (paccount p)))
+  && isJust (journalLotDirection j (paccount p))  -- an asset or liability account
   -- lots: NONE accounts' postings are exempt (not lot-tracked).
   && not (journalAccountUsesNoLots j (lotBaseAccount (paccount p)))
   && hasNonzeroLotfulAmount
@@ -1684,11 +1766,18 @@ unclassifiedLotWarning j t idx p =
       inferrednote = if hasAmount (originalPosting p) then "" else
         " (with inferred amount " ++ showMixedAmountOneLine (pamount p) ++ ")"
       (f, line, _, ex) = makePostingErrorExcerptByIndex (transactionAsWritten t) (asWrittenPostingIndex t idx) Nothing
+      shortnote
+        | journalLotDirection j (paccount p) == Just Short =
+            "\n(Liability accounts hold short positions, and transferring those between\n"
+            ++ "accounts is not supported yet: cover the position in one account and\n"
+            ++ "open it in the other, with prices.)"
+        | otherwise = ""
   in printf "%s:%d:\n%s\n" f line ex
      ++ source ++ " but this posting" ++ inferrednote ++ " was not classified as\n"
      ++ "acquire, dispose, or transfer. Lot state will not be updated.\n"
      ++ "Possible fixes: add a cost basis ({$X}), a price (@ $X),\n"
      ++ "or check the account type declaration."
+     ++ shortnote
 
 -- Validation and label generation
 
@@ -1950,13 +2039,14 @@ isEquityPosting j p = maybe False isEquityType (journalAccountType j (lotBaseAcc
 reduceLotTransferToEquity :: M.Map CommoditySymbol AmountStyle -> Bool -> Journal -> Transaction -> LotState -> Posting
                           -> Either String (LotState, [Posting])
 reduceLotTransferToEquity styles verbosetags j t ls p =
-    case [(a, cb) | a <- amountsRaw (pamount p), Just cb <- [acostbasis a], isNegativeAmount a] of
+    case [(a, cb) | a <- amountsRaw (pamount p), Just cb <- [acostbasis a], isLotOutflow dir a] of
       [(a, cb)] -> do
         let commodity = acommodity a
-            qty       = negate (aquantity a)
+            qty       = abs (aquantity a)
             acct      = lotBaseAccount (paccount p)
             (method, methodSource) = resolveReductionMethodWithSource j p commodity
-        selected <- selectLots (method, methodSource) (postingErrPrefix p) "transfer" (tdate t) acct commodity qty cb ls
+        selected <- selectLots (method, methodSource) (postingErrPrefix p) "transfer" (tdate t) dir acct commodity qty cb
+                      (lotStateForDirection j dir commodity ls)
         ps <- mapM (mkLotPosting acct a method) selected
         let consumed = [(lotId, qty') | (lotId, _, qty') <- selected]
             ps' = case ps of
@@ -1969,6 +2059,8 @@ reduceLotTransferToEquity styles verbosetags j t ls p =
                ,preserveParentAssertion verbosetags (paccount p) (pbalanceassertion p) ps')
       _ -> Right (ls, [p])  -- no single lot amount (e.g. cash posting): pass through
   where
+    -- a liability account's short lots are sent to equity by a positive posting
+    dir = journalLotDirectionOrLong j (paccount p)
     mkLotPosting acct a method (lotId, storedAmt, qty) = case acostbasis storedAmt >>= cbCost of
       Nothing -> Left $ txnErrPrefix t ++ "lot " ++ show lotId
                           ++ " for commodity " ++ T.unpack (acommodity a)
@@ -1977,7 +2069,7 @@ reduceLotTransferToEquity styles verbosetags j t ls p =
         let lotCb = CostBasis{cbDate = Just (lotDate lotId), cbLabel = lotLabel lotId, cbCost = Just c}
             lotName = showLotNameForMethod method (styleLotCbCost styles lotCb)
         in Right p{ paccount  = acct <> ":" <> lotName
-                  , pamount   = mixedAmount (amountSetQuantity (negate qty) a){acostbasis = Just lotCb}
+                  , pamount   = mixedAmount (amountSetQuantity (negate (lotDirectionSign dir) * qty) a){acostbasis = Just lotCb}
                   , poriginal = Just (originalPosting p)
                   }
 
@@ -2070,6 +2162,8 @@ groupIndexedTransferPostings t froms tos = do
           Right (comm, sortOn postingSortKey fs, sortOn postingSortKey ts)
 
 -- | Extract a per-unit cost Amount from an AmountCost, normalising TotalCost by quantity.
+-- (A TotalCost carries the amount's sign, so dividing by the signed quantity
+-- gives a positive unit cost for a negative posting too.)
 -- If quantity is zero, returns the TotalCost amount as-is (avoiding division by zero).
 -- Uses 'divideAmountAndUpdatePrecision' so the derived unit cost renders with the
 -- quotient's digits rather than inheriting the total cost's narrower display style.
@@ -2090,10 +2184,13 @@ processAcquirePosting :: M.Map CommoditySymbol AmountStyle -> Journal -> S.Set (
                       -> Either String (LotState, Posting)
 processAcquirePosting styles j needsLabels txnDate t lotState idx p = do
     let lotAmts = [(a, cb) | a <- amountsRaw (pamount p), Just cb <- [acostbasis a]]
+        -- Long (asset) accounts' lots are opened by positive postings,
+        -- Short (liability) accounts' by negative ones.
+        dir = journalLotDirectionOrLong j (paccount p)
     (lotAmt, cb, isBare) <- case lotAmts of
       [x] -> Right (fst x, snd x, False)
       _   -> do
-        let bareAmts = [a | a <- amountsRaw (pamount p), not (isNegativeAmount a)]
+        let bareAmts = [a | a <- amountsRaw (pamount p), not (isLotOutflow dir a)]
         case bareAmts of
           [a] -> Right (a, CostBasis Nothing Nothing Nothing, True)
           _   -> Left $ postingAtErrPrefix t idx ++ "acquire posting has no cost basis"
@@ -2142,14 +2239,17 @@ processAcquirePosting styles j needsLabels txnDate t lotState idx p = do
               | otherwise = (lotId0, lotLabel')
             baseAcct = lotBaseAccount (paccount p)
             (method, _methodSource) = resolveReductionMethodWithSource j p commodity
+            -- AVERAGEALL pools all same-direction accounts' lots, AVERAGE this account's.
+            inPool acct | methodIsGlobal method = journalLotDirectionOrLong j acct == dir
+                        | otherwise             = acct == baseAcct
 
         -- Under AVERAGE/AVERAGEALL, merge this acquisition into the running pool
         -- (returns the new shared per-unit cost and an updated LotState where
         -- every existing pool lot's cbCost has been rewritten to that new cost).
         (lotBasisStored, lotState0) <-
           if methodIsAverage method
-          then updatePoolOnAcquire (postingAtErrPrefix t idx) (methodIsGlobal method)
-                 baseAcct commodity (aquantity lotAmt) lotBasis lotState
+          then updatePoolOnAcquire (postingAtErrPrefix t idx) inPool
+                 commodity (abs (aquantity lotAmt)) lotBasis lotState
           else Right (lotBasis, lotState)
 
         let -- For an inferred cost, widen precision to the commodity style's
@@ -2169,7 +2269,9 @@ processAcquirePosting styles j needsLabels txnDate t lotState idx p = do
             -- The lot state stores the full cost basis (date/label/cost).
             -- Under AVERAGE this is the running pool cost; under other methods
             -- it is the original per-acquisition cost.
-            lotStateAmt = lotAmt{acostbasis = Just fullCb}
+            -- Lot quantities are stored unsigned (a short lot's posting is
+            -- negative; the account's direction supplies the sign).
+            lotStateAmt = lotAmt{aquantity = abs (aquantity lotAmt), acostbasis = Just fullCb}
             -- The displayed posting amount preserves the user's literal cost
             -- annotation (filling in only when they wrote `{}`). Under AVERAGE
             -- the running pool cost is a derived state — surfaced via bal -B
@@ -2219,44 +2321,54 @@ processDisposePosting styles verbosetags j t lotState p = do
     -- Extract lotful amount and lot selector. When cost basis is present, use it directly.
     -- When absent (bare dispose on a lotful commodity), use a wildcard selector.
     let lotAmts = [(a, cb) | a <- amountsRaw (pamount p), Just cb <- [acostbasis a]]
+        -- Long (asset) accounts' lots are closed by negative postings,
+        -- Short (liability) accounts' by positive ones (covering a short).
+        dir = journalLotDirectionOrLong j (paccount p)
+        -- The sign of this posting's lot-closing quantities.
+        closesign = negate (lotDirectionSign dir)
     (lotAmt, cb, isBare) <- case lotAmts of
       [x] -> Right (fst x, snd x, False)
       _   -> do
-        let bareAmts = [a | a <- amountsRaw (pamount p), isNegativeAmount a]
+        let bareAmts = [a | a <- amountsRaw (pamount p), isLotOutflow dir a]
         case bareAmts of
           [a] -> Right (a, CostBasis Nothing Nothing Nothing, True)
           _   -> Left $ showPos ++ "dispose posting has no cost basis"
 
     let commodity = acommodity lotAmt
-        disposeQty = aquantity lotAmt
 
     -- Non-bare dispose (explicit {}) without price is an error - unless the
-    -- entry's non-asset postings receive the same commodity in the same
-    -- total quantity as its priceless disposals (an in-kind outflow: a
-    -- transfer fee, a donation, etc): then it proceeds as a priceless
-    -- disposal, like a bare one, with no gain calculated. This also lets
-    -- print --lots output of unpriced-fee transfers (whose fee dispose
-    -- fragment carries an explicit lot reference) round-trip (#2692).
+    -- entry's non-lot-account postings (not asset or liability) receive the
+    -- same commodity in the same total quantity as its priceless disposals
+    -- (an in-kind outflow: a transfer fee, a donation, etc): then it
+    -- proceeds as a priceless disposal, like a bare one, with no gain
+    -- calculated. This also lets print --lots output of unpriced-fee
+    -- transfers (whose fee dispose fragment carries an explicit lot
+    -- reference) round-trip (#2692).
     -- Bare dispose without price proceeds to lot matching (but skips gain generation).
-    let isAsset acct = maybe False isAssetType (journalAccountType j (lotBaseAccount acct))
-        nonAssetReceipts = sum [ aquantity a
-                               | q <- tpostings t, not (isAsset (paccount q))
-                               , a <- amountsRaw (pamount q)
-                               , acommodity a == commodity, aquantity a > 0 ]
+    let holdsLots acct = isJust (journalLotDirection j acct)
+        nonLotAccountReceipts = sum [ aquantity a
+                                    | q <- tpostings t, not (holdsLots (paccount q))
+                                    , a <- amountsRaw (pamount q)
+                                    , acommodity a == commodity, aquantity a > 0 ]
         pricelessDisposals = sum [ negate (aquantity a)
                                  | q <- tpostings t, isDisposePosting q
                                  , a <- amountsRaw (pamount q)
                                  , acommodity a == commodity, aquantity a < 0, isNothing (acost a) ]
-        isInKindOutflow = nonAssetReceipts > 0 && nonAssetReceipts == pricelessDisposals
+        isInKindOutflow = nonLotAccountReceipts > 0 && nonLotAccountReceipts == pricelessDisposals
     case acost lotAmt of
       Nothing | not isBare && not isInKindOutflow ->
-        Left $ showPos ++ "dispose posting has no transacted price (selling price) for " ++ T.unpack commodity
+        Left $ showPos ++ "dispose posting has no transacted price ("
+               ++ (if dir == Short then "buying price, to cover the short" else "selling price")
+               ++ ") for " ++ T.unpack commodity
       _ -> do
 
-        when (disposeQty >= 0) $
-          Left $ showPos ++ "dispose posting has non-negative quantity for " ++ T.unpack commodity
+        unless (isLotOutflow dir lotAmt) $
+          Left $ showPos ++ "dispose posting has "
+                 ++ (if dir == Short then "non-positive quantity (a short position is covered by a positive posting)"
+                                     else "non-negative quantity")
+                 ++ " for " ++ T.unpack commodity
 
-        let posQty = negate disposeQty
+        let posQty = abs (aquantity lotAmt)
             (method, methodSource) = resolveReductionMethodWithSource j p commodity
             -- All methods are per-account, scoped to the posting's base account
             -- (stripping any explicit lot subaccount the user may have written).
@@ -2266,7 +2378,8 @@ processDisposePosting styles verbosetags j t lotState p = do
           Left $ showPos ++ "SPECID requires a lot selector on dispose postings"
                  ++ "\nUsing SPECID (" ++ methodSource ++ ")."
 
-        selected <- selectLots (method, methodSource) (postingErrPrefix p) "disposal" (tdate t) scopeAcct commodity posQty cb lotState
+        selected <- selectLots (method, methodSource) (postingErrPrefix p) "disposal" (tdate t) dir scopeAcct commodity posQty cb
+                      (lotStateForDirection j dir commodity lotState)
 
         let baseAcct = lotBaseAccount (paccount p)
             hasExplicitLotAcct = baseAcct /= paccount p
@@ -2295,9 +2408,10 @@ processDisposePosting styles verbosetags j t lotState p = do
                   Left _  -> Left $ showPos ++ "lot subaccount " ++ T.unpack (paccount p)
                                     ++ " does not match the resolved lot " ++ T.unpack expectedAcct
               let acctWithLot = expectedAcct
-                  -- Build the dispose amount: negative consumed quantity,
+                  -- Build the dispose amount: the consumed quantity with the
+                  -- closing sign (negative; positive when covering a short),
                   -- keeping the original amount's commodity, style, cost, and cost basis.
-                  disposeAmt = (amountSetQuantity (negate consumedQty) lotAmt){acostbasis = Just lotCb}
+                  disposeAmt = (amountSetQuantity (closesign * consumedQty) lotAmt){acostbasis = Just lotCb}
               let -- For bare disposes without a price (e.g. fee deductions), keep no cost.
                   -- When splitting across multiple lots, normalize TotalCost to UnitCost
                   -- (since TotalCost would be wrong for the split quantity).
@@ -2390,7 +2504,8 @@ processTransferGroup styles verbosetags j t lotState0 (commodity, ifroms, itos) 
           -- Transfers are always per-account (scoped to source), but ordering follows the method.
           (method, methodSource) = resolveReductionMethodWithSource j fromP commodity
           fromBaseAcct = lotBaseAccount (paccount fromP)
-      selected <- selectLots (method, methodSource) (postingErrPrefix fromP) "transfer" (tdate t) fromBaseAcct commodity fromQty fromCb st
+      selected <- selectLots (method, methodSource) (postingErrPrefix fromP) "transfer" (tdate t) Long fromBaseAcct commodity fromQty fromCb
+                    (lotStateForDirection j Long commodity st)
       let st' = reduceLotState fromBaseAcct commodity [(lid, qty) | (lid, _, qty) <- selected] st
       return $ lotDbg t ("transferred out " ++ show fromQty ++ " " ++ T.unpack commodity
                           ++ " from " ++ T.unpack fromBaseAcct
@@ -2520,8 +2635,10 @@ processTransferGroup styles verbosetags j t lotState0 (commodity, ifroms, itos) 
           lotCb <- lotCbOf lotId storedAmt
           carried <- maybe (Left $ showPos ++ "lot " ++ show lotId
                               ++ " has no carried cost (internal error)") Right (cbCost lotCb)
-          (newAvg, ls') <- updatePoolOnAcquire showPos (methodIsGlobal method)
-                             destAcct commodity consumedQty carried ls
+          -- (transfers are of long lots only, so AVERAGEALL pools the Long accounts)
+          let inPool acct | methodIsGlobal method = journalLotDirectionOrLong j acct == Long
+                          | otherwise             = acct == destAcct
+          (newAvg, ls') <- updatePoolOnAcquire showPos inPool commodity consumedQty carried ls
           let amt = storedAmt{aquantity = consumedQty, acostbasis = Just lotCb{cbCost = Just newAvg}}
           Right $ addLotState commodity lotId destAcct amt ls'
       | otherwise =
@@ -2542,6 +2659,14 @@ addLotState commodity lotId account amt =
   where addQty a1 a2 = a1{aquantity = aquantity a1 + aquantity a2}
 
 
+-- | Restrict one commodity's lots in a lot state to the accounts with the
+-- given lot direction. Long lots (in asset accounts) and short lots (in
+-- liability accounts) are separate pools: the global (*ALL) methods and the
+-- "other accounts" error summaries should see only one of them.
+lotStateForDirection :: Journal -> LotDirection -> CommoditySymbol -> LotState -> LotState
+lotStateForDirection j dir commodity =
+  M.adjust (M.map (M.filterWithKey (\acct _ -> journalLotDirectionOrLong j acct == dir))) commodity
+
 -- | Select lots to consume using the given reduction method.
 -- All methods select from the specified account only.
 -- Ordering: FIFO\/FIFOALL oldest-first; LIFO\/LIFOALL newest-first;
@@ -2554,10 +2679,13 @@ addLotState commodity lotId account amt =
 -- An all-Nothing selector (from @{}@) matches all lots.
 -- Returns a list of (lot id, lot amount, quantity consumed from this lot).
 -- Errors if total available quantity in matching lots is insufficient.
-selectLots :: (ReductionMethod, String) -> String -> String -> Day -> AccountName -> CommoditySymbol
+-- The lot direction is that of the account (the lot state should already be
+-- restricted to that direction, see 'lotStateForDirection'); it is used to
+-- suggest a liability account when a long account has no lots to dispose of.
+selectLots :: (ReductionMethod, String) -> String -> String -> Day -> LotDirection -> AccountName -> CommoditySymbol
            -> Quantity -> CostBasis -> LotState
            -> Either String [(LotId, Amount, Quantity)]
-selectLots (method, methodSource) posStr operation date account commodity qty selector lotState = do
+selectLots (method, methodSource) posStr operation date direction account commodity qty selector lotState = do
     when (method == SPECID && isWildcardSelector selector) $
       Left $ posStr ++ "SPECID requires an explicit lot selector" ++ methodline
     let allLots = M.findWithDefault M.empty commodity lotState
@@ -2572,6 +2700,7 @@ selectLots (method, methodSource) posStr operation date account commodity qty se
               ++ " from account " ++ T.unpack account
               ++ " on " ++ show date
               ++ showOtherAccountLots allLots
+              ++ shorthint
         else "no lots matching " ++ T.unpack (showLotName selector)
               ++ " for commodity " ++ T.unpack commodity
               ++ " in account " ++ T.unpack account
@@ -2609,6 +2738,13 @@ selectLots (method, methodSource) posStr operation date account commodity qty se
     -- The reduction method and where it came from; appended to the errors
     -- where the method matters (the availability errors omit it).
     methodline = "\nUsing " ++ show method ++ " (" ++ methodSource ++ ")."
+
+    -- A sale from an asset account holding none of the commodity may be a
+    -- short sale, which belongs in a liability account.
+    shorthint
+      | direction == Long && operation == "disposal" =
+          "\n(To record a short position, use a liability account.)"
+      | otherwise = ""
 
     go 0 _ = []
     go _ [] = []  -- shouldn't happen after the check above
@@ -2744,25 +2880,22 @@ validateGlobalCompliance method posStr account commodity qty selector lotState s
 -- pool and return (new shared per-unit cost, lot state with every existing
 -- pool lot's stored cbCost updated to that new cost).
 --
--- @globalPool@ = True for AVERAGEALL — the pool spans all accounts holding
--- this commodity. False for AVERAGE — the pool is restricted to lots living
--- under @scopeAcct@; lots under other accounts have their own independent pools.
+-- @inPool@ says which accounts' lots make up the pool: for AVERAGEALL, all
+-- accounts holding this commodity in the same lot direction (long lots in
+-- asset accounts, or short lots in liability accounts); for AVERAGE, just
+-- the acquiring account, other accounts having their own independent pools.
 updatePoolOnAcquire
-  :: String           -- ^ error-message position prefix
-  -> Bool             -- ^ globalPool (AVERAGEALL if True)
-  -> AccountName      -- ^ scopeAcct (used when not globalPool)
+  :: String                 -- ^ error-message position prefix
+  -> (AccountName -> Bool)  -- ^ inPool: do this account's lots belong to the pool ?
   -> CommoditySymbol
   -> Quantity         -- ^ this acquisition's quantity
   -> Amount           -- ^ this acquisition's per-unit cost
   -> LotState
   -> Either String (Amount, LotState)
-updatePoolOnAcquire posStr globalPool scopeAcct commodity acqQty acqCost lotState = do
+updatePoolOnAcquire posStr inPool commodity acqQty acqCost lotState = do
     let commLots = M.findWithDefault M.empty commodity lotState
-        -- The per-LotId Amounts belonging to the pool: all accounts if global,
-        -- otherwise just the one under scopeAcct.
-        poolAmts accts
-          | globalPool = M.elems accts
-          | otherwise  = maybe [] pure (M.lookup scopeAcct accts)
+        -- The per-LotId Amounts belonging to the pool.
+        poolAmts accts = M.elems (M.filterWithKey (\acct _ -> inPool acct) accts)
         existingEntries = [(aquantity a, c) | accts <- M.elems commLots
                                             , a     <- poolAmts accts
                                             , Just cb <- [acostbasis a]
@@ -2781,9 +2914,7 @@ updatePoolOnAcquire posStr globalPool scopeAcct commodity acqQty acqCost lotStat
         rewriteAmt a = case acostbasis a of
           Nothing -> a
           Just cb -> a{acostbasis = Just cb{cbCost = Just newAvg}}
-        rewriteAccts accts
-          | globalPool = M.map rewriteAmt accts
-          | otherwise  = M.adjust rewriteAmt scopeAcct accts
+        rewriteAccts = M.mapWithKey (\acct a -> if inPool acct then rewriteAmt a else a)
         lotState' = M.insert commodity (M.map rewriteAccts commLots) lotState
     return (newAvg, lotState')
 

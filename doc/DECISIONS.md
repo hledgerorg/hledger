@@ -101,6 +101,28 @@ transacted cost is then used, so print output with a rounded basis re-reads
 losslessly (see SPEC-lots "Acquire basis check"). Old files still load with
 `--ignore-lots`.
 
+### Short positions are lots in liability accounts
+
+2026-09 (#2756). A short position is tracked as lots in a Liability-typed
+account, where the lot flow is reversed: a negative posting opens a short
+lot (basis = the short-sale price) and a positive one covers it, with gain =
+basis minus buying price. We chose this over detecting shorts by state in
+asset accounts (a sale exceeding the holdings opens a short) because it is
+stateless, like the rest of classification, which runs before lot matching
+and before the acquire basis check; it keeps the "no lots available" error
+for sales from an empty account, which is usually a mistake (the error now
+hints at liability accounts); and it matches balance sheet semantics, a
+short being something owed, so `bs -B`, `bs -V` and `--gain` need no
+special cases. An explicit short tag was rejected as more syntax to learn
+and forget. HIFO on short lots stays literal (highest short-sale price
+first, realising the largest gain first, as Beancount does) rather than
+silently inverting for one account type; SPECID, or a future LOFO method,
+serves tax-minimising short sellers. Transferring short lots between
+accounts is deferred: liability postings take no part in transfer
+detection for now, which kept the change small. Lotful postings in
+liability accounts, previously ignored (bare) or misread as disposals (with
+`{}`), are now lot-tracked; `lots: NONE` opts an account out.
+
 ### Amount keys are commodity plus transacted cost only
 
 `MixedAmountKey`, which decides which amounts combine in `MixedAmount` arithmetic and aggregated reports,

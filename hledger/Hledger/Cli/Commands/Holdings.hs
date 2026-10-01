@@ -23,10 +23,10 @@ import Control.Monad (guard)
 import Data.Aeson (Value, object, (.=))
 import Data.Decimal (roundTo)
 import Data.Default (def)
-import Data.List.Extra (intercalate, intersperse, nubSort, nubSortOn, sortOn)
+import Data.List.Extra (intercalate, intersperse, minimumBy, nubSort, nubSortOn, sortOn)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
-import Data.Ord (Down(..))
+import Data.Ord (Down(..), comparing)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Data.Time.Calendar (Day, addDays, diffDays)
@@ -229,22 +229,28 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
           Nothing -> multiplyAmount (aquantity a) <$> (cbCost =<< acostbasis a)]
       ]
 
-    -- Each lot subaccount's realised gains, in the cost commodity:
-    -- for each dispose posting (negative, with a transacted price and a
-    -- cost basis), the proceeds minus the cost basis of the disposed units.
+    -- Each lot subaccount's realised gains, in the cost commodity: for each
+    -- dispose posting with a transacted price and a cost basis, its cost
+    -- basis minus its transacted cost. For a sale (negative) that is the
+    -- proceeds minus the basis of the units sold; for a short cover
+    -- (positive, in a liability account) it is the short-sale basis minus
+    -- the cost of buying the units back.
     -- The gains get their commodity's display style, since the cost bases
     -- they are derived from can have more precision (eg from inferred
     -- per-unit costs).
     rgainmap :: M.Map (AccountName, CommoditySymbol) Amount
     rgainmap = M.map (styleAmounts styles) $ M.fromListWith (+)
-      [ (k, proceeds - basis)
-      | (k, (_, a)) <- lotpostings
-      , aquantity a < 0
+      [ ((paccount p, acommodity a), basis - transacted)
+      | p <- journalPostings j
+      , isDisposePosting p
+      , isJust $ lotSubaccountName $ paccount p
+      , endq `matchesPosting` p
+      , a <- amountsRaw $ pamount p
       , isJust $ acost a
-      , let proceeds = negate $ amountCost a
-      , Just ub <- [cbCost =<< acostbasis a]
-      , let basis = multiplyAmount (negate $ aquantity a) ub
-      , acommodity proceeds == acommodity basis
+      , isJust $ cbCost =<< acostbasis a
+      , let basis = amountCostBasis a
+            transacted = amountCost a
+      , acommodity basis == acommodity transacted
       ]
 
     -- The current average unit cost of each AVERAGE/AVERAGEALL pool, as of
@@ -429,11 +435,18 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
         npv rate = sum [realToFrac n * rate ** (fromIntegral (diffDays reportdate t) / 365.25) | (t, n) <- cf]
 
     -- XIRR from cashflows plus a final value amount at the report date,
-    -- when they are all in one commodity.
+    -- when they are all in one commodity. Not for a short position, whose
+    -- flows are a long position's with the signs reversed: the rate solving
+    -- those is the same, so it would report a winning short as a loss. A
+    -- short is recognised by a negative final value (units owed), or when
+    -- closed, by money received rather than invested in the earliest flow.
     xirrOf :: [(Day, Amount)] -> Amount -> Maybe Double
     xirrOf flows finalv = do
       guard $ not $ null flows
       guard $ all ((== acommodity finalv) . acommodity . snd) flows
+      let earliest = aquantity $ snd $ minimumBy (comparing fst) flows
+          isshort = aquantity finalv < 0 || (aquantity finalv == 0 && earliest > 0)
+      guard $ not isshort
       xirrPct $ (reportdate, aquantity finalv) : [(d, aquantity a) | (d, a) <- flows]
 
     -- The total value of the displayed holdings, per value commodity,
@@ -497,13 +510,15 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
                       nullamt{acommodity=acommodity v, aquantity=aquantity v - aquantity c}
 
     -- The percent gain, when the gains and the costs are single amounts
-    -- in the same commodity and the cost is nonzero.
+    -- in the same commodity and the cost is nonzero. Relative to the cost's
+    -- magnitude, so a short position's gain (its cost being negative) keeps
+    -- its sign.
     gainPct :: [Amount] -> [Amount] -> Maybe Quantity
     gainPct gains costs = do
       [g] <- Just gains
       [c] <- Just $ sumAmounts costs
       guard $ acommodity g == acommodity c && aquantity c /= 0
-      Just $ 100 * aquantity g / aquantity c
+      Just $ 100 * aquantity g / abs (aquantity c)
 
     -- A row's units of lot-tracked commodities: the sum of the lots in
     -- its own scope, one amount per commodity. (Not the row's report

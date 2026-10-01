@@ -1,0 +1,573 @@
+# Testing short positions: lots in liability accounts, opened by a sale
+# (a negative posting) and closed by a purchase (a positive one).
+
+# * Short positions
+
+# ** 1. A negative lotful posting in a liability account opens a short lot (acquire); its basis and price must agree.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short sale
+    liabilities:broker:XYZ   -10 XYZ {$100} @@ $1000
+    assets:broker:cash
+$ hledger -f- print -x --verbose-tags
+2026-01-02 short sale
+    liabilities:broker:XYZ                       -10 XYZ {$100} @@ $1000  ; ptype: acquire
+    assets:broker:cash                         $1000
+
+>=
+
+# ** 2. A short open whose basis and price disagree is an error, like any acquisition.
+<
+2026-01-02 short sale
+    liabilities:broker:XYZ   -10 XYZ {$100} @@ $900
+    assets:broker:cash
+$ hledger -f- print
+>2 /cost basis \(\$100\) differs from its transacted cost \(\$90\)/
+>=1
+
+# ** 3. A bare short open in a lotful commodity gets its basis from the price.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+$ hledger -f- print -x
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ                       -10 XYZ {$100} @ $100
+    assets:broker:cash                         $1000
+
+>=
+
+# ** 4. A total basis {{T}} on a short open gives a positive unit basis.
+<
+2026-01-02 short sale
+    liabilities:broker:XYZ   -10 XYZ {{$1000}}
+    assets:broker:cash         $1000
+$ hledger -f- print -x
+2026-01-02 short sale
+    liabilities:broker:XYZ                       -10 XYZ {$100} @ $100
+    assets:broker:cash                         $1000
+
+>=
+
+# ** 5. A short open with a basis but no price gets the price inferred from the basis.
+<
+2026-01-02 short sale
+    liabilities:broker:XYZ   -10 XYZ {$100}
+    assets:broker:cash
+$ hledger -f- print -x
+2026-01-02 short sale
+    liabilities:broker:XYZ                       -10 XYZ {$100} @ $100
+    assets:broker:cash                         $1000
+
+>=
+
+# ** 6. A positive posting covers the short (dispose), FIFO by default, and the gain (basis minus cover cost) is generated.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-01-03 short 10 at 120
+    liabilities:broker:XYZ   -10 XYZ @ $120
+    assets:broker:cash
+
+2026-02-02 cover 15 at 90
+    liabilities:broker:XYZ    15 XYZ @ $90
+    assets:broker:cash
+$ hledger -f- print -x desc:cover
+2026-02-02 cover 15 at 90
+    liabilities:broker:XYZ                        15 XYZ {} @ $90
+    assets:broker:cash                        $-1350
+    revenues:gain                              $-250
+
+>=
+
+# ** 7. Covering with LIFO.
+<
+commodity XYZ  ; lots: LIFO
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-01-03 short 10 at 120
+    liabilities:broker:XYZ   -10 XYZ @ $120
+    assets:broker:cash
+
+2026-02-02 cover 15 at 90
+    liabilities:broker:XYZ    15 XYZ @ $90
+    assets:broker:cash
+$ hledger -f- bal --lots -N
+                $850  assets:broker:cash
+              -5 XYZ  liabilities:broker:XYZ:{2026-01-02, $100}
+               $-350  revenues:gain
+
+# ** 8. Covering with HIFO takes the highest short-sale price first (realising the largest gain first).
+<
+commodity XYZ  ; lots: HIFO
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-01-03 short 10 at 120
+    liabilities:broker:XYZ   -10 XYZ @ $120
+    assets:broker:cash
+
+2026-02-02 cover 15 at 90
+    liabilities:broker:XYZ    15 XYZ @ $90
+    assets:broker:cash
+$ hledger -f- bal --lots -N
+                $850  assets:broker:cash
+              -5 XYZ  liabilities:broker:XYZ:{2026-01-02, $100}
+               $-350  revenues:gain
+
+# ** 9. Covering part of a specific lot with SPECID.
+<
+commodity XYZ  ; lots: SPECID
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-01-03 short 10 at 120
+    liabilities:broker:XYZ   -10 XYZ @ $120
+    assets:broker:cash
+
+2026-02-02 cover 5 of the 120 lot at 90
+    liabilities:broker:XYZ    5 XYZ {$120} @ $90
+    assets:broker:cash
+$ hledger -f- bal --lots -N
+               $1750  assets:broker:cash
+             -10 XYZ  liabilities:broker:XYZ:{2026-01-02, $100}
+              -5 XYZ  liabilities:broker:XYZ:{2026-01-03, $120}
+               $-150  revenues:gain
+
+# ** 10. A user-written gain posting is checked.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash       $-900
+    revenues:gain            $-100
+$ hledger -f- print -x desc:cover
+2026-02-02 cover at 90
+    liabilities:broker:XYZ                        10 XYZ {2026-01-02, $100} @ $90
+    assets:broker:cash                         $-900
+    revenues:gain                              $-100
+
+>=
+
+# ** 11. A wrong user-written gain is an error.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash       $-900
+    revenues:gain            $-50
+$ hledger -f- print
+>2 /realised gain amount is wrong/
+>=1
+
+# ** 12. An amountless gain posting is filled in.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+$ hledger -f- print -x desc:cover
+2026-02-02 cover at 90
+    liabilities:broker:XYZ                        10 XYZ {2026-01-02, $100} @ $90
+    assets:broker:cash                         $-900
+    revenues:gain                              $-100
+
+>=
+
+# ** 13. A cover with a basis but no price gets the price inferred from the cash posting.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-02-02 cover, price not written
+    liabilities:broker:XYZ    10 XYZ {$100}
+    assets:broker:cash       $-900
+$ hledger -f- print -x desc:cover
+2026-02-02 cover, price not written
+    liabilities:broker:XYZ                        10 XYZ {2026-01-02, $100} @@ $900
+    assets:broker:cash                         $-900
+    revenues:gain                              $-100
+
+>=
+
+# ** 14. Covering more than the short position is an error.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-02-02 cover 15 at 90
+    liabilities:broker:XYZ    15 XYZ @ $90
+    assets:broker:cash
+$ hledger -f- print
+>2 /Insufficient lots for commodity XYZ in account liabilities:broker:XYZ: need 15 but only 10 available/
+>=1
+
+# ** 15. A short sale in an asset account is still an error, with a hint.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short sale, in an asset account
+    assets:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+$ hledger -f- print
+>2 /\(To record a short position, use a liability account.\)/
+>=1
+
+# ** 16. At cost, a short position offsets the cash received.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+P 2026-01-31 XYZ $90
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+$ hledger -f- bs -B -e 2026-02
+Balance Sheet 2026-01-31, converted to cost
+
+                        || 2026-01-31 
+========================++============
+ Assets                 ||            
+------------------------++------------
+ assets:broker:cash     ||      $1000 
+------------------------++------------
+                        ||      $1000 
+========================++============
+ Liabilities            ||            
+------------------------++------------
+ liabilities:broker:XYZ ||      $1000 
+------------------------++------------
+                        ||      $1000 
+========================++============
+ Net:                   ||          0 
+
+# ** 17. At market value, the difference is the unrealised gain.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+P 2026-01-31 XYZ $90
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+$ hledger -f- bs -V -e 2026-02
+Balance Sheet 2026-01-31, valued at period ends
+
+                        || 2026-01-31 
+========================++============
+ Assets                 ||            
+------------------------++------------
+ assets:broker:cash     ||      $1000 
+------------------------++------------
+                        ||      $1000 
+========================++============
+ Liabilities            ||            
+------------------------++------------
+ liabilities:broker:XYZ ||       $900 
+------------------------++------------
+                        ||       $900 
+========================++============
+ Net:                   ||       $100 
+
+# ** 18. bal --gain shows a short's unrealised gain (positive when the price has fallen).
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+P 2026-01-31 XYZ $90
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+$ hledger -f- bal --gain -e 2026-02
+                $100  liabilities:broker:XYZ
+--------------------
+                $100  
+
+# ** 19. After covering, the realised gain is revenue and the liability is gone.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+P 2026-01-31 XYZ $90
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+$ hledger -f- bse
+Balance Sheet With Equity 2026-02-02
+
+                    || 2026-02-02 
+====================++============
+ Assets             ||            
+--------------------++------------
+ assets:broker:cash ||       $100 
+--------------------++------------
+                    ||       $100 
+====================++============
+ Liabilities        ||            
+--------------------++------------
+--------------------++------------
+                    ||          0 
+====================++============
+ Equity             ||            
+--------------------++------------
+--------------------++------------
+                    ||          0 
+====================++============
+ Net:               ||       $100 
+
+# ** 20. holdings shows a short position with negative units and cost, a positive gain, and no XIRR (not meaningful for a short).
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+P 2026-01-31 XYZ $90
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+$ hledger -f- holdings -e 2026-02
+Holdings on 2026-01-31
+
+                        ||       Date  Age    Units  Avg cost  Price    Cost  Value  Weight  UGain  UGain%  RGain  XIRR 
+========================++==============================================================================================
+ liabilities:broker:XYZ || 2026-01-02  29d  -10 XYZ      $100    $90  $-1000  $-900  100.0%   $100   10.0%              
+------------------------++----------------------------------------------------------------------------------------------
+                        ||                  -10 XYZ      $100         $-1000  $-900  100.0%   $100   10.0%              
+
+# ** 21. holdings shows a covered short's realised gain.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+P 2026-01-31 XYZ $90
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+$ hledger -f- holdings -E
+Holdings on 2026-09-30
+
+                        || Date  Age  Units  Avg cost  Price  Cost  Value  Weight  UGain  UGain%  RGain  XIRR 
+========================++====================================================================================
+ liabilities:broker:XYZ ||            0 XYZ              $90           $0                          $100       
+------------------------++------------------------------------------------------------------------------------
+                        ||                                       0                                 $100       
+
+# ** 22. print -x --lots output of short entries can be re-read.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+$ hledger -f- print -x --lots | hledger -f- print -x --lots
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ:{2026-01-02, $100}    -10 XYZ {2026-01-02, $100} @ $100
+    assets:broker:cash                         $1000
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ:{2026-01-02, $100}     10 XYZ {2026-01-02, $100} @ $90
+    assets:broker:cash                         $-900
+    revenues:gain                              $-100
+
+>=
+
+# ** 23. --infer-equity adds conversion postings for short entries, which balance.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+$ hledger -f- print -x --infer-equity | hledger -f- bal -N
+                $100  assets:broker:cash
+               $-100  revenues:gain
+
+# ** 24. lots: NONE on a liability account disables short lot tracking.
+<
+commodity XYZ  ; lots:
+account liabilities:broker:XYZ  ; lots: NONE
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash
+$ hledger -f- print -x --verbose-tags
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ                       -10 XYZ @ $100
+    assets:broker:cash                         $1000
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ                        10 XYZ @ $90
+    assets:broker:cash                         $-900
+
+>=
+
+# ** 25. Transferring a short position between liability accounts is not supported yet.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker1:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-02-02 move the short position to another broker
+    liabilities:broker1:XYZ    10 XYZ
+    liabilities:broker2:XYZ   -10 XYZ
+$ hledger -f- print
+>2 /Liability accounts hold short positions, and transferring those between/
+>=1
+
+# ** 26. close --clopen --lots moves short lots to and from equity, preserving them.
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-01-31 closing balances  ; clopen:24
+    assets:broker:cash                         $-1000     = $0
+    liabilities:broker:XYZ:{2026-01-02, $100}      10 XYZ
+    equity:opening/closing balances
+
+2026-02-01 opening balances  ; clopen:24
+    assets:broker:cash                         $1000     = $1000
+    liabilities:broker:XYZ:{2026-01-02, $100}    -10 XYZ
+    equity:opening/closing balances
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+$ hledger -f- print -x desc:cover
+2026-02-02 cover at 90
+    liabilities:broker:XYZ                        10 XYZ {2026-01-02, "0001", $100} @ $90
+    assets:broker:cash                         $-900
+    revenues:gain                              $-100
+
+>=
+
+# ** 27. Long lots (in asset accounts) and short lots (in liability accounts) of a commodity are separate pools, which may use different methods even when one is global.
+<
+commodity XYZ  ; lots: FIFOALL
+account liabilities:broker:XYZ  ; lots: LIFO
+
+2026-01-02 buy 10 at 100
+    assets:broker:XYZ         10 XYZ @ $100
+    assets:broker:cash
+
+2026-01-03 short 10 at 110
+    liabilities:broker:XYZ   -10 XYZ @ $110
+    assets:broker:cash
+
+2026-01-04 short 10 at 120
+    liabilities:broker:XYZ   -10 XYZ @ $120
+    assets:broker:cash
+
+2026-02-02 cover 10 at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+
+2026-02-03 sell 10 at 90
+    assets:broker:XYZ        -10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+$ hledger -f- bal -N --lots
+               $1300  assets:broker:cash
+             -10 XYZ  liabilities:broker:XYZ:{2026-01-03, $110}
+               $-200  revenues:gain
+
+# ** 28. --ignore-lots loads short entries without lot tracking (a written gain is not checked).
+<
+commodity XYZ  ; lots:
+
+2026-01-02 short 10 at 100
+    liabilities:broker:XYZ   -10 XYZ @ $100
+    assets:broker:cash
+
+2026-02-02 cover at 90
+    liabilities:broker:XYZ    10 XYZ @ $90
+    assets:broker:cash       $-900
+    revenues:gain            $-50
+$ hledger -f- bal -I -N
+                $100  assets:broker:cash
+                $-50  revenues:gain

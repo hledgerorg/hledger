@@ -83,8 +83,10 @@ Notes:
   keep age as a number of days.
 - Weight is each row's value as a percentage of the portfolio's total
   value; blank unless all displayed holdings are priced in one commodity.
-- RGain sums each dispose posting's proceeds minus the cost basis of the
-  disposed units, for the row's commodity's lots in the row's own scope
+- RGain sums each dispose posting's cost basis minus its transacted cost
+  (for a sale, the proceeds minus the basis of the units sold; for a short
+  cover, the short-sale basis minus the buying cost), for the row's
+  commodity's lots in the row's own scope
   (see below). Fully disposed lots and commodities have no row of their own
   by default (`-E` shows zero-units rows for disposed commodities), but
   their realised gains are included in the totals row, which computes
@@ -102,6 +104,14 @@ Notes:
   The final cashflow is the displayed Value, treated as received at the
   report date (even if `--value` priced it at a different date) -
   consistent with the Value and UGain columns.
+  Also blank for a short position (negative final value, or when closed,
+  money received in the earliest flow): its flows are a long position's
+  with the signs reversed, which the rate equation can't distinguish, so
+  it would show a winning short as a loss.
+- Short positions (lots in liability accounts, see SPEC-lots) show
+  negative Units, Cost and Value; UGain is positive when the price has
+  fallen, and UGain% is relative to the cost's magnitude so it keeps that
+  sign; Weight is negative (a short is negative exposure).
 - Rows with no known market price show blank Price, Value and gain columns,
   rather than pretending the gain is zero.
 - Amounts are displayed normalised to their commodity's display precision

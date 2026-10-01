@@ -6509,6 +6509,8 @@ balance as usual.
 hledger understands three kinds of lot movement: acquire, transfer, and dispose.
 Other real-world lot events can usually be modelled using combinations of these
 (see [Other lot events](#other-lot-events) below).
+These are described for lots in asset accounts;
+in liability accounts, which hold [short positions](#short-positions), the signs are reversed.
 
 ### Acquire
 
@@ -6644,6 +6646,61 @@ To have the gain calculated, give the receiving posting a transacted price.
 When the gain posting is inferred, it is calculated from the entry's dispose postings only
 (the quantity times the difference between selling price and cost basis, summed);
 acquire postings in the same entry don't contribute.
+
+### Short positions
+
+A short position - units sold before they are bought, with the broker lending them -
+is recorded as lots in a *liability* account (type `L`, declared or inferred from the account name).
+There the signs are reversed: a *negative* lot posting opens a short lot (it is an acquire,
+whose cost basis is the short-sale price), and a *positive* lot posting closes it, by buying units back
+(it is a disposal, whose transacted price is the buying price).
+A short lot's gain is its basis minus the buying price, so it is positive when the price has fallen:
+
+```journal
+commodity XYZ  ; lots:
+
+2026-01-02 sell short
+    liabilities:broker:XYZ    -10 XYZ @ $100
+    assets:broker:cash
+
+P 2026-01-31 XYZ $90
+
+2026-02-02 cover
+    liabilities:broker:XYZ     10 XYZ @ $90
+    assets:broker:cash
+    revenues:gain
+```
+
+```cli
+$ hledger -f short.journal print -x
+2026-01-02 sell short
+    liabilities:broker:XYZ                       -10 XYZ {$100} @ $100
+    assets:broker:cash                         $1000
+
+2026-02-02 cover
+    liabilities:broker:XYZ                        10 XYZ {2026-01-02, $100} @ $90
+    assets:broker:cash                         $-900
+    revenues:gain                              $-100
+
+```
+
+Reports work as for long positions.
+While the position is open, `bs -B` shows the liability at cost ($1000), offsetting the cash received;
+`bs -V` shows it at market value ($900), so the net worth includes the unrealised gain;
+`bal --gain` shows that gain ($100); and `holdings` shows negative units and cost
+(but no XIRR, which is not meaningful for a short position).
+After covering, the realised gain is in `revenues:gain`, and `bse` balances.
+
+Everything else is as for lots in asset accounts: cost basis annotations and lot subaccounts,
+lot selectors and cost basis methods, generated or user-written gain postings, and `lots: NONE` to opt out.
+Note that HIFO covers the highest short-sale price first, which realises the largest gain first;
+use SPECID to choose. Long lots and short lots of the same commodity are separate pools,
+so they may use different methods.
+
+Transferring a short position between accounts is not yet supported:
+cover it in one account and open it in the other, with prices.
+(`close --lots` can move short lots to and from equity, though.)
+A negative posting in an *asset* account holding no lots is still an error, since it is usually a mistake.
 
 ### Other lot events
 
@@ -7009,6 +7066,8 @@ When it reports a lot-related error, or a report looks wrong:
   the error shows both amounts. Check which lots were selected (`print -a`) and the amounts.
 - "cost basis ... differs from its transacted cost" means an acquisition wrote both a `{}` basis and an `@` cost which don't agree.
   Write just one of them. If the basis really differs from what was paid, adjust your entry (see [Acquire](#acquire)).
+- "no ... lots available for disposal" means a sale from an account holding none of the commodity.
+  If it is a short sale, record it in a liability account (see [Short positions](#short-positions)).
 - To silence lot processing while fixing other problems, use `-I` or `--ignore-lots`.
 
 
@@ -7186,8 +7245,8 @@ To also add visible tags, for troubleshooting, use `print`'s `--verbose-tags` or
 | `conversion-posting`  | A pair of adjacent, single-commodity, costless postings to `Conversion`-type accounts, with a nearby corresponding costful or potentially corresponding costless posting | Helps transaction balancer infer costs or avoid redundancy in commodity conversions                   |
 | `cost-posting`        | A costful posting whose amount and transacted cost correspond to a conversion postings pair; or a costless posting matching one of the pair                              | Helps transaction balancer infer costs or avoid redundancy in commodity conversions                   |
 | `generated-posting`   | Postings generated at runtime                                                                                                                                            | Helps users understand or find postings added at runtime by hledger                                   |
-| `ptype:acquire`       | Positive postings with [lot annotations](#cost-basis-annotations), or in a lotful commodity, with no matching counterposting                                                 | Creates a new lot                                                                                     |
-| `ptype:dispose`       | Negative postings with lot annotations, or in a lotful commodity, with no matching counterposting                                                                | Selects and reduces existing lots                                                                     |
+| `ptype:acquire`       | Positive postings with [lot annotations](#cost-basis-annotations), or in a lotful commodity, with no matching counterposting (negative, in a liability account: a [short position](#short-positions)) | Creates a new lot                                                                                     |
+| `ptype:dispose`       | Negative postings with lot annotations, or in a lotful commodity, with no matching counterposting (positive, in a liability account: covering a short position)       | Selects and reduces existing lots                                                                     |
 | `ptype:transfer-from` | The negative posting of a pair of counterpostings, at least one with lot annotation or a lotful commodity; or a negative lot posting with an equity counterpart (equity transfer) | Moves lots between accounts, preserving cost basis                                                    |
 | `ptype:transfer-to`   | The positive posting of a transfer pair; or a positive lot posting with an equity counterpart (equity transfer, e.g. opening balances)                                   | As above                                                                                              |
 | `ptype:gain`          | In a disposal: a user-written posting to a `Gain`-type account (or, failing that, a non-asset/liability/equity posting without which the entry balances); or the realised-gain posting hledger generates | Records the realised capital gain/loss; set aside by the transaction balancer, so the disposal balances at cost basis |

@@ -62,7 +62,7 @@ journalFinalise
   10. journalInferBasisFromAccountNames  -- if account name has a {…} lot subaccount, parse cost basis from it
   11. journalInferPostingsTransactedCost -- infer cost from cost basis of acquire postings
   12. journalCheckAcquireBasis           -- (default lot check; skipped by --ignore-lots) error if an acquire-shaped
-                                         -- asset posting writes a cost basis and a transacted cost which differ
+                                         -- asset or liability posting writes a cost basis and a transacted cost which differ
                                          -- (before balancing, so this is reported rather than an unbalanced entry)
   13. journalTagGainPostings             -- in disposals, tag user-written gain postings _ptype:gain,
                                          -- so the balancer sets them aside (disposals balance at cost basis)
@@ -146,7 +146,7 @@ An arrow A → B means "A must run before B".
 ### Hard constraints
 
 - **journalAddAccountTypes → journalClassifyLotPostings**
-  Classification looks up account types to identify Asset accounts.
+  Classification looks up account types to identify Asset accounts (long lots) and Liability accounts (short lots).
 
 - **journalPostingsAddAccountTags → journalClassifyLotPostings**
   Classification may need `lots:` tags inherited from account declarations (in `ptags`).
