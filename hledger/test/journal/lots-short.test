@@ -408,7 +408,7 @@ P 2026-01-31 XYZ $90
     liabilities:broker:XYZ    10 XYZ @ $90
     assets:broker:cash
     revenues:gain
-$ hledger -f- holdings -E
+$ hledger -f- holdings -E -e 2026-10-01
 Holdings on 2026-09-30
 
                         || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain  XIRR 
