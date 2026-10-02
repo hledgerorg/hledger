@@ -80,6 +80,9 @@ Improvements
   window edge, and the tooltip stays within the window [#2716]
   (Arthur Cinader).
 
+- Remove some outdated browser-specific CSS rules for input placeholders
+  and transitions. (AidenTHu)
+
 - See the hledger changelog for other changes, such as: improved
   commodity aliases, sym: query removed, the new :: find-anywhere
   query, support for GHC runtime options, faster starts and reloads.
