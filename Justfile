@@ -724,8 +724,8 @@ DOCUMENTING:
 # Update manuals - build hledger, regenerate flag docs, regenerate manuals
 manuals:
     $STACK build hledger
-    ./Shake cmddocs -c
-    ./Shake manuals -c
+    ./Shake.hs cmddocs -c
+    ./Shake.hs manuals -c
 
 # Update the site's snapshot of the manuals for this branch's major release version.
 manuals-site: manuals
@@ -736,13 +736,13 @@ generaloptionshelp:
     $STACK build hledger
     tools/generaloptionshelp
 
-# Add latest commit messages to the changelogs. (Runs ./Shake changelogs [OPTS])
+# Add latest commit messages to the changelogs. (Runs ./Shake.hs changelogs [OPTS])
 changelogs *OPTS:
-    ./Shake changelogs {{ OPTS }}
+    ./Shake.hs changelogs {{ OPTS }}
 
-# Check the changelogs for stale resume points, bad issue links, leftover draft markers. (Runs ./Shake changelogs-check)
+# Check the changelogs for stale resume points, bad issue links, leftover draft markers. (Runs ./Shake.hs changelogs-check)
 changelogs-check:
-    ./Shake changelogs-check
+    ./Shake.hs changelogs-check
 
 # Drop any uncommitted changes to the project and package changelogs.
 changelogs-reset:
@@ -777,7 +777,7 @@ changelogs-finalise:
 
 # update the website (the live one if run on hledger.org)
 site: #Shake
-    ./Shake -V site 2>&1 | tee -a site.log
+    ./Shake.hs -V site 2>&1 | tee -a site.log
 
 # Use the existing Shake executable without recompiling it, so as not to automatially run unreviewed code by hook ? I think this no longer applies.
 # site: $(call def-help,site-build, update the hledger.org website (run this on hledger.org, or run "make hledgerorg" elsewhere) )
@@ -794,7 +794,7 @@ LOCALSITEURL := 'http://localhost:3000/index.html'
 # open a browser on the website (in ./site) and rerender when docs or web pages change
 @site-watch: #Shake
     (printf "\nbrowser will open in {{ BROWSEDELAY }}s (adjust BROWSE if needed)...\n\n"; sleep $BROWSEDELAY; $BROWSE "$LOCALSITEURL" ) &
-    $WATCHEXEC --no-vcs-ignore -e md,m4 -i hledger.md -i hledger-ui.md -i hledger-web.md -r './Shake webmanuals && make -sC site serve'
+    $WATCHEXEC --no-vcs-ignore -e md,m4 -i hledger.md -i hledger-ui.md -i hledger-web.md -r './Shake.hs webmanuals && make -sC site serve'
 # --no-vcs-ignore to include site/src/*.md
 
 # update the live website on hledger.org, working around automation problems
@@ -983,7 +983,7 @@ relbranch VER:
     echo "Switching to $BRANCH, auto-creating it if needed"
     just _gitSwitchAutoCreate "$BRANCH"
     echo "Setting {{ VER }} in package.yamls and .version.m4 macros"
-    ./Shake setversion {{ VER }} -c
+    ./Shake.hs setversion {{ VER }} -c
 # Too much at once, allow smaller steps.
 #    echo "Updating all command help texts for embedding..."
 #    ./Shake cmddocs -c
@@ -1161,7 +1161,7 @@ ghrel-upload:
     DEVVER=$RELVER.99
     just _on-main-branch
     echo "Setting versions to $DEVVER.."
-    ./Shake setversion "$DEVVER" -c
+    ./Shake.hs setversion "$DEVVER" -c
 
 # ** Installing ------------------------------------------------------------
 INSTALLING:

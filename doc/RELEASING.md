@@ -42,13 +42,10 @@ Preview/nightly releases may happen any time.
 | Github release      | ✓                                                        | ✓                            | ✓                                        |
 | Binaries            | ✓                                                        | ✓                            | ✓                                        |
 | Hackage release     | ✓                                                        | ✓                            |                                          |
-| Install page        | ✓                                                        | ✓                            |                                          |
-| Regression&nbsp;bounties | ✓                                                   | ✓                            |                                          |
-| Release notes       | ✓                                                        | ✓                            |                                          |
-| Manuals snapshot    | ✓                                                        |                              |                                          |
-| Announcements       | ✓                                                        |                              |                                          |
-
-[Regression bounty]: https://hledger.org/regressionbounty
+| Install page        | ✓                                                        | ✓                            | ✓ (preview lines only)                   |
+| Release notes       | ✓                                                        | ✓                            | ✓                                        |
+| Manuals snapshot    | ✓                                                        |                              | ✓                                        |
+| Announcements       | ✓                                                        |                              | ✓                                        |
 
 ## hledger release artifacts / value chain
 
@@ -78,7 +75,7 @@ to avoid interfering with branch switching; RELEASING.md should be updated from 
 ### Phase 1: prepare main
 
 1. **main: finish fixes/features/docs/issues/prs**
-1. **main: begin/fix release builds:** `just ghbin oldest`
+1. **main: begin/fix release builds:** `just oldest` (and `just ghbin` if needed)
 1. **main: update general flags help:** `just generaloptionshelp` (updates doc/common.m4 from the build's --help output; review the diff)
 1. **main: update command docs and manuals ?** `just manuals`; check the manuals' internal links: `just anchortest`
 1. **(major release) main: update website manuals:** `just manuals-site`
@@ -107,6 +104,12 @@ to avoid interfering with branch switching; RELEASING.md should be updated from 
    `site/src/install.md` by hand ("Update the Install page" below) - do this on the release branch, not on main
    (main's copy of ghrelnotes describes the *next preview* line and is unrelated to the
    release branch's version).
+1. **(preview release) site: update the Install page's preview lines:** `site/src/install.md`'s "current preview
+   release" line, preview binaries badge and link, by hand (`just installpage` handles only non-preview releases).
+1. **(preview release) site: snapshot the manuals:** `make -C site snapshot-VER` (renders them from VER-branch,
+   and commits them in the site repo as `site/src/VER/`); then add VER to `site/js/site.js`'s version links,
+   `site/Makefile`'s `all` list and `site/hledger.org.caddy`'s paths, and commit. (Major releases do this
+   in phase 1, with `just manuals-site`.)
 1. **rel: make release builds:** `just ghbin` - do this last, once the release branch has all its commits, so the
    binaries are built from the commit that will be tagged. Takes 30-40 minutes; watch with `just ghbin-open`.
    If more commits land on the branch afterwards, re-run it.
@@ -125,6 +128,8 @@ Everything before this phase is revisable (nothing shared beyond scratch CI bran
 1. **publish on github:** `just ghrel` (runs the release workflow on github, creating/updating a *draft*
    github release with release notes and the binaries built from the tagged commit - the binaries stay on
    github's servers; safe to re-run); review it (`just ghrel-open`); then `just ghrel-publish` ⚠
+   (which asks for confirmation interactively; from a non-interactive shell, eg an agent's, run
+   `gh release edit VER --draft=false` instead)
    - the workflow selects each binaries-* workflow's run for the release tag's commit, and fails if there's
      no successful one (eg if the binaries were built from a different commit - rerun `just ghbin` on the tag).
    - on older release branches without the release.yml workflow, use `just ghrel-local` instead.
@@ -143,6 +148,10 @@ Everything before this phase is revisable (nothing shared beyond scratch CI bran
 ### Phase 4: aftermath and announce
 
 1. **(major release) main: activate website scripts/redirects:** `just site-restart`
+1. **(new manuals snapshot) site server: render and serve it:** `make build3-VER && make build`, and
+   `make caddy-reload` if the caddy config changed. (Not `make all`, which re-renders every version.)
+   A failed build leaves `src/SUMMARY.md` and `theme/index.hbs` rewritten, making the next build fail with
+   "Duplicate file in SUMMARY.md"; restore them with `git checkout -- src/SUMMARY.md theme/index.hbs`.
 1. **(major release) main: update dev version:** `just devver`
 1. **main: update manuals:** `just manuals`
 1. **main: update changelogs:** `just changelogs`; edit
@@ -486,7 +495,7 @@ Fixup releases fix packaging errors, with no changes to the hledger software. Ex
 These should rare; we basically never do these.
 
 **Preview release**\
-A preview of the upcoming major release for testers/early adopters, and a test of the release process, published on Github. Not a formal hledger release, eg not published on Hackage, usually not packaged, no bugfix releases, no regression bounties, not shown in release notes. These typically appear in the quarter's first and second month if needed. Example version number: `1.25.99.1` (**"preview 1 of 1.26"**)
+A preview of the upcoming major release for testers/early adopters, and a test of the release process, published on Github. Not a formal hledger release, eg not published on Hackage, usually not packaged, no bugfix releases. These typically appear in the quarter's first and second month if needed. Example version number: `1.25.99.1` (**"preview 1 of 1.26"**)
 
 **CI binaries**\
 Temporary downloadable binaries produced by a run of the `linux`/`mac`/`windows` workflows in the hledger repo. This may happen periodically, eg weekly. Downloading requires a Github login.

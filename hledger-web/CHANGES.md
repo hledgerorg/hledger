@@ -16,6 +16,96 @@ User-visible changes in hledger-web.
 See also the hledger changelog.
 
 
+# 7acb6aed
+
+
+
+# 1.99.5 2026-10-01
+
+Fixes
+
+- hledger-web no longer exits prematurely due to being in a background
+  browser tab. Browsers may run the timers of background tabs much
+  less often, so with the old 2 minute timeout hledger-web could exit
+  while a Safari tab was still open. Now the timeout is 15 minutes,
+  and a page pings as soon as it is foregrounded again.
+  (Arthur Cinader)
+
+- When hledger-web is failing to ping the server, the page shows a
+  notice saying hledger-web is no longer running and how to continue,
+  instead of failing silently on the next click. (Arthur Cinader)
+
+Improvements
+
+- hledger's balance, balance sheet, balance sheet with equity, income
+  statement, and cashflow reports are now also available in
+  hledger-web. Every amount links to the register it is derived from,
+  column headings link to the report for that period, and a "Report:"
+  row links the five pages to one another.  A report interval can be
+  selected, and the balance report can show either balance changes or
+  end balances.  (Henning Thielemann, Arthur Cinader)
+
+- The register can start from the balance brought forward
+  (accum=historical), so its running balance is the account's balance
+  rather than a total of the transactions shown. The oldest row shows
+  the brought-forward balance, and links to the earlier transactions.
+  (Arthur Cinader)
+
+- The register view now properly shows the to/from account names, when
+  restricted by a type: query, instead of blank cells. (Arthur Cinader)
+
+- The journal and register views are now paged, showing the newest
+  1000 matching transactions and page navigation links.  When the
+  matches span more than one year, a years row links to each year
+  (grouped by decade when there are more than twenty).  Account links
+  from a transaction open the account register at the appropriate
+  page.
+  (Arthur Cinader, [#586])
+
+- hledger-web now has a dark mode, enabled automatically when the
+  browser or system is in dark mode. (Arthur Cinader, [#2706])
+
+- Pages are shown in the viewer's language, when a translation is
+  available (currently en, de, zh; see the hledger changelog).  The
+  language is chosen by a _LANG query parameter (which saves a
+  browser cookie); a previously saved _LANG cookie; or the browser's
+  Accept-Language header. Or, it can be overridden at startup by the
+  `--lang` option. See the manual's LANGUAGE section.
+  (Arthur Cinader)
+
+- Links in the journal, register and sidebar now behave consistently:
+  an account name opens its view, an amount opens the register it comes
+  from, and a date narrows to that day. The sidebar's amounts are now
+  links, and its Journal link keeps the current search. (Arthur Cinader)
+
+- Transaction tooltips, shown when hovering a transaction in the journal
+  or a register, are now drawn by hledger-web in a fixed-width font, so
+  amounts and comments line up as in the journal; long lines wrap at the
+  window edge, and the tooltip stays within the window [#2716]
+  (Arthur Cinader).
+
+- Remove some outdated browser-specific CSS rules for input placeholders
+  and transitions. (AidenTHu)
+
+- See the hledger changelog for other changes, such as: improved
+  commodity aliases, sym: query removed, the new :: find-anywhere
+  query, support for GHC runtime options, faster starts and reloads.
+
+- hledger-web no longer depends on lucid [#2737].
+
+Docs
+
+- The manual has a new WEB UI section (views, sidebar, search, add form,
+  shortcuts), describes the report pages, paging, dark mode and
+  languages, says --allow=edit / --allow=add instead of the old
+  "capability" terms, and has an updated JSON API section.
+
+[#586]: https://github.com/hledgerorg/hledger/issues/586
+[#2706]: https://github.com/hledgerorg/hledger/issues/2706
+[#2716]: https://github.com/hledgerorg/hledger/issues/2716
+[#2737]: https://github.com/hledgerorg/hledger/issues/2737
+
+
 # 1.99.4 2026-09-10
 
 Security

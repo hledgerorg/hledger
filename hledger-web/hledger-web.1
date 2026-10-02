@@ -1,5 +1,5 @@
 
-.TH "HLEDGER\-WEB" "1" "September 2026" "hledger-web-1.99 " "hledger User Manuals"
+.TH "HLEDGER\-WEB" "1" "October 2026" "hledger-web-1.99 " "hledger User Manuals"
 
 
 
@@ -84,6 +84,10 @@ Flags:
      \-\-socket=SOCKET        listen on the given unix socket instead of an IP
                             address and port (unix only; implies \-\-serve)
      \-\-base\-url=BASEURL     set the base url (default: http://IPADDR:PORT)
+     \-\-lang=LANG            show the web UI in this language (en, de, zh); or
+                            with auto, use each viewer\(aqs browser language if
+                            available, otherwise the server\(aqs. (Default: the
+                            browser\(aqs language if available, otherwise en.)
      \-\-test                 run hledger\-web\(aqs tests and exit. hspec test
                             runner args may follow a \-\-, eg: hledger\-web \-\-test
                             \-\-help
@@ -184,7 +188,8 @@ General output flags (affecting some commands):
      \-\-depth=DEPTHEXP       if a number (or \-NUM): show only top NUM levels
                             of accounts. If REGEXP=NUM, only apply limiting to
                             accounts matching the regular expression.
-  \-B \-\-cost                 convert amounts to their cost/sale amount (\(at/\(at\(at)
+  \-B \-\-cost                 convert amounts to their cost basis ({}), or else
+                            their cost/sale amount (\(at/\(at\(at)
   \-V \-\-market               valuation mode: show amounts converted to market
                             value at period end(s) in their default valuation
                             commodity. Short for \-\-value=end.
@@ -199,6 +204,10 @@ General output flags (affecting some commands):
                             \(aqend\(aq:      value at period end(s)
                             \(aqnow\(aq:      value today
                             YYYY\-MM\-DD: value on given date
+                            \(aqcost\(aq:     cost basis, or else transacted cost
+                            (same as \-B)
+                            \(aqtransacted\(aq: transacted cost/sale amount (\(at/\(at\(at)
+                            only
      \-\-lots                 show lot subaccounts and other lot details
   \-c \-\-commodity\-style=S    Override a commodity\(aqs display style.
                             Eg: \-c \(aq.\(aq or \-c \(aq1.000,00 EUR\(aq
@@ -222,9 +231,6 @@ General help flags:
      \-\-debug=[1\-9]          show this much debug output (default: 1)
      \-\-pager=YN             use a pager when needed ? y/yes (default) or n/no
      \-\-color=YNA \-\-colour   use ANSI color ? y/yes, n/no, or auto (default)
-     \-\-lang=LANG            language for report titles and headings: a
-                            language tag like de, auto (from the environment),
-                            or en (default)
 .EE
 .PP
 hledger\-web shows accounts with zero balances by default (like
@@ -627,8 +633,15 @@ stderr, eg:
 .SH LANGUAGE
 hledger\-web\(aqs pages can be shown in another language when a
 translation catalog is available (see Languages in the hledger manual).
-The language is chosen per request, and the first of these naming an
-available translation wins:
+.PP
+When hledger\-web is started with \f[CR]\-\-lang LANG\f[R], eg
+\f[CR]\-\-lang de\f[R], every page is in that language, whatever the
+browser asks for.
+So you can use hledger\-web in a language other than your browser\(aqs,
+or give every user of a shared server the same language.
+.PP
+Otherwise the language is chosen per request, and the first of these
+naming an available translation wins:
 .IP "1." 3
 a \f[CR]_LANG\f[R] query parameter, eg \f[CR]?_LANG=de\f[R].
 This choice is remembered in a \f[CR]_LANG\f[R] cookie.
@@ -637,12 +650,11 @@ the \f[CR]_LANG\f[R] cookie
 .IP "3." 3
 the browser\(aqs \f[CR]Accept\-Language\f[R] header, ie the browser\(aqs
 or system\(aqs language settings
-.IP "4." 3
-the \f[CR]\-\-lang\f[R] option hledger\-web was started with
 .PP
+If none does, pages are in English, or with \f[CR]\-\-lang auto\f[R], in
+the language of hledger\-web\(aqs environment.
 So viewers usually get their browser\(aqs language automatically, if
-hledger\-web has it; otherwise English, or the language given with
-\f[CR]\-\-lang\f[R].
+hledger\-web has it.
 Catalogs, including any in the config directory, are loaded when
 hledger\-web starts.
 .SH ENVIRONMENT

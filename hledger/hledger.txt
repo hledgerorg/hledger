@@ -346,7 +346,8 @@ Options
                  --depth=DEPTHEXP       if a number (or -NUM): show only top NUM levels
                                         of accounts. If REGEXP=NUM, only apply limiting to
                                         accounts matching the regular expression.
-              -B --cost                 convert amounts to their cost/sale amount (@/@@)
+              -B --cost                 convert amounts to their cost basis ({}), or else
+                                        their cost/sale amount (@/@@)
               -V --market               valuation mode: show amounts converted to market
                                         value at period end(s) in their default valuation
                                         commodity. Short for --value=end.
@@ -361,6 +362,10 @@ Options
                                         'end':      value at period end(s)
                                         'now':      value today
                                         YYYY-MM-DD: value on given date
+                                        'cost':     cost basis, or else transacted cost
+                                        (same as -B)
+                                        'transacted': transacted cost/sale amount (@/@@)
+                                        only
                  --lots                 show lot subaccounts and other lot details
               -c --commodity-style=S    Override a commodity's display style.
                                         Eg: -c '.' or -c '1.000,00 EUR'
@@ -384,9 +389,8 @@ Options
                  --debug=[1-9]          show this much debug output (default: 1)
                  --pager=YN             use a pager when needed ? y/yes (default) or n/no
                  --color=YNA --colour   use ANSI color ? y/yes, n/no, or auto (default)
-                 --lang=LANG            language for report titles and headings: a
-                                        language tag like de, auto (from the environment),
-                                        or en (default)
+                 --lang=LANG            language for the user interface:
+                                        en (default), de, zh, or auto
 
      Usually hledger accepts any unambiguous flag prefix, eg you can write --dry
      instead of --dry-run.
@@ -516,6 +520,13 @@ Options
 
 Environment
      These environment variables affect hledger:
+
+     HLEDGER_FASTPATH  hledger  parses  simple  journal  entries  with a special
+     fast-path parser, when possible.  Setting this to  off  disables  the  fast
+     path,  so that all entries are parsed by the general parser, which could be
+     useful to rule out a parser bug.  Setting it to  check  parses  each  entry
+     with both parsers, and reports an error if they disagree.  (--debug=1 shows
+     how much of a journal was parsed by the fast path.)
 
      HLEDGER_LESS  If  less  is your pager, this variable specifies the less op-
      tions hledger should use.  (Otherwise, LESS + custom options are used.)
@@ -3962,7 +3973,7 @@ Advanced report commands
      a rate over the chosen reporting period and as an annual rate.
 
      Price  directives  will  be  taken  into  account if you supply appropriate
-     --cost or --value flags (see VALUATION).
+     --cost or --value flags (see Value reporting).
 
      Note, in some cases this report can fail, for these reasons:
 
@@ -12379,4 +12390,4 @@ LICENSE
 SEE ALSO
      hledger(1), hledger-ui(1), hledger-web(1), ledger(1)
 
-hledger-1.99                     September 2026                       HLEDGER(1)
+hledger-1.99                      October 2026                        HLEDGER(1)

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# generaloptionshelp - regenerate the _generaloptions_ macro in doc/common.m4
+# generaloptionshelp - regenerate the _generaloptions_ and _webgeneraloptions_ macros in doc/common.m4
 # from the current hledger build's --help output.
+# _webgeneraloptions_ is the same, minus --lang, which hledger-web lists among its own flags
+# since it works differently there.
 # Run from the top of the hledger repo, usually via `just generaloptionshelp`
 # (which builds hledger first). Review the result with git diff.
 set -euo pipefail
@@ -10,18 +12,31 @@ f=doc/common.m4
 help=$(stack exec -- hledger -h | awk '/^General input flags:/,0')
 [[ -n $help ]] || { echo "error: could not find general flags help in 'hledger -h' output" >&2; exit 1; }
 
-start=$(grep -n -F 'm4_define({{_generaloptions_}}, {{' "$f" | head -1 | cut -d: -f1)
-[[ -n $start ]] || { echo "error: _generaloptions_ macro not found in $f" >&2; exit 1; }
-rest=$(tail -n +"$((start + 1))" "$f" | grep -n '^}}' | head -1 | cut -d: -f1)
-[[ -n $rest ]] || { echo "error: end of _generaloptions_ macro not found in $f" >&2; exit 1; }
-end=$((start + rest))
+# The help without the --lang flag: its line, and its indented continuation lines.
+webhelp=$(printf '%s\n' "$help" | awk '
+  /^ +--lang=/                { skip = 1; next }
+  skip && /^                  / { next }
+                              { skip = 0; print }
+')
 
-{
-  head -n "$start" "$f"
-  echo '```'
-  printf '%s\n' "$help"
-  echo '```'
-  tail -n +"$end" "$f"
-} > "$f.new"
-mv "$f.new" "$f"
-echo "$f: _generaloptions_ macro updated from hledger -h"
+# Replace the body of macro $1 in $f with the text $2, as a code block.
+updatemacro() {
+  local name=$1 text=$2 start rest end
+  start=$(grep -n -F "m4_define({{$name}}, {{" "$f" | head -1 | cut -d: -f1)
+  [[ -n $start ]] || { echo "error: $name macro not found in $f" >&2; exit 1; }
+  rest=$(tail -n +"$((start + 1))" "$f" | grep -n '^}}' | head -1 | cut -d: -f1)
+  [[ -n $rest ]] || { echo "error: end of $name macro not found in $f" >&2; exit 1; }
+  end=$((start + rest))
+  {
+    head -n "$start" "$f"
+    echo '```'
+    printf '%s\n' "$text"
+    echo '```'
+    tail -n +"$end" "$f"
+  } > "$f.new"
+  mv "$f.new" "$f"
+  echo "$f: $name macro updated from hledger -h"
+}
+
+updatemacro _generaloptions_ "$help"
+updatemacro _webgeneraloptions_ "$webhelp"

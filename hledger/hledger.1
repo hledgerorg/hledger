@@ -1,6 +1,6 @@
 .\"t
 
-.TH "HLEDGER" "1" "September 2026" "hledger-1.99 " "hledger User Manuals"
+.TH "HLEDGER" "1" "October 2026" "hledger-1.99 " "hledger User Manuals"
 
 
 
@@ -447,7 +447,8 @@ General output flags (affecting some commands):
      \-\-depth=DEPTHEXP       if a number (or \-NUM): show only top NUM levels
                             of accounts. If REGEXP=NUM, only apply limiting to
                             accounts matching the regular expression.
-  \-B \-\-cost                 convert amounts to their cost/sale amount (\(at/\(at\(at)
+  \-B \-\-cost                 convert amounts to their cost basis ({}), or else
+                            their cost/sale amount (\(at/\(at\(at)
   \-V \-\-market               valuation mode: show amounts converted to market
                             value at period end(s) in their default valuation
                             commodity. Short for \-\-value=end.
@@ -462,6 +463,10 @@ General output flags (affecting some commands):
                             \(aqend\(aq:      value at period end(s)
                             \(aqnow\(aq:      value today
                             YYYY\-MM\-DD: value on given date
+                            \(aqcost\(aq:     cost basis, or else transacted cost
+                            (same as \-B)
+                            \(aqtransacted\(aq: transacted cost/sale amount (\(at/\(at\(at)
+                            only
      \-\-lots                 show lot subaccounts and other lot details
   \-c \-\-commodity\-style=S    Override a commodity\(aqs display style.
                             Eg: \-c \(aq.\(aq or \-c \(aq1.000,00 EUR\(aq
@@ -485,9 +490,8 @@ General help flags:
      \-\-debug=[1\-9]          show this much debug output (default: 1)
      \-\-pager=YN             use a pager when needed ? y/yes (default) or n/no
      \-\-color=YNA \-\-colour   use ANSI color ? y/yes, n/no, or auto (default)
-     \-\-lang=LANG            language for report titles and headings: a
-                            language tag like de, auto (from the environment),
-                            or en (default)
+     \-\-lang=LANG            language for the user interface:
+                            en (default), de, zh, or auto
 .EE
 .PP
 Usually hledger accepts any unambiguous flag prefix, eg you can write
@@ -644,6 +648,16 @@ When you download hledger data from elsewhere, watch out for directories
 containing a \f[CR]hledger.conf\f[R] file.
 .SH Environment
 These environment variables affect hledger:
+.PP
+\f[B]HLEDGER_FASTPATH\f[R] hledger parses simple journal entries with a
+special fast\-path parser, when possible.
+Setting this to \f[CR]off\f[R] disables the fast path, so that all
+entries are parsed by the general parser, which could be useful to rule
+out a parser bug.
+Setting it to \f[CR]check\f[R] parses each entry with both parsers, and
+reports an error if they disagree.
+(\f[CR]\-\-debug=1\f[R] shows how much of a journal was parsed by the
+fast path.)
 .PP
 \f[B]HLEDGER_LESS\f[R] If \f[CR]less\f[R] is your pager, this variable
 specifies the \f[CR]less\f[R] options hledger should use.
@@ -4820,7 +4834,7 @@ reported both as a rate over the chosen reporting period and as an
 annual rate.
 .PP
 Price directives will be taken into account if you supply appropriate
-\f[CR]\-\-cost\f[R] or \f[CR]\-\-value\f[R] flags (see VALUATION).
+\f[CR]\-\-cost\f[R] or \f[CR]\-\-value\f[R] flags (see Value reporting).
 .PP
 Note, in some cases this report can fail, for these reasons:
 .IP \(bu 2

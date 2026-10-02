@@ -103,16 +103,7 @@
 }
 
 /* green */
-::-moz-placeholder {
-  font-style:italic;
-}
-:-moz-placeholder {
-  font-style:italic;
-}
-::-webkit-input-placeholder {
-  font-style:italic;
-}
- :-ms-input-placeholder {
+::placeholder {
   font-style:italic;
 }
 
@@ -562,8 +553,6 @@ ul {
 @media screen and (max-width: 768px) {
     .row-offcanvas {
         position: relative;
-        -webkit-transition: all .25s ease-out;
-        -o-transition: all .25s ease-out;
         transition: all .25s ease-out;
     }
 

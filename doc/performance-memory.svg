@@ -66,7 +66,7 @@
 <rect x='530' y='135' width='28' height='14' fill='#2f6fd0'/>
 <text x='566' y='146' fill='#222'>Beancount 3.2.3</text>
 <rect x='530' y='157' width='28' height='14' fill='#d4b000'/>
-<text x='566' y='168' fill='#222'>hledger main</text>
+<text x='566' y='168' fill='#222'>hledger 1.99.5</text>
 <rect x='530' y='179' width='28' height='14' fill='#e7d372'/>
 <text x='566' y='190' fill='#222'>hledger 1.52</text>
 <text x='530' y='216' fill='#555' font-size='11'>fresh uncached runs</text>

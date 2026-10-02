@@ -727,6 +727,10 @@ main = do
             routineCommitPrefixes = [
                "doc: changelog"           -- changelog drafting/editing/finalising
               ,"doc: update changelog"
+              ,"doc: finalise changelog"  -- release-day changelog heading updates
+              ,"doc: relnotes"            -- release notes, derived from changelogs
+              ,"doc: announce"            -- release announcements
+              ,"pkg: set version"         -- release/dev version bumps
               ,"doc: update command docs"
               ,"doc: update embedded manuals"
               ,"doc: update manuals"
@@ -951,9 +955,11 @@ main = do
             -- as duplicates. In that case, find the commit's equivalent in
             -- the current history and resume from that instead; or if that
             -- fails, stop with a helpful message.
+            -- A release tag needn't be an ancestor (releases are tagged on a
+            -- release branch), and isn't rewritten, so only check commit hashes.
             Exit ancestorcheck <- cmd Shell "git merge-base --is-ancestor" lastscannedrev "HEAD 2>/dev/null"
             resumerev <-
-              if ancestorcheck == ExitSuccess
+              if ancestorcheck == ExitSuccess || not (isCommitHash oldversion)
               then return lastscannedrev
               else do
                 mequiv <- relocateResumePoint lastscannedrev

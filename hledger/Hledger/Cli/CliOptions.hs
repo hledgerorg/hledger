@@ -51,6 +51,7 @@ module Hledger.Cli.CliOptions (
   showModeUsage,
   withAliases,
   likelyExecutablesInPath,
+  builtinLanguageCodes,
 
   -- * CLI options
   CliOpts(..),
@@ -101,7 +102,7 @@ import Control.Exception qualified as C
 import Control.Monad (when)
 import Data.Char
 import Data.Default
-import Data.List.Extra (intercalate, nubSort)
+import Data.List.Extra (intercalate, nubOrd, nubSort)
 import Data.List.NonEmpty qualified as NE (NonEmpty, fromList, nonEmpty)
 import Data.List.Split (splitOn)
 import Data.Maybe
@@ -123,7 +124,7 @@ import System.Info (os)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
-import Hledger.Utils.I18n (translationsForLangOption)
+import Hledger.Utils.I18n (builtinLanguages, translationsForLangOption)
 import Hledger
 import Hledger.Cli.DocFiles
 import Hledger.Cli.Version
@@ -303,8 +304,15 @@ terminalflags = [
  ,flagReq  ["color","colour"] (\s opts -> Right $ setopt "color" s opts) "YNA"
    "use ANSI color ? y/yes, n/no, or auto (default)"
  ,flagReq  ["lang"] (\s opts -> Right $ setopt "lang" s opts) "LANG"
-   "language for report titles and headings: a language tag like de, auto (from the environment), or en (default)"
+   ("language for the user interface:\n"
+    ++ intercalate ", " [T.unpack l ++ if l == "en" then " (default)" else "" | l <- builtinLanguageCodes]
+    ++ ", or auto")
  ]
+
+-- | The languages with a built-in catalog, plus English, as simple language codes
+-- for --lang's help (eg zh rather than zh-Hans; --lang zh selects that catalog).
+builtinLanguageCodes :: [T.Text]
+builtinLanguageCodes = nubOrd $ map (T.takeWhile (/= '-')) builtinLanguages
 
 -- | Flags for selecting flat/tree mode, used for reports organised by account.
 -- With a True argument, shows some extra help about inclusive/exclusive amounts.

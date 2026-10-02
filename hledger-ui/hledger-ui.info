@@ -144,7 +144,8 @@ General output flags (affecting some commands):
      --depth=DEPTHEXP       if a number (or -NUM): show only top NUM levels
                             of accounts. If REGEXP=NUM, only apply limiting to
                             accounts matching the regular expression.
-  -B --cost                 convert amounts to their cost/sale amount (@/@@)
+  -B --cost                 convert amounts to their cost basis ({}), or else
+                            their cost/sale amount (@/@@)
   -V --market               valuation mode: show amounts converted to market
                             value at period end(s) in their default valuation
                             commodity. Short for --value=end.
@@ -159,6 +160,10 @@ General output flags (affecting some commands):
                             'end':      value at period end(s)
                             'now':      value today
                             YYYY-MM-DD: value on given date
+                            'cost':     cost basis, or else transacted cost
+                            (same as -B)
+                            'transacted': transacted cost/sale amount (@/@@)
+                            only
      --lots                 show lot subaccounts and other lot details
   -c --commodity-style=S    Override a commodity's display style.
                             Eg: -c '.' or -c '1.000,00 EUR'
@@ -182,9 +187,8 @@ General help flags:
      --debug=[1-9]          show this much debug output (default: 1)
      --pager=YN             use a pager when needed ? y/yes (default) or n/no
      --color=YNA --colour   use ANSI color ? y/yes, n/no, or auto (default)
-     --lang=LANG            language for report titles and headings: a
-                            language tag like de, auto (from the environment),
-                            or en (default)
+     --lang=LANG            language for the user interface:
+                            en (default), de, zh, or auto
 
    With hledger-ui, the '--debug' option sends debug output to a
 'hledger-ui.log' file in the current directory.
@@ -584,23 +588,23 @@ noticeable pause, during which the UI is unresponsive.
 Tag Table:
 Node: Top221
 Node: OPTIONS2054
-Node: MOUSE10140
-Node: KEYS10472
-Node: Navigation keys11030
-Node: Filtering keys11964
-Node: Other keys13887
-Node: SCREENS16217
-Node: Menu screen17273
-Node: Cash accounts screen17589
-Node: Balance sheet accounts screen17950
-Node: Income statement accounts screen18286
-Node: All accounts screen18671
-Node: Register screen19034
-Node: Transaction screen21477
-Node: Error screen22636
-Node: WATCH MODE23193
-Node: ENVIRONMENT24230
-Node: BUGS24629
+Node: MOUSE10351
+Node: KEYS10683
+Node: Navigation keys11241
+Node: Filtering keys12175
+Node: Other keys14098
+Node: SCREENS16428
+Node: Menu screen17484
+Node: Cash accounts screen17800
+Node: Balance sheet accounts screen18161
+Node: Income statement accounts screen18497
+Node: All accounts screen18882
+Node: Register screen19245
+Node: Transaction screen21688
+Node: Error screen22847
+Node: WATCH MODE23404
+Node: ENVIRONMENT24441
+Node: BUGS24840
 
 End Tag Table
 

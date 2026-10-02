@@ -68,7 +68,7 @@
 <text x='566' y='80' fill='#222'>Tackler 26.8.1</text>
 <line x1='530' x2='558' y1='98' y2='98' stroke='#d4b000' stroke-width='2.2' />
 <circle cx='544' cy='98' r='4' fill='#d4b000' stroke='#d4b000'/>
-<text x='566' y='102' fill='#222'>hledger main</text>
+<text x='566' y='102' fill='#222'>hledger 1.99.5</text>
 <line x1='530' x2='558' y1='120' y2='120' stroke='#e7d372' stroke-width='2.2' />
 <circle cx='544' cy='120' r='4' fill='#e7d372' stroke='#e7d372'/>
 <text x='566' y='124' fill='#222'>hledger 1.52</text>

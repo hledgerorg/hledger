@@ -22,7 +22,7 @@ import Hledger.Cli hiding (packageversion, progname, prognameandversion)
 import Hledger.Web.Settings (defhost, defport, defbaseurl)
 import Data.Text qualified as T
 import Data.Char (toLower)
-import Data.List (isPrefixOf)
+import Data.List (intercalate, isPrefixOf)
 import Data.Either (fromRight)
 
 -- cf Hledger.Cli.Version
@@ -101,6 +101,13 @@ webflags =
       (\s opts -> Right $ setopt "base-url" s opts)
       "BASEURL"
       "set the base url (default: http://IPADDR:PORT)"
+  , flagReq
+      ["lang"]
+      (\s opts -> Right $ setopt "lang" s opts)
+      "LANG"
+      ("show the web UI in this language (" ++ intercalate ", " (map T.unpack builtinLanguageCodes) ++ ");"
+      ++ " or with auto, use each viewer's browser language if available, otherwise the server's."
+      ++ " (Default: the browser's language if available, otherwise en.)")
   -- XXX #2139
   -- , flagReq
   --     ["file-url"]
@@ -129,7 +136,8 @@ webmode =
       , groupHidden = hiddenflags
           ++
           [flagNone ["server"] (setboolopt "serve") "old flag, use --serve instead"]
-      , groupNamed = mkgeneralflagsgroups1 helpflags
+      -- hledger-web's --lang (in webflags) works differently from the other tools'
+      , groupNamed = mkgeneralflagsgroups1 $ filter ((/= ["lang"]) . flagNames) helpflags
       }
   , modeHelpSuffix = []
   }

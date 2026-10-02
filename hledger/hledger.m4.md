@@ -407,6 +407,13 @@ Some tips:
 
 These environment variables affect hledger:
 
+**HLEDGER_FASTPATH**
+hledger parses simple journal entries with a special fast-path parser, when possible.
+Setting this to `off` disables the fast path, so that all entries are parsed by the general parser,
+which could be useful to rule out a parser bug.
+Setting it to `check` parses each entry with both parsers, and reports an error if they disagree.
+([`--debug=1`](#debug-output) shows how much of a journal was parsed by the fast path.)
+
 **HLEDGER_LESS**
 If `less` is your [pager](#paging), this variable specifies the `less` options hledger should use.
 (Otherwise, `LESS` + custom options are used.)
@@ -5689,7 +5696,7 @@ You can customise the "equity:conversion" part by declaring an account with the 
 
 For a [lot](#lots-and-capital-gains) disposal, the conversion postings record the units sold at their cost basis,
 not at the sale price, so that the entry (and your balance sheet) still sums to zero;
-the difference between the two is the [gain posting](#gain-postings). Eg:
+the difference between the two is the [gain posting](#gains). Eg:
 
 ```journal
 commodity AAPL  ; lots:

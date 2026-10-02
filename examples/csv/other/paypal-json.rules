@@ -1,5 +1,5 @@
 # * paypal CSV rules
-# Rules for converting paypal json downloaded via SimpleFIN with simplefinjson.
+# Rules for converting paypal json downloaded with bin/paypaljson.
 
 # ** GENERAL PAYPAL CONFIG ========================================
 

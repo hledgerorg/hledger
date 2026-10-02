@@ -30,7 +30,7 @@ TWR is reported both as a rate over the chosen reporting period and as
 an annual rate.
 
 Price directives will be taken into account if you supply appropriate
-`--cost` or `--value` flags (see [VALUATION](https://hledger.org/hledger.html#valuation)).
+`--cost` or `--value` flags (see [Value reporting](https://hledger.org/hledger.html#value-reporting)).
 
 Note, in some cases this report can fail, for these reasons:
 

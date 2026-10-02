@@ -1,4 +1,4 @@
-I'm pleased to announce two hledger releases!
+I'm pleased to announce hledger 1.99.5, the fifth preview of hledger 2.0!
 
 hledger (https://hledger.org) is accounting software, for both
 beginners and experts, using human-readable, version-controllable,
@@ -7,58 +7,48 @@ cross-platform, double-entry, multi-currency, multi-interface,
 GPL-licensed, and fun to use.
 
 
-hledger 1.52.4 brings packaging updates for the current stable release:
+hledger 1.99.5 (2.0 preview release 5) brings some big improvements:
 
-- hledger-web no longer requires yesod-static, and will soon return to stackage
-- relaxed aeson lower bound, making it easier to build successfully
-- other bounds updates (megaparsec, vty, yesod-core)
-- fixes in CSV rules docs and github release install docs
+- the fastest hledger yet (4x faster than 1.99.4)
+- UI translations (--lang)
+- find-anywhere query (::)
+- compact transactions report
+- lossless print --export
+- CSV multi-record merge rule
+- journals can include CSV & rules files
+- simpler balancing and gains using cost basis
+- lot tracking fixes, short positions
+- hledger-ui auto-updates by default
+- hledger-web balance reports, paging, dark mode.
 
-Release contributors:
-Simon Michael.
-
-- https://hledger.org/relnotes.html#2026-09-10-hledger-1524
-- https://github.com/hledgerorg/hledger/releases/tag/1.52.4
-
-
-And hledger 1.99.4 (2.0 preview release 4) brings many improvements:
-
-- new holdings report
-- better lot tracking
-- command aliases
-- reorganised help command
-- run/repl improvements
-- barewide balance layout
-- hledger-ui --watch memory leak fixed
-- hledger-web security fixes.
+There are a few breaking changes; see the release notes.
 
 Release contributors:
 Simon Michael,
 Arthur Cinader,
 Henning Thielemann,
-Kevin F. Konrad,
-Dmitry Astapov,
-Juan Wajnerman,
-Adam Sardo,
-JoeJoeflyn,
-Joshua Chapman,
-Juliano Solanho,
-Rostislav Raykov.
+Chunhui Ouyang,
+AidenTHu,
+Caleb Maclennan.
 
-- https://hledger.org/relnotes.html#2026-09-10-hledger-1994
-- https://github.com/hledgerorg/hledger/releases/tag/1.99.4
+- https://hledger.org/relnotes.html#2026-10-01-hledger-1995
+- https://github.com/hledgerorg/hledger/releases/tag/1.99.5
 - https://hledger.org/install
 
 
-Status update - a reminder
+And, a quick reminder of current status:
 
-hledger 1 and 2: Both hledger 1 and 2 (the 1.99.x preview releases) are suitable for daily use.
-hledger 1 is receiving only essential fixes;
-the hledger 2 preview releases are strictly better, highly compatible,
-and by using the latest you help make the final 2.0 release (coming later this year) better.
+hledger 1 and 2:
 
-AI use: Here is our current https://hledger.org/AI.html policy.
-(If you disagree with it, please be patient while we navigate this period..)
+Both hledger 1 and 2 (the 1.99.x preview releases) are suitable for daily use.
+hledger 1 is receiving only essential fixes.
+hledger 2 preview releases are strictly better, highly compatible,
+and by using the latest you help make 2.0 better (later this year).
+
+AI use:
+
+Here is our current https://hledger.org/AI.html policy.
+If you disagree with it, please be patient while we navigate this period..
 In summary:
 
 - The official hledger tools do not have any built in AI features or use any AI while running.
@@ -69,10 +59,10 @@ In summary:
 - hledger 1.52.2+ have a few small uses of AI-generated code
   (fully-understood security fixes copied from 2.x). Level 2-4.
 
-- hledger 2 (1.99.1+) uses careful AI-assisted development. Level 4.5
-  (AI-generated code with active human steering/testing/full understanding.
-  In 2026 we have been using a 6-month OSS credit, very successfully;
-  hledger is better tested, better documented, and more robust than ever.)
+- hledger 2 (1.99.1+) uses careful AI-assisted development. Level 5.
+  In 2026 Q2 and Q3 we used a 6-month OSS credit from Anthropic.
+  As a result, hledger is better tested, better documented,
+  more robust, more secure, and faster than ever.
 
 
 Sponsorship
@@ -81,5 +71,5 @@ If hledger is providing value to you or your organisation, and your
 finances allow it, you can help by becoming a https://hledger.org/sponsor.html.
 
 
-Thanks for using hledger!
+Thanks for using and contributing to hledger!
 -Simon

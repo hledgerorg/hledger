@@ -99,6 +99,10 @@ Flags:
      --socket=SOCKET        listen on the given unix socket instead of an IP
                             address and port (unix only; implies --serve)
      --base-url=BASEURL     set the base url (default: http://IPADDR:PORT)
+     --lang=LANG            show the web UI in this language (en, de, zh); or
+                            with auto, use each viewer's browser language if
+                            available, otherwise the server's. (Default: the
+                            browser's language if available, otherwise en.)
      --test                 run hledger-web's tests and exit. hspec test
                             runner args may follow a --, eg: hledger-web --test
                             --help
@@ -191,7 +195,8 @@ General output flags (affecting some commands):
      --depth=DEPTHEXP       if a number (or -NUM): show only top NUM levels
                             of accounts. If REGEXP=NUM, only apply limiting to
                             accounts matching the regular expression.
-  -B --cost                 convert amounts to their cost/sale amount (@/@@)
+  -B --cost                 convert amounts to their cost basis ({}), or else
+                            their cost/sale amount (@/@@)
   -V --market               valuation mode: show amounts converted to market
                             value at period end(s) in their default valuation
                             commodity. Short for --value=end.
@@ -206,6 +211,10 @@ General output flags (affecting some commands):
                             'end':      value at period end(s)
                             'now':      value today
                             YYYY-MM-DD: value on given date
+                            'cost':     cost basis, or else transacted cost
+                            (same as -B)
+                            'transacted': transacted cost/sale amount (@/@@)
+                            only
      --lots                 show lot subaccounts and other lot details
   -c --commodity-style=S    Override a commodity's display style.
                             Eg: -c '.' or -c '1.000,00 EUR'
@@ -229,9 +238,6 @@ General help flags:
      --debug=[1-9]          show this much debug output (default: 1)
      --pager=YN             use a pager when needed ? y/yes (default) or n/no
      --color=YNA --colour   use ANSI color ? y/yes, n/no, or auto (default)
-     --lang=LANG            language for report titles and headings: a
-                            language tag like de, auto (from the environment),
-                            or en (default)
 
    hledger-web shows accounts with zero balances by default (like
 'hledger-ui', and unlike 'hledger').  Using the '-E/--empty' flag will
@@ -626,21 +632,27 @@ File: hledger-web.info,  Node: LANGUAGE,  Next: ENVIRONMENT,  Prev: DEBUG OUTPUT
 **********
 
 hledger-web's pages can be shown in another language when a translation
-catalog is available (see Languages in the hledger manual).  The
-language is chosen per request, and the first of these naming an
-available translation wins:
+catalog is available (see Languages in the hledger manual).
+
+   When hledger-web is started with '--lang LANG', eg '--lang de', every
+page is in that language, whatever the browser asks for.  So you can use
+hledger-web in a language other than your browser's, or give every user
+of a shared server the same language.
+
+   Otherwise the language is chosen per request, and the first of these
+naming an available translation wins:
 
   1. a '_LANG' query parameter, eg '?_LANG=de'.  This choice is
      remembered in a '_LANG' cookie.
   2. the '_LANG' cookie
   3. the browser's 'Accept-Language' header, ie the browser's or
      system's language settings
-  4. the '--lang' option hledger-web was started with
 
-   So viewers usually get their browser's language automatically, if
-hledger-web has it; otherwise English, or the language given with
-'--lang'.  Catalogs, including any in the config directory, are loaded
-when hledger-web starts.
+   If none does, pages are in English, or with '--lang auto', in the
+language of hledger-web's environment.  So viewers usually get their
+browser's language automatically, if hledger-web has it.  Catalogs,
+including any in the config directory, are loaded when hledger-web
+starts.
 
 
 File: hledger-web.info,  Node: ENVIRONMENT,  Next: BUGS,  Prev: LANGUAGE,  Up: Top
@@ -669,16 +681,16 @@ We welcome bug reports in the hledger issue tracker
 Tag Table:
 Node: Top223
 Node: OPTIONS2573
-Node: WEB UI12934
-Node: PERMISSIONS15444
-Node: EDITING UPLOADING DOWNLOADING16698
-Node: REPORTS17614
-Node: RELOADING20088
-Node: JSON API20647
-Node: DEBUG OUTPUT26395
-Node: LANGUAGE26934
-Node: ENVIRONMENT27791
-Node: BUGS28025
+Node: WEB UI13334
+Node: PERMISSIONS15844
+Node: EDITING UPLOADING DOWNLOADING17098
+Node: REPORTS18014
+Node: RELOADING20488
+Node: JSON API21047
+Node: DEBUG OUTPUT26795
+Node: LANGUAGE27334
+Node: ENVIRONMENT28457
+Node: BUGS28691
 
 End Tag Table
 

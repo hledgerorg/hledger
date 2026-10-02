@@ -16,6 +16,76 @@ API/developer-ish changes in hledger-lib.
 For user-visible changes, see the hledger package changelog.
 
 
+# 7acb6aed
+
+
+
+# 1.99.5 2026-10-01
+
+Breaking changes
+
+- Lot disposals balance at cost basis (see the hledger changelog).
+  The _ptype:rgain and _ptype:ugain tags are replaced by _ptype:gain,
+  set by the balancer; nothing generates postings to the
+  UnrealisedGain account type any more. Equity inference now runs
+  after lot processing.
+
+- Commodity aliases are applied by a new finalisation step,
+  journalApplyCommodityAliases, replacing the synthetic price directives.
+  Commodity gains a caliases field holding the aliases as written. 
+  The Sym query constructor is removed.
+
+- Journal now has a jitems field recording every top-level item of the
+  journal file(s) (directives, transactions, comments, blank lines),
+  for print --export; jfinalcommentlines is removed. JIBlank is now a
+  nullary constructor.
+
+- Hledger.Write.Html replaces Write.Html.Lucid, Write.Html.Blaze and
+  Write.Html.HtmlCommon; lucid is no longer a dependency.
+  (Arthur Cinader, [#2737])
+
+- readJournalFromCsv now also returns an error-context-adding function.
+  sourcePosPairPretty renders a single-line range as "FILE:5", not
+  "FILE:5-5".
+
+Improvements
+
+- New module Hledger.Utils.I18n: translations from gettext PO catalogs.
+  A Translations value maps English text to a translation; tr, trc,
+  trf and trn look text up, with contexts, {name} placeholders and
+  plural forms. ReportOpts gains translations_; showPeriodAbbrevWith
+  and showDateSpanAbbrevWith take a TimeLocale. --debug reports
+  translation loading stats.
+  (Arthur Cinader)
+
+- For report linking: spreadsheet cells gain a cellTitle field, rendered
+  as the link title; showDateSpanForQuery renders a date span as a period
+  expression that parses back to the same span; accountTransactionsReport
+  WithStart also returns the starting balance; transactionRegisterDateExtra
+  takes account types. (Arthur Cinader)
+
+- Hledger.Utils.Debug gains dbgTime, dbgTimeIO and dbgTimeResetIO,
+  useful for reporting time and memory usage, as in --debug=1's phase
+  timing output.
+
+- Hledger.Utils.Parse gains peekChar, peekChars2, peekAfterSpaces and
+  manyWhile, cheap lookahead helpers used throughout the journal parser.
+  The journal parser (Hledger.Read.JournalReader) has new fast-path parsers,
+  used when possible. These can be  disabled with HLEDGER_FASTPATH=off 
+  or checked against the general parser with HLEDGER_FASTPATH=check.
+
+- New lazy period list splitSpanToDateSpans (and splitSpanBoundaries),
+  used by register and periodic transaction rules to run in constant
+  memory. New multiplyQuantities, used at all quantity multiplication
+  sites. A LotDirection (Long/Short) replaces sign tests in the lot
+  processors. filterJournalTransactions/Postings/Amounts return the
+  journal unchanged for a null query.
+
+- Allow doclayout 0.6.
+
+[#2737]: https://github.com/hledgerorg/hledger/issues/2737
+
+
 # 1.99.4 2026-09-10
 
 Breaking changes

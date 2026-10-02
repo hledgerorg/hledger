@@ -1,5 +1,5 @@
 
-.TH "HLEDGER\-UI" "1" "September 2026" "hledger-ui-1.99 " "hledger User Manuals"
+.TH "HLEDGER\-UI" "1" "October 2026" "hledger-ui-1.99 " "hledger User Manuals"
 
 
 
@@ -135,7 +135,8 @@ General output flags (affecting some commands):
      \-\-depth=DEPTHEXP       if a number (or \-NUM): show only top NUM levels
                             of accounts. If REGEXP=NUM, only apply limiting to
                             accounts matching the regular expression.
-  \-B \-\-cost                 convert amounts to their cost/sale amount (\(at/\(at\(at)
+  \-B \-\-cost                 convert amounts to their cost basis ({}), or else
+                            their cost/sale amount (\(at/\(at\(at)
   \-V \-\-market               valuation mode: show amounts converted to market
                             value at period end(s) in their default valuation
                             commodity. Short for \-\-value=end.
@@ -150,6 +151,10 @@ General output flags (affecting some commands):
                             \(aqend\(aq:      value at period end(s)
                             \(aqnow\(aq:      value today
                             YYYY\-MM\-DD: value on given date
+                            \(aqcost\(aq:     cost basis, or else transacted cost
+                            (same as \-B)
+                            \(aqtransacted\(aq: transacted cost/sale amount (\(at/\(at\(at)
+                            only
      \-\-lots                 show lot subaccounts and other lot details
   \-c \-\-commodity\-style=S    Override a commodity\(aqs display style.
                             Eg: \-c \(aq.\(aq or \-c \(aq1.000,00 EUR\(aq
@@ -173,9 +178,8 @@ General help flags:
      \-\-debug=[1\-9]          show this much debug output (default: 1)
      \-\-pager=YN             use a pager when needed ? y/yes (default) or n/no
      \-\-color=YNA \-\-colour   use ANSI color ? y/yes, n/no, or auto (default)
-     \-\-lang=LANG            language for report titles and headings: a
-                            language tag like de, auto (from the environment),
-                            or en (default)
+     \-\-lang=LANG            language for the user interface:
+                            en (default), de, zh, or auto
 .EE
 .PP
 With hledger\-ui, the \f[CR]\-\-debug\f[R] option sends debug output to

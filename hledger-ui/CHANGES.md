@@ -16,6 +16,71 @@ User-visible changes in hledger-ui.
 See also the hledger changelog.
 
 
+# 7acb6aed
+
+
+
+# 1.99.5 2026-10-01
+
+Breaking changes
+
+- Watch mode is now enabled by default: hledger-ui watches for data
+  and date changes, and reloads automatically. The new --no-watch flag
+  disables this, reloading only with the g key. The rightmost
+  --watch/--no-watch flag wins, so a config file setting can be
+  overridden on the command line.
+
+- -B/--value=cost now converts lot postings at their cost basis (see
+  hledger changelog).
+
+Fixes
+
+- The mouse wheel now scrolls all the way. Wheeling up or down moved the
+  viewport at most to the current selection and then stopped; you had to
+  move the selection with the arrow keys to get any further. Scrolling
+  down now stops with the last item at the bottom of the window, like the
+  END key.
+
+- The transaction screen now always shows the whole journal
+  entry. Previously with a cur: or amt: query in effect, it showed the
+  entry without the non-matching postings. (A long-standing bug, since
+  hledger 1.23.)
+
+- Pressing L to hide lot detail while on a lot subaccount's transaction
+  or register screen no longer leaves a broken display; such screens now
+  show the lot's base account, where the collapsed postings appear, and
+  pressing L again restores the lot subaccount view.
+
+Improvements
+
+- The new --lang option translates the menu and accounts screen names
+  to supported languages (currently en, de, zh; see hledger changelog).
+  The help dialog and the register screen's labels are not yet translated.
+  (Arthur Cinader)
+
+- hledger-ui can now read the journal from stdin (-f-), on unix-like
+  systems.  With a stdin journal the data can't be re-read or edited,
+  so the g, a, A and E keys and watch mode have no effect. On Windows,
+  stdin input remains unsupported.
+
+- With more than one of --cash/--bs/--is/--all/--register, the last
+  one wins, so a config file's choice can be overridden on the command
+  line.  (Previously they had a fixed priority order.)
+
+- See the hledger changelog for other changes, such as: improved
+  commodity aliases, sym: query removed, the new :: find-anywhere
+  query, support for GHC runtime options, faster starts and reloads.
+
+- Allow brick 3.0, doclayout 0.6.
+
+Docs
+
+- The manual's KEYS section is grouped like the help dialog; the depth
+  keys, help dialog keys, CTRL-z and editor variables are documented;
+  the watch mode and BUGS sections are updated; and various typos and
+  stale statements are fixed.
+
+
 # 1.99.4 2026-09-10
 
 Fixes
