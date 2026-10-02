@@ -16,7 +16,7 @@ User-visible changes in hledger-web.
 See also the hledger changelog.
 
 
-# 09cd5226
+# 1.99.5 2026-10-01
 
 Fixes
 

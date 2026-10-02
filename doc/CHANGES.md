@@ -20,7 +20,7 @@ General changes in the hledger project.
 For package-specific changes, see the hledger package changelogs.
 
 
-# 09cd5226
+# 1.99.5 2026-10-01
 
 ## Docs
 
@@ -46,13 +46,15 @@ For package-specific changes, see the hledger package changelogs.
 ## Tools/infrastructure
 
 - ai: `just ai-session SESSIONID [SINCE]` and `just ai-sessions [DATE]` report one Claude Code session's output tokens, or each session's on a day
-es; `just i18n-pot`, `i18n-check`, `i18n-merge`, `i18n-pseudo` (Arthur Cinader)
 - benchmarking scripts moved into bench/, updated; `just perftest` added
 - checkanchors (`just anchortest`): checks that #anchor links in the manual sources point to existing headings, using mdbook's heading id rules
 - errors tests: converted to shelltest v3 format; `make tests` now only drafts missing tests; hledger2shelltest drafts v3 tests; added tags, lots, basis and timedot error examples
 - generatejournal: --start and --days, for sparse and dense journals; new sample journals century-sparse and dense-year (Arthur Cinader)
-- i18n: i18n-extract.py collects translatable strings into hledger-lib/locale/hledger.pot, writes a pseudo-locale catalog, and checks catalogs for stale and untranslated entri- installpage: also updates get-hledger-installed's version example
+- generaloptionshelp: also generates the hledger-web manual's general options, without --lang (hledger-web lists its own)
+- i18n: i18n-extract.py collects translatable strings into hledger-lib/locale/hledger.pot, writes a pseudo-locale catalog, and checks catalogs for stale and untranslated entries; `just i18n-pot`, `i18n-check`, `i18n-merge`, `i18n-pseudo` (Arthur Cinader)
+- installpage: also updates get-hledger-installed's version example
 - Justfile: etags recipes write control characters as escapes (the literal form feeds crashed just-lsp); profiling recipes fixed; `just site-update`
+- Shake changelogs: accepts release tag resume points; skips release-day changelog and relnotes commits
 - stack-prof.yaml: a profiling build config that works on GHC 9.14
 
 
