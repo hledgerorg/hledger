@@ -21,6 +21,16 @@ async function openAddForm(page) {
   await expect(page.locator('#addmodal')).toBeVisible();
 }
 
+// Hover an element, then nudge the pointer one pixel. hover() may scroll the
+// element into view, and the scroll event, delivered on the next frame, hides
+// the entry tooltip and cancels its pending show; the nudge is the small
+// pointer movement a real hand always makes, which re-arms it.
+async function hoverSettled(page, locator) {
+  await locator.hover();
+  const box = await locator.boundingBox();
+  await page.mouse.move(box.x + box.width / 2 + 1, box.y + box.height / 2);
+}
+
 test.describe('page initialization', () => {
 
   test('journal page loads and starts up without javascript errors', async ({ page }) => {
@@ -211,6 +221,21 @@ test.describe('keyboard shortcuts', () => {
     expect(pageErrors).toEqual([]);
   });
 
+  // Zero balances state is the empty parameter; the row's links set it,
+  // and the "e" key presses the row's other link.
+  test('"e" and the Zero balances links switch a page between showing and hiding zero balances', async ({ page }) => {
+    await page.goto('/balance');
+    const current = page.locator('#main-content .zero-balances a.current');
+    await expect(current).toHaveText('Shown');
+    await page.locator('#main-content .zero-balances a', { hasText: 'Hidden' }).click();
+    await expect(page).toHaveURL(/empty=0/);
+    await expect(current).toHaveText('Hidden');
+    await page.locator('body').press('e');
+    await expect(page).not.toHaveURL(/empty=/);
+    await expect(current).toHaveText('Shown');
+    expect(pageErrors).toEqual([]);
+  });
+
 });
 
 test.describe('modal dialogs', () => {
@@ -268,11 +293,12 @@ test.describe('sidebar', () => {
     expect(await page.locator('#sidebar-menu').evaluate(el => el.scrollTop)).toBeGreaterThan(0);
   });
 
-  test('"e" hides empty accounts', async ({ page }) => {
+  test('"e" hides empty accounts, as the empty parameter', async ({ page }) => {
     await page.goto('/journal');
     await page.locator('body').press('e');
-    // the toggle is remembered server-side via the hideemptyaccts cookie
-    await page.goto('/journal');
+    await expect(page).toHaveURL(/\/journal\?empty=0/);
+    await page.locator('body').press('e');
+    await expect(page).not.toHaveURL(/empty=/);
     expect(pageErrors).toEqual([]);
   });
 
@@ -295,6 +321,69 @@ test.describe('sidebar', () => {
 
 });
 
+test.describe('report tree folding', () => {
+
+  // A tree-mode report serves every depth and folds to the search's
+  // depth: term; the carets open and close groups in place, without
+  // changing the URL.
+  test('folds to the depth in the search, and carets unfold groups in place', async ({ page }) => {
+    await page.goto('/balance?list=tree&q=depth:1');
+    const top = page.locator('td.account.depth-0').first();
+    const deep = page.locator('td.account.depth-1').first();
+    await expect(top).toBeVisible();
+    await expect(deep).toBeHidden();
+    await top.locator('.tree-caret').click();
+    await expect(deep).toBeVisible();
+    await expect(page).toHaveURL('/balance?list=tree&q=depth:1');
+    await top.locator('.tree-caret').click();
+    await expect(deep).toBeHidden();
+    expect(pageErrors).toEqual([]);
+  });
+
+  // The sidebar's accounts fold too, and the fold is remembered in
+  // this browser, so the sidebar stays as you left it between pages.
+  test('in tree mode the sidebar folds, and stays folded across navigation', async ({ page }) => {
+    await page.goto('/journal?list=tree');
+    const deep = () => page.locator('#sidebar-menu tr[data-acct="expenses:food:groceries"]');
+    await expect(deep()).toBeVisible();
+    await page.locator('#sidebar-menu tr[data-acct="expenses"] .tree-caret').click();
+    await expect(deep()).toBeHidden();
+    await page.goto('/balance?list=tree');
+    await expect(deep()).toBeHidden();
+    await page.locator('#sidebar-menu tr[data-acct="expenses"] .tree-caret').click();
+    await expect(deep()).toBeVisible();
+    expect(pageErrors).toEqual([]);
+  });
+
+  // A depth limit opens the sidebar to it, like the report tables,
+  // overriding any folds saved in the browser; the accounts below the
+  // limit are served folded, and their carets open them in place.
+  test('a depth limit opens the sidebar to it, past saved folds', async ({ page }) => {
+    await page.goto('/journal?list=tree');
+    const food = () => page.locator('#sidebar-menu tr[data-acct="expenses:food"]');
+    await page.locator('#sidebar-menu tr[data-acct="expenses"] .tree-caret').click();
+    await expect(food()).toBeHidden();
+    await page.goto('/journal?list=tree&q=depth:2');
+    await expect(food()).toBeVisible();
+    const groceries = () => page.locator('#sidebar-menu tr[data-acct="expenses:food:groceries"]');
+    await expect(groceries()).toBeHidden();
+    await food().locator('.tree-caret').click();
+    await expect(groceries()).toBeVisible();
+    expect(pageErrors).toEqual([]);
+  });
+
+  // Without a depth, the tree starts fully open and can be folded.
+  test('an unfolded tree collapses from any group', async ({ page }) => {
+    await page.goto('/balance?list=tree');
+    const deep = page.locator('td.account.depth-1').first();
+    await expect(deep).toBeVisible();
+    await page.locator('td.account.depth-0 .tree-caret').first().click();
+    await expect(deep).toBeHidden();
+    expect(pageErrors).toEqual([]);
+  });
+
+});
+
 // Hovering a transaction shows its journal entry in a tooltip drawn by
 // hledger.js, in a fixed-width font (#2716). It behaves like a browser's own
 // tooltip: it appears after a pause, and goes when the pointer leaves or clicks.
@@ -307,7 +396,7 @@ test.describe('entry tooltip', () => {
     const description = row.locator('td').nth(1);
     // the row has no title of its own, so no browser tooltip shows as well
     await expect(row).not.toHaveAttribute('title');
-    await description.hover();
+    await hoverSettled(page, description);
     await expect(tip).toBeVisible();
     await expect(tip).toContainText('Cafe Luna');
     await expect(tip).toContainText('expenses:food:dining');
@@ -329,7 +418,7 @@ test.describe('entry tooltip', () => {
     await page.goto('/register?q=inacct:assets:bank:checking');
     const tip = page.locator('.entry-tooltip');
     const row = page.locator('#main-content tbody tr', { hasText: 'Cafe Luna' });
-    await row.locator('td.description').hover();
+    await hoverSettled(page, row.locator('td.description'));
     await expect(tip).toBeVisible();
     await expect(tip).toContainText('Cafe Luna');
     const link = row.locator('td.account a');

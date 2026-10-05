@@ -252,6 +252,14 @@ as `--depth`, `-B`, or `-V`, apply. A `date:` term can set the interval
 too, as on the command line (`date:monthly`, or
 `"date:quarterly in 2025"`), and wins over the `period` parameter.
 
+The links above each report also set its depth, which they write as a
+`depth:` term in the search; how amounts are shown, as recorded, at
+cost (like `-B`), or at market value at the end of each period (like
+`-V`), with a `value` parameter (`none`, `cost`, or `end`) that
+overrides the startup options and is carried to the other reports; and
+whether accounts with zero balances are shown, with an `empty`
+parameter that the `e` key toggles and the pages' links carry.
+
 The balance sheets show ending balances and the income statement and
 cashflow statement show changes, as their commands do; an `accum`
 parameter (`historical` or `change`) overrides that, and the heading
@@ -273,6 +281,8 @@ An ending balance's register runs in historical mode (its own
 `accum=historical`): its running balance starts from the balance
 brought forward from before the period, shown as its oldest row, and
 its balance column's heading switches between the two modes.
+A figure at cost or at market value links to a register showing its
+amounts the same way (with the same `value` parameter).
 
 # RELOADING
 

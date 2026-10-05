@@ -1,6 +1,6 @@
 <tr :here == journalR:.inacct>
   <td .top .acct>
-    <a href=@?{journallink} :here == journalR:.inacct
+    <a #sidebar-journal-link href=@?{journallink} :here == journalR:.inacct
        title=#{tr trs "Show general journal entries, most recent first"}>
       #{tr trs "Journal"}
   <td .top>
@@ -12,30 +12,30 @@ $forall (route, label, title) <- reports
       <a href=@?{(route, reportParams)} :here == route:.inacct title=#{tr trs title}>
         #{tr trs label}
 $forall (acct, adisplay, aindent, abal) <- items
-  <tr
+  <tr data-depth=#{aindent} data-acct=#{acct}
      :matchesAcctSelector acct:.inacct
      :hideEmpty && not (isInterestingAccount acct):.hide>
     <td .acct :not (isInterestingAccount acct):.empty>
       <div .ff-wrapper>
         \#{indent aindent}
-        <a.acct-name href="@?{(registerR, [("q", replaceInacct qparam $ accountQuery acct)])}"
+        <a.acct-name href="@?{acctlink acct}"
            title=#{tr trs "Show transactions affecting this account and subaccounts"}>
           #{adisplay}
         $if hasSubAccounts acct
-          <a href="@?{(registerR, [("q", replaceInacct qparam $ accountOnlyQuery acct)])}" .only.hidden-sm.hidden-xs
+          <a href="@?{acctonlylink acct}" .only.hidden-sm.hidden-xs
              title=#{tr trs "Show transactions affecting this account but not subaccounts"}>#{tr trs "only"}
     <td .amount>
       $if mixedAmountLooksZero abal
-        ^{mixedAmountAsHtml abal}
+        ^{mixedAmountAsHtmlElided trs 3 abal}
       $else
-        <a href="@?{(registerR, [("q", replaceInacct qparam $ accountQuery acct)])}"
+        <a href="@?{acctlink acct}"
            title=#{tr trs "Show the transactions that make up this balance"}>
-          ^{mixedAmountAsHtml abal}
+          ^{mixedAmountAsHtmlElided trs 3 abal}
 <tr .total>
-  <td>
+  <td .total-label title=#{tottitle}>#{totlabel}
   <td .amount>
     $if mixedAmountLooksZero total
-      ^{mixedAmountAsHtml total}
+      ^{mixedAmountAsHtmlElided trs 3 total}
     $else
       <a href="@?{totallink}" title=#{tr trs "Show the transactions that make up this total"}>
-        ^{mixedAmountAsHtml total}
+        ^{mixedAmountAsHtmlElided trs 3 total}

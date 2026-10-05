@@ -32,6 +32,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Fold tree-mode report tables (see reportTreeInit below). The
+  // sidebar's tree is folded earlier, inline right after its markup
+  // (default-layout.hamlet), so it never paints unfolded.
+  reportTreeInit();
+
   // Typing in the last amount field adds another posting row. Delegating from
   // the form means the handler does not have to be moved as rows come and go.
   var addform = document.getElementById('addform');
@@ -68,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.querySelector('dialog[open]')) { return; }
     switch (e.key) {
       case 'h': case '?': helpToggle();                                     break;
-      case 'j': location.href = document.hledgerWebBaseurl + '/journal';     break;
+      case 'j': journalGo();                                                break;
       case 's': sidebarToggle();                                            break;
       case 'e': emptyAccountsToggle();                                      break;
       case 'a': case 'n': addformShow();                                    break;
@@ -200,6 +205,14 @@ function addformAddPosting() {
 //----------------------------------------------------------------------
 // SIDEBAR
 
+// The j key follows the sidebar's Journal link, which keeps the page's
+// state (its amounts and accounts modes, zero balances, and search);
+// without a sidebar, the plain journal page.
+function journalGo() {
+  var a = document.getElementById('sidebar-journal-link');
+  location.href = a ? a.href : document.hledgerWebBaseurl + '/journal';
+}
+
 function sidebarToggle() {
   var sidebar = document.getElementById('sidebar-menu');
   var main = document.getElementById('main-content');
@@ -216,11 +229,55 @@ function sidebarToggle() {
 }
 
 function emptyAccountsToggle() {
-  document.querySelectorAll('.acct.empty').forEach(function(el) {
-    el.parentNode.classList.toggle('hide');
-  });
-  setCookie('hideemptyaccts', getCookie('hideemptyaccts') === '1' ? '0' : '1');
+  // The e key follows the Zero balances row's other link: the state is
+  // the page's empty parameter, so showing or hiding is a navigation.
+  var other = document.querySelector('.zero-balances a:not(.current)');
+  if (other) { location.href = other.href; }
 }
+
+// Tree-mode report rows carry depth-N classes (and the table the depth
+// to fold to initially, if any). Give each group a caret that opens or
+// closes its rows in place, leaving the page's URL alone.
+function reportTreeInit() {
+  document.querySelectorAll('.report-table table').forEach(function(table) {
+    var fold = parseInt(table.getAttribute('data-depth-fold') || '', 10);
+    table.querySelectorAll('tbody').forEach(function(tbody) {
+      var rows = [];
+      tbody.querySelectorAll('tr').forEach(function(tr) {
+        var td = tr.querySelector('td.account');
+        var m = td && td.className.match(/\bdepth-(\d+)\b/);
+        if (m) { rows.push({tr: tr, td: td, depth: +m[1], expanded: true, parent: false}); }
+      });
+      rows.forEach(function(r, i) {
+        r.parent = i + 1 < rows.length && rows[i + 1].depth > r.depth;
+        if (!isNaN(fold)) { r.expanded = r.depth < fold - 1; }
+        var caret = document.createElement('span');
+        caret.className = 'tree-caret';
+        r.td.insertBefore(caret, r.td.firstChild);
+        if (r.parent) {
+          caret.addEventListener('click', function() { r.expanded = !r.expanded; apply(); });
+        }
+      });
+      function apply() {
+        // a row shows when every ancestor is open; the stack holds the
+        // open flags of the current row's ancestors
+        var stack = [];
+        rows.forEach(function(r) {
+          while (stack.length > r.depth) { stack.pop(); }
+          r.tr.classList.toggle('tree-fold-hide', !stack.every(function(open) { return open; }));
+          r.td.querySelector('.tree-caret').textContent = r.parent ? (r.expanded ? '\u25be' : '\u25b8') : '';
+          stack.push(r.expanded);
+        });
+      }
+      if (rows.length) { apply(); }
+    });
+  });
+}
+
+// The sidebar's account tree is folded by an inline script right after its
+// markup in default-layout.hamlet, like its scroll restore and for the same
+// reason: run from this file it would fold only at DOMContentLoaded, after
+// the browser has painted the tree in full, a visible jump.
 
 function setCookie(name, value) {
   document.cookie = name + '=' + value + '; path=/; max-age=31536000; samesite=lax';

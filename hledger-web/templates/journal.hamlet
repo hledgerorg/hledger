@@ -6,8 +6,18 @@ $if elem AddPermission perms
      data-toggle="modal" data-target="#addmodal" title=_{HMsg "Add a new transaction to the journal"}>
     _{HMsg "Add a transaction"}
 
-^{yearsRow trs JournalR qparam years}
-^{pagingLinks trs JournalR qparam page}
+^{yearsRow trs JournalR qparam carried years}
+
+^{statusRow}
+^{realRow}
+^{typeRow}
+$if deepest > 1
+  ^{depthRow}
+^{listRow}
+^{amountsRow}
+^{zeroRow}
+
+^{pagingLinks trs JournalR qparam carried page}
 
 <div .table-responsive>
   <table .transactionsreport .table .table-condensed>
@@ -38,7 +48,7 @@ $if elem AddPermission perms
           <td .amount>
             ^{mixedAmountAsHtml amt}
 
-^{pagingLinks trs JournalR qparam page}
+^{pagingLinks trs JournalR qparam carried page}
 
 $if elem AddPermission perms
   ^{addModal AddR j today}

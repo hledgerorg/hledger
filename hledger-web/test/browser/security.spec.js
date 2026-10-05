@@ -174,7 +174,9 @@ test.describe('the content security policy', () => {
     await expect(page.locator('#flotTip')).toBeVisible();
     await page.mouse.click(point.x, point.y);
     await expectNoViolations(page, violations);
-    const { rect } = point, y = rect.top + rect.height / 2;
+    // clicking navigated to the transaction's row, which can scroll the
+    // chart; measure it again before dragging across it
+    const { rect } = await chartPoint(page, 1, 0), y = rect.top + rect.height / 2;
     await page.mouse.move(rect.left + rect.width * 0.3, y);
     await page.mouse.down();
     await page.mouse.move(rect.left + rect.width * 0.4, y);
