@@ -14,7 +14,7 @@ import Text.Tabular.AsciiWide (Header(..), Properties(..), Table(..), concatTabl
 
 import Hledger.Utils.I18n qualified as I18n
 import Hledger
-import Hledger.Cli.Anchor (LinkOpts(..), dateTerm, removeDates, withLink, setAccountAnchorWith,
+import Hledger.Cli.Anchor (LinkOpts(..), valueParam, dateTerm, removeDates, withLink, setAccountAnchorWith,
   dateSpanCellWith, totalDateSpanCell, headerDateSpanCell, renderPeriodHeading, amountPhrase)
 import Hledger.Write.Spreadsheet (rawTableContent, headerCell,
             addHeaderBorders, addRowSpanHeader,
@@ -71,16 +71,17 @@ figuresLink :: ReportOpts -> Bool
 figuresLink ropts = balancecalc_ ropts == CalcChange && not (percent_ ropts)
 
 -- | The register link options of a report's rows: its accumulation
--- mode, the span its columns cover, and whether it shows figures with
+-- mode, the span its columns cover, whether it shows figures with
 -- the sign opposite to the register's (as the compound reports' negated
--- sections do).
+-- sections do), and how it converts amounts.
 reportLinkOpts :: ReportOpts -> [DateSpan] -> LinkOpts
 reportLinkOpts ropts colspans = LinkOpts {
     loAccum        = balanceaccum_ ropts,
     loSpan         = spansSpan colspans,
     loDate2        = date2_ ropts,
     loIncludesSubs = True,
-    loNegated      = normalbalance_ ropts == Just NormallyNegative
+    loNegated      = normalbalance_ ropts == Just NormallyNegative,
+    loValue        = valueParam (conversionop_ ropts) (value_ ropts)
 }
 
 -- | The link options of one account's row: whether its figures include
