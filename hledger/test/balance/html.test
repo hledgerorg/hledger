@@ -1,0 +1,18 @@
+# * balance html output
+
+# ** 1. In tree mode each account cell's class carries its depth, so a
+# stylesheet can indent the tree and a UI can fold it (hledger-web does).
+<
+2025-01-15 a
+  assets:bank:checking  10
+  assets:cash            5
+  income
+
+$ hledger -f- bal --tree -O html
+> /<td class="account depth-1"/
+>= 0
+
+# ** 2. In list mode, the default, account cells have no depth.
+$ hledger -f- bal -O html
+> !/depth-/
+>= 0
