@@ -14,7 +14,7 @@ import Text.Tabular.AsciiWide (Header(..), Properties(..), Table(..), concatTabl
 
 import Hledger.Utils.I18n qualified as I18n
 import Hledger
-import Hledger.Cli.Anchor (LinkOpts(..), dateTerm, removeDates, withLink, setAccountAnchorWith,
+import Hledger.Cli.Anchor (LinkOpts(..), valueParam, dateTerm, removeDates, withLink, setAccountAnchorWith,
   dateSpanCellWith, totalDateSpanCell, headerDateSpanCell, renderPeriodHeading, amountPhrase)
 import Hledger.Write.Spreadsheet (rawTableContent, headerCell,
             addHeaderBorders, addRowSpanHeader,
@@ -27,6 +27,14 @@ import Hledger.Write.Spreadsheet qualified as Ods
 
 accountClass :: Ods.Class
 accountClass = Ods.Class "account"
+
+-- | The class of an account cell in a tree-mode report: "account" and
+-- its row's depth in the tree, so that a UI can fold the tree by
+-- indent, as hledger-web does. In list mode, just "account".
+treeAccountClass :: ReportOpts -> Int -> Ods.Class
+treeAccountClass opts dep
+  | accountlistmode_ opts == ALTree = Ods.Class $ "account depth-" <> T.pack (show dep)
+  | otherwise = accountClass
 
 data RowClass = Value | Total
     deriving (Eq, Ord, Enum, Bounded, Show)
@@ -71,16 +79,17 @@ figuresLink :: ReportOpts -> Bool
 figuresLink ropts = balancecalc_ ropts == CalcChange && not (percent_ ropts)
 
 -- | The register link options of a report's rows: its accumulation
--- mode, the span its columns cover, and whether it shows figures with
+-- mode, the span its columns cover, whether it shows figures with
 -- the sign opposite to the register's (as the compound reports' negated
--- sections do).
+-- sections do), and how it converts amounts.
 reportLinkOpts :: ReportOpts -> [DateSpan] -> LinkOpts
 reportLinkOpts ropts colspans = LinkOpts {
     loAccum        = balanceaccum_ ropts,
     loSpan         = spansSpan colspans,
     loDate2        = date2_ ropts,
     loIncludesSubs = True,
-    loNegated      = normalbalance_ ropts == Just NormallyNegative
+    loNegated      = normalbalance_ ropts == Just NormallyNegative,
+    loValue        = valueParam (conversionop_ ropts) (value_ ropts)
 }
 
 -- | The link options of one account's row: whether its figures include
@@ -324,6 +333,7 @@ balanceSubReportAsSpreadsheetParts fmt opts@ReportOpts{..}
             lo = rowLinkOpts opts colspans shownParents acctName
             anchorCell =
               setAccountAnchorWith lo balance_base_url_ rowquery acctName $
+              (\c -> c{Ods.cellClass = treeAccountClass opts (prrIndent row)}) $
               accountCell $ renderPeriodicAcct opts nbsp row
     totalrows =
       if no_total_

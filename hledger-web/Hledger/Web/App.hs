@@ -34,7 +34,7 @@ import Data.Text.Encoding qualified as TE
 import Data.Time.Calendar (Day)
 import Network.HTTP.Conduit (Manager)
 import Network.HTTP.Types (status403)
-import Network.Wai (requestHeaders)
+import Network.Wai (rawPathInfo, rawQueryString, requestHeaders)
 import System.Directory (XdgDirectory (..), createDirectoryIfMissing,
                          getXdgDirectory)
 import System.Entropy (getEntropy)
@@ -53,6 +53,7 @@ import Hledger.Cli.Commands.Balancesheetequity (balancesheetequitySpec)
 import Hledger.Cli.Commands.Cashflow (cashflowSpec)
 import Hledger.Cli.Commands.Incomestatement (incomestatementSpec)
 import Hledger.Cli.CompoundBalanceCommand (CompoundBalanceCommandSpec(..))
+import Hledger.Web.ReportPage (AmountMode(..), accumWord, amountModeOf, parseListMode, parseValue, setAmountMode)
 import Hledger.Web.Settings (Extra(..), widgetFile)
 import Hledger.Web.Settings.StaticFiles
 import Hledger.Web.WebOptions
@@ -163,20 +164,41 @@ instance Yesod App where
     -- the body attribute this sets is how the page knows to.
     let browsemode = server_mode_ opts == ServeBrowse
 
+    -- The sidebar shows amounts the way the page does: converted as the
+    -- value parameter asks, with inferred market prices if asked.
+    mvalmode <- either (const Nothing) id . parseValue <$> lookupGetParam "value"
+    inferparam <- (== Just "1") <$> lookupGetParam "infer"
+    mlistmode <- either (const Nothing) id . parseListMode <$> lookupGetParam "list"
     let rspec = reportspec_ (cliopts_ opts)
-        ropts' = (_rsReportOpts rspec)
-          {accountlistmode_ = ALTree  -- force tree mode for sidebar
+        -- In the page's tree mode the sidebar gets fold carets (the
+        -- inline script in default-layout.hamlet); its shape never changes.
+        sidebarFold = fromMaybe (accountlistmode_ (_rsReportOpts rspec)) mlistmode == ALTree
+        ropts' = maybe id setAmountMode mvalmode $ (_rsReportOpts rspec)
+          {accountlistmode_ = ALTree  -- always the account tree; tree mode only adds folding (data-fold below)
           ,empty_           = True    -- show zero items by default
           ,interval_        = NoInterval  -- one balance per account, over the search's own span
+          ,infer_prices_    = infer_prices_ (_rsReportOpts rspec) || inferparam
+          -- In tree mode every level is a row of its own, so that each
+          -- is a fold point, as in the report tables.
+          ,no_elide_        = no_elide_ (_rsReportOpts rspec) || sidebarFold
           }
-        rspec' = rspec{_rsQuery=q,_rsReportOpts=ropts'}
+        -- A depth limit clips the sidebar's accounts, except in tree
+        -- mode, where the sidebar is served at full depth and the limit
+        -- becomes its initial fold, as in the report tables: the carets
+        -- open the deeper accounts in place.
+        sidebarQ = if sidebarFold then filterQuery (not . queryIsDepth) q else q
+        sidebarFoldDepth
+          | sidebarFold = maybe "" (T.pack . show) $ dsFlatDepth $ queryDepth q
+          | otherwise   = ""
+        rspec' = rspec{_rsQuery=sidebarQ,_rsReportOpts=ropts'}
 
     -- The parameters the search form and its clear button keep, so that
-    -- a search does not reset the page: a report page's period and
-    -- accumulation mode, and the register's mode. The mode is kept only
-    -- when it is not the default, as the pages' own links carry it.
+    -- a search does not reset the page: a report page's period,
+    -- accumulation mode, and amount conversion, and the register's modes.
+    -- The accumulation mode is kept only when it is not the default, as
+    -- the pages' own links carry it.
     let keepable :: Text -> Text -> Bool
-        keepable "accum" v = Just v == keptAccum here
+        keepable "accum" v = v `elem` keptAccums here
         keepable _       v = not (T.null v)
     keptParams <- fmap catMaybes . for (keptParamNames here) $ \name ->
       fmap (name,) . mfilter (keepable name) <$> lookupGetParam name
@@ -184,14 +206,30 @@ instance Yesod App where
     hideEmptyAccts <- hideEmptyAccounts
 
     -- The sidebar's report links keep the search, minus any account term,
-    -- which the reports ignore, and a report page's period, as the report
-    -- pages' own Report row does.
+    -- which the reports ignore, and a report page's period and amount
+    -- conversion, as the report pages' own Report row does.
     let sidebarReports = reportLinkItems $ filter rmInSidebar reportMenu
         sidebarParams =
           [p | p@("period", _) <- keptParams] ++
-          [("q", qt) | let qt = T.unwords $ removeInacct qparam, not (T.null qt)]
+          [("q", qt) | let qt = T.unwords $ removeInacct qparam, not (T.null qt)] ++
+          [p | p@("value", _) <- keptParams] ++
+          [p | p@("empty", _) <- keptParams] ++
+          [p | p@("list", _) <- keptParams] ++
+          [p | p@("infer", _) <- keptParams]
+        -- What the sidebar's bottom row is, in the current amounts mode:
+        -- the whole journal's net. Label it by what that means.
+        (totlabel, tottitle) = case amountModeOf ropts' of
+          Just AtCost ->
+            (tr trs "Net, at cost:",
+             tr trs "The sum of every account, converted to cost: zero for balanced books; anything left comes from unbalanced virtual postings.")
+          Just (AtVal _) ->
+            (tr trs "Unbooked gains:",
+             tr trs "The sum of every account at market value: appreciation not booked by any entry. If realized gains are booked, this is the unrealized gains.")
+          _ ->
+            (tr trs "Net flows:",
+             tr trs "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities.")
         accounts =
-          balanceReportAsHtml (JournalR, RegisterR) here sidebarReports sidebarParams hideEmptyAccts trs j qparam qopts $
+          balanceReportAsHtml (JournalR, RegisterR) here sidebarReports sidebarParams hideEmptyAccts totlabel tottitle trs j qparam qopts $
           styleAmounts (journalCommodityStylesWith HardRounding j) $
           balanceReport rspec' j
 
@@ -326,6 +364,9 @@ getViewData = do
     appOpts=opts0@WebOpts{ cliopts_=copts@CliOpts{ reportspec_=rspec@ReportSpec{_rsReportOpts, _rsQuery} } },
     appJournal
   } <- getYesod
+  -- With --debug, show each request's url as received
+  req <- waiRequest
+  dbg1IO "url" $ BC.unpack (rawPathInfo req) ++ BC.unpack (rawQueryString req)
   let today = _rsDay rspec
   -- the request's language, applied to the options too so that any
   -- report text rendered by hledger-lib matches the page
@@ -349,6 +390,8 @@ getViewData = do
   let
     initialdepthq = filterQuery queryIsDepth _rsQuery
     q = simplifyQuery $ And [q1, initialdepthq]
+  dbg1IO "q parameter" qparam
+  dbg1IO "query" q
 
   -- if either of the above gave an error, display it
   maybe (pure ()) (setMessage . toHtml) $ mjerr <|> mqerr
@@ -407,31 +450,35 @@ reportLinkItems items = [(rmRoute i, rmLabel i, rmTitle i) | i <- items]
 reportRoutes :: [Route App]
 reportRoutes = map rmRoute reportMenu
 
--- | The accum parameter value a page's links keep: the mode that is
+-- | The accum parameter values a page's links keep: the modes that are
 -- not the page's default. (The register totals the period by default.)
-keptAccum :: Route App -> Maybe Text
-keptAccum route =
+keptAccums :: Route App -> [Text]
+keptAccums route =
   case [rmAccum i | i <- reportMenu, rmRoute i == route] of
-    [Historical]           -> Just "change"
-    [_]                    -> Just "historical"
-    _ | route == RegisterR -> Just "historical"
-    _                      -> Nothing
+    [dflt]                 -> [accumWord a | a <- [PerPeriod, Historical, Cumulative], a /= dflt]
+    _ | route == RegisterR -> ["historical"]
+    _                      -> []
 
 -- | The query parameters a page's own links keep.
 keptParamNames :: Route App -> [Text]
 keptParamNames route
-  | route `elem` reportRoutes = ["period", "accum"]
-  | route == RegisterR        = ["accum"]
+  | route `elem` reportRoutes = ["period", "accum", "value", "list", "total", "avg", "sort", "pct", "calc", "infer", "date2", "empty"]
+  | route == RegisterR        = ["accum", "value", "costs", "infer", "date2", "empty", "list"]
+  | route == JournalR         = ["value", "list", "infer", "empty"]
   | otherwise                 = []
 
--- | Are zero-balance accounts hidden ? They are with -E at startup, or
--- with the hideemptyaccts cookie the e key sets.
+-- | Are zero-balance accounts hidden ? The empty parameter says (1
+-- shows them, 0 hides them, the direction of the command line's
+-- -E/--empty); without one, they are hidden when hledger-web was
+-- started with -E, and shown otherwise.
 hideEmptyAccounts :: Handler Bool
 hideEmptyAccounts = do
   App{appOpts} <- getYesod
-  if empty_ $ _rsReportOpts $ reportspec_ $ cliopts_ appOpts
-    then return True
-    else (== Just "1") . lookup "hideemptyaccts" . reqCookies <$> getRequest
+  memptyp <- lookupGetParam "empty"
+  return $ case memptyp of
+    Just "0" -> True
+    Just "1" -> False
+    _        -> empty_ $ _rsReportOpts $ reportspec_ $ cliopts_ appOpts
 
 -- | Find out if the sidebar should be visible. Show it, unless there is a
 -- showsidebar cookie set to "0", or a ?sidebar=0 query parameter.

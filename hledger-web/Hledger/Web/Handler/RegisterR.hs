@@ -20,11 +20,14 @@ import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Web.Import
 import Hledger.Web.Paging
+import Hledger.Web.ReportPage (amountModeOf, deepestDepth, listWord, parseListMode, parseValue, setAmountMode, valueParams)
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Widget.Common
-             (accountQuery, accountOnlyQuery, mixedAmountAsHtml,
-              transactionFragment, removeDates, removeInacct, replaceInacct, journalDayQuery)
+             (accountQuery, accountOnlyQuery, amountLinks, costsLinks, depthLinks,
+              listModeLinks, mixedAmountAsHtml,
+              mixedAmountAsHtmlWith, realLinks, statusLinks, typeLinks,
+              zeroBalanceLinks, transactionFragment, removeDates, removeInacct, replaceInacct, journalDayQuery)
 
 -- | The main journal/account register view, with accounts sidebar.
 getRegisterR :: Handler Html
@@ -37,6 +40,17 @@ getRegisterR = do
   -- the transactions shown; a report's ending balance links here that way,
   -- so that the balance ends on the figure clicked.
   historical <- (== Just "historical") <$> lookupGetParam "accum"
+  -- With a value parameter amounts are converted as a report page's
+  -- figures were (see Hledger.Web.ReportPage.parseValue), so that its
+  -- figures' registers end on them. One it does not know is ignored.
+  mmode <- either (const Nothing) id . parseValue <$> lookupGetParam "value"
+  mlist <- either (const Nothing) id . parseListMode <$> lookupGetParam "list"
+  -- With costs=1 amounts keep the costs recorded with them (10 AAPL @ $95),
+  -- which are stripped by default.
+  costsOn <- (== Just "1") <$> lookupGetParam "costs"
+  inferOn <- (== Just "1") <$> lookupGetParam "infer"
+  date2On <- (== Just "1") <$> lookupGetParam "date2"
+  hideEmpty <- hideEmptyAccounts
   pagereq <- pageRequest
 
   let title = case inAccount qopts of
@@ -46,15 +60,50 @@ getRegisterR = do
       header = if q /= Any then trf trs "{title}, filtered" [("title", title)] else title
 
   let rspec0 = reportspec_ (cliopts_ opts)
-      ropts = (_rsReportOpts rspec0){balanceaccum_ = if historical then Historical else PerPeriod}
+      ropts = maybe id setAmountMode mmode $
+        (_rsReportOpts rspec0){
+          balanceaccum_ = if historical then Historical else PerPeriod,
+          show_costs_ = costsOn,
+          infer_prices_ = infer_prices_ (_rsReportOpts rspec0) || inferOn,
+          date2_ = date2_ (_rsReportOpts rspec0) || date2On}
       rspec = rspec0{_rsReportOpts = ropts}
-      -- links staying on this register keep its mode
+      -- links staying on this register keep its modes
+      valParams = valueParams (_rsReportOpts rspec0) mmode
       accumParams = [("accum", "historical") | historical]
+      costsParams = [("costs", "1") | costsOn]
+      inferParams = [("infer", "1") | inferOn]
+      date2Params = [("date2", "1") | date2On]
+      dfltHidden = empty_ $ _rsReportOpts rspec0
+      emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= dfltHidden]
+      elist = fromMaybe (accountlistmode_ $ _rsReportOpts rspec0) mlist
+      listParams = [("list", listWord elist) | elist /= accountlistmode_ (_rsReportOpts rspec0)]
+      modeParams =
+        dbg1 "register modeParams" $
+        accumParams ++ valParams ++ costsParams ++ inferParams ++ date2Params ++ emptyParams ++ listParams
+      -- the rows of links above the chart: the filters (status,
+      -- realness, type, tag, commodity, and depth), and the accounts,
+      -- amounts, and costs modes
+      statusRow = statusLinks trs RegisterR modeParams qparam
+      realRow = realLinks trs RegisterR modeParams qparam
+      typeRow = typeLinks trs RegisterR modeParams qparam
+      -- The depth links clip the sidebar's accounts, or in tree mode
+      -- fold them, and carry to the reports; the register's rows always
+      -- show in full.
+      deepest = deepestDepth rspec0 j
+      depthRow = depthLinks trs RegisterR modeParams qparam deepest
+      -- Tree mode adds the sidebar's fold carets.
+      listRow = listModeLinks trs RegisterR (qParams qparam ++ filter ((/= "list") . fst) modeParams) (accountlistmode_ $ _rsReportOpts rspec0) elist
+      amountsRow = amountLinks trs RegisterR (qParams qparam ++ filter ((/= "value") . fst) modeParams)
+        (amountModeOf $ _rsReportOpts rspec0) (amountModeOf ropts)
+      costsRow = costsLinks trs RegisterR (qParams qparam ++ filter ((/= "costs") . fst) modeParams) costsOn
+      zeroRow = zeroBalanceLinks trs RegisterR (qParams qparam ++ filter ((/= "empty") . fst) modeParams) dfltHidden hideEmpty
+      -- the amount column's display format: with costs when asked
+      amtfmt = noCostFmt{displayZeroCommodity = True, displayCost = costsOn}
       qParams t = [("q", t) | not (T.null t)]
       acctQuery = fromMaybe Any (inAccountQuery qopts)
       -- An account's register, keeping this register's mode, opened on the
       -- page holding this transaction.
-      acctlink acc t = (RegisterR, ("q", replaceInacct qparam $ accountQuery acc) : ("txn", T.pack $ show $ tindex t) : accumParams)
+      acctlink acc t = (RegisterR, ("q", replaceInacct qparam $ accountQuery acc) : ("txn", T.pack $ show $ tindex t) : modeParams)
       -- In an account's register a type: term selects the postings
       -- totaled, not the accounts named beside them: a liability's
       -- register names the accounts it was posted against, whatever their
@@ -89,8 +138,9 @@ getRegisterR = do
         | historical               = trc trs "column heading" "Historical Total"
         | isJust (inAccount qopts) = trc trs "column heading" "Period Total"
         | otherwise                = trc trs "column heading" "Total"
-      -- The balance column's heading switches the mode.
-      accumToggle = (RegisterR, qParams qparam ++ [("accum", "historical") | not historical])
+      -- The balance column's heading switches the mode, keeping the
+      -- register's other modes.
+      accumToggle = (RegisterR, qParams qparam ++ filter ((/= "accum") . fst) modeParams ++ [("accum", "historical") | not historical])
       accumToggleTitle
         | historical = tr trs "Show the running balance from the start of this period"
         | otherwise  = tr trs "Show the running balance including everything before this period"
@@ -105,7 +155,7 @@ getRegisterR = do
         (RegisterR, [("q", T.unwords $
           maybe [] (\(acc, incl) -> [if incl then accountQuery acc else accountOnlyQuery acc]) (inAccount qopts) ++
           [(if secondary then "date2:.." else "date:..") <> showDate start] ++
-          removeDates (T.unwords $ removeInacct qparam))])
+          removeDates (T.unwords $ removeInacct qparam))] ++ filter ((/= "accum") . fst) modeParams)
       transactionFrag = transactionFragment j
   defaultLayout $ do
     -- TRANSLATORS: the browser tab title of this page.
@@ -160,10 +210,10 @@ decorateLinks = concatMap $ \(acct, (name, comma)) ->
 registerChartHtml ::
   Text -> [(Text, Text)] -> (Transaction -> String) -> String ->
   [(CommoditySymbol, [AccountTransactionsReportItem])] -> HtmlUrl AppRoute
-registerChartHtml q accumParams transactionFrag title percommoditytxnreports = $(hamletFile "templates/chart.hamlet")
+registerChartHtml q modeParams transactionFrag title percommoditytxnreports = $(hamletFile "templates/chart.hamlet")
  where
    charttitle = if null title then "" else title ++ ":"
-   nodatelink = (RegisterR, [("q", t) | let t = T.unwords $ removeDates q, not (T.null t)] ++ accumParams)
+   nodatelink = (RegisterR, [("q", t) | let t = T.unwords $ removeDates q, not (T.null t)] ++ modeParams)
    -- One entry per commodity: its symbol, and per transaction the point flot
    -- plots followed by the texts the tooltip and click handler show.
    seriesjson = encodeToLazyText $ map commoditySeries percommoditytxnreports

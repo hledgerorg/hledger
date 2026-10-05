@@ -692,3 +692,25 @@ ul {
     border-color: var(--danger-border);
   }
 }
+
+/* Tree-fold rows: the tree-mode report tables (reportTreeInit in
+   hledger.js) and the sidebar's accounts (the inline script in
+   default-layout.hamlet) are folded with a caret at each group. In the
+   report tables the indent is padding, set by the depth class, so the
+   caret sits at the account name. */
+.tree-fold-hide { display: none; }
+.more-commodities { opacity: .55; white-space: nowrap; }
+#sidebar-menu tr.total > td.total-label { text-align: right; padding-right: 6px; opacity: .7; white-space: nowrap; }
+.tree-caret { display: inline-block; width: 1.1em; cursor: pointer; color: var(--link, #337ab7); user-select: none; }
+.report-table td.account.depth-1  { padding-left: 1.6em; }
+.report-table td.account.depth-2  { padding-left: 3.0em; }
+.report-table td.account.depth-3  { padding-left: 4.4em; }
+.report-table td.account.depth-4  { padding-left: 5.8em; }
+.report-table td.account.depth-5  { padding-left: 7.2em; }
+.report-table td.account.depth-6  { padding-left: 8.6em; }
+.report-table td.account.depth-7  { padding-left: 10.0em; }
+.report-table td.account.depth-8  { padding-left: 11.4em; }
+.report-table td.account.depth-9  { padding-left: 12.8em; }
+.report-table td.account.depth-10 { padding-left: 14.2em; }
+.report-table td.account.depth-11 { padding-left: 15.6em; }
+.report-table td.account.depth-12 { padding-left: 17.0em; }

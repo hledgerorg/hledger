@@ -333,3 +333,22 @@ $ hledger -f- bal -M -O fods --base-url ''
 $ hledger -f- bal -M --date2 -O html --base-url ''
 > /<a href="register\?q=inacct:assets:bank\+date2:2025-02" title="Show the transactions that make up this amount">/
 >= 0
+
+# ** 23. Converting amounts to market value asks the register to
+# convert them the same way, so that it ends on the figure clicked.
+<
+P 2025-01-01 AAPL $100
+P 2025-02-01 AAPL $120
+
+2025-01-05 buy
+  assets:broker  10 AAPL @ $90
+  assets:bank
+
+$ hledger -f- bal -M -V -O html --base-url '' assets:broker
+> /<a href="register\?q=inacct:assets:broker\+date:2025-01\+assets:broker&amp;value=end" title="Show the transactions that make up this amount">/
+>= 0
+
+# ** 24. Converting them to cost.
+$ hledger -f- bal -M -B -O html --base-url '' assets:broker
+> /<a href="register\?q=inacct:assets:broker\+date:2025-01\+assets:broker&amp;value=cost" title="Show the transactions that make up this amount">/
+>= 0
