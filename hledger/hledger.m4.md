@@ -2207,13 +2207,14 @@ So they combine with it in reports, and a transaction can balance across them.
 This is useful eg if your bank data, manual entries and downloaded market prices use different symbols for the same currency.
 Choose the symbol you want to see in reports as the commodity.
 
-`print` still shows the amounts as they were written; `print -x` shows them converted.
+`print` still shows the amounts as they were written; `print -x` shows them converted, in the commodity's display style.
 In queries, [`cur:`](#cur-query) matches amounts written with an alias as the commodity, not the alias.
 Aliases are accepted by `hledger check commodities`.
 
 An alias can also have a quantity, for a unit of a different size.
 This is the number of alias units equal to one unit of the commodity.
 Amounts written with the alias are divided by it, and their unit costs and market prices are multiplied by it.
+The converted amounts get the commodity's display precision (or more, if needed to show an exactly converted amount fully).
 Eg, here a kilobuck is 1000 dollars and an hour is 60 minutes:
 
 ```journal

@@ -27,6 +27,7 @@ module Hledger.Data.Journal (
   journalDbg,
   journalInferMarketPricesFromTransactions,
   journalApplyCommodityAliases,
+  CommodityAliases,
   journalCommodityAliases,
   convertAliasAmount,
   commodityAliases,
@@ -1410,19 +1411,35 @@ commoditiesAndAliases j =
                 , a <- commodityAliases c
                 ]
 
--- | Each commodity alias declared in this journal, with its commodity and its quantity
--- (the number of alias units equal to one unit of the commodity).
-journalCommodityAliases :: Journal -> M.Map CommoditySymbol (CommoditySymbol, Quantity)
+-- | Commodity aliases: each alias symbol, with its commodity, its quantity
+-- (the number of alias units equal to one unit of the commodity),
+-- and the commodity's display style if known.
+type CommodityAliases = M.Map CommoditySymbol (CommoditySymbol, Quantity, Maybe AmountStyle)
+
+-- | The commodity aliases declared in this journal.
+journalCommodityAliases :: Journal -> CommodityAliases
 journalCommodityAliases j =
-  M.fromList [(acommodity a, (csymbol c, aquantity a)) | c <- M.elems $ jdeclaredcommodities j, a <- caliases c]
+  M.fromList [(acommodity a, (csymbol c, aquantity a, M.lookup (csymbol c) styles))
+             | c <- M.elems $ jdeclaredcommodities j, a <- caliases c]
+  where styles = journalCommodityStyles j
 
 -- | Convert an amount written in one of these commodity aliases to its commodity,
 -- also returning the alias quantity (or 1).
-convertAliasAmount :: M.Map CommoditySymbol (CommoditySymbol, Quantity) -> Amount -> (Amount, Quantity)
+-- The converted amount gets the commodity's display style. For a plain alias, it keeps its display precision;
+-- for an alias with a quantity, it gets the commodity's display precision
+-- (or more, if needed to show an exactly converted amount fully; or if that's unknown, all its decimal places up to 8).
+convertAliasAmount :: CommodityAliases -> Amount -> (Amount, Quantity)
 convertAliasAmount aliases a = case M.lookup (acommodity a) aliases of
-  Nothing     -> (a, 1)
-  Just (c, 1) -> (a{acommodity = c}, 1)
-  Just (c, q) -> (a{acommodity = c, aquantity = aquantity a / q}, q)
+  Nothing         -> (a, 1)
+  Just (c, 1, ms) -> (a{acommodity = c, astyle = maybe (astyle a) (\s -> s{asprecision = asprecision $ astyle a}) ms}, 1)
+  Just (c, q, ms) -> (a'{astyle = style{asprecision = Precision prec}}, q)
+    where
+      a'     = a{acommodity = c, aquantity = aquantity a / q}
+      digits = amountInternalPrecision a'
+      exact  = multiplyQuantities (aquantity a') q == aquantity a
+      (style, prec) = case ms of
+        Just s@AmountStyle{asprecision = Precision n} -> (s, if exact then max n digits else n)
+        _ -> (fromMaybe (astyle a) ms, min defaultMaxDisplayPrecision digits)
 
 -- | Convert all amounts written in a commodity alias to the commodity it is an alias of.
 -- For an alias with a quantity (other than 1), amount quantities are divided by it,
@@ -1498,8 +1515,8 @@ journalApplyCommodityAliases j
       | otherwise = r{tmprPosting = convertPosting p}
     convertPrice pd@PriceDirective{pdcommodity = from, pdamount = a} =
       case M.lookup from aliases of
-        Nothing     -> pd{pdamount = convertExactAmount a}
-        Just (c, q) -> pd{pdcommodity = c, pdamount = scaleBy q $ convertExactAmount a}
+        Nothing        -> pd{pdamount = convertExactAmount a}
+        Just (c, q, _) -> pd{pdcommodity = c, pdamount = scaleBy q $ convertExactAmount a}
 
 -- | Convert all this journal's amounts to cost using their attached prices, if any.
 journalToCost :: ConversionOp -> Journal -> Journal

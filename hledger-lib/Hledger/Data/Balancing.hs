@@ -656,7 +656,7 @@ data BalancingState s = BalancingState {
    bsBalancingOpts :: BalancingOpts                              -- ^ the balancing options (with the journal's commodity display styles), for balancing the transactions with balance assignments
   ,bsUnassignable :: S.Set AccountName                          -- ^ accounts where balance assignments may not be used (because of auto posting rules)
   ,bsAssrt        :: AssertionsMode s                           -- ^ whether/how to check balance assertions
-  ,bsAliases      :: M.Map CommoditySymbol (CommoditySymbol, Quantity)  -- ^ commodity aliases with a quantity other than 1, whose amounts running balances keep unconverted (see postingRunningBalanceAmount)
+  ,bsAliases      :: CommodityAliases  -- ^ commodity aliases with a quantity other than 1, whose amounts running balances keep unconverted (see postingRunningBalanceAmount)
    -- mutable
   ,bsBalances     :: H.HashTable s AccountName MixedAmount      -- ^ running account balances, initially empty
   ,bsTransactions :: STArray s Integer Transaction              -- ^ a mutable array of the transactions being balanced
@@ -709,7 +709,7 @@ setInclusiveRunningBalanceB acc newibal = withRunningBalance $ \BalancingState{b
 -- (without costs), and running balances are converted only when they're used (see maConvertAliases).
 -- This way, eg three amounts of 10 min add up to exactly 0.5 h,
 -- though each of them converts to 0.1666.. h, rounded at the 255th decimal place.
-postingRunningBalanceAmount :: M.Map CommoditySymbol (CommoditySymbol, Quantity) -> Posting -> MixedAmount
+postingRunningBalanceAmount :: CommodityAliases -> Posting -> MixedAmount
 postingRunningBalanceAmount aliases p
   | M.null aliases = pamount p
   | any ((`M.member` aliases) . acommodity) (amountsRaw written)
@@ -720,7 +720,7 @@ postingRunningBalanceAmount aliases p
 -- | Convert any amounts in these commodity aliases to their commodity.
 -- Each alias's total is divided only once, so the result is exact when possible
 -- (eg 30 min is exactly 0.5 h).
-maConvertAliases :: M.Map CommoditySymbol (CommoditySymbol, Quantity) -> MixedAmount -> MixedAmount
+maConvertAliases :: CommodityAliases -> MixedAmount -> MixedAmount
 maConvertAliases aliases ma
   | M.null aliases = ma
   | otherwise      = foldMap (mixedAmount . fst . convertAliasAmount aliases) $ amountsRaw $ mixedAmountStripCosts ma
@@ -808,7 +808,7 @@ journalBalanceTransactionsHelper deferassertions bopts' j' =
           hasassignments = any isRight psandts
         when (hasassignments || (checkingassertions && hasassertions)) $ do
           runningbals <- lift $ H.newSized (length $ journalAccountNamesUsed j)
-          let aliases = M.filter ((/= 1) . snd) $ journalCommodityAliases j
+          let aliases = M.filter (\(_, q, _) -> q /= 1) $ journalCommodityAliases j
           flip runReaderT (BalancingState bopts autopostingaccts assertionsmode aliases runningbals balancedtxns) $ do
             -- On encountering any not-yet-balanced transaction with a balance assignment,
             -- enact the balance assignment then finish balancing the transaction.

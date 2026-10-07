@@ -201,11 +201,11 @@ P 2024-01-01 min 0.002 kilobucks
 
 $ hledger -f- print -x
 2024-01-01
-    a                                            h 1.5 @ USD 120
+    a                                            h 1.50 @ USD 120
     b                                       USD -180
 
 2024-01-02
-    a                                            h 0 = h 1.5
+    a                                            h 0.00 = h 1.5
 
 >=
 
@@ -345,6 +345,64 @@ commodity h 1.00  ; alias: 60 min
 
 $ hledger -f- print -x date:2026-01-02
 2026-01-02
-    (a)                                          h 0.5 = h 1
+    (a)                                          h 0.50 = h 1
 
 >=
+
+# ** 30. Converted amounts get the commodity's display style, including its precision
+# when the alias has a quantity. So eg these accounts aren't mistaken for zero and hidden.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (a)   10 min
+    (b)   20 min
+    (b)   10 min
+
+$ hledger -f- bal
+              h 0.17  a
+              h 0.50  b
+--------------------
+              h 0.67  
+
+# ** 31. An exactly converted amount gets more decimal places if needed, so it isn't mistaken for zero either.
+# (Here it is displayed as 0, since BTC's display precision is 2, but the account is not hidden.)
+<
+commodity BTC 1.00  ; alias: 100000000 sat
+
+2026-01-01
+    (a)   1000 sat
+
+$ hledger -f- bal
+                   0  a
+--------------------
+                   0  
+
+# ** 32. A balance assertion error shows converted amounts in the commodity's style.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (time)   10 min
+
+2026-01-02
+    (time)   10 min
+
+2026-01-03
+    (time)   10 min  = 0.6 h
+
+$ hledger -f- check
+>2
+hledger: Error: -:10:22:
+   | 2026-01-03
+10 |     (time)                                       h 0.17 = h 0.6
+   |                                                         ^^^^^^^
+
+Balance assertion failed in time
+In commodity h at this point, excluding subaccounts, ignoring costs,
+the asserted balance is:         h 0.6
+but the calculated balance is:  h 0.50
+(difference: h 0.10)
+To troubleshoot, check this account's running balance with assertions disabled, eg:
+hledger reg -E --ignore-assertions '2026-01-04'time$ cur:h -e
+>=1
