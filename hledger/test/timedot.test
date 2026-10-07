@@ -145,3 +145,27 @@ $ hledger -ftimedot:- print
     (d)                                         8760.00
 
 >=
+
+# ** 10. Durations in minutes or seconds are not rounded (to 0.01 hours, as before), so totals are accurate:
+# eg three 10 minute durations add up to 0.5 hours (not 0.51).
+<
+2023-01-01
+a  10m
+a  10m
+a  10m
+b  1s
+
+$ hledger -ftimedot:- bal a
+                0.50  a
+--------------------
+                0.50  
+
+# ** 11. print shows them with 8 decimal places.
+$ hledger -ftimedot:- print
+2023-01-01 *
+    (a)                                            0.16666667
+    (a)                                            0.16666667
+    (a)                                            0.16666667
+    (b)                                            0.00027778
+
+>=

@@ -4348,13 +4348,13 @@ generates these transactions:
 ```cli
 $ hledger -f t.timeclock print
 2015-03-30 * optional description after 2 spaces   ; optional comment, tags:
-    (some account)           0.33h
+    (some account)           0.33333333h
 
 2015-03-31 * 22:21-23:59
-    (another:account)           1.64h
+    (another:account)           1.6375h
 
 2015-04-01 * 00:00-02:00
-    (another:account)           2.01h
+    (another:account)           2.00944444h
 
 2015-04-02 * 12:00-15:00  ; this demonstrates multiple sessions being clocked in
     (another:account)           3.00h
@@ -5392,7 +5392,7 @@ Here's when that happens:
 | Inferring costs from [equity conversion postings](#equity-conversion-postings) | one amount / the other | None |
 | Converting amounts written with a [commodity alias](#commodity-aliases) that has a quantity | amount / alias quantity | None in calculations: unit costs are replaced by exact total costs, and balance assertions convert the alias amounts' total (so three `10 min` amounts sum to exactly `0.5 h`). `print -x` shows converted amounts with all their decimal places (8 for a repeating decimal). |
 | Calculating averages (eg `-A`) and percentages (eg `-%`) in reports | total / count, part / total | None: these are displayed rounded |
-| Converting times to hours in [timeclock](#timeclock) entries, and [timedot](#timedot) durations written with a unit (`10m`) | time / hour length | Each is rounded to 2 decimal places (0.01 hours = 36 seconds), so totals can drift: eg three `10m` timedot entries total 0.51 hours. |
+| Converting times to hours in [timeclock](#timeclock) entries, and [timedot](#timedot) durations written in minutes or seconds (`10m`) | time / hour length | Negligible: each is rounded at the 255th decimal place, so eg three `10m` timedot entries total 0.50 hours, as displayed. But that total isn't exactly 0.5, so a balance assertion of `0.5` hours on it would fail. Reports show durations with 2 decimal places; `print` shows a repeating decimal with 8 (`0.16666667`). |
 | Calculating rates of return: [roi](#roi)'s IRR and TWR, and [holdings](#holdings)' XIRR column | various | Rates are approximate (calculated with floating point numbers; IRR and XIRR by iteration) |
 
 # Transaction balancing
