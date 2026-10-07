@@ -603,13 +603,16 @@ costInferrerFor lenientlots lotfulcomms t pt = infercost <$> inferFromAndTo
           | isTargeted fromamount = TotalCost $ negate toamount
           | otherwise = case filter (== acommodity fromamount) pcommodities of
               [_] -> TotalCost $ negate toamount
-              _   -> UnitCost  $ negate unitcost `withPrecision` unitprecision
+              _   -> UnitCost  $ showFully $ negate unitcost `withPrecision` unitprecision
 
         unitcost     = aquantity fromamount `divideAmount` toamount
         unitprecision = case (asprecision $ astyle fromamount, asprecision $ astyle toamount) of
             (Precision a, Precision b) -> Precision . max 2 $ saturatedAdd a b
             _                          -> NaturalPrecision
         saturatedAdd a b = if maxBound - a < b then maxBound else a + b
+        -- Show the unit cost exactly, or if it's a repeating decimal, with 8 decimal places,
+        -- like other calculated amounts (or with unitprecision, if that's more).
+        showFully u = amountSetPrecisionMin (amountDisplayPrecision u) $ amountSetFullPrecisionUpTo Nothing u
 
 
 -- "Transaction balancing", including: inferring missing amounts,

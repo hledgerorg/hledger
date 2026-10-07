@@ -105,10 +105,11 @@ $ hledger -f - balance --cost
 
 # 
 # ** 7. when there are multiple postings in the commodity being priced,
-# show the averaged unit price, with precision equal to the sum of
-# the max precisions of the commodities being converted (#262).
-# Here the (irrational) price should be displayed with just precision 4
-# (C's precision 2 + D's precision 2).
+# show the averaged unit price. If it's a repeating decimal, it is shown
+# with 8 decimal places, like other calculated amounts (not all 255, #262),
+# or with the sum of the converted commodities' precisions if that's more.
+# Here the price is shown with 8 decimal places
+# (more than C's precision 2 + D's precision 2).
 <
 2015/1/1
     c    C 10.00
@@ -116,24 +117,24 @@ $ hledger -f - balance --cost
     d  D -320.00
 $ hledger -f- print --explicit
 2015-01-01
-    c                                           C 10.00 @ D 15.2381
-    c                                           C 11.00 @ D 15.2381
+    c                                           C 10.00 @ D 15.23809524
+    c                                           C 11.00 @ D 15.23809524
     d                                         D -320.00
 
 >= 0
 
 
-# ** 8. Here the price should be displayed with precision 7
-# (E's precision 4 + F's precision 3).
+# ** 8. Here the price is shown with 9 decimal places
+# (E's precision 6 + F's precision 3).
 <
 2015/1/1
-    e    E 10.0000
+    e    E 10.000000
     e    E 11
     f  F -320.000
 $ hledger -f- print --explicit
 2015-01-01
-    e                                           E 10.0000 @ F 15.2380952
-    e                                           E 11 @ F 15.2380952
+    e                                           E 10.000000 @ F 15.238095238
+    e                                           E 11 @ F 15.238095238
     f                                         F -320.000
 
 >= 0
@@ -285,3 +286,20 @@ commodity $1.00
    b   = $-1.120
 
 $ hledger -f - check --txn-tolerance=display
+
+# ** 23. With larger quantities, the averaged unit price's 8 decimal places keep print's output readable:
+# with 2 (the sum of A's and B's precisions, at least 2, as before), it showed @ 33.33 B,
+# so the postings came to 10 B less than -100000 B and print's output was rejected as unbalanced.
+<
+2024-02-02
+    a   1000 A
+    a   2000 A
+    b   -100000 B
+
+$ hledger -f- print -x
+2024-02-02
+    a                                           1000 A @ 33.33333333 B
+    a                                           2000 A @ 33.33333333 B
+    b                                        -100000 B
+
+>=
