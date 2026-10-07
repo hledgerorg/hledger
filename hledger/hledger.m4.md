@@ -1313,11 +1313,6 @@ The balancing precision for CHF is 2 (from 16607.69 CHF; the cost amount 0.86905
 To make hledger check an entry more strictly, write its amounts with more decimal places.
 Eg if the second amount above is written as 16607.690 CHF, the balancing precision becomes 3 and the entry is rejected.
 
-Entries without costs always balance exactly:
-amounts with at most N decimal places add up to a number with at most N decimal places,
-which rounds to zero only if it is zero.
-So imbalances can come only from costs.
-
 ### Where imbalances come from
 
 - Rounded unit costs (`@`).
