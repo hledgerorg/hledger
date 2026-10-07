@@ -5390,7 +5390,7 @@ Here's when that happens:
 | Using a [reverse market price](#finding-market-price) | 1 / price | None |
 | Averaging lot costs, with the AVERAGE [cost basis methods](#cost-basis-methods) or in [holdings](#holdings) | total cost / total quantity | None |
 | Inferring costs from [equity conversion postings](#equity-conversion-postings) | one amount / the other | None |
-| Converting amounts written with a [commodity alias](#commodity-aliases) that has a quantity | amount / alias quantity | None in calculations: unit costs are replaced by exact total costs, and balance assertions convert the alias amounts' total (so three `10 min` amounts sum to exactly `0.5 h`). `print -x` shows converted amounts with all their decimal places. |
+| Converting amounts written with a [commodity alias](#commodity-aliases) that has a quantity | amount / alias quantity | None in calculations: unit costs are replaced by exact total costs, and balance assertions convert the alias amounts' total (so three `10 min` amounts sum to exactly `0.5 h`). `print -x` shows converted amounts with all their decimal places (8 for a repeating decimal). |
 | Calculating averages (eg `-A`) and percentages (eg `-%`) in reports | total / count, part / total | None: these are displayed rounded |
 | Converting times to hours in [timeclock](#timeclock) entries, and [timedot](#timedot) durations written with a unit (`10m`) | time / hour length | Each is rounded to 2 decimal places (0.01 hours = 36 seconds), so totals can drift: eg three `10m` timedot entries total 0.51 hours. |
 | Calculating rates of return: [roi](#roi)'s IRR and TWR, and [holdings](#holdings)' XIRR column | various | Rates are approximate (calculated with floating point numbers; IRR and XIRR by iteration) |

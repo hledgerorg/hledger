@@ -134,6 +134,8 @@ print' opts@CliOpts{rawopts_=rawopts} j = do
   -- that. For now we try to reverse it by increasing all amounts' decimal places
   -- sufficiently to show the amount exactly. The displayed amounts may have minor
   -- differences from the originals, such as trailing zeroes added.
+  -- An amount with a repeating decimal (from division, rounded at the 255th decimal place)
+  -- is shown with 8 decimal places, not all 255.
   -- But, we skip this for inferred postings.
   -- This avoids eg showing too many decimals by default for inferred gain amounts.
   let
@@ -142,7 +144,7 @@ print' opts@CliOpts{rawopts_=rawopts} j = do
     isGeneratedGainPosting p = hasPtype "gain" p
     setFullPrecisionExceptGain p
       | isGeneratedGainPosting p = p
-      | otherwise = postingTransformAmount mixedAmountSetFullPrecision p
+      | otherwise = postingTransformAmount mixedAmountSetFullPrecisionCapped p
     j' = j
       -- & dbg9With (lbl "amounts before setting full precision".showJournalPostingAmountsDebug)
       & journalMapPostings setFullPrecisionExceptGain

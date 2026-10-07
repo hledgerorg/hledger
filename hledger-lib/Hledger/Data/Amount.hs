@@ -184,6 +184,7 @@ module Hledger.Data.Amount (
   wbUnpack,
   mixedAmountSetPrecision,
   mixedAmountSetFullPrecision,
+  mixedAmountSetFullPrecisionCapped,
   mixedAmountSetFullPrecisionUpTo,
   mixedAmountSetPrecisionMin,
   mixedAmountSetPrecisionMax,
@@ -515,10 +516,11 @@ amountIsZero :: Amount -> Bool
 amountIsZero = testAmountAndTotalCost (\Amount{aquantity=Decimal _ q} -> q == 0)
 
 -- | Does this amount's internal Decimal representation have the
--- maximum number of digits, suggesting that it probably is
+-- maximum number of decimal places (or digits), suggesting that it probably is
 -- representing an infinite decimal ?
+-- (Checking the number of digits alone would miss small amounts, like 0.000277.. from 1/3600.)
 amountHasMaxDigits :: Amount -> Bool
-amountHasMaxDigits = (>= 255) . numDigitsInteger . decimalMantissa . aquantity
+amountHasMaxDigits Amount{aquantity=q} = decimalPlaces q >= 255 || numDigitsInteger (decimalMantissa q) >= 255
 -- XXX this seems not always right. Eg:
 -- ghci> let n = 100 / (3.0 :: Decimal)
 -- decimalPlaces n
@@ -1546,6 +1548,12 @@ mixedAmountSetPrecision p = mapMixedAmountUnsafe (amountSetPrecision p)
 -- to render it exactly (showing all significant decimal digits).
 mixedAmountSetFullPrecision :: MixedAmount -> MixedAmount
 mixedAmountSetFullPrecision = mapMixedAmountUnsafe amountSetFullPrecision
+
+-- | Like mixedAmountSetFullPrecision, except that an amount with a repeating decimal
+-- (from division, rounded at the 255th decimal place) gets 8 decimal places, not 255.
+mixedAmountSetFullPrecisionCapped :: MixedAmount -> MixedAmount
+mixedAmountSetFullPrecisionCapped = mapMixedAmountUnsafe $ \a ->
+  if amountHasMaxDigits a then amountSetFullPrecisionUpTo Nothing a else amountSetFullPrecision a
 
 -- | In each component amount, increase the display precision sufficiently
 -- to render it exactly if possible, but not more than the given max precision,

@@ -300,3 +300,17 @@ $ hledger -f- print -X B
     (a)                                            0.0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789B
 
 >=
+
+# ** 14. But an amount with a repeating decimal (from division, rounded at the 255th decimal place),
+# here from converting 10 min to hours with a commodity alias, is shown with 8 decimal places, not 255.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (a)   10 min
+
+$ hledger -f- print -x
+2026-01-01
+    (a)                                          h 0.16666667
+
+>=
