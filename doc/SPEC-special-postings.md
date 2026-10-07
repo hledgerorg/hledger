@@ -56,7 +56,7 @@ Run on each transaction when the balancer has balanced it (in either of journalB
 
 | Pattern                              | Action                                                                  | Conditions                                                                                                                                   |
 |--------------------------------------|-------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
-| balanced entry with a tolerated imbalance | Generates _imbalance-posting + _generated-posting tagged postings to the imbalance account, one per commodity of the imbalance | The real postings' (or balanced virtual postings') sum at cost, as calculated by transactionCheckBalanced, is non-zero at 200 decimal places |
+| balanced entry with a tolerated imbalance | Generates _imbalance-posting + _generated-posting tagged postings to the imbalance account, one per commodity of the imbalance | The real postings' (or balanced virtual postings') sum at cost, as calculated by transactionCheckBalanced, would not display as zero (shown in full, or with 8 decimal places if a repeating decimal; see amountSetFullPrecisionUpTo), so leftovers of hledger's own division are ignored |
 
 The imbalance account is chosen by journalAccountForType: the first account declared with type M/Imbalance, else the alphabetically first account inferred as M (eg equity:imbalance), else equity:imbalance.
 The generated postings have amountless originals (like inferred amounts), so they don't influence commodity display precisions.

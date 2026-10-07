@@ -37,7 +37,6 @@ import Control.Monad.ST (ST, runST)
 import Control.Monad.Trans.Class (lift)
 import Data.Array.ST (STArray, getElems, newListArray, writeArray)
 import Data.Bifunctor (second)
-import Data.Decimal (roundTo)
 import Data.Foldable (asum)
 import Data.Function ((&))
 import Data.Functor ((<&>), void)
@@ -225,13 +224,16 @@ postingBalancingAmountWith setaside p
 -- their amounts have the given commodity display styles but keep their full precision,
 -- and since their original posting is amountless, these don't influence commodity display precisions
 -- (see isExplicitAmount).
--- Imbalances smaller than 10^-200, which can come only from hledger's internal rounding, are ignored.
+-- Imbalances which would display as zero are ignored. These are leftovers from hledger's own division
+-- (repeating decimals, rounded at the 255th decimal place), too small to show at the 8 decimal places
+-- used to display repeating decimals (see amountSetFullPrecisionUpTo).
+-- Imbalances calculated from written amounts and costs are finite decimals, shown in full.
 transactionImbalancePostings :: Bool -> AccountName -> M.Map CommoditySymbol AmountStyle -> Transaction -> [Posting]
 transactionImbalancePostings verbosetags acct styles t =
   [ imbalancePosting r a
   | r <- [RealPosting, BalancedVirtualPosting]
   , a <- amounts $ foldMap (postingBalancingAmountWith setaside) [p | p <- tpostings t, preal p == r]
-  , roundTo 200 (aquantity a) /= 0
+  , not $ amountLooksZero $ amountSetFullPrecisionUpTo Nothing a
   ]
   where
     setaside = isSetAsideGainPosting t

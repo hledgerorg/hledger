@@ -53,8 +53,11 @@ $ hledger -f - reg tag:_imbalance-posting --infer-imbalance -c 'CHF 1.0000000'
 
 # ** 5. Entries which balance exactly don't get an imbalance posting.
 # Including when hledger's internal rounding (at the 255th decimal place) leaves a tiny residual,
-# as when dividing a total cost basis, or inferring a unit cost.
+# as when dividing a total cost basis, inferring a unit cost, or converting amounts written in an alias.
+# These residuals would display as zero, so they are ignored.
 <
+commodity h 1.00  ; alias: 60 min
+
 2024-01-30 total cost
     assets:usd   -19110.17 USD @@ 16607.69 CHF
     assets:chf    16607.69 CHF
@@ -72,6 +75,12 @@ $ hledger -f - reg tag:_imbalance-posting --infer-imbalance -c 'CHF 1.0000000'
     a   1 A
     a   2 A
     b   -100 B
+
+2024-02-03 alias amounts
+    a   10 min
+    a   10 min
+    a   10 min
+    b   -0.5 h
 
 $ hledger -f - print --infer-imbalance
 > !/imbalance/
@@ -187,3 +196,20 @@ account equity:rounding  ; type: Imbalance
 
 $ hledger -f - reg type:M --infer-imbalance -c 'CHF 1.0000000'
 2024-01-30 exchange            equity:rounding      CHF 0.0032385  CHF 0.0032385
+
+# ** 13. An imbalance which is itself a repeating decimal (possible with commodity aliases) is shown,
+# with 8 decimal places like other repeating decimals (unlike the tiny leftovers in test 5, which would display as zero).
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    a   10 min
+    b   -0.17 h
+
+$ hledger -f - print --infer-imbalance
+2026-01-01
+    a                                             10 min
+    b                                           h -0.17
+    equity:imbalance                             h 0.00333333
+
+>=

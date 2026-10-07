@@ -5505,6 +5505,8 @@ Some notes:
   Imbalance accounts, including `equity:imbalance`, can be matched with `type:M`.
 - With [`--infer-equity`](#inferring-equity-conversion-postings) as well, the generated equity conversion postings use the exact cost amounts,
   so every commodity balances exactly.
+- No imbalance posting is generated if its amount would display as zero (at 8 decimal places, for a repeating decimal).
+  This ignores the tiny leftovers of hledger's own division (see [Amount arithmetic](#amount-arithmetic)).
 - The imbalance account need not be declared, even in [strict mode].
 - If you use this flag with [`import`](#import), the imbalance postings will be added to your journal too.
 
