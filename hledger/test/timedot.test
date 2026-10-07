@@ -127,3 +127,21 @@ yoga  ....
 $ hledger -ftimedot:- print
 >2 /This is not a valid date/
 >=1
+
+# ** 9. Durations with a time unit are converted to hours: a day is 24 hours,
+# a week 7 days, a month 30 days, a year 365 days.
+<
+2023-01-01
+a  1d
+b  1w
+c  1mo
+d  1y
+
+$ hledger -ftimedot:- print
+2023-01-01 *
+    (a)                                           24.00
+    (b)                                          168.00
+    (c)                                          720.00
+    (d)                                         8760.00
+
+>=
