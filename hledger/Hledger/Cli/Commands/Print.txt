@@ -119,7 +119,9 @@ print amount style
 Amounts will be displayed mostly in their commodity's display style,
 with standardised symbol placement, decimal mark, and digit group marks.
 This does not apply to their decimal digits; print normally shows the
-same decimal digits that are recorded in each journal entry.
+same decimal digits that are recorded in each journal entry. (Calculated
+amounts with a repeating decimal, eg from converting 10 min to hours,
+are shown with 8 decimal places.)
 
 You can override the decimal precisions with print's special --round
 option. --round tries to show amounts with their commodities' standard
