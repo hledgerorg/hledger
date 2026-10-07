@@ -406,3 +406,23 @@ but the calculated balance is:  h 0.50
 To troubleshoot, check this account's running balance with assertions disabled, eg:
 hledger reg -E --ignore-assertions '2026-01-04'time$ cur:h -e
 >=1
+
+# ** 33. An unbalanced transaction error shows a repeating-decimal sum with 8 decimal places, not 255.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    a   10 min
+    b   -0.2 h
+
+$ hledger -f- check
+>2
+hledger: Error: -:3-5:
+3 | 2026-01-01
+  |     a                                            h 0.17
+  |     b                                           h -0.2
+
+This transaction is unbalanced.
+The real postings' sum should be 0 but is h -0.03333333
+  h 0.16666667  +  h -0.2  =  h -0.03333333
+>=1
