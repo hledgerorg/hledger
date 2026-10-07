@@ -2247,6 +2247,8 @@ Amounts will be displayed mostly in their commodity\(aqs display style,
 with standardised symbol placement, decimal mark, and digit group marks.
 This does not apply to their decimal digits; \f[CR]print\f[R] normally
 shows the same decimal digits that are recorded in each journal entry.
+(Calculated amounts with a repeating decimal, eg from converting
+\f[CR]10 min\f[R] to hours, are shown with 8 decimal places.)
 .PP
 You can override the decimal precisions with \f[CR]print\f[R]\(aqs
 special \f[CR]\-\-round\f[R] option.
@@ -6712,202 +6714,6 @@ enclosing characters:
 .PP
 If a Ledger\-style label annotation contains double quotes, they will be
 stripped (\f[CR](\(dqfoo\(dq)\f[R] is read as label \f[CR]foo\f[R]).
-.SS Transaction balancing
-A transaction\(aqs postings must add up to zero.
-When they are all in one commodity, this is simple: the sum must be
-exactly zero.
-But when a transaction converts between commodities using a cost, the
-cost is often rounded (by you, or by your bank or broker), and requiring
-an exact zero would reject many correct\-looking entries.
-So, like Ledger and Beancount, hledger allows a small tolerance.
-.SS How balancing is checked
-For each commodity in a journal entry, hledger:
-.IP "1." 3
-adds up the posting amounts in that commodity, after converting any
-amounts that have a cost to the cost\(aqs commodity (exactly; see Amount
-arithmetic)
-.IP "2." 3
-finds the entry\(aqs \f[I]balancing precision\f[R] for that commodity:
-the most decimal places used by that commodity\(aqs amounts in the
-entry, not counting cost amounts
-.IP "3." 3
-considers the entry balanced if the sum rounds to zero at that
-precision.
-In other words, the imbalance can be at most half a unit in the last
-decimal place: 0.005 for amounts with 2 decimal places, 0.5 for amounts
-with no decimal places.
-.PP
-Eg:
-.IP
-.EX
-2024\-01\-30 currency exchange
-    assets:usd   \-19110.17 USD \(at 0.869050 CHF
-    assets:chf    16607.69 CHF
-.EE
-.PP
-The first posting converts to \-16607.6932385 CHF, so the sum in CHF is
-\-0.0032385 CHF.
-The balancing precision for CHF is 2 (from 16607.69 CHF; the cost amount
-0.869050 CHF doesn\(aqt count).
-\-0.0032385 rounded to 2 decimal places is zero, so this entry is
-accepted.
-.PP
-To make hledger check an entry more strictly, write its amounts with
-more decimal places.
-Eg if the second amount above is written as 16607.690 CHF, the balancing
-precision becomes 3 and the entry is rejected.
-.PP
-Entries without costs always balance exactly: amounts with at most N
-decimal places add up to a number with at most N decimal places, which
-rounds to zero only if it is zero.
-So imbalances can come only from costs.
-.SS Where imbalances come from
-.IP \(bu 2
-Rounded unit costs (\f[CR]\(at\f[R]).
-The exact rate may have infinitely many decimal places (above, the exact
-rate is 16607.69 / 19110.17 = 0.86904983053...), or just more than your
-bank or broker shows you.
-This is the most common cause.
-.IP \(bu 2
-Total costs (\f[CR]\(at\(at\f[R]) that don\(aqt quite match the other
-amounts.
-Eg this entry is accepted, because the balancing precision for $ is 0
-(because $100 was written with no decimals):
-.RS 2
-.IP
-.EX
-2026\-01\-01
-    assets:stock   \-3 AAPL \(at\(at $100.40
-    assets:cash          $100
-.EE
-.RE
-.SS Accumulated imbalances
-Accepted imbalances are not corrected; they stay in the data, and add
-up.
-So reports which convert amounts at cost, like \f[CR]balance \-B\f[R] or
-\f[CR]balancesheetequity \-B\f[R], may show a small non\-zero total
-where you would expect zero.
-Eg after three of the currency exchange entries above,
-\f[CR]hledger bal \-B\f[R] shows a total of \-0.01 CHF.
-Typically this is a few cents, but each entry can contribute up to half
-a unit in its last decimal place.
-.PP
-(Without cost conversion, these imbalances aren\(aqt directly visible.
-And with \f[CR]\-\-infer\-equity\f[R], each commodity balances exactly,
-and the imbalances become part of the conversion rates.)
-.PP
-To see an accumulated imbalance more precisely, increase the display
-precision with \f[CR]\-c\f[R].
-Eg:
-.IP
-.EX
-$ hledger bal \-B \-c \(aqCHF 1.000000000\(aq
-.EE
-.PP
-And to see which entries contribute to it, use a register report:
-\f[CR]hledger reg \-B \-c \(aqCHF 1.000000000\(aq\f[R].
-Or, show the imbalances explicitly, as described next.
-.SS Showing imbalances
-With the \f[CR]\-\-infer\-imbalance\f[R] flag, hledger shows entry
-imbalances explicitly, by generating postings to an imbalance account
-(\f[CR]equity:imbalance\f[R] by default) which make the entry balance
-exactly (as if you had added an amountless posting to that account).
-Eg:
-.IP
-.EX
-$ hledger print \-\-infer\-imbalance
-2024\-01\-30 currency exchange
-    assets:usd                                \-19110.17 USD \(at 0.869050 CHF
-    assets:chf                                 16607.69 CHF
-    equity:imbalance                               0.0032385 CHF
-.EE
-.PP
-This doesn\(aqt change which entries are accepted.
-But totals at cost are now exactly zero, and the accumulated imbalance
-appears as the balance of \f[CR]equity:imbalance\f[R].
-Eg after three of the currency exchange entries:
-.IP
-.EX
-$ hledger bal \-B \-\-infer\-imbalance
-        49823.07 CHF  assets:chf
-       \-49823.08 CHF  assets:usd
-            0.01 CHF  equity:imbalance
-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
-                   0
-.EE
-.PP
-The imbalance postings\(aq amounts are usually smaller than the display
-precision, so to see them individually, increase the display precision.
-Eg:
-.IP
-.EX
-$ hledger areg equity:imbalance \-\-infer\-imbalance \-c \(aqCHF 1.0000000\(aq
-Transactions in equity:imbalance and subaccounts:
-2024\-01\-30 currency exchange   as:usd, as:chf       CHF 0.0032385  CHF 0.0032385
-2024\-01\-30 currency exchange   as:usd, as:chf       CHF 0.0032385  CHF 0.0064770
-2024\-01\-30 currency exchange   as:usd, as:chf       CHF 0.0032385  CHF 0.0097155
-.EE
-.PP
-Some notes:
-.IP \(bu 2
-The imbalance postings have a hidden \f[CR]_imbalance\-posting\f[R] tag
-(shown by \f[CR]\-\-verbose\-tags\f[R]), so they can also be matched
-with \f[CR]tag:imbalance\-posting\f[R].
-.IP \(bu 2
-To use a different account, declare it with the
-\f[CR]M\f[R]/\f[CR]Imbalance\f[R] account type (the first one declared
-is used, if there are several).
-Imbalance accounts, including \f[CR]equity:imbalance\f[R], can be
-matched with \f[CR]type:M\f[R].
-.IP \(bu 2
-With \f[CR]\-\-infer\-equity\f[R] as well, the generated equity
-conversion postings use the exact cost amounts, so every commodity
-balances exactly.
-.IP \(bu 2
-The imbalance account need not be declared, even in strict mode.
-.IP \(bu 2
-If you use this flag with \f[CR]import\f[R], the imbalance postings will
-be added to your journal too.
-.SS Avoiding imbalances
-You can avoid imbalances by writing exact entries.
-Any of these will do:
-.IP \(bu 2
-Use a total cost (\f[CR]\(at\(at\f[R]) instead of a unit cost
-(\f[CR]\(at\f[R]) when the unit cost would be rounded.
-Total costs are converted exactly.
-Eg \f[CR]\-19110.17 USD \(at\(at 16607.69 CHF\f[R].
-.IP \(bu 2
-Write the unit cost with enough decimal places to be exact, when
-possible.
-.IP \(bu 2
-Add a posting to absorb the imbalance, eg to an
-\f[CR]expenses:rounding\f[R] account.
-If you leave its amount blank, hledger will calculate it exactly.
-.SS Transaction balancing before 1.50
-hledger versions before 1.50 used the commodity\(aqs display precision
-as the balancing precision, instead of the precision in the entry.
-This masked larger imbalances, and made balancing depend on display
-settings (see issue #2402).
-So some journal entries (or CSV rules) that worked with hledger <1.50
-are now rejected with an \(dqunbalanced transaction\(dq error.
-If you hit this, you can:
-.IP \(bu 2
-restore the old behaviour, by adding
-\f[CR]\-\-txn\-tolerance=display\f[R] (formerly
-\f[CR]\-\-txn\-balancing=old\f[R]) to the command or to your
-\f[CR]\(ti/.hledger.conf\f[R] file.
-This lets you keep using old journals unchanged.
-.IP \(bu 2
-or fix the problem entries (recommended), in one of these ways:
-.RS 2
-.IP "1." 3
-make cost amounts more precise (add more or better decimal digits)
-.IP "2." 3
-or make non\-cost amounts less precise (remove unnecessary decimal
-digits that are raising the precision)
-.IP "3." 3
-or add a posting to absorb the imbalance, as described above.
-.RE
 .SS Balance assertions
 hledger supports Ledger\-style balance assertions in journal files.
 These look like, for example, \f[CR]= EXPECTEDBALANCE\f[R] following a
@@ -8161,7 +7967,8 @@ market prices use different symbols for the same currency.
 Choose the symbol you want to see in reports as the commodity.
 .PP
 \f[CR]print\f[R] still shows the amounts as they were written;
-\f[CR]print \-x\f[R] shows them converted.
+\f[CR]print \-x\f[R] shows them converted, in the commodity\(aqs display
+style.
 In queries, \f[CR]cur:\f[R] matches amounts written with an alias as the
 commodity, not the alias.
 Aliases are accepted by \f[CR]hledger check commodities\f[R].
@@ -8170,6 +7977,8 @@ An alias can also have a quantity, for a unit of a different size.
 This is the number of alias units equal to one unit of the commodity.
 Amounts written with the alias are divided by it, and their unit costs
 and market prices are multiplied by it.
+The converted amounts get the commodity\(aqs display precision (or more,
+if needed to show an exactly converted amount fully).
 Eg, here a kilobuck is 1000 dollars and an hour is 60 minutes:
 .IP
 .EX
@@ -8179,10 +7988,14 @@ commodity h 1.00      ; alias: 60 min
 .PP
 The quantity is used exactly as written.
 If converting to the commodity needs a repeating decimal (like 1/60
-hours per minute), converted amounts may be off by a tiny amount, far
-beyond the displayed decimal places.
-Usually that doesn\(aqt matter, but it can make a balance assertion
-written in the alias fail; write those in the commodity instead.
+hours per minute), each converted amount is rounded at the 255th decimal
+place (see Amount arithmetic), far beyond the displayed decimal places.
+hledger keeps this from affecting costs and balance assertions: an
+amount\(aqs unit cost is replaced by its total cost, which stays exact
+(\f[CR]10 min \(at $1\f[R] becomes \f[CR]0.1666... h \(at\(at $10\f[R]),
+and balance assertions add up the amounts written in the alias before
+converting them (so eg three \f[CR]10 min\f[R] amounts satisfy a
+\f[CR]= 0.5 h\f[R] assertion).
 If your journal uses decimal commas, remember that a comma ends a
 tag\(aqs value; you can write a fractional quantity with an exponent
 instead, eg \f[CR]alias: 1E\-3 kilobucks\f[R].
@@ -10718,13 +10531,13 @@ generates these transactions:
 .EX
 $ hledger \-f t.timeclock print
 2015\-03\-30 * optional description after 2 spaces   ; optional comment, tags:
-    (some account)           0.33h
+    (some account)           0.33333333h
 
 2015\-03\-31 * 22:21\-23:59
-    (another:account)           1.64h
+    (another:account)           1.6375h
 
 2015\-04\-01 * 00:00\-02:00
-    (another:account)           2.01h
+    (another:account)           2.00944444h
 
 2015\-04\-02 * 12:00\-15:00  ; this demonstrates multiple sessions being clocked in
     (another:account)           3.00h
@@ -10984,7 +10797,7 @@ $ hledger \-f a.timedot \-\-alias \(aq/\(rs./=:\(aq bal \-t
 \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
                 4.50  
 .EE
-.SH PART 4: REPORTING CONCEPTS
+.SH PART 4: CONCEPTS
 .SH Time periods
 .SS Report start & end date
 Most hledger reports will by default show the full time period
@@ -12240,9 +12053,11 @@ Converting amounts written with a commodity alias that has a quantity
 T}@T{
 amount / alias quantity
 T}@T{
-Can make balance assertions fail, for now, since they compare exactly
-(eg three \f[CR]10 min\f[R] amounts don\(aqt sum to exactly
-\f[CR]0.5 h\f[R]).
+None in calculations: unit costs are replaced by exact total costs, and
+balance assertions convert the alias amounts\(aq total (so three
+\f[CR]10 min\f[R] amounts sum to exactly \f[CR]0.5 h\f[R]).
+\f[CR]print \-x\f[R] shows converted amounts with all their decimal
+places (8 for a repeating decimal).
 T}
 T{
 Calculating averages (eg \f[CR]\-A\f[R]) and percentages (eg
@@ -12254,12 +12069,16 @@ None: these are displayed rounded
 T}
 T{
 Converting times to hours in timeclock entries, and timedot durations
-written with a unit (\f[CR]10m\f[R])
+written in minutes or seconds (\f[CR]10m\f[R])
 T}@T{
 time / hour length
 T}@T{
-Each is rounded to 2 decimal places (0.01 hours = 36 seconds), so totals
-can drift: eg three \f[CR]10m\f[R] timedot entries total 0.51 hours.
+Negligible: each is rounded at the 255th decimal place, so eg three
+\f[CR]10m\f[R] timedot entries total 0.50 hours, as displayed.
+But that total isn\(aqt exactly 0.5, so a balance assertion of
+\f[CR]0.5\f[R] hours on it would fail.
+Reports show durations with 2 decimal places; \f[CR]print\f[R] shows a
+repeating decimal with 8 (\f[CR]0.16666667\f[R]).
 T}
 T{
 Calculating rates of return: roi\(aqs IRR and TWR, and holdings\(aq XIRR
@@ -12271,6 +12090,202 @@ Rates are approximate (calculated with floating point numbers; IRR and
 XIRR by iteration)
 T}
 .TE
+.SH Transaction balancing
+A transaction\(aqs postings must add up to zero.
+When they are all in one commodity, this is simple: the sum must be
+exactly zero.
+But when a transaction converts between commodities using a cost, the
+cost is often rounded (by you, or by your bank or broker), and requiring
+an exact zero would reject many correct\-looking entries.
+So, like Ledger and Beancount, hledger allows a small tolerance.
+.SS How balancing is checked
+For each commodity in a journal entry, hledger:
+.IP "1." 3
+adds up the posting amounts in that commodity, after converting any
+amounts that have a cost to the cost\(aqs commodity (exactly; see Amount
+arithmetic)
+.IP "2." 3
+finds the entry\(aqs \f[I]balancing precision\f[R] for that commodity:
+the most decimal places used by that commodity\(aqs amounts in the
+entry, not counting cost amounts
+.IP "3." 3
+considers the entry balanced if the sum rounds to zero at that
+precision.
+In other words, the imbalance can be at most half a unit in the last
+decimal place: 0.005 for amounts with 2 decimal places, 0.5 for amounts
+with no decimal places.
+.PP
+Eg:
+.IP
+.EX
+2024\-01\-30 currency exchange
+    assets:usd   \-19110.17 USD \(at 0.869050 CHF
+    assets:chf    16607.69 CHF
+.EE
+.PP
+The first posting converts to \-16607.6932385 CHF, so the sum in CHF is
+\-0.0032385 CHF.
+The balancing precision for CHF is 2 (from 16607.69 CHF; the cost amount
+0.869050 CHF doesn\(aqt count).
+\-0.0032385 rounded to 2 decimal places is zero, so this entry is
+accepted.
+.PP
+To make hledger check an entry more strictly, write its amounts with
+more decimal places.
+Eg if the second amount above is written as 16607.690 CHF, the balancing
+precision becomes 3 and the entry is rejected.
+.SS Where imbalances come from
+.IP \(bu 2
+Rounded unit costs (\f[CR]\(at\f[R]).
+The exact rate may have infinitely many decimal places (above, the exact
+rate is 16607.69 / 19110.17 = 0.86904983053...), or just more than your
+bank or broker shows you.
+This is the most common cause.
+.IP \(bu 2
+Total costs (\f[CR]\(at\(at\f[R]) that don\(aqt quite match the other
+amounts.
+Eg this entry is accepted, because the balancing precision for $ is 0
+(because $100 was written with no decimals):
+.RS 2
+.IP
+.EX
+2026\-01\-01
+    assets:stock   \-3 AAPL \(at\(at $100.40
+    assets:cash          $100
+.EE
+.RE
+.SS Accumulated imbalances
+Accepted imbalances are not corrected; they stay in the data, and add
+up.
+So reports which convert amounts at cost, like \f[CR]balance \-B\f[R] or
+\f[CR]balancesheetequity \-B\f[R], may show a small non\-zero total
+where you would expect zero.
+Eg after three of the currency exchange entries above,
+\f[CR]hledger bal \-B\f[R] shows a total of \-0.01 CHF.
+Typically this is a few cents, but each entry can contribute up to half
+a unit in its last decimal place.
+.PP
+(Without cost conversion, these imbalances aren\(aqt directly visible.
+And with \f[CR]\-\-infer\-equity\f[R], each commodity balances exactly,
+and the imbalances become part of the conversion rates.)
+.PP
+To see an accumulated imbalance more precisely, increase the display
+precision with \f[CR]\-c\f[R].
+Eg:
+.IP
+.EX
+$ hledger bal \-B \-c \(aqCHF 1.000000000\(aq
+.EE
+.PP
+And to see which entries contribute to it, use a register report:
+\f[CR]hledger reg \-B \-c \(aqCHF 1.000000000\(aq\f[R].
+Or, show the imbalances explicitly, as described next.
+.SS Showing imbalances
+With the \f[CR]\-\-infer\-imbalance\f[R] flag, hledger shows entry
+imbalances explicitly, by generating postings to an imbalance account
+(\f[CR]equity:imbalance\f[R] by default) which make the entry balance
+exactly (as if you had added an amountless posting to that account).
+Eg:
+.IP
+.EX
+$ hledger print \-\-infer\-imbalance
+2024\-01\-30 currency exchange
+    assets:usd                                \-19110.17 USD \(at 0.869050 CHF
+    assets:chf                                 16607.69 CHF
+    equity:imbalance                               0.0032385 CHF
+.EE
+.PP
+This doesn\(aqt change which entries are accepted.
+But totals at cost are now exactly zero, and the accumulated imbalance
+appears as the balance of \f[CR]equity:imbalance\f[R].
+Eg after three of the currency exchange entries:
+.IP
+.EX
+$ hledger bal \-B \-\-infer\-imbalance
+        49823.07 CHF  assets:chf
+       \-49823.08 CHF  assets:usd
+            0.01 CHF  equity:imbalance
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+                   0
+.EE
+.PP
+The imbalance postings\(aq amounts are usually smaller than the display
+precision, so to see them individually, increase the display precision.
+Eg:
+.IP
+.EX
+$ hledger areg equity:imbalance \-\-infer\-imbalance \-c \(aqCHF 1.0000000\(aq
+Transactions in equity:imbalance and subaccounts:
+2024\-01\-30 currency exchange   as:usd, as:chf       CHF 0.0032385  CHF 0.0032385
+2024\-01\-30 currency exchange   as:usd, as:chf       CHF 0.0032385  CHF 0.0064770
+2024\-01\-30 currency exchange   as:usd, as:chf       CHF 0.0032385  CHF 0.0097155
+.EE
+.PP
+Some notes:
+.IP \(bu 2
+The imbalance postings have a hidden \f[CR]_imbalance\-posting\f[R] tag
+(shown by \f[CR]\-\-verbose\-tags\f[R]), so they can also be matched
+with \f[CR]tag:imbalance\-posting\f[R].
+.IP \(bu 2
+To use a different account, declare it with the
+\f[CR]M\f[R]/\f[CR]Imbalance\f[R] account type (the first one declared
+is used, if there are several).
+Imbalance accounts, including \f[CR]equity:imbalance\f[R], can be
+matched with \f[CR]type:M\f[R].
+.IP \(bu 2
+With \f[CR]\-\-infer\-equity\f[R] as well, the generated equity
+conversion postings use the exact cost amounts, so every commodity
+balances exactly.
+.IP \(bu 2
+No imbalance posting is generated if its amount would display as zero
+(at 8 decimal places, for a repeating decimal).
+This ignores the tiny leftovers of hledger\(aqs own division (see Amount
+arithmetic).
+.IP \(bu 2
+The imbalance account need not be declared, even in strict mode.
+.IP \(bu 2
+If you use this flag with \f[CR]import\f[R], the imbalance postings will
+be added to your journal too.
+.SS Avoiding imbalances
+You can avoid imbalances by writing exact entries.
+Any of these will do:
+.IP \(bu 2
+Use a total cost (\f[CR]\(at\(at\f[R]) instead of a unit cost
+(\f[CR]\(at\f[R]) when the unit cost would be rounded.
+Total costs are converted exactly.
+Eg \f[CR]\-19110.17 USD \(at\(at 16607.69 CHF\f[R].
+.IP \(bu 2
+Write the unit cost with enough decimal places to be exact, when
+possible.
+.IP \(bu 2
+Add a posting to absorb the imbalance, eg to an
+\f[CR]expenses:rounding\f[R] account.
+If you leave its amount blank, hledger will calculate it exactly.
+.SS Transaction balancing before 1.50
+hledger versions before 1.50 used the commodity\(aqs display precision
+as the balancing precision, instead of the precision in the entry.
+This masked larger imbalances, and made balancing depend on display
+settings (see issue #2402).
+So some journal entries (or CSV rules) that worked with hledger <1.50
+are now rejected with an \(dqunbalanced transaction\(dq error.
+If you hit this, you can:
+.IP \(bu 2
+restore the old behaviour, by adding
+\f[CR]\-\-txn\-tolerance=display\f[R] (formerly
+\f[CR]\-\-txn\-balancing=old\f[R]) to the command or to your
+\f[CR]\(ti/.hledger.conf\f[R] file.
+This lets you keep using old journals unchanged.
+.IP \(bu 2
+or fix the problem entries (recommended), in one of these ways:
+.RS 2
+.IP "1." 3
+make cost amounts more precise (add more or better decimal digits)
+.IP "2." 3
+or make non\-cost amounts less precise (remove unnecessary decimal
+digits that are raising the precision)
+.IP "3." 3
+or add a posting to absorb the imbalance, as described above.
+.RE
 .SH Amount formatting
 .SS Commodity display style
 For the amounts in each commodity, hledger chooses a consistent display
@@ -14339,6 +14354,14 @@ account revenues:gain  ; type:G
 .PP
 Multiple gain postings are allowed, eg one per lot when disposing from
 several lots.
+.PP
+Your amount needs to match the calculated gain only at the entry\(aqs
+precision (the most decimal places used by the entry\(aqs amounts in
+that commodity, as in transaction balancing).
+hledger then uses the exact calculated gain, so that the small
+difference isn\(aqt left unaccounted for (with several gain postings, it
+adjusts the last one).
+\f[CR]print\f[R] still shows your amount as written.
 .PP
 A written gain posting also protects your history, like a balance
 assertion: hledger recalculates lots and gains from the whole journal
