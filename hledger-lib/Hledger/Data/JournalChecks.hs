@@ -62,9 +62,10 @@ journalStrictChecks j = do
 journalCheckAccounts :: Journal -> Either String ()
 journalCheckAccounts j = mapM_ checkacct (journalPostings j)
   where
+    declaredaccts = S.fromList $ map fst $ jdeclaredaccounts j
     checkacct p@Posting{paccount=a}
       | hasGeneratedAccount p = Right ()
-      | acct `elem` journalAccountNamesDeclared j = Right ()
+      | acct `S.member` declaredaccts = Right ()
       | otherwise = Left $ printf (unlines [
            "%s:%d:"
           ,"%s"
@@ -185,8 +186,9 @@ journalCheckCommodities j = do
 journalCheckPayees :: Journal -> Either String ()
 journalCheckPayees j = mapM_ checkpayee (jtxns j)
   where
+    declaredpayees = S.fromList $ map fst $ jdeclaredpayees j
     checkpayee t
-      | payee `elem` journalPayeesDeclared j = Right ()
+      | payee `S.member` declaredpayees = Right ()
       | otherwise = Left $
         printf (unlines [
            "%s:%d:"
@@ -219,19 +221,19 @@ journalCheckTags j = do
     checkaccttags (a, adi) = mapM_ (checkaccttag.fst) $ aditags adi
       where
         checkaccttag tagname
-          | tagname `elem` declaredtags = Right ()
+          | tagname `S.member` declaredtags = Right ()
           | otherwise = Left $ printf msg f l ex (show tagname) tagname
             where (f,l,_mcols,ex) = makeAccountTagErrorExcerpt (a, adi) tagname
     checkcommtags c = mapM_ (checkcommtag.fst) $ ctags c
       where
         checkcommtag tagname
-          | tagname `elem` declaredtags = Right ()
+          | tagname `S.member` declaredtags = Right ()
           | otherwise = Left $ printf msg f l ex (show tagname) tagname
             where (f,l,_mcols,ex) = makeCommodityTagErrorExcerpt c tagname
     checktxntags txn = mapM_ (checktxntag . fst) $ transactionAllTags txn
       where
         checktxntag tagname
-          | tagname `elem` declaredtags = Right ()
+          | tagname `S.member` declaredtags = Right ()
           | otherwise = Left $ printf msg f l ex (show tagname) tagname
             where
               (f,l,_mcols,ex) = makeTransactionErrorExcerpt txn finderrcols
@@ -242,7 +244,7 @@ journalCheckTags j = do
                     -- where
                     --   col  = T.length (showTransactionLineFirstPart txn') + 2
                     --   col2 = col + T.length tagname - 1
-    declaredtags = journalTagsDeclared j ++ builtinTags
+    declaredtags = S.fromList $ map fst (jdeclaredtags j) ++ builtinTags
     msg = (unlines [
       "%s:%d:"
       ,"%s"
