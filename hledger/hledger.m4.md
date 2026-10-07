@@ -2221,6 +2221,9 @@ commodity USD 1.00    ; alias: 0.001 kilobucks
 commodity h 1.00      ; alias: 60 min
 ```
 
+If the division isn't exact (eg `10 min` is 0.1666... `h`), an amount's unit cost is replaced by its total cost,
+which stays exact (`10 min @ $1` becomes `0.1666... h @@ $10`).
+
 The quantity is used exactly as written.
 If converting to the commodity needs a repeating decimal (like 1/60 hours per minute),
 converted amounts may be off by a tiny amount, far beyond the displayed decimal places.

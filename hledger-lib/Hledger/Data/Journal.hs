@@ -1456,13 +1456,21 @@ journalApplyCommodityAliases j
     convertExactAmount a = case convertSymbol a of
       (a', 1) -> a'
       (a', _) -> withAllDigits a'
-    convertAmount a =
-      let (a', q) = convertSymbol a
-      in a'{ acost      = convertCost q <$> acost a
-           , acostbasis = (\cb -> cb{cbCost = scaleBy q . convertExactAmount <$> cbCost cb}) <$> acostbasis a
-           }
-    convertCost q (UnitCost u)  = UnitCost $ scaleBy q $ convertExactAmount u
-    convertCost _ (TotalCost t) = TotalCost $ convertExactAmount t
+    convertAmount a = a'{ acost      = convertCost <$> acost a
+                        , acostbasis = (\cb -> cb{cbCost = scaleBy q . convertExactAmount <$> cbCost cb}) <$> acostbasis a
+                        }
+      where
+        (a', q) = convertSymbol a
+        -- If the amount or its unit cost converts inexactly (eg 10 min = 0.1666.. h),
+        -- use the total cost calculated before converting, so the cost stays exact.
+        convertCost (UnitCost u)
+          | isInexact a || isInexact u = TotalCost $ withAllDigits $ fst $ convertSymbol u{aquantity = multiplyQuantities (abs $ aquantity a) (aquantity u)}
+          | otherwise                  = UnitCost $ scaleBy q $ convertExactAmount u
+        convertCost (TotalCost t) = TotalCost $ convertExactAmount t
+    -- Does converting this amount from an alias round its quantity ?
+    isInexact a = case convertSymbol a of
+      (_, 1)  -> False
+      (a', q) -> multiplyQuantities (aquantity a') q /= aquantity a
     hasAlias a = isAlias a || any (isAlias . costAmount) (acost a) || any isAlias (acostbasis a >>= cbCost)
       where costAmount (UnitCost u) = u
             costAmount (TotalCost t) = t
