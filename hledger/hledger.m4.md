@@ -2221,14 +2221,13 @@ commodity USD 1.00    ; alias: 0.001 kilobucks
 commodity h 1.00      ; alias: 60 min
 ```
 
-If the division isn't exact (eg `10 min` is 0.1666... `h`), an amount's unit cost is replaced by its total cost,
-which stays exact (`10 min @ $1` becomes `0.1666... h @@ $10`).
-
 The quantity is used exactly as written.
 If converting to the commodity needs a repeating decimal (like 1/60 hours per minute),
-converted amounts may be off by a tiny amount, far beyond the displayed decimal places.
-Usually that doesn't matter, but it can make a [balance assertion](#balance-assertions) written in the alias fail;
-write those in the commodity instead.
+each converted amount is rounded at the 255th decimal place (see [Amount arithmetic](#amount-arithmetic)),
+far beyond the displayed decimal places. hledger keeps this from affecting costs and balance assertions:
+an amount's unit cost is replaced by its total cost, which stays exact (`10 min @ $1` becomes `0.1666... h @@ $10`),
+and [balance assertions](#balance-assertions) add up the amounts written in the alias before converting them
+(so eg three `10 min` amounts satisfy a `= 0.5 h` assertion).
 If your journal uses decimal commas, remember that a comma ends a tag's value; 
 you can write a fractional quantity with an exponent instead, eg `alias: 1E-3 kilobucks`.
 
@@ -5390,7 +5389,7 @@ Here's when that happens:
 | Using a [reverse market price](#finding-market-price) | 1 / price | None |
 | Averaging lot costs, with the AVERAGE [cost basis methods](#cost-basis-methods) or in [holdings](#holdings) | total cost / total quantity | None |
 | Inferring costs from [equity conversion postings](#equity-conversion-postings) | one amount / the other | None |
-| Converting amounts written with a [commodity alias](#commodity-aliases) that has a quantity | amount / alias quantity | Can make balance assertions fail, for now, since they compare exactly (eg three `10 min` amounts don't sum to exactly `0.5 h`). |
+| Converting amounts written with a [commodity alias](#commodity-aliases) that has a quantity | amount / alias quantity | None in calculations: unit costs are replaced by exact total costs, and balance assertions convert the alias amounts' total (so three `10 min` amounts sum to exactly `0.5 h`). `print -x` shows converted amounts with all their decimal places. |
 | Calculating averages (eg `-A`) and percentages (eg `-%`) in reports | total / count, part / total | None: these are displayed rounded |
 | Converting times to hours in [timeclock](#timeclock) entries, and [timedot](#timedot) durations written with a unit (`10m`) | time / hour length | Each is rounded to 2 decimal places (0.01 hours = 36 seconds), so totals can drift: eg three `10m` timedot entries total 0.51 hours. |
 | Calculating rates of return: [roi](#roi)'s IRR and TWR, and [holdings](#holdings)' XIRR column | various | Rates are approximate (calculated with floating point numbers; IRR and XIRR by iteration) |

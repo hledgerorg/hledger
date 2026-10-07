@@ -656,6 +656,7 @@ data BalancingState s = BalancingState {
    bsBalancingOpts :: BalancingOpts                              -- ^ the balancing options (with the journal's commodity display styles), for balancing the transactions with balance assignments
   ,bsUnassignable :: S.Set AccountName                          -- ^ accounts where balance assignments may not be used (because of auto posting rules)
   ,bsAssrt        :: AssertionsMode s                           -- ^ whether/how to check balance assertions
+  ,bsAliases      :: M.Map CommoditySymbol (CommoditySymbol, Quantity)  -- ^ commodity aliases with a quantity other than 1, whose amounts running balances keep unconverted (see postingRunningBalanceAmount)
    -- mutable
   ,bsBalances     :: H.HashTable s AccountName MixedAmount      -- ^ running account balances, initially empty
   ,bsTransactions :: STArray s Integer Transaction              -- ^ a mutable array of the transactions being balanced
@@ -669,8 +670,8 @@ withRunningBalance f = ask >>= lift . lift . f
 
 -- | Get this account's current exclusive running balance.
 getRunningBalanceB :: AccountName -> Balancing s MixedAmount
-getRunningBalanceB acc = withRunningBalance $ \BalancingState{bsBalances} -> do
-  fromMaybe nullmixedamt <$> H.lookup bsBalances acc
+getRunningBalanceB acc = withRunningBalance $ \BalancingState{bsBalances, bsAliases} -> do
+  maConvertAliases bsAliases . fromMaybe nullmixedamt <$> H.lookup bsBalances acc
 
 -- | Add this amount to this account's exclusive running balance.
 -- Returns the new running balance.
@@ -684,24 +685,45 @@ addToRunningBalanceB acc amt = withRunningBalance $ \BalancingState{bsBalances} 
 -- | Set this account's exclusive running balance to this amount.
 -- Returns the change in exclusive running balance.
 setRunningBalanceB :: AccountName -> MixedAmount -> Balancing s MixedAmount
-setRunningBalanceB acc amt = withRunningBalance $ \BalancingState{bsBalances} -> do
+setRunningBalanceB acc amt = withRunningBalance $ \BalancingState{bsBalances, bsAliases} -> do
   old <- fromMaybe nullmixedamt <$> H.lookup bsBalances acc
   H.insert bsBalances acc amt
-  return $ maMinus amt old
+  return $ maMinus amt $ maConvertAliases bsAliases old
 
 -- | Set this account's exclusive running balance to whatever amount
 -- makes its *inclusive* running balance (the sum of exclusive running
 -- balances of this account and any subaccounts) be the given amount.
 -- Returns the change in exclusive running balance.
 setInclusiveRunningBalanceB :: AccountName -> MixedAmount -> Balancing s MixedAmount
-setInclusiveRunningBalanceB acc newibal = withRunningBalance $ \BalancingState{bsBalances} -> do
-  oldebal  <- fromMaybe nullmixedamt <$> H.lookup bsBalances acc
+setInclusiveRunningBalanceB acc newibal = withRunningBalance $ \BalancingState{bsBalances, bsAliases} -> do
+  oldebal  <- maConvertAliases bsAliases . fromMaybe nullmixedamt <$> H.lookup bsBalances acc
   allebals <- H.toList bsBalances
   let subsibal =  -- sum of any subaccounts' running balances
-        maSum . map snd $ filter ((acc `isAccountNamePrefixOf`).fst) allebals
+        maConvertAliases bsAliases . maSum . map snd $ filter ((acc `isAccountNamePrefixOf`).fst) allebals
   let newebal = maMinus newibal subsibal
   H.insert bsBalances acc newebal
   return $ maMinus newebal oldebal
+
+-- | The amount a posting adds to its account's running balance.
+-- An amount converted from a commodity alias with a quantity is kept in the alias, as written
+-- (without costs), and running balances are converted only when they're used (see maConvertAliases).
+-- This way, eg three amounts of 10 min add up to exactly 0.5 h,
+-- though each of them converts to 0.1666.. h, rounded at the 255th decimal place.
+postingRunningBalanceAmount :: M.Map CommoditySymbol (CommoditySymbol, Quantity) -> Posting -> MixedAmount
+postingRunningBalanceAmount aliases p
+  | M.null aliases = pamount p
+  | any ((`M.member` aliases) . acommodity) (amountsRaw written)
+    && mixedAmountIsZero (maConvertAliases aliases written `maMinus` mixedAmountStripCosts (pamount p)) = written
+  | otherwise = pamount p
+  where written = mixedAmountStripCosts $ pamount $ originalPosting p
+
+-- | Convert any amounts in these commodity aliases to their commodity.
+-- Each alias's total is divided only once, so the result is exact when possible
+-- (eg 30 min is exactly 0.5 h).
+maConvertAliases :: M.Map CommoditySymbol (CommoditySymbol, Quantity) -> MixedAmount -> MixedAmount
+maConvertAliases aliases ma
+  | M.null aliases = ma
+  | otherwise      = foldMap (mixedAmount . fst . convertAliasAmount aliases) $ amountsRaw $ mixedAmountStripCosts ma
 
 -- | Update (overwrite) this transaction in the balancing state.
 updateTransactionB :: Transaction -> Balancing s ()
@@ -786,7 +808,8 @@ journalBalanceTransactionsHelper deferassertions bopts' j' =
           hasassignments = any isRight psandts
         when (hasassignments || (checkingassertions && hasassertions)) $ do
           runningbals <- lift $ H.newSized (length $ journalAccountNamesUsed j)
-          flip runReaderT (BalancingState bopts autopostingaccts assertionsmode runningbals balancedtxns) $ do
+          let aliases = M.filter ((/= 1) . snd) $ journalCommodityAliases j
+          flip runReaderT (BalancingState bopts autopostingaccts assertionsmode aliases runningbals balancedtxns) $ do
             -- On encountering any not-yet-balanced transaction with a balance assignment,
             -- enact the balance assignment then finish balancing the transaction.
             -- And, check any balance assertions encountered along the way.
@@ -855,10 +878,11 @@ type NumberedPosting = (Integer, Posting)
 -- If it has a missing amount and no balance assignment, leave it for later.
 -- Then test the balance assertion if any.
 addOrAssignAmountAndCheckAssertionB :: NumberedPosting -> Balancing s NumberedPosting
-addOrAssignAmountAndCheckAssertionB (i,p@Posting{paccount=acc, pamount=amt, pbalanceassertion=mba})
+addOrAssignAmountAndCheckAssertionB (i,p@Posting{paccount=acc, pbalanceassertion=mba})
   -- an explicit posting amount
   | hasAmount p = do
-      newbal <- addToRunningBalanceB acc amt
+      aliases <- R.asks bsAliases
+      newbal <- addToRunningBalanceB acc $ postingRunningBalanceAmount aliases p
       checkOrDeferBalanceAssertionB p newbal
       return (i,p)
 
@@ -886,7 +910,8 @@ addOrAssignAmountAndCheckAssertionB (i,p@Posting{paccount=acc, pamount=amt, pbal
 -- need to see the balance as it stands after each individual posting.
 addAmountAndCheckAssertionB :: Posting -> Balancing s Posting
 addAmountAndCheckAssertionB p | hasAmount p = do
-  newbal <- addToRunningBalanceB (paccount p) $ pamount p
+  aliases <- R.asks bsAliases
+  newbal <- addToRunningBalanceB (paccount p) $ postingRunningBalanceAmount aliases p
   checkOrDeferBalanceAssertionB p newbal
   return p
 addAmountAndCheckAssertionB p = return p
@@ -895,11 +920,13 @@ addAmountAndCheckAssertionB p = return p
 -- per the current assertions mode: not at all; erroring immediately on a
 -- failure; or recording the first failure and continuing.
 checkOrDeferBalanceAssertionB :: Posting -> MixedAmount -> Balancing s ()
-checkOrDeferBalanceAssertionB p newbal = R.reader bsAssrt >>= \case
-  DontCheckAssertions -> return ()
-  CheckAssertions     -> checkBalanceAssertionB p newbal
-  DeferAssertions ref -> checkBalanceAssertionB p newbal `catchError` \e ->
-    lift . lift $ modifySTRef' ref (<|> Just e)
+checkOrDeferBalanceAssertionB p newbal0 = do
+  newbal <- R.asks $ \s -> maConvertAliases (bsAliases s) newbal0
+  R.reader bsAssrt >>= \case
+    DontCheckAssertions -> return ()
+    CheckAssertions     -> checkBalanceAssertionB p newbal
+    DeferAssertions ref -> checkBalanceAssertionB p newbal `catchError` \e ->
+      lift . lift $ modifySTRef' ref (<|> Just e)
 
 -- | Check a posting's balance assertion against the given actual balance, and
 -- return an error if the assertion is not satisfied.
@@ -931,8 +958,8 @@ checkBalanceAssertionOneCommodityB p@Posting{paccount=assertedacct} assertedcomm
     if isinclusive
     then
       -- sum the running balances of this account and any of its subaccounts seen so far
-      withRunningBalance $ \BalancingState{bsBalances} ->
-        H.foldM
+      withRunningBalance $ \BalancingState{bsBalances, bsAliases} ->
+        maConvertAliases bsAliases <$> H.foldM
           (\ibal (acc, amt) -> return $
             if assertedacct==acc || assertedacct `isAccountNamePrefixOf` acc then maPlus ibal amt else ibal)
           nullmixedamt

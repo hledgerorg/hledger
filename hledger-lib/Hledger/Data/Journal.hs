@@ -27,6 +27,8 @@ module Hledger.Data.Journal (
   journalDbg,
   journalInferMarketPricesFromTransactions,
   journalApplyCommodityAliases,
+  journalCommodityAliases,
+  convertAliasAmount,
   commodityAliases,
   commoditiesAndAliases,
   journalInferCommodityStyles,
@@ -1408,9 +1410,24 @@ commoditiesAndAliases j =
                 , a <- commodityAliases c
                 ]
 
+-- | Each commodity alias declared in this journal, with its commodity and its quantity
+-- (the number of alias units equal to one unit of the commodity).
+journalCommodityAliases :: Journal -> M.Map CommoditySymbol (CommoditySymbol, Quantity)
+journalCommodityAliases j =
+  M.fromList [(acommodity a, (csymbol c, aquantity a)) | c <- M.elems $ jdeclaredcommodities j, a <- caliases c]
+
+-- | Convert an amount written in one of these commodity aliases to its commodity,
+-- also returning the alias quantity (or 1).
+convertAliasAmount :: M.Map CommoditySymbol (CommoditySymbol, Quantity) -> Amount -> (Amount, Quantity)
+convertAliasAmount aliases a = case M.lookup (acommodity a) aliases of
+  Nothing     -> (a, 1)
+  Just (c, 1) -> (a{acommodity = c}, 1)
+  Just (c, q) -> (a{acommodity = c, aquantity = aquantity a / q}, q)
+
 -- | Convert all amounts written in a commodity alias to the commodity it is an alias of.
 -- For an alias with a quantity (other than 1), amount quantities are divided by it,
--- and unit costs, cost bases and market prices of the alias are multiplied by it.
+-- and unit costs, cost bases and market prices of the alias are multiplied by it
+-- (but if an amount or its unit cost converts inexactly, the unit cost is replaced by the exact total cost).
 -- This is done for posting amounts, with their costs, cost bases and balance assertions;
 -- periodic transaction and auto posting rules (whose multipliers' symbols are just renamed);
 -- and price directives. A converted posting keeps its original form in poriginal, for print.
@@ -1437,15 +1454,9 @@ journalApplyCommodityAliases j
     chained   = [c | c <- comms, not (null $ caliases c), csymbol c `M.member` aliases]
     commodityExcerpt c = let (f, l, _, ex) = makeCommodityTagErrorExcerpt c "alias" in f <> ":" <> show l <> ":\n" <> T.unpack ex
 
-    -- each alias symbol, with its commodity and the number of alias units equal to one unit of that
-    aliases = M.fromList [(acommodity a, (csymbol c, aquantity a)) | c <- comms, a <- caliases c]
+    aliases = journalCommodityAliases j
     isAlias = (`M.member` aliases) . acommodity
-
-    -- Convert an amount from an alias to its commodity, also returning the alias quantity (or 1).
-    convertSymbol a = case M.lookup (acommodity a) aliases of
-      Nothing     -> (a, 1)
-      Just (c, 1) -> (a{acommodity = c}, 1)
-      Just (c, q) -> (a{acommodity = c, aquantity = aquantity a / q}, q)
+    convertSymbol = convertAliasAmount aliases
     -- Show all of a calculated amount's decimal digits (up to 8), but no trailing zeros.
     withAllDigits a = amountSetPrecision (Precision $ min defaultMaxDisplayPrecision $ amountInternalPrecision a') a'
       where a' = a{aquantity = normalizeDecimal $ aquantity a}

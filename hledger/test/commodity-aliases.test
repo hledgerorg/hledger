@@ -287,3 +287,64 @@ $ hledger -f- print -x --round=hard
     client                                        $0 = $-10
 
 >=
+
+# ** 27. Balance assertions work with amounts in an alias with a quantity,
+# even when converting them is inexact: each 10 min is 0.1666.. h, but together they are exactly 0.5 h.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (time)   10 min
+
+2026-01-02
+    (time)   10 min
+
+2026-01-03
+    (time)   10 min  = 0.5 h
+
+2026-01-04
+    (time)    0 h  = 30 min
+
+$ hledger -f- check
+
+# ** 28. Also with mixed units, subaccount-inclusive assertions, and total assertions.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01 mixed units
+    (a)   10 min
+    (a)   10 min
+    (a)   10 min
+    (a)   0.5 h  = 60 min
+
+2026-01-02 subaccount-inclusive
+    (b:x)   10 min
+    (b:y)   10 min
+    (b:z)   10 min
+    (b)      0 h  =* 0.5 h
+
+2026-01-03 total assertion
+    (c)   10 min
+    (c)   10 min
+    (c)   10 min
+    (c)   0 h  == 0.5 h
+
+$ hledger -f- check
+
+# ** 29. A balance assignment calculates the amount exactly too.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (a)   10 min
+    (a)   10 min
+    (a)   10 min
+
+2026-01-02
+    (a)         = 1 h
+
+$ hledger -f- print -x date:2026-01-02
+2026-01-02
+    (a)                                          h 0.5 = h 1
+
+>=
