@@ -2074,8 +2074,8 @@ In case of trouble, adding `--debug=6` to the command line will show which alias
 
 ### Aliases and multiple files
 
-As explained at [Directives](#directives),
-`alias` directives do not affect parent or sibling files. Eg in this command,
+As explained at [Directive scopes](#directive-scopes),
+`alias` directives (and `alias:` tags) do not affect parent or sibling files. Eg in this command,
 ```cli
 hledger -f a.aliases -f b.journal
 ```
@@ -2099,6 +2099,13 @@ alias bar=Bar
   bar
 
 include c.journal  ; also affected
+```
+
+To affect all files read, whether they are included, or referenced by `-f` or the `import` command,
+use [`--alias` options](#--alias-option) (which could be in a config file).
+Eg here the alias affects both a.journal and b.journal:
+```cli
+hledger -f a.journal -f b.journal --alias foo=Foo
 ```
 
 ### `end aliases` directive
