@@ -1641,7 +1641,7 @@ hledger's directives are broadly similar to Ledger's, though with [differences](
 Directives differ in which entries they affect.
 Some affect only the following entries, others affect both preceding and following entries;
 and some reach only the current file and its subfiles, others reach every file.
-Assuming this file layout:
+Assuming this command and file layout:
 
 ```
 hledger -f main.journal -f other.journal
@@ -1650,21 +1650,23 @@ main.journal           ; the parent file
   include a.journal    ; a child of main.journal
     include aa.journal ; a child of a.journal
   include b.journal    ; a child of main.journal, and a sibling of a.journal
+
 other.journal          ; a separate file tree
 ```
 
 here are the possible scopes, for a directive written in `a.journal`:
 
-| scope                        | affects                                                                                                         |
-|------------------------------|-----------------------------------------------------------------------------------------------------------------|
-| **rest of file + subfiles**  | following entries in `a.journal`, including `aa.journal` if it is included after the directive
-| **rest of file tree**        | as above, plus `main.journal` entries following the `include a.journal` directive (including `b.journal`)
+| scope                        | affects
+|------------------------------|-----------------------------------------------------------------------------------------------------------------
+| **rest of file + subfiles**  | following entries in or below `a.journal` (including `aa.journal` if it is included after the directive)
+| **rest of file tree**        | as above, plus following entries in parent files (`main.journal` entries after the `include a.journal` directive, including `b.journal`)
 | **file tree**                | all entries in `main.journal`, `a.journal`, `aa.journal` and `b.journal`, before and after the directive
-| **all files**                | all entries in all file trees, no matter where the directive is written                                                     |
+| **all files**                | all entries in all file trees, no matter where the directive is written
 
-The limited scopes keep reports stable and deterministic, regardless of the order of -f options or the positions of include directives.
+The limited scopes help keep reports stable and deterministic, independent of the order of -f options or include directives.
 This is sometimes inconvenient, but there are usually workarounds.
-In particular, to have `alias` directives affect all of your files, put them at the start of the main file, before any `include`s.
+In particular, to have account aliases affect all entries in a file tree, declare them at the start of the main file, before any `include`s.
+(Or to affect all file trees specified at runtime, use `--alias` options.)
 
 ### Directives summary
 
@@ -1675,8 +1677,8 @@ In particular, to have `alias` directives affect all of your files, put them at 
 | **[`comment`]**      | Ignores following entries and directives, until [`end comment`].                                                                      | rest of file + subfiles     |
 | **[`alias`]**        | [Rewrites](#account-aliases) following matched account names, until [`end aliases`].                                                                                                | rest of file + subfiles     |
 | **[`account`]** `alias:` tag | Rewrites following matched account names to this account's full name, until [`end aliases`].                                                                                                      | rest of file + subfiles     |
-| **[`decimal-mark`]** | Declares the decimal mark for parsing amounts of all commodities, until the next `decimal-mark` (subfiles can override).                      | rest of file + subfiles     |
-| **[`commodity`]** sample amount | Declares the decimal mark for parsing amounts of this commodity (`decimal-mark` can override).                                                   | rest of file tree           |
+| **[`decimal-mark`]** | Declares the decimal mark for parsing following amounts of all commodities, until the next `decimal-mark` (subfiles can override).                      | rest of file + subfiles     |
+| **[`commodity`]** sample amount | Declares the decimal mark for parsing following amounts of this commodity (`decimal-mark` can override).                                                   | rest of file tree           |
 |                      | <br>**Declares data:**                                                                                                                        |                             |
 | **[`account`]**      | Declares an account, and its [display order](#account-display-order).                                                 | all files                   |
 | **[`account`]** `type:` tag | Declares the [account's type](#account-types).                                                                                       | all files                   |
@@ -1704,7 +1706,7 @@ In particular, to have `alias` directives affect all of your files, put them at 
 [`Y`]:                       #y-directive
 [`account`]:                 #account-directive
 [`alias`]:                   #alias-directive
-[`--alias`]:                 #alias-directive
+[`--alias`]:                 #--alias-option
 [`apply account`]:           #apply-account-directive
 [`comment`]:                 #comment-directive
 [`commodity`]:               #commodity-directive
