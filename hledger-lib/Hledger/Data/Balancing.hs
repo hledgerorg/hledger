@@ -678,14 +678,16 @@ getRunningBalanceB :: AccountName -> Balancing s MixedAmount
 getRunningBalanceB acc = withRunningBalance $ \BalancingState{bsBalances, bsAliases} -> do
   maConvertAliases bsAliases . fromMaybe nullmixedamt <$> H.lookup bsBalances acc
 
--- | Get this account's current inclusive running balance, including all subaccounts.
-getInclusiveRunningBalanceB :: AccountName -> Balancing s MixedAmount
-getInclusiveRunningBalanceB parent = withRunningBalance $ \BalancingState{bsBalances, bsAliases} ->
-  maConvertAliases bsAliases <$> H.foldM
-    (\ibal (acc, amt) -> return $
-      if parent==acc || parent `isAccountNamePrefixOf` acc then maPlus ibal amt else ibal)
-    nullmixedamt
-    bsBalances
+-- | Get this account's current inclusive running balance, including all subaccounts,
+-- converting the account's own balance and its subaccounts' total separately, as
+-- setInclusiveRunningBalanceB does. Commodities that a partial inclusive assignment
+-- preserves from this then cancel exactly when the new balance is set.
+getInclusiveRunningBalanceForAssignmentB :: AccountName -> Balancing s MixedAmount
+getInclusiveRunningBalanceForAssignmentB acc = withRunningBalance $ \BalancingState{bsBalances, bsAliases} -> do
+  ebal     <- fromMaybe nullmixedamt <$> H.lookup bsBalances acc
+  allebals <- H.toList bsBalances
+  let subsibal = maSum . map snd $ filter ((acc `isAccountNamePrefixOf`).fst) allebals
+  return $ maConvertAliases bsAliases ebal `maPlus` maConvertAliases bsAliases subsibal
 
 -- | Add this amount to this account's exclusive running balance.
 -- Returns the new running balance.
@@ -907,7 +909,7 @@ addOrAssignAmountAndCheckAssertionB (i,p@Posting{paccount=acc, pbalanceassertion
                    then return $ mixedAmount baamount
                    -- a partial balance assignment (=, one commodity)
                    else do
-                     oldbal <- (if bainclusive then getInclusiveRunningBalanceB else getRunningBalanceB) acc
+                     oldbal <- (if bainclusive then getInclusiveRunningBalanceForAssignmentB else getRunningBalanceB) acc
                      let oldbalothercommodities = filterMixedAmount ((acommodity baamount /=) . acommodity) oldbal
                      return $ maAddAmount oldbalothercommodities baamount
       diff <- (if bainclusive then setInclusiveRunningBalanceB else setRunningBalanceB) acc newbal
@@ -971,7 +973,14 @@ checkBalanceAssertionOneCommodityB p@Posting{paccount=assertedacct} assertedcomm
   -- let styled = maybe id styleAmounts mstyles
   actualbal' <-
     if isinclusive
-    then getInclusiveRunningBalanceB assertedacct
+    then
+      -- sum the running balances of this account and any of its subaccounts seen so far
+      withRunningBalance $ \BalancingState{bsBalances, bsAliases} ->
+        maConvertAliases bsAliases <$> H.foldM
+          (\ibal (acc, amt) -> return $
+            if assertedacct==acc || assertedacct `isAccountNamePrefixOf` acc then maPlus ibal amt else ibal)
+          nullmixedamt
+          bsBalances
     else return actualbal
   let
     assertedcomm = acommodity assertedcommbal

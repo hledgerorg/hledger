@@ -842,3 +842,69 @@ commodity h 1.00  ; alias: 60 min
     (b)     0 EUR = 0 EUR
 
 $ hledger -f- check
+
+# Other commodities held in an alias by both the account and its subaccounts are preserved exactly
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (p)     10 min
+    (p:c)   10 min
+
+2026-01-02
+    (p)            =* 1 EUR
+
+$ hledger -f- print -x date:2026-01-02
+2026-01-02
+    (p)                                            1 EUR =* 1 EUR
+
+>=
+
+# Assigned amounts written in an alias are converted
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (b:x)   10 min
+    (b:x)   10 min
+    (b:x)   10 min
+    (b:y)    5 EUR
+
+2026-01-02
+    (b)           =* 30 min
+
+2026-01-03
+    (b)           =* 60 min
+
+2026-01-04
+    (b)     0 h   =* 1 h
+    (b)     0 EUR =* 5 EUR
+    (b)     0 h   = 0.5 h
+    (b)     0 EUR = 0 EUR
+
+$ hledger -f- check
+
+# Postings inferred from assignments written in an alias
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (b:x)   10 min
+    (b:x)   10 min
+    (b:x)   10 min
+    (b:y)    5 EUR
+
+2026-01-02
+    (b)            =* 30 min
+
+2026-01-03
+    (b)            =* 60 min
+
+$ hledger -f- print -x date:2026-01-02-
+2026-01-02
+    (b)                                            0 =* h 0.5
+
+2026-01-03
+    (b)                                          h 0.50 =* h 1
+
+>=
