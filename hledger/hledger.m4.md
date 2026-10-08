@@ -1961,7 +1961,12 @@ Tips:
 
 `alias` directives are a more general form of the [account aliases](#account-aliases) declared with account `alias:` tags.
 They define rules which rewrite your account names, or parts of them, before generating reports.
-This can be useful for:
+
+Account aliases also rewrite account names in [account directives](#account-directive).
+They do not affect account names being entered via hledger add or hledger-web.
+They can also be defined at runtime, using the [`--alias` option](#--alias-option).
+
+Account aliases can be useful for:
 
 - expanding shorthand account names to their full form, allowing easier data entry and a less verbose journal
 - adapting old journals to your current chart of accounts
@@ -1969,10 +1974,7 @@ This can be useful for:
 - combining two accounts into one, eg to see their sum or difference on one line
 - customising reports
 
-Account aliases also rewrite account names in [account directives](#account-directive).
-They do not affect account names being entered via hledger add or hledger-web.
-
-Note, account aliases are very powerful.
+Note, account aliases, especially the regular expression variant, are very powerful.
 They are generally easy to use correctly, but you can also generate invalid account names with them; more on this below.
 
 ### Basic aliases
@@ -1987,10 +1989,9 @@ The spaces around the = are optional:
 alias OLD = NEW
 ```
 
-Or, you can use an [`--alias 'OLD=NEW'`](#--alias-option) option on the command line.
+Or, you can use [`--alias 'OLD=NEW'`](#--alias-option) on the command line.
 
-Or, for a declared account, you can write the alias as an `alias:` tag on its
-[account directive](#account-aliases).
+Or, for a declared account, you can write the alias as an `alias:` tag on its [account directive](#account-aliases).
 
 OLD and NEW are case sensitive full account names.
 hledger will replace any occurrence of the old account name with the
