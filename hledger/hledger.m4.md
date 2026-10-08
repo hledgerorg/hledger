@@ -1978,8 +1978,6 @@ Account aliases are very powerful.
 They are generally easy to use correctly, but you can also generate 
 invalid account names with them; more on this below.
 
-See also [Rewrite account names](/rewrite-account-names.html).
-
 ### Basic aliases
 
 To set an account alias, use the `alias` directive in your journal file.
