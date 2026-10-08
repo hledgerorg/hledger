@@ -1959,12 +1959,12 @@ Tips:
 
 (Note: this section is about account aliases, not [commodity aliases](#commodity-aliases) or [command aliases](#command-aliases).)
 
-`alias` directives are a more general form of the [account aliases](#account-aliases) declared with account `alias:` tags.
-They define rules which rewrite your account names, or parts of them, before generating reports.
+`alias` directives are a more general and powerful form of the [account aliases](#account-aliases) tags described above.
+(There is also a runtime variant, defined with the [`--alias` option](#--alias-option).)
 
-Account aliases also rewrite account names in [account directives](#account-directive).
+Account alias rules rewrite your account names, or parts of them, after reading the journal
+(affecting both directives and transactions), before generating reports.
 They do not affect account names being entered via hledger add or hledger-web.
-They can also be defined at runtime, using the [`--alias` option](#--alias-option).
 
 Account aliases can be useful for:
 
@@ -1973,9 +1973,6 @@ Account aliases can be useful for:
 - experimenting with new account organisations, like a new hierarchy
 - combining two accounts into one, eg to see their sum or difference on one line
 - customising reports
-
-Note, account aliases, especially the regular expression variant, are very powerful.
-They are generally easy to use correctly, but you can also generate invalid account names with them; more on this below.
 
 ### Basic aliases
 
