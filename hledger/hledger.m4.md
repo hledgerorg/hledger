@@ -1062,7 +1062,7 @@ Enclosing the account name in parentheses or brackets, like `(expenses:food)`,
 enables a non-standard bookkeeping feature: [virtual postings](#virtual-postings).
 
 Account names can be rewritten and restructured, temporarily or permanently,
-by [account aliases](#alias-directive).
+by [account aliases](#account-aliases).
 
 
 ## Amounts
@@ -1766,25 +1766,45 @@ Note, these tags will be queryable but won't be shown in `print` output, even wi
 
 ### Account aliases
 
-An `alias:` tag on an account directive declares an [account alias](#alias-directive) for that account,
-just as if an `alias` directive had been written at that point. These two are equivalent:
+An `alias:` tag on an account directive declares an alternate, usually shorter, name for that account.
+This could make data entry quicker, and your journal less verbose (but also adds more names for you to remember).
+Eg:
+
+```journal
+account assets:bank:checking    ; alias: checking
+
+2024-01-01
+    expenses:food     5
+    checking
+```
+
+When hledger reads this, it rewrites `checking` to `assets:bank:checking`.
+Reports, queries and `print` output show only the full name.
+Subaccounts are rewritten too: `checking:pending` becomes `assets:bank:checking:pending`.
+(The alias must match the whole account name or its leading components, exactly and case sensitively;
+`Checking`, `checkingfoo` or `old:checking` would not be affected.)
+
+To declare multiple aliases, add more `alias:` tags.
+A Ledger-style `alias` subdirective, indented below the account directive, is also accepted,
+and treated as an `alias:` tag.
+
+An alias affects the entries which follow it, in the current file and any files it includes
+(see [directive scopes](#directive-scopes)), until an [`end aliases`](#end-aliases-directive) directive.
+So it's best to declare accounts at the start of your main file, before any `include` directives.
+
+More powerful aliases, such as regular expression aliases which rewrite many accounts at once,
+can be declared with the [`alias` directive](#alias-directive), described below.
+An alias: tag is equivalent to a basic alias directive written just after the account directive:
 
 ```journal
 account assets:bank:checking    ; alias: checking
 ```
 ```journal
-alias checking = assets:bank:checking
 account assets:bank:checking
+alias checking = assets:bank:checking
 ```
 
-Each `alias:` tag declares one alias; add more tags to declare more aliases.
-Like an `alias` directive, it rewrites account names in the entries which follow it,
-in the current file and any files it includes, until the end of the file
-(see [Aliases and multiple files](#aliases-and-multiple-files));
-and an [`end aliases`](#end-aliases-directive) directive will end its effect early.
-
-Ledger's `alias NAME` subdirective, indented below the account directive, is also accepted and treated as equivalent to an `alias:` tag.
-`hledger accounts --directives` shows account aliases in the tag form.
+You can also apply aliases at runtime, without editing your files, using the [`--alias` option](#--alias-option).
 
 ### Account error checking
 
@@ -1937,12 +1957,12 @@ Tips:
 
 ## `alias` directive
 
-(hledger has three kinds of alias: the account aliases described here,
-[commodity aliases](#commodity-aliases) declared on `commodity` directives,
-and [command aliases](#command-aliases) defined in a config file.)
+(Note: this section is about account aliases, not [commodity aliases](#commodity-aliases) or [command aliases](#command-aliases).)
 
-You can define account alias rules which rewrite your account names, or parts of them,
+`alias` directives are a more powerful, general form of [account aliases](#account-aliases).
+They define rules which rewrite your account names, or parts of them,
 before generating reports.
+(For simply giving an account a short name, an `alias:` tag on its account directive is usually easier.)
 This can be useful for:
 
 - expanding shorthand account names to their full form, allowing easier data entry and a less verbose journal
@@ -1972,8 +1992,7 @@ The spaces around the = are optional:
 alias OLD = NEW
 ```
 
-Or, you can use the `--alias 'OLD=NEW'` option on the command line.
-This affects all entries. It's useful for trying out aliases interactively.
+Or, you can use an [`--alias 'OLD=NEW'`](#--alias-option) option on the command line.
 
 Or, for a declared account, you can write the alias as an `alias:` tag on its
 [account directive](#account-aliases).
@@ -2017,6 +2036,23 @@ alias /^(.+):bank:([^:]+):(.*)/ = \1:\2 \3
 
 REPLACEMENT continues to the end of line (or on command line, to end of option argument), 
 so it can contain trailing whitespace.
+
+### `--alias` option
+
+The `--alias` command line option defines an account alias, using the same syntax as an `alias` directive
+(basic or regex), without editing your files. Eg:
+
+```cli
+$ hledger bal --alias checking=assets:bank:checking
+$ hledger bal --alias '/^expenses:(food|dining)/=expenses:food'
+```
+
+It can be repeated to define more aliases. These aliases affect all entries in all files
+(including CSV, timeclock and timedot files), wherever the option appears on the command line;
+and they are applied after any `alias` directives or `alias:` tags (see [Combining aliases](#combining-aliases)).
+They are not cleared by [`end aliases`](#end-aliases-directive).
+This makes `--alias` useful for trying out aliases interactively, or for customising particular reports.
+You can also put `--alias` options in a [config file](#config-files).
 
 ### Combining aliases
 
@@ -7695,7 +7731,7 @@ A top level hledger account named `revenue` or `revenues` (case insensitive) wil
 Any other top level account whose [account type](#account-types) is known (declared or inferred)
 will have the corresponding Beancount top level account prepended; eg with `account bonds  ; type:A`,
 `bonds:treasury` becomes `Assets:Bonds:Treasury`.
-Otherwise, you should use `--alias` (see [Account aliases](#alias-directive),
+Otherwise, you should use `--alias` (see [`--alias` option](#--alias-option),
 or this [hledger2beancount.conf](https://github.com/hledgerorg/hledger/blob/main/examples/hledger2beancount.conf) file).
 <!-- (see also "hledger and Beancount" <https://hledger.org/beancount.html>). -->
 
@@ -7943,7 +7979,7 @@ To learn all about them, visit [regular-expressions.info](https://www.regular-ex
 
 hledger supports regexps whenever you are entering a pattern to match something, eg in
 [query arguments](#queries), 
-[account aliases](#alias-directive),
+[account aliases](#regex-aliases),
 [CSV if rules](#if),
 hledger-web's search form,
 hledger-ui's `/` search,
