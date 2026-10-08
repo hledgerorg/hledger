@@ -5230,8 +5230,9 @@ generally the resulting query is their intersection.
 
 ## Queries and account aliases
 
-When account names are [rewritten](#alias-directive) with `--alias` or `alias`,
-`acct:` will match either the old or the new account name.
+When account names are rewritten by [account aliases](#alias-directive),
+queries see only the new account names. Eg with `alias checking = assets:bank:checking`,
+`acct:bank` matches the rewritten postings, but `acct:^checking` does not.
 
 ## Queries and valuation
 
