@@ -1633,35 +1633,70 @@ Eg `; foo:a, foo:b`.
 ## Directives
 
 You can add directives to a `journal` file, to add error checking, improve parsing, et cetera.
-hledger's directives are broadly similar to Ledger's, though with [differences](/ledger.md).
 Directives begin with a keyword, not a date. Some of them can have indented subdirectives.
+hledger's directives are broadly similar to Ledger's, though with [differences](/ledger.md).
 
-**Some directives affect only the subsequent entries, and any included subfiles, until the end of the current file.**
-This makes reports stable and deterministic, regardless of the order of -f options or the positions of include directives.
+### Directive scopes
+
+Directives differ in which entries they affect.
+Some affect only the following entries, others affect both preceding and following entries;
+and some reach only the current file and its subfiles, others reach every file.
+Assuming this file layout:
+
+```
+hledger -f main.journal -f other.journal
+
+main.journal           ; the parent file
+  include a.journal    ; a child of main.journal
+    include aa.journal ; a child of a.journal
+  include b.journal    ; a child of main.journal, and a sibling of a.journal
+other.journal          ; a separate file tree
+```
+
+here are the possible scopes, for a directive written in `a.journal`:
+
+| scope                        | affects                                                                                                         |
+|------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| **rest of file + subfiles**  | following entries in `a.journal`, including `aa.journal` if it is included after the directive
+| **rest of file tree**        | as above, plus `main.journal` entries following the `include a.journal` directive (including `b.journal`)
+| **file tree**                | all entries in `main.journal`, `a.journal`, `aa.journal` and `b.journal`, before and after the directive
+| **all files**                | all entries in all file trees, no matter where the directive is written                                                     |
+
+The limited scopes keep reports stable and deterministic, regardless of the order of -f options or the positions of include directives.
 This is sometimes inconvenient, but there are usually workarounds.
-Eg, to have `alias` directives affect all of your files, put them at the start of the main file, before any `include`s.
+In particular, to have `alias` directives affect all of your files, put them at the start of the main file, before any `include`s.
 
-| directive                 | what it does                                                                                                                                                                                                                                                                                    | ends at file end?   |
-|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------|
-|                           | <br>**Affects file reading:**                                                                                                                                                                                                                                                                   |                     |
-| **[`alias`]**             | Rewrites account names, in following entries until [`end aliases`] or file end.                                                                                                                                                                                                                 | Y                   |
-| **[`comment`]**           | Ignores following entries, until [`end comment`] or file end.                                                                                                                                                                                                                                   | Y                   |
-| **[`decimal-mark`]**      | Declares the decimal mark, for parsing amounts of all commodities in following entries until next `decimal-mark` or file end. Subfiles can override.                                                                                                                                            | Y                   |
-| **[`include`]**           | Includes entries from another file, as if they were written inline.                                                                                                                                                                                                                             |                     |
-|                           | <br>**Declares data:**                                                                                                                                                                                                                                                                          |                     |
-| **[`account`]**           | Declares an account, for [checking](#check) all entries in all files, and its [display order](#account-display-order), and optionally its [type](#account-types), [cost basis method](#cost-basis-methods) and [aliases](#account-aliases) (which, like `alias`, apply until file end).                                                    | N                   |
-| **[`commodity`]**         | Declares <br>1. a commodity symbol, for checking all amounts in all files <br>2. the commodity's display style <br>3. optional [commodity aliases](#commodity-aliases) and [lotfulness], and <br>4. the decimal mark for parsing this commodity, until file end (overridden by `decimal-mark`). | N <br>N <br>N <br>N |
-| **[`payee`]**             | Declares a payee name, for checking all entries in all files.                                                                                                                                                                                                                                   | N                   |
-| **[`tag`]**               | Declares a tag name, for checking all entries in all files.                                                                                                                                                                                                                                     | N                   |
-| **[`P`]**                 | Declares a commodity's market price on some date, for [value](#value-reporting) and [gain](#lots-and-capital-gains) reports.                                                                                                                                                                             |                     |
-|                           | <br>**Generates data:**                                                                                                                                                                                                                                                                         |                     |
-| **[`=`]**                 | Declares an auto posting rule that generates extra postings with [`--auto`](#auto-postings), in current/parent/subfiles (but not sibling files, see [#1212](https://github.com/hledgerorg/hledger/issues/1212)).                                                                              | partly              |
-| **[`~`]**                 | Declares a periodic transaction rule that generates <br>1. future transactions with [`--forecast`](#--forecast), and <br>2. budget goals with [`balance --budget`](#budget-report).                                                                                                             | N                   |
-|                           | <br>**File reading (legacy/deprecated):**                                                                                                                                                                                                                                                       |                     |
-| [`apply account`]         | Prepends a common parent account to all account names, in following entries until `end apply account` or file end.                                                                                                                                                                              | Y                   |
-| [`D`]                     | Sets <br>1.a default commodity to use for no-symbol amounts <br>2. the decimal mark for parsing it <br>3. the display style for showing it (these are overridden by `commodity` or `decimal-mark`).                                                                                             | Y, <br>N, <br>N     |
-| [`Y`]                     | Sets a default year to use for any yearless dates, in following entries until file end.                                                                                                                                                                                                         | Y                   |
-| [other][other-directives] | These other Ledger directives are accepted but ignored.                                                                                                                                                                                                                                         |                     |
+### Directives summary
+
+| directive            | what it does                                                                                                                                  | scope                       |
+|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|
+|                      | <br>**Affects file reading:**                                                                                                                 |                             |
+| **[`include`]**      | Includes entries from another file (a "subfile"), as if they were written inline.                                                                           |                             |
+| **[`comment`]**      | Ignores following entries and directives, until [`end comment`].                                                                      | rest of file + subfiles     |
+| **[`alias`]**        | [Rewrites](#account-aliases) following matched account names, until [`end aliases`].                                                                                                | rest of file + subfiles     |
+| **[`account`]** `alias:` tag | Rewrites following matched account names to this account's full name, until [`end aliases`].                                                                                                      | rest of file + subfiles     |
+| **[`decimal-mark`]** | Declares the decimal mark for parsing amounts of all commodities, until the next `decimal-mark` (subfiles can override).                      | rest of file + subfiles     |
+| **[`commodity`]** sample amount | Declares the decimal mark for parsing amounts of this commodity (`decimal-mark` can override).                                                   | rest of file tree           |
+|                      | <br>**Declares data:**                                                                                                                        |                             |
+| **[`account`]**      | Declares an account, and its [display order](#account-display-order).                                                 | all files                   |
+| **[`account`]** `type:` tag | Declares the [account's type](#account-types).                                                                                       | all files                   |
+| **[`account`]** `lots:` tag | Declares the account's [cost basis method](#cost-basis-methods).                                                                             | file tree                   |
+| **[`commodity`]**    | Declares a commodity symbol.                                                               | all files                   |
+| **[`commodity`]** sample amount | Declares the commodity's [display style](#commodity-display-style).                                                               | all files                   |
+| **[`commodity`]** `alias:` tag | Declares [equivalent or related symbols](#commodity-aliases) for this commodity.                                                                                | file tree                   |
+| **[`commodity`]** `lots:` tag | Declares that the commodity [tracks lots], and optionally their [cost basis method](#cost-basis-methods).                                               | file tree                   |
+| **[`payee`]**        | Declares a payee name.                                                                                                          | all files                   |
+| **[`tag`]**          | Declares a tag name.                                                                                                            | all files                   |
+| **[`P`]**            | Declares a commodity's market price on some date, for [value](#value-reporting) and [gain](#lots-and-capital-gains) reports.                 | all files                   |
+|                      | <br>**Generates data:**                                                                                                                       |                             |
+| **[`=`]**            | Generates extra postings (after matched postings), with [`--auto`](#auto-postings). (Does not see sibling files: [#1212](https://github.com/hledgerorg/hledger/issues/1212).) | file tree |
+| **[`~`]**            | Generates future transactions (after latest transaction in file tree, by default), with [`--forecast`](#--forecast). | file tree |
+| **[`~`]**            | Generates budget goals and actual/goal percentages, with [`balance --budget`](#budget-report). | all files |
+|                      | <br>**File reading (legacy/deprecated):**                                                                                                     |                             |
+| [`apply account`]    | Prepends a common parent account to all following account names, until `end apply account`.                                                             | rest of file + subfiles     |
+| [`D`]                | Sets a default commodity for following no-symbol amounts. Also sets its parsing decimal mark (overridden by `commodity` or `decimal-mark`) and display style (overridden by `commodity`). | rest of file + subfiles |
+| [`Y`]                | Sets a default year for following yearless dates.                                                                                                       | rest of file + subfiles     |
+| [other][other-directives] | These other Ledger directives are accepted but ignored.                                                                                  |                             |
 
 [`=`]:                       #auto-postings
 [`D`]:                       #d-directive
@@ -1681,7 +1716,7 @@ Eg, to have `alias` directives affect all of your files, put them at the start o
 [`tag`]:                     #tag-directive
 [`~`]:                       #periodic-transactions
 [other-directives]:          #other-ledger-directives
-[lotfulness]:                #lotful-commodities
+[tracks lots]:               #lotful-commodities
 
 
 ## `account` directive
@@ -1759,7 +1794,7 @@ hledger will report an error if any transaction uses an account name that has no
 Some notes:
 
 - The declaration is case-sensitive; transactions must use the correct account name capitalisation.
-- The account directive's scope is "whole file and below" (see [directives](#directives)). This means it affects all of the current file, and any files it includes, but not parent or sibling files. The position of account directives within the file does not matter, though it's usual to put them at the top.
+- Account declarations affect all files (see [directive scopes](#directive-scopes)). The position of account directives within the file does not matter, though it's usual to put them at the top.
 - Accounts can only be declared in `journal` files, but will affect [included](#include-directive) files of all types.
 - It's currently not possible to declare "all possible subaccounts" with a wildcard; every account posted to must be declared.
 - As an exception: lot subaccounts (a final account name component like `:{2026-01-15, $50}`) are always ignored by `check accounts`, and need not be declared.
@@ -1926,7 +1961,7 @@ See also [Rewrite account names](/rewrite-account-names.html).
 To set an account alias, use the `alias` directive in your journal file.
 This affects all subsequent journal entries in the current file or its
 [included files](#include-directive)
-(but note: [not sibling or parent files](#aliases-and-multiple-files)).
+(but note: [not sibling or parent files](#aliases-and-multiple-files); see [directive scopes](#directive-scopes)).
 The spaces around the = are optional:
 
 ```journal
@@ -2129,8 +2164,8 @@ commodity 1000.   ; the no-symbol commodity
 The sample amount must include a decimal mark (even if there are no decimal digits after it).
 This tells the parser which decimal mark (period or comma) is used for this commodity in the journal file,
 which can be useful in case of ambiguous digit group marks.
-This effect lasts until the end of the current file tree (from a single `-f` or `LEDGER_FILE`),
-and it can be overridden by by a `decimal-mark` directive.
+This affects subsequent entries in the current file, its included files, and the rest of any parent files (see [directive scopes](#directive-scopes)),
+and it can be overridden by a `decimal-mark` directive.
 
 <!-- Commodity display styles can be [overridden](#commodity-styles) by the `-c/--commodity-style` command line option. -->
 
@@ -2258,7 +2293,7 @@ It works like [account error checking](#account-error-checking) (described above
 
 You can use a `decimal-mark` directive to declare unambiguously which
 character (period or comma) represents a [decimal mark](#decimal-marks),
-for all subsequent amounts until the end of the current file.
+for all subsequent amounts in the current file and its included files (see [directive scopes](#directive-scopes)).
 This helps when parsing ambiguous numbers (like `1.000` or `1,000` where you mean one thousand, not one).
 It also makes hledger check that numbers use that decimal mark and no other,
 which catches some typos and misparsed numbers.
@@ -2699,8 +2734,8 @@ Downsides: another syntax to learn, redundant with hledger's
 
 This directive sets a default commodity, to be used for any
 subsequent commodityless amounts (ie, plain numbers) seen while
-parsing the journal. This effect lasts until the next `D` directive,
-or the end of the current file.
+parsing the journal. This affects subsequent entries until the next `D` directive,
+or the end of the current file (including its included files; see [directive scopes](#directive-scopes)).
 
 For compatibility/historical reasons, `D` also acts like a [`commodity` directive](#commodity-directive)
 (setting the commodity's decimal mark for parsing and [display style](#commodity-display-style) for output).
