@@ -4,7 +4,7 @@ hledger (https://hledger.org) is accounting software, for both
 beginners and experts, using human-readable, version-controllable,
 future-proof plain text files.  It's dependable, free, fast, friendly,
 cross-platform, double-entry, multi-currency, multi-interface,
-GPL-licensed, and fun to use.
+multi-language, GPL-licensed, and fun to use.
 
 
 hledger 1.99.5 (2.0 preview release 5) brings some big improvements:

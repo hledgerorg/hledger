@@ -210,3 +210,165 @@ commodity AAA ; lots:
 
 $ hledger -f- bal --lots -N stocks
                1 AAA  assets:stocks:{2021-01-01, "0002", $11}
+
+# ** 10. Under AVERAGE, lot subaccount names leave out the cost (it changes as
+# the pool is re-averaged), but close writes each lot with the pool's average
+# cost as of the closing date, so that its output can be re-read.
+<
+commodity AAPL  ; lots: AVERAGE
+
+2026-01-15 buy
+    assets:cash      -$500
+    assets:stocks      10 AAPL @ $50
+
+2026-02-01 buy
+    assets:cash      -$600
+    assets:stocks      10 AAPL @ $60
+
+2026-03-01 sell
+    assets:stocks      -5 AAPL @ $70
+    assets:cash
+
+$ hledger -f- close --clopen --lots -e 2026-04 stocks
+2026-03-31 closing balances  ; clopen:
+    assets:stocks:{2026-01-15, $55}               -5 AAPL
+    assets:stocks:{2026-02-01, $55}              -10 AAPL
+    equity:opening/closing balances
+
+2026-04-01 opening balances  ; clopen:
+    assets:stocks:{2026-01-15, $55}                5 AAPL
+    assets:stocks:{2026-02-01, $55}               10 AAPL
+    equity:opening/closing balances
+
+>=
+
+# ** 11. That opening entry can start a new file: the lots keep their dates,
+# and a later sale's gain is calculated from the average cost.
+<
+commodity AAPL  ; lots: AVERAGE
+
+2026-04-01 opening balances  ; clopen:
+    assets:stocks:{2026-01-15, $55}                5 AAPL
+    assets:stocks:{2026-02-01, $55}               10 AAPL
+    equity:opening/closing balances
+
+2026-05-01 sell
+    assets:stocks   -3 AAPL @ $80
+    assets:cash
+
+$ hledger -f- print -x desc:sell
+2026-05-01 sell
+    assets:stocks                                 -3 AAPL {2026-01-15, $55} @ $80
+    assets:cash                                 $240
+    revenues:gain                               $-75
+
+>=
+
+# ** 12. Or it can follow the closing entry in the same file.
+<
+commodity AAPL  ; lots: AVERAGE
+
+2026-01-15 buy
+    assets:cash      -$500
+    assets:stocks      10 AAPL @ $50
+
+2026-02-01 buy
+    assets:cash      -$600
+    assets:stocks      10 AAPL @ $60
+
+2026-03-31 closing balances  ; clopen:
+    assets:stocks:{2026-01-15, $55}               -10 AAPL
+    assets:stocks:{2026-02-01, $55}               -10 AAPL
+    equity:opening/closing balances
+
+2026-04-01 opening balances  ; clopen:
+    assets:stocks:{2026-01-15, $55}               10 AAPL
+    assets:stocks:{2026-02-01, $55}               10 AAPL
+    equity:opening/closing balances
+
+2026-05-01 sell
+    assets:stocks   -3 AAPL @ $80
+    assets:cash
+
+$ hledger -f- print -x desc:sell
+2026-05-01 sell
+    assets:stocks                                 -3 AAPL {2026-01-15, "0001", $55} @ $80
+    assets:cash                                 $240
+    revenues:gain                               $-75
+
+>=
+
+# ** 13. A non-terminating average cost is written with up to 8 decimal places.
+<
+commodity AAPL  ; lots: AVERAGE
+
+2026-01-15 buy
+    assets:cash      -$500
+    assets:stocks      3 AAPL @@ $500
+
+2026-02-01 buy
+    assets:cash      -$500.01
+    assets:stocks      3 AAPL @@ $500.01
+
+$ hledger -f- close --clopen --lots -e 2026-04 stocks
+2026-03-31 closing balances  ; clopen:
+    assets:stocks:{2026-01-15, $166.66833333}     -3 AAPL
+    assets:stocks:{2026-02-01, $166.66833333}     -3 AAPL
+    equity:opening/closing balances
+
+2026-04-01 opening balances  ; clopen:
+    assets:stocks:{2026-01-15, $166.66833333}      3 AAPL
+    assets:stocks:{2026-02-01, $166.66833333}      3 AAPL
+    equity:opening/closing balances
+
+>=
+
+# ** 14. And it still selects the lots when re-read.
+<
+commodity AAPL  ; lots: AVERAGE
+
+2026-01-15 buy
+    assets:cash      -$500
+    assets:stocks      3 AAPL @@ $500
+
+2026-02-01 buy
+    assets:cash      -$500.01
+    assets:stocks      3 AAPL @@ $500.01
+
+2026-03-31 closing balances  ; clopen:
+    assets:stocks:{2026-01-15, $166.66833333}     -3 AAPL
+    assets:stocks:{2026-02-01, $166.66833333}     -3 AAPL
+    equity:opening/closing balances
+
+$ hledger -f- print -x desc:closing
+2026-03-31 closing balances  ; clopen:
+    assets:stocks                                 -3 AAPL {2026-01-15, $166.67}
+    assets:stocks                                 -3 AAPL {2026-02-01, $166.67}
+    equity:opening/closing balances                6 AAPL
+
+>=
+
+# ** 15. Under AVERAGEALL, the average is over all the accounts' lots.
+<
+commodity AAPL  ; lots: AVERAGEALL
+
+2026-01-15 buy in a
+    assets:cash      -$500
+    assets:a           10 AAPL @ $50
+
+2026-02-01 buy in b
+    assets:cash      -$700
+    assets:b           10 AAPL @ $70
+
+$ hledger -f- close --clopen --lots -e 2026-04 assets:a assets:b
+2026-03-31 closing balances  ; clopen:
+    assets:a:{2026-01-15, $60}                   -10 AAPL
+    assets:b:{2026-02-01, $60}                   -10 AAPL
+    equity:opening/closing balances
+
+2026-04-01 opening balances  ; clopen:
+    assets:a:{2026-01-15, $60}                    10 AAPL
+    assets:b:{2026-02-01, $60}                    10 AAPL
+    equity:opening/closing balances
+
+>=

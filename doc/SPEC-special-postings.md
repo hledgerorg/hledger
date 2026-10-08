@@ -46,6 +46,21 @@ Detects costful postings that lack corresponding equity conversion postings:
 | costful posting without conversions  | Generates a pair of _conversion-posting + _generated-posting tagged postings | Posting has cost amounts (@ or @@) AND is NOT already tagged _cost-posting (i.e., not already matched to existing conversion postings)   |
 
 For each cost amount, two conversion postings are generated under \<equityAcct\>:\<sorted-commodities\>: with amounts that offset the cost.
+Their amounts are rounded to the entry's precision, except in an entry with an _imbalance-posting (see 4), where they keep the exact cost.
+
+---
+
+## 4. transactionMaybeAddImbalancePostings (Balancing.hs), with --infer-imbalance
+
+Run on each transaction when the balancer has balanced it (in either of journalBalanceTransactionsHelper's passes; not in balanceSingleTransaction, so not by `add`).
+
+| Pattern                              | Action                                                                  | Conditions                                                                                                                                   |
+|--------------------------------------|-------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| balanced entry with a tolerated imbalance | Generates _imbalance-posting + _generated-posting tagged postings to the imbalance account, one per commodity of the imbalance | The real postings' (or balanced virtual postings') sum at cost, as calculated by transactionCheckBalanced, would not display as zero (shown in full, or with 8 decimal places if a repeating decimal; see amountSetFullPrecisionUpTo), so leftovers of hledger's own division are ignored |
+
+The imbalance account is chosen by journalAccountForType: the first account declared with type M/Imbalance, else the alphabetically first account inferred as M (eg equity:imbalance), else equity:imbalance.
+The generated postings have amountless originals (like inferred amounts), so they don't influence commodity display precisions.
+In pass 2 (entries with balance assignments) their amounts are also added to the running balances, so balance assertions see them.
 
 ---
 
@@ -60,7 +75,8 @@ For each cost amount, two conversion postings are generated under \<equityAcct\>
 | _ptype:gain          | transactionTagGainPostings / journalAddOrCheckGainPostings            | Realised-gain posting in a disposal (user-written, or generated); set aside by the balancer |
 | _cost-posting        | journalTagCostsAndEquityAndMaybeInferCosts / journalInferEquityFromCosts | Has (or could have) cost matching conversion postings |
 | _conversion-posting  | journalTagCostsAndEquityAndMaybeInferCosts / journalInferEquityFromCosts | Equity conversion posting                             |
-| _generated-posting   | journalInferEquityFromCosts / journalAddOrCheckGainPostings / transactionAutoSplitFeeOutflows / preserveParentAssertion | Machine-generated posting                              |
+| _imbalance-posting   | transactionMaybeAddImbalancePostings (--infer-imbalance)              | Posting to the imbalance account showing a transaction's tolerated imbalance |
+| _generated-posting   | journalInferEquityFromCosts / journalAddOrCheckGainPostings / transactionAutoSplitFeeOutflows / preserveParentAssertion / transactionMaybeAddImbalancePostings | Machine-generated posting                              |
 | _feesplit-posting    | transactionAutoSplitFeeOutflows                                       | Fee fragment split off a lot transfer's sending posting; hidden by print unless --lots or priced |
 | _lotsplit-posting    | processDisposePosting / processTransferGroup                          | Extra fragment of a posting split across several lots; merged back unless --lots |
 | _lot-parent-assertion | preserveParentAssertion                                              | Zero-amount posting on the parent account, carrying a balance assertion moved from a posting split into lot subaccounts |

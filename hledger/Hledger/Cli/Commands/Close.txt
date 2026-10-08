@@ -173,7 +173,13 @@ or dispose of lots, see the more capable hledger-move script.) With
 --lots, lot subaccount balances are always shown without costs, even
 under --show-costs: their cost information is carried by the lot name
 itself, and transacted costs on lot postings would prevent the output
-from being read back.
+from being read back. For lots using the AVERAGE or AVERAGEALL cost
+basis method, whose lot names normally leave out the cost, the pool's
+average cost as of the closing date is added to each lot name (eg
+{2026-01-15, $55}), so that the output can be read back, eg to start a
+new file. A non-terminating average is written with up to 8 decimal
+places, so the re-opened lots' total cost basis may differ from the
+original by a tiny amount.
 
 close and balance assertions
 

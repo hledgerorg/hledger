@@ -111,11 +111,12 @@ General input flags:
      --ignore-assertions    don't check balance assertions by default
      --ignore-lots          don't do lot tracking or checking by default
   -I                        shortcut for --ignore-assertions --ignore-lots
-     --txn-balancing=...    how to check that transactions are balanced:
-                            'old':   - use global display precision
-                            'exact': - use transaction precision (default)
+     --txn-tolerance=...    how much imbalance to allow in transactions:
+                            'entry':   - the entry's precision (default)
+                            'display': - display precision (legacy)
      --infer-costs          infer costs from conversion equity postings
      --infer-equity         infer conversion equity postings from costs
+     --infer-imbalance      add postings showing tolerated imbalances
      --infer-market-prices  infer market prices from costs
      --pivot=TAGNAME        use a different field or tag as account names
   -s --strict               do extra error checks (and override -I)
@@ -588,23 +589,23 @@ noticeable pause, during which the UI is unresponsive.
 Tag Table:
 Node: Top221
 Node: OPTIONS2054
-Node: MOUSE10351
-Node: KEYS10683
-Node: Navigation keys11241
-Node: Filtering keys12175
-Node: Other keys14098
-Node: SCREENS16428
-Node: Menu screen17484
-Node: Cash accounts screen17800
-Node: Balance sheet accounts screen18161
-Node: Income statement accounts screen18497
-Node: All accounts screen18882
-Node: Register screen19245
-Node: Transaction screen21688
-Node: Error screen22847
-Node: WATCH MODE23404
-Node: ENVIRONMENT24441
-Node: BUGS24840
+Node: MOUSE10419
+Node: KEYS10751
+Node: Navigation keys11309
+Node: Filtering keys12243
+Node: Other keys14166
+Node: SCREENS16496
+Node: Menu screen17552
+Node: Cash accounts screen17868
+Node: Balance sheet accounts screen18229
+Node: Income statement accounts screen18565
+Node: All accounts screen18950
+Node: Register screen19313
+Node: Transaction screen21756
+Node: Error screen22915
+Node: WATCH MODE23472
+Node: ENVIRONMENT24509
+Node: BUGS24908
 
 End Tag Table
 

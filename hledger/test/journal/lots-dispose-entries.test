@@ -399,3 +399,61 @@ This disposal's realised gain amount is wrong.
 Postings were read as: unclassified, dispose, gain.
 >=1
 
+# *** 20. A user-written gain that differs from the calculated gain by less
+# than half a unit in the entry's last decimal place is accepted.
+# hledger then uses the exact calculated gain, so the difference isn't left
+# unaccounted for; print still shows the gain as written.
+<
+account revenues:gains  ; type:G
+
+2026-01-01 buy
+    assets:stock     3 AAA {} @@ $100
+    assets:cash
+
+2026-02-01 sell
+    assets:stock    -1 AAA {} @ $40
+    assets:cash      $40
+    revenues:gains  $-6.67
+
+$ hledger -f- print desc:sell
+2026-02-01 sell
+    assets:stock                                  -1 AAA {} @ $40
+    assets:cash                                  $40
+    revenues:gains                               $-6.67
+
+>=
+
+# *** 21. At cost basis, these entries balance exactly.
+$ hledger -f- bal -B -c '$1.0000000'
+        $-60.0000000  assets:cash
+         $66.6666667  assets:stock
+         $-6.6666667  revenues:gains
+--------------------
+                   0  
+
+# *** 22. With several gain postings, the difference is applied to the last one.
+<
+account revenues:gains  ; type:G
+
+2026-01-01 buy
+    assets:stock     3 AAA {} @@ $100
+    assets:cash
+
+2026-01-02 buy
+    assets:stock     3 AAA {} @@ $200
+    assets:cash
+
+2026-02-01 sell
+    assets:stock    -4 AAA {} @ $80
+    assets:cash      $320
+    revenues:gains  $-140.00
+    revenues:gains  $-13.33
+
+$ hledger -f- print -x desc:sell -c '$1.0000000' --round=soft
+2026-02-01 sell
+    assets:stock                                  -4 AAA {} @ $80
+    assets:cash                                 $320.0000000
+    revenues:gains                             $-140.0000000
+    revenues:gains                              $-13.3333333
+
+>=

@@ -886,3 +886,25 @@ Holdings on 2026-02-28
  assets:odd  || 2026-02-01  27d  15 AAA   $100.33               $1,505.00                                                  
 -------------++------------------------------------------------------------------------------------------------------------
              ||                  25 AAA   $100.20               $2,505.00                                                  
+
+# ** 49. An AVERAGEALL pool's average cost is over all of its accounts' lots,
+# even when a query shows only some of them.
+<
+commodity AAPL  ; lots: AVERAGEALL
+
+2026-01-15 buy in a
+    assets:cash      -$500
+    assets:a           10 AAPL @ $50
+
+2026-02-01 buy in b
+    assets:cash      -$700
+    assets:b           10 AAPL @ $70
+
+$ hledger -f- holdings -e 2026-04-01 assets:a
+Holdings on 2026-03-31
+
+          ||       Date  Age    Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain  XIRR 
+==========++=============================================================================================================
+ assets:a || 2026-01-15  75d  10 AAPL       $60                    $600                                                  
+----------++-------------------------------------------------------------------------------------------------------------
+          ||                  10 AAPL       $60                    $600                                                  

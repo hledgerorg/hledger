@@ -135,6 +135,7 @@ beancountTopLevelAccountFor t = case t of
   Equity         -> "Equity"
   Conversion     -> "Equity"
   UnrealisedGain -> "Equity"
+  Imbalance      -> "Equity"
   Revenue        -> "Income"
   Gain           -> "Income"
   Expense        -> "Expenses"

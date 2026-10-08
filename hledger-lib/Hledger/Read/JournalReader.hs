@@ -78,6 +78,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Except (ExceptT(..), runExceptT)
 import Control.Monad.State.Strict (evalStateT,get,modify',put)
 import Control.Monad.Trans.Class (lift)
+import Data.Bifunctor (first)
 import Data.Char (isDigit, isSpace, toLower)
 import Data.Either (isRight, lefts)
 import Data.Functor ((<&>))
@@ -601,36 +602,11 @@ accountdirectivep = do
 -- The special tag used for declaring account type. XXX change to "class" ?
 accountTypeTagName = "type"
 
+-- | Parse the value of an account declaration's type: tag (a one-letter code or long-form name).
 parseAccountTypeCode :: Text -> Either String AccountType
-parseAccountTypeCode s =
-  case T.toLower s of
-    "asset"            -> Right Asset
-    "a"                -> Right Asset
-    "liability"        -> Right Liability
-    "l"                -> Right Liability
-    "equity"           -> Right Equity
-    "e"                -> Right Equity
-    "revenue"          -> Right Revenue
-    "r"                -> Right Revenue
-    "expense"          -> Right Expense
-    "x"                -> Right Expense
-    "cash"             -> Right Cash
-    "c"                -> Right Cash
-    "conversion"       -> Right Conversion
-    "v"                -> Right Conversion
-    "gains"            -> Right Gain
-    "g"                -> Right Gain
-    "u"                -> Right UnrealisedGain
-    "unrealised"       -> Right UnrealisedGain
-    "unrealised-gain"  -> Right UnrealisedGain
-    "unrealised-gains" -> Right UnrealisedGain
-    "unrealized"       -> Right UnrealisedGain
-    "unrealized-gain"  -> Right UnrealisedGain
-    "unrealized-gains" -> Right UnrealisedGain
-    _                  -> Left err
+parseAccountTypeCode s = first err $ parseAccountType True s
   where
-    err = T.unpack $ "invalid account type code "<>s<>", should be one of " <>
-            T.intercalate ", " ["A","L","E","R","X","C","V","G","U","Asset","Liability","Equity","Revenue","Expense","Cash","Conversion","Gain","UnrealisedGain"]
+    err _ = T.unpack $ "invalid account type code "<>s<>", should be one of " <> T.pack (accountTypeChoices True)
 
 -- Add an account declaration to the journal, auto-numbering it.
 addAccountDeclaration :: (AccountName,Text,[Tag],SourcePos) -> JournalParser m ()

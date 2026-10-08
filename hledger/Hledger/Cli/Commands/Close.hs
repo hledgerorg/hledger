@@ -10,7 +10,10 @@ where
 
 import Data.Function (on)
 import Data.List (groupBy)
-import Data.Maybe (fromMaybe)
+import Control.Monad (guard)
+import Data.List.Extra (nubSort)
+import Data.Map qualified as M
+import Data.Maybe (fromMaybe, isNothing)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Time.Calendar (addDays)
@@ -136,12 +139,29 @@ close CliOpts{rawopts_=rawopts, reportspec_=rspec0} j = do
     -- Lot subaccounts are stripped even with --show-costs: their cost info
     -- lives in the lot name, and transacted prices on their postings would
     -- make the output unparseable (lot transfers may not have one).
-    acctbals = [ (a, b')
+    acctbals = [ (withAverageCost a b, b')
                | (a,_,_,b) <- acctbals'
                , let keepcosts = showcosts && not (isLotSubaccount a)
                , let b' = if keepcosts then b else mixedAmountStripCosts b
                , keepcosts || empty_ ropts || not (mixedAmountLooksZero b')
                ]
+
+    -- The lot subaccount names of AVERAGE/AVERAGEALL lots leave out the
+    -- cost, which changes as the pool is re-averaged; but the generated
+    -- entries must say what cost the lots have, to be re-readable
+    -- (especially an opening entry starting a new file). So add the pool's
+    -- average cost as of the closing date, which all of its lots share:
+    -- eg assets:stocks:{2026-01-15} -> assets:stocks:{2026-01-15, $55}.
+    withAverageCost a b = fromMaybe a $ do
+      name <- lotSubaccountName a
+      cb <- either (const Nothing) Just $ parseLotName (const Nothing) name
+      guard $ isNothing (cbCost cb)
+      [c] <- Just $ nubSort $ map acommodity $ amounts b
+      avg <- M.lookup (lotBaseAccount a, c) avgcosts
+      Just $ lotBaseAccount a <> ":" <> showLotName cb{cbCost = Just $ styleAmounts lotstyles avg}
+    avgcosts = journalAveragePoolCosts j (Just opendate)
+    -- lot names keep their cost's decimal digits
+    lotstyles = journalCommodityStylesWith NoRounding j
     totalamt = maSum $ map snd acctbals
 
     -- since balance assertion amounts are required to be exact, the

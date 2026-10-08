@@ -82,7 +82,7 @@ where
 import Control.Applicative
 import Data.Default (Default(..))
 import Data.Either (partitionEithers)
-import Data.List (partition, intercalate)
+import Data.List (partition)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -537,37 +537,6 @@ parseTypeCodes s =
     ([],ts)   -> Right $ Type ts
   where
     help = "type:'s argument should be one or more of " ++ accountTypeChoices False
-
-accountTypeChoices :: Bool -> String
-accountTypeChoices allowlongform =
-  intercalate ", "
-    -- keep synced with parseAccountType
-    $ ["A","L","E","R","X","C","V","G"]
-    ++ if allowlongform then ["Asset","Liability","Equity","Revenue","Expense","Cash","Conversion","Gain"] else []
-
--- | Case-insensitively parse one single-letter code, or one long-form word if permitted, to an account type.
--- On failure, returns the unparseable text.
-parseAccountType :: Bool -> Text -> Either String AccountType
-parseAccountType allowlongform s =
-  case T.toLower s of
-    -- keep synced with accountTypeChoices
-    "a"                          -> Right Asset
-    "l"                          -> Right Liability
-    "e"                          -> Right Equity
-    "r"                          -> Right Revenue
-    "x"                          -> Right Expense
-    "c"                          -> Right Cash
-    "v"                          -> Right Conversion
-    "g"                          -> Right Gain
-    "asset"      | allowlongform -> Right Asset
-    "liability"  | allowlongform -> Right Liability
-    "equity"     | allowlongform -> Right Equity
-    "revenue"    | allowlongform -> Right Revenue
-    "expense"    | allowlongform -> Right Expense
-    "cash"       | allowlongform -> Right Cash
-    "conversion" | allowlongform -> Right Conversion
-    "gain"       | allowlongform -> Right Gain
-    _                            -> Left $ T.unpack s
 
 -- | Parse the value part of a "status:" query, or return an error.
 parseStatus :: T.Text -> Either String Status

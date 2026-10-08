@@ -821,3 +821,24 @@ $ hledger -f- check
     equity        0 USD = 0 USD
 
 $ hledger -f- check
+
+# Commodity aliases with a quantity are converted before other commodities are preserved
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (b:x)   10 min
+    (b:x)   10 min
+    (b:x)   10 min
+    (b:y)    5 EUR
+
+2026-01-02
+    (b)           =* 1 h
+
+2026-01-03
+    (b)     0 h   =* 1 h
+    (b)     0 EUR =* 5 EUR
+    (b)     0 h   = 0.5 h
+    (b)     0 EUR = 0 EUR
+
+$ hledger -f- check

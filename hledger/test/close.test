@@ -207,11 +207,11 @@ commodity AAA 0.00000000
 
 $ hledger -f- close -p 2019 assets --show-costs -x
 2019-12-31 closing balances  ; clopen:
-    assets:aaa                              AAA -510                          = AAA 0
+    assets:aaa                              AAA -510                           = AAA 0
     assets:usd                                  $-49.50
-    assets:usd                                   $49.3900010 @ AAA 10.3528243 =    $0.0000000
+    assets:usd                                   $49.3900010 @ AAA 10.35282425 =    $0.0000000
     equity:opening/closing balances              $49.50
-    equity:opening/closing balances             $-49.3900010 @ AAA 10.3528243
+    equity:opening/closing balances             $-49.3900010 @ AAA 10.35282425
     equity:opening/closing balances          AAA 510
 
 >=0

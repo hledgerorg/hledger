@@ -174,3 +174,30 @@ $ hledger -f- accounts type:g
 income:gains
 income:losses
 revenue:capital-gains
+
+# ** 19. type:u matches unrealised gain accounts.
+<
+account equity:unrealised-gain  ; type:U
+
+2022-02-02 Test
+  (equity:unrealised-gain)  1
+  (equity:other)            1
+
+$ hledger -f- accounts type:u
+equity:unrealised-gain
+
+# ** 20. type:m matches imbalance accounts, and type:e matches them too (subtype matching).
+<
+account equity:rounding  ; type:M
+
+2022-02-02 Test
+  (equity:rounding)  1
+  (equity:other)     1
+
+$ hledger -f- accounts type:m
+equity:rounding
+
+# ** 21.
+$ hledger -f- accounts type:e
+equity:rounding
+equity:other

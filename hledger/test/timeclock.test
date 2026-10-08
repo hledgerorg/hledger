@@ -50,7 +50,7 @@ o 2020-01-30 09:03:35
 
 $ hledger -f timeclock:- print
 2020-01-30 * 08:38-09:03
-    (acct)                                         0.42h
+    (acct)                                         0.41666667h
 
 >=
 
@@ -235,6 +235,24 @@ $ hledger -f- print --old-timeclock
     (a)                                            1.00h
 
 >=
+
+# ** 17. Session durations are not rounded (to 0.01 hours, as before), so totals are accurate:
+# eg three 20 minute sessions add up to 1 hour (not 0.99), and a session split at midnight loses no time.
+<
+i 2024-01-01 09:00:00 a
+o 2024-01-01 09:20:00
+i 2024-01-01 10:00:00 a
+o 2024-01-01 10:20:00
+i 2024-01-01 11:00:00 a
+o 2024-01-01 11:20:00
+i 2024-01-01 22:00:00 b
+o 2024-01-02 02:00:00
+
+$ hledger -f timeclock:- bal
+               1.00h  a
+               4.00h  b
+--------------------
+               5.00h  
 
 # ** OLD:
 

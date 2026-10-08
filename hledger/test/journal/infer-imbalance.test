@@ -1,0 +1,215 @@
+# * --infer-imbalance: show tolerated transaction imbalances, as postings to equity:imbalance.
+
+# ** 1. An entry's tolerated imbalance is shown by a generated posting, with its exact amount.
+<
+2024-01-30 exchange
+    assets:usd   -19110.17 USD @ 0.869050 CHF
+    assets:chf    16607.69 CHF
+
+$ hledger -f - print --infer-imbalance
+2024-01-30 exchange
+    assets:usd                                -19110.17 USD @ 0.869050 CHF
+    assets:chf                                 16607.69 CHF
+    equity:imbalance                               0.0032385 CHF
+
+>=
+
+# ** 2. The generated posting has hidden tags, which --verbose-tags makes visible.
+$ hledger -f - print --infer-imbalance --verbose-tags
+2024-01-30 exchange
+    assets:usd                                -19110.17 USD @ 0.869050 CHF
+    assets:chf                                 16607.69 CHF
+    equity:imbalance                               0.0032385 CHF  ; imbalance-posting:, generated-posting:
+
+>=
+
+# ** 3. Imbalance postings don't change the commodity's display precision.
+# With them, totals at cost are exactly zero.
+<
+2024-01-30 exchange
+    assets:usd   -19110.17 USD @ 0.869050 CHF
+    assets:chf    16607.69 CHF
+
+2024-01-30 exchange
+    assets:usd   -19110.17 USD @ 0.869050 CHF
+    assets:chf    16607.69 CHF
+
+2024-01-30 exchange
+    assets:usd   -19110.17 USD @ 0.869050 CHF
+    assets:chf    16607.69 CHF
+
+$ hledger -f - bal -B --infer-imbalance
+        49823.07 CHF  assets:chf
+       -49823.08 CHF  assets:usd
+            0.01 CHF  equity:imbalance
+--------------------
+                   0  
+
+# ** 4. Imbalance postings can be matched by their hidden tag (or account name).
+$ hledger -f - reg tag:_imbalance-posting --infer-imbalance -c 'CHF 1.0000000'
+2024-01-30 exchange            equity:imbalance     CHF 0.0032385  CHF 0.0032385
+2024-01-30 exchange            equity:imbalance     CHF 0.0032385  CHF 0.0064770
+2024-01-30 exchange            equity:imbalance     CHF 0.0032385  CHF 0.0097155
+
+# ** 5. Entries which balance exactly don't get an imbalance posting.
+# Including when hledger's internal rounding (at the 255th decimal place) leaves a tiny residual,
+# as when dividing a total cost basis, inferring a unit cost, or converting amounts written in an alias.
+# These residuals would display as zero, so they are ignored.
+<
+commodity h 1.00  ; alias: 60 min
+
+2024-01-30 total cost
+    assets:usd   -19110.17 USD @@ 16607.69 CHF
+    assets:chf    16607.69 CHF
+
+2024-01-31 amountless posting
+    assets:usd   -19110.17 USD @ 0.869050 CHF
+    assets:chf    16607.69 CHF
+    expenses:rounding
+
+2024-02-01 total cost basis
+    assets:stock   3 AAPL {{$100}}
+    assets:cash   $-100
+
+2024-02-02 inferred unit cost
+    a   1 A
+    a   2 A
+    b   -100 B
+
+2024-02-03 alias amounts
+    a   10 min
+    a   10 min
+    a   10 min
+    b   -0.5 h
+
+$ hledger -f - print --infer-imbalance
+> !/imbalance/
+
+# ** 6. The balanced virtual postings' imbalance is shown by a balanced virtual posting.
+<
+2024-01-30
+    assets:usd   -19110.17 USD @ 0.869050 CHF
+    assets:chf    16607.69 CHF
+    [budget:usd]   -19110.17 USD @ 0.869050 CHF
+    [budget:chf]    16607.69 CHF
+
+$ hledger -f - print --infer-imbalance
+2024-01-30
+    assets:usd                                -19110.17 USD @ 0.869050 CHF
+    assets:chf                                 16607.69 CHF
+    [budget:usd]                              -19110.17 USD @ 0.869050 CHF
+    [budget:chf]                               16607.69 CHF
+    equity:imbalance                               0.0032385 CHF
+    [equity:imbalance]                             0.0032385 CHF
+
+>=
+
+# ** 7. With --infer-equity, conversion postings are not rounded in an entry with an imbalance posting
+# (they show the exact cost),
+<
+2024-01-30 exchange
+    assets:usd   -19110.17 USD @ 0.869050 CHF
+    assets:chf    16607.69 CHF
+
+$ hledger -f - print --infer-imbalance --infer-equity
+2024-01-30 exchange
+    assets:usd                                -19110.17 USD @ 0.869050 CHF
+    equity:conversion:CHF-USD:USD              19110.17 USD
+    equity:conversion:CHF-USD:CHF             -16607.6932385 CHF
+    assets:chf                                 16607.69 CHF
+    equity:imbalance                               0.0032385 CHF
+
+>=
+
+# ** 8. so that each commodity balances exactly.
+$ hledger -f - bal --infer-imbalance --infer-equity -c 'CHF 1.0000000'
+   CHF 16607.6900000  assets:chf
+       -19110.17 USD  assets:usd
+  CHF -16607.6932385  equity:conversion:CHF-USD:CHF
+        19110.17 USD  equity:conversion:CHF-USD:USD
+       CHF 0.0032385  equity:imbalance
+--------------------
+                   0  
+
+# ** 9. With --txn-tolerance=display, larger imbalances can be tolerated; these are shown too.
+<
+commodity $1.00
+
+2026-01-01
+    a   $1.004
+    b   $-1
+
+$ hledger -f - print --txn-tolerance=display --infer-imbalance
+2026-01-01
+    a                                             $1.004
+    b                                            $-1
+    equity:imbalance                             $-0.004
+
+>=
+
+# ** 10. Imbalances in entries with balance assignments are shown too,
+# and balance assertions see them (the second entry's assertion passes).
+<
+2024-01-30 with a balance assignment
+    assets:usd   -19110.17 USD @ 0.869050 CHF
+    assets:chf    = 16607.69 CHF
+
+2024-01-31 check
+    equity:imbalance    0 CHF = 0.0032385 CHF
+
+$ hledger -f - print --infer-imbalance desc:assignment
+2024-01-30 with a balance assignment
+    assets:usd                                -19110.17 USD @ 0.869050 CHF
+    assets:chf                                                             = 16607.69 CHF
+    equity:imbalance                               0.0032385 CHF
+
+>=
+
+# ** 11. In a lot disposal, the imbalance at transacted cost is shown, and the gain is unchanged.
+<
+commodity $1.00
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:broker   3 AAPL {$33.33}
+    assets:cash   $-99.99
+
+2026-02-01 sell
+    assets:broker   -3 AAPL @ $40.003
+    assets:cash   $120.01
+
+$ hledger -f - bal -B -c '$1.0000' --infer-imbalance
+            $20.0200  assets:cash
+            $-0.0010  equity:imbalance
+           $-20.0190  revenues:gain
+--------------------
+                   0  
+
+# ** 12. To use a different account, declare it with the M/Imbalance type.
+# Imbalance postings can be matched with type:M.
+<
+account equity:rounding  ; type: Imbalance
+
+2024-01-30 exchange
+    assets:usd   -19110.17 USD @ 0.869050 CHF
+    assets:chf    16607.69 CHF
+
+$ hledger -f - reg type:M --infer-imbalance -c 'CHF 1.0000000'
+2024-01-30 exchange            equity:rounding      CHF 0.0032385  CHF 0.0032385
+
+# ** 13. An imbalance which is itself a repeating decimal (possible with commodity aliases) is shown,
+# with 8 decimal places like other repeating decimals (unlike the tiny leftovers in test 5, which would display as zero).
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    a   10 min
+    b   -0.17 h
+
+$ hledger -f - print --infer-imbalance
+2026-01-01
+    a                                             10 min
+    b                                           h -0.17
+    equity:imbalance                             h 0.00333333
+
+>=

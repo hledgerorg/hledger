@@ -273,7 +273,7 @@ rawOptsToInputOpts day usecoloronstdout rawopts =
         datequery = simplifyQuery . filterQuery queryIsDate . And $ queryFromFlags ropts : argsquery
 
         txnbalancingprecision = either err id $ transactionBalancingPrecisionFromOpts rawopts
-          where err e = error' $ "could not parse --txn-balancing: '" ++ e ++ "'"  -- PARTIAL:
+          where err e = error' $ "could not parse --txn-tolerance: " ++ e  -- PARTIAL:
 
         styles = either err id $ commodityStyleFromRawOpts rawopts
           where err e = error' $ "could not parse --commodity-style: '" ++ e ++ "'"  -- PARTIAL:
@@ -298,6 +298,7 @@ rawOptsToInputOpts day usecoloronstdout rawopts =
                                  ignore_assertions_     = boolopt "ignore-assertions" rawopts
                                , infer_balancing_costs_ = not noinferbalancingcosts
                                , txn_balancing_         = txnbalancingprecision
+                               , infer_imbalance_       = boolopt "infer-imbalance" rawopts
                                , commodity_styles_      = Just styles
                                }
       ,strict_            = boolopt "strict" rawopts
@@ -336,13 +337,15 @@ commodityStyleFromRawOpts rawOpts =
       Left _ -> Left optStr
       Right (Amount acommodity _ astyle _ _) -> Right (acommodity, astyle)
 
+-- | Get the --txn-tolerance option's value.
+-- (The deprecated --txn-balancing flag sets this too; see hiddenflagsformainmode.)
 transactionBalancingPrecisionFromOpts :: RawOpts -> Either String TransactionBalancingPrecision
 transactionBalancingPrecisionFromOpts rawopts =
-  case maybestringopt "txn-balancing" rawopts of
-    Nothing      -> Right TBPExact
-    Just "old"   -> Right TBPOld
-    Just "exact" -> Right TBPExact
-    Just s       -> Left $ s<>", should be one of: old, exact"
+  case maybestringopt "txn-tolerance" rawopts of
+    Nothing        -> Right TBPEntry
+    Just "entry"   -> Right TBPEntry
+    Just "display" -> Right TBPDisplay
+    Just s         -> Left $ "'"<>s<>"', should be one of: entry, display"
 
 -- | Given a parser to ParsedJournal, input options, file path and
 -- content: run the parser on the content, and finalise the result to
@@ -480,7 +483,8 @@ journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,i
                               ,lotful_commodities_ = journalLotfulCommodities j
                               ,account_lots_tags_ = journalAccountLotsTags j
                               ,lenient_lots_ = lenientlots
-                              ,verbose_balancing_tags_ = verbose_tags_}) j
+                              ,verbose_balancing_tags_ = verbose_tags_
+                              ,imbalance_account_ = journalAccountForType defaultImbalanceAccount Imbalance j}) j
         j3 <- Right j2
 
           -- Lot classification

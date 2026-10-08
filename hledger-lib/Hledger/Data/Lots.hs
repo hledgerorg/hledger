@@ -102,6 +102,8 @@ module Hledger.Data.Lots (
   journalCalculateLots,
   journalCheckAcquireBasis,
   journalCheckLotsMethodCoherence,
+  journalAveragePoolTotals,
+  journalAveragePoolCosts,
   journalCollapseLotDetail,
   journalTagGainPostings,
   transactionTagGainPostings,
@@ -142,7 +144,7 @@ import Hledger.Data.AccountType (LotDirection(..), accountTypeLotDirection, isAs
 import Hledger.Data.Amount (AmountFormat(..), mixed, maPlus, mixedAmountStripCosts, amountRoundedQuantity, amountSetPrecisionMin, amountSetQuantity, amountsRaw, divideAmountAndUpdatePrecision, isNegativeAmount, maNegate, maSum, mapMixedAmount, mixedAmount, mixedAmountCost, mixedAmountIsZero, mixedAmountLooksZero, multiplyQuantities, nullmixedamt, noCostFmt, oneLineNoCostFmt, showAmountWith, showAmountsDistinctly, showMixedAmountOneLine, showMixedAmountsDistinctly)
 import Hledger.Data.Errors (makeAccountTagErrorExcerpt, makeCommodityTagErrorExcerpt, makePostingErrorExcerptByIndex, makeTransactionErrorExcerpt, transactionFindPostingIndex)
 import Hledger.Data.Journal (journalAccountLotsTags, journalAccountType, journalAccountUsesNoLots, journalBaseGainAccount, journalCommodityLotsMethod, journalCommodityStylesWith, journalCommodityUsesLots, journalInheritedAccountTags, journalLotfulCommodities, journalMapPostings, journalMapTransactions, journalPostings, journalTieTransactions, parseReductionMethod)
-import Hledger.Data.Posting (costPostingTagName, generatedPostingTagName, hasAmount, isReal, isVirtual, lotParentAssertionTagName, lotsplitPostingTagName, nullposting, originalPosting, postingAddHiddenAndMaybeVisibleTag, postingHasTag, postingStripCosts, feesplitPostingTagName)
+import Hledger.Data.Posting (costPostingTagName, generatedPostingTagName, hasAmount, isReal, isVirtual, lotParentAssertionTagName, lotsplitPostingTagName, nullposting, originalPosting, postingAddHiddenAndMaybeVisibleTag, postingDate, postingHasTag, postingStripCosts, feesplitPostingTagName)
 import Hledger.Data.Transaction (transactionCommodityStyles, txnTieKnot)
 import Hledger.Data.Types
 import Hledger.Utils (dbg5, dbg5With)
@@ -240,6 +242,50 @@ journalCheckLotsMethodCoherence j = do
         ((a', adi):_) -> Just $ makeAccountTagErrorExcerpt (a', adi) "lots"
         []            -> (`makeCommodityTagErrorExcerpt` "lots") <$> M.lookup c (jdeclaredcommodities j)
       where isMethodTag (k, v) = T.toLower k == "lots" && isJust (parseReductionMethod v)
+
+-- | The units and total cost basis of each AVERAGE or AVERAGEALL lot pool,
+-- from the journal's lot postings dated before the given date (if any),
+-- keyed by base account and commodity. Dividing gives the pool's running
+-- average cost: acquisitions carry their acquisition cost and disposals
+-- and transfers the then-current average, so the quantity-weighted sum
+-- works out to the pool's average. An AVERAGE pool is one account's lots;
+-- an AVERAGEALL pool is the lots in all accounts with the same lot
+-- direction (long lots in asset accounts, or short lots in liability
+-- accounts). Pools with no units, or with cost bases in several
+-- commodities, are omitted.
+-- The lot subaccount names of AVERAGE lots leave out the cost (it changes
+-- as the pool is re-averaged), so this is how reports and generated
+-- entries (holdings, close) find it.
+journalAveragePoolTotals :: Journal -> Maybe Day -> M.Map (AccountName, CommoditySymbol) (Quantity, Amount)
+journalAveragePoolTotals j mend = M.fromList
+  [ ((base, c), (units, ub1{aquantity = sum [aquantity a * aquantity ub | (a, ub) <- entries]}))
+  | (base, c) <- S.toList $ S.fromList [ (lotBaseAccount sub, acommodity a) | (sub, a) <- lotamts ]
+  , let method = fst $ resolveReductionMethodForAccount j base c
+  , methodIsAverage method
+  , let inPool sub
+          | methodIsGlobal method = journalLotDirectionOrLong j (lotBaseAccount sub) == journalLotDirectionOrLong j base
+          | otherwise             = lotBaseAccount sub == base
+        entries = [ (a, ub) | (sub, a) <- lotamts, acommodity a == c, inPool sub
+                            , Just ub <- [cbCost =<< acostbasis a] ]
+  , (ub1:_) <- [map snd entries]
+  , all ((== acommodity ub1) . acommodity . snd) entries
+  , let units = sum [aquantity a | (a, _) <- entries]
+  , units /= 0
+  ]
+  where
+    -- the amounts posted to lot subaccounts before the end date
+    lotamts = [ (paccount p, a)
+              | p <- journalPostings j
+              , isJust $ lotSubaccountName $ paccount p
+              , maybe True (postingDate p <) mend
+              , a <- amountsRaw $ pamount p ]
+
+-- | The average cost of each AVERAGE or AVERAGEALL lot pool, as of (just
+-- before) the given date, keyed by base account and commodity. Exact,
+-- displayed with at most 8 decimal places. See 'journalAveragePoolTotals'.
+journalAveragePoolCosts :: Journal -> Maybe Day -> M.Map (AccountName, CommoditySymbol) Amount
+journalAveragePoolCosts j mend =
+  M.map (\(units, cost) -> divideAmountAndUpdatePrecision units cost) (journalAveragePoolTotals j mend)
 
 -- | If the account name's final colon-separated component is enclosed in @{@
 -- and @}@, treat it as a lot subaccount and return @Just (base, "{...}")@.
@@ -1444,17 +1490,29 @@ journalAddOrCheckGainPostings verbosetags j = do
     -- Check that the user-written gain amount(s) sum to the calculated
     -- disposal gain (negated). The gain is zero when there is no priced
     -- disposal, eg a gain posting mistakenly written in a lot transfer.
-    checkGain t =
-      let ps       = tpostings t
-          gain     = foldMap postingDisposalGain ps
-          writtenGain = foldMap pamount (filter isGain ps)
-          -- writtenGain should equal -gain. Tolerate sub-ULP noise at the
-          -- precision chosen by setLocalGainPrecision, matching how the
-          -- balancer tolerates balancing imprecision.
-          diff = setLocalGainPrecision t (writtenGain <> gain)
-      in if mixedAmountLooksZero diff
-           then Right t
-           else Left (mismatchErr t gain writtenGain)
+    -- Like the balancer, this tolerates a difference below the precision
+    -- chosen by setLocalGainPrecision; the written amounts are then made
+    -- exact, so the difference isn't left unaccounted for.
+    checkGain t
+      | mixedAmountLooksZero (setLocalGainPrecision t diff) = Right exactGain
+      | otherwise = Left (mismatchErr t gain writtenGain)
+      where
+        ps          = tpostings t
+        gain        = foldMap postingDisposalGain ps
+        writtenGain = foldMap pamount (filter isGain ps)
+        diff        = writtenGain <> gain  -- writtenGain should equal -gain
+        exactGain = case filter ((/= 0) . aquantity) (amountsRaw diff) of
+          [] -> t
+          as -> txnTieKnot t{tpostings = foldr subtractFromLastGain ps as}
+        -- Subtract a small difference from the last gain posting in its commodity
+        -- (or the last gain posting), keeping the written amount for print.
+        subtractFromLastGain a qs = reverse $ case break target (reverse qs) of
+          (xs, q:ys) -> xs ++ q{pamount = setLocalGainPrecision t (pamount q <> maNegate (mixedAmount a))
+                               ,poriginal = Just (originalPosting q)} : ys
+          (xs, [])   -> xs
+          where
+            target = if any inCommodity qs then inCommodity else isGain
+            inCommodity q = isGain q && acommodity a `elem` map acommodity (amountsRaw (pamount q))
 
     -- Set each component amount's display precision to the entry's local
     -- precision for that commodity.

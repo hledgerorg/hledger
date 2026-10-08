@@ -51,3 +51,38 @@ $ hledger -f- --auto check accounts
 $ hledger -f- --auto --strict bal
 >2 /account "b" has not been declared/
 >=1
+
+# ** 7. Accounts chosen by hledger for the postings it generates need not be declared:
+# equity conversion postings (--infer-equity), gain postings, and imbalance postings (--infer-imbalance).
+<
+account assets:usd
+account assets:chf
+account assets:broker
+account assets:cash
+commodity AAPL  ; lots:
+
+2024-01-30 exchange
+    assets:usd   -19110.17 USD @ 0.869050 CHF
+    assets:chf    16607.69 CHF
+
+2026-01-01 buy
+    assets:broker   3 AAPL {$33.33}
+    assets:cash   $-99.99
+
+2026-02-01 sell
+    assets:broker   -3 AAPL @ $40.003
+    assets:cash   $120.01
+
+$ hledger -f- check accounts --infer-equity --infer-imbalance
+
+# ** 8. But postings written by the user to those accounts are checked as usual.
+<
+account a
+
+2024-01-01
+    a                  1
+    equity:imbalance  -1
+
+$ hledger -f- check accounts --infer-imbalance
+>2 /account "equity:imbalance" has not been declared/
+>=1

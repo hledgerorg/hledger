@@ -86,7 +86,8 @@ timeclockToTransactionsOld now [i]
     end = if itime > now then itime else now
     (itime,otime) = (tldatetime i,tldatetime o)
     (idate,odate) = (localDay itime,localDay otime)
-    o' = o{tldatetime=itime{localDay=idate, localTimeOfDay=TimeOfDay 23 59 59}}
+    -- split the session at midnight
+    o' = o{tldatetime=itime{localDay=addDays 1 idate, localTimeOfDay=midnight}}
     i' = i{tldatetime=itime{localDay=addDays 1 idate, localTimeOfDay=midnight}}
 timeclockToTransactionsOld now (i:o:rest)
   | tlcode i /= In  = errorExpectedCodeButGot In i
@@ -96,7 +97,8 @@ timeclockToTransactionsOld now (i:o:rest)
   where
     (itime,otime) = (tldatetime i,tldatetime o)
     (idate,odate) = (localDay itime,localDay otime)
-    o' = o{tldatetime=itime{localDay=idate, localTimeOfDay=TimeOfDay 23 59 59}}
+    -- split the session at midnight
+    o' = o{tldatetime=itime{localDay=addDays 1 idate, localTimeOfDay=midnight}}
     i' = i{tldatetime=itime{localDay=addDays 1 idate, localTimeOfDay=midnight}}
 {- HLINT ignore timeclockToTransactionsOld -}
 
@@ -142,7 +144,7 @@ timeclockToTransactions now entries0 = transactions
         (inentry, newactive) = findInForOut entry (partition (\e -> tlaccount e == tlaccount entry) actives)
         (itime, otime) = (tldatetime inentry, tldatetime entry)
         (idate, odate) = (localDay itime, localDay otime)
-        omidnight = entry {tldatetime = itime {localDay = idate, localTimeOfDay = TimeOfDay 23 59 59}}
+        omidnight = entry {tldatetime = itime {localDay = addDays 1 idate, localTimeOfDay = midnight}}
         imidnight = inentry {tldatetime = itime {localDay = addDays 1 idate, localTimeOfDay = midnight}}
         (sessions2, actives', es')
           | odate > idate = (Session {in' = inentry, out = omidnight} : sessions1, imidnight:newactive, entry:es)
@@ -250,18 +252,18 @@ entryFromTimeclockInOut requiretimeordered i o
       itime    = tldatetime i
       otime    = tldatetime o
       itod     = localTimeOfDay itime
-      otod     = localTimeOfDay otime
+      otod     | localDay otime > idate = TimeOfDay 23 59 0  -- a session split at midnight ends at the next midnight; describe that as 23:59
+               | otherwise              = localTimeOfDay otime
       idate    = localDay itime
       desc     | T.null (tldescription i) = T.pack $ showtime itod ++ "-" ++ showtime otod
                | otherwise                = tldescription i
       showtime = take 5 . show
       hours    = elapsedSeconds (toutc otime) (toutc itime) / 3600 where toutc = localTimeToUTC utc
       acctname = tlaccount i
-      -- Generate an hours amount. Unusually, we also round the internal Decimal value,
-      -- since otherwise it will often have large recurring decimal parts which (since 1.21)
-      -- print would display all 255 digits of. timeclock amounts have one second resolution,
-      -- so two decimal places is precise enough (#1527).
-      amt = case mixedAmount $ setAmountInternalPrecision 2 $ hrs hours of
+      -- Generate an hours amount, displayed with 2 decimal places by default.
+      -- Its quantity is not rounded to that (#1527), so totals are accurate;
+      -- it is exact, or as exact as possible (dividing seconds by 3600 is rounded at the 255th decimal place).
+      amt = case mixedAmount $ hrs hours of
         a | not $ a < 0 -> a
         _ -> error' $ timeclockEntryError [i] o $
           printf "This clockout is earlier than its clockin, on line %d." (timeclockEntryLine i)

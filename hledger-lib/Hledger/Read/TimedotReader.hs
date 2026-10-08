@@ -52,7 +52,6 @@ import Text.Megaparsec.Char
 import Hledger.Data
 import Hledger.Read.Common
 import Hledger.Utils
-import Data.Decimal (roundTo)
 import Data.Functor ((<&>))
 import Data.List (sort)
 import Data.List (group)
@@ -246,24 +245,19 @@ numericquantityp = do
   (q, _, _, _) <- numberp Nothing
   msymbol <- optional $ choice $ map (string . fst) timeUnits
   skipNonNewlineSpaces
-  let q' =
-        case msymbol of
-          Nothing  -> q
-          Just sym -> roundTo 2 $
-            case lookup sym timeUnits of
-              Just mult -> q * mult
-              Nothing   -> q  -- shouldn't happen.. ignore
-  return q'
+  return $ maybe q ($ q) $ msymbol >>= (`lookup` timeUnits)
 
--- (symbol, equivalent in hours).
+-- (symbol, conversion to hours). The conversion is exact,
+-- or as exact as possible (dividing by 60 or 3600 is rounded at the 255th decimal place).
+timeUnits :: [(Text, Hours -> Hours)]
 timeUnits =
-  [("s",2.777777777777778e-4)
-  ,("mo",5040) -- before "m"
-  ,("m",1.6666666666666666e-2)
-  ,("h",1)
-  ,("d",24)
-  ,("w",168)
-  ,("y",61320)
+  [("s",  (/ 3600))
+  ,("mo", (* 720))  -- 30 days. Before "m"
+  ,("m",  (/ 60))
+  ,("h",  id)
+  ,("d",  (* 24))
+  ,("w",  (* 168))
+  ,("y",  (* 8760))  -- 365 days
   ]
 
 -- | Parse a quantity written as a line of one or more dots,

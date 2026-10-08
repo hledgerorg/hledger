@@ -254,32 +254,13 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
       ]
 
     -- The current average unit cost of each AVERAGE/AVERAGEALL pool, as of
-    -- the report end date, keyed by (base account, commodity): the sum of
-    -- quantity * unit cost basis over the pool's lot postings, divided by
-    -- the total units. Acquisitions carry their acquisition cost and
-    -- disposals/transfers the then-current average, so this works out to
-    -- the pool's running average. It is valid only summed over the whole
-    -- pool: the base account's lots for AVERAGE, or all accounts' lots for
-    -- AVERAGEALL. Used to fill in the cost missing from AVERAGE lots'
-    -- costless subaccount names (see lotsUnder).
+    -- the report end date, keyed by (base account, commodity). Computed
+    -- from all of the pool's lot postings, whatever the query (see
+    -- journalAveragePoolTotals). Used to fill in the cost missing from
+    -- AVERAGE lots' costless subaccount names (see lotsUnder).
     poolavgmap :: M.Map (AccountName, CommoditySymbol) Amount
-    poolavgmap = M.fromList
-      [ ((base, c), styleAmounts styles $ avgcost unitsamt costtot)
-      | (base, c) <- nubSort [ (lotBaseAccount sub, c') | ((sub, c'), _) <- lotpostings ]
-      , let method = fst $ resolveReductionMethodForAccount j base c
-      , method `elem` [AVERAGE, AVERAGEALL]
-      , let entries = [ (a, ub)
-                      | ((sub, c'), (_, a)) <- lotpostings
-                      , c' == c
-                      , method == AVERAGEALL || lotBaseAccount sub == base
-                      , Just ub <- [cbCost =<< acostbasis a] ]
-      , (ub1:_) <- [map snd entries]
-      , all ((== acommodity ub1) . acommodity) (map snd entries)
-      , let units = sum [aquantity a | (a, _) <- entries]
-      , units /= 0
-      , let unitsamt = nullamt{acommodity=c, aquantity=units}
-            costtot  = ub1{aquantity = sum [aquantity a * aquantity ub | (a, ub) <- entries]}
-      ]
+    poolavgmap = M.map (\(units, costtot) -> styleAmounts styles $ avgcost nullamt{aquantity=units} costtot)
+                       (journalAveragePoolTotals j mend)
 
     -- Which accounts (lot subaccounts, or the keys of the per-lot maps)
     -- belong to a displayed row's own scope: those at or under the row's

@@ -73,6 +73,10 @@ Notes:
   all belong to AVERAGE/AVERAGEALL pools (whose per-lot rows show the
   pool average); "Unit cost" with `--lots` when each lot shows its own
   cost; "Unit/Avg cost" when both kinds are displayed.
+  The pool average is computed from all of the pool's lot postings up to
+  the report date, whatever the query (`journalAveragePoolTotals`, shared
+  with close): so an AVERAGEALL pool's average is the same when the query
+  shows only some of its accounts.
   (Alternatives considered for aggregated Date/Age: oldest lot's date/age,
   a date range, quantity-weighted average age.)
 - A lot's cost basis is parsed from its subaccount name. When the name has

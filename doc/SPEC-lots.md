@@ -888,6 +888,9 @@ Declaring and using this account type is not strictly required,
 but it can improve error checking in disposals,
 it selects the account for inferred gain postings,
 and it facilitates more precise querying.
+(Inferred gain postings use the first account declared with the G type;
+or if there is none, the alphabetically first account whose type is inferred as G;
+or else `revenues:gain`. See journalAccountForType.)
 
 ### Disposal journal entries
 
@@ -915,8 +918,8 @@ Styles are listed in the same order as the manual, from implicit to explicit.
   (`transactionTagGainPostings`, before balancing), and the balancer sets them aside.
   After lot matching, the transaction's gain amount is checked against
   the calculated gain at the entry's local precision; sub-last-place-unit differences
-  are tolerated (see "Gain precision" below), but larger discrepancies
-  raise an error.
+  are tolerated, and then removed by adjusting the written amount to the exact gain
+  (see "Gain precision" below), but larger discrepancies raise an error.
 
   When the imbalance is multi-commodity (typically because the dispose posting lacks an `@`
   transacted price), the transaction balancer fills in a balancing `@` price from the
@@ -949,9 +952,18 @@ posting amounts in that commodity).
 As a special case, if the local precision is 0 decimal places (or the commodity is absent),
 and if the gain amount is not an integer, it is shown with 2 decimal places.
 
-This tolerance (and non-accounting) of small imprecisions is similar to
-how transaction balancing works. If you want more precision, write more
-decimal places in the entry's amounts.
+This tolerance of small imprecisions is similar to how transaction balancing works.
+If you want a stricter check, write more decimal places in the entry's amounts.
+
+But unlike transaction balancing, the tolerated difference is not left unaccounted for:
+hledger knows the exact gain, so when a written gain amount passes the check,
+it is replaced by the exact calculated gain (with several gain postings, the
+difference goes to the last one in that commodity), keeping the written amount
+in poriginal for print. This is like the acquire basis check, below, replacing
+a rounded written basis with the exact transacted cost. Inferred gain amounts
+are exact already (only their display precision is set as above).
+So a disposal balances exactly at cost basis, apart from any tolerated
+imbalance at transacted cost, which --infer-imbalance can show.
 
 ## Acquire basis check
 
@@ -1275,7 +1287,14 @@ Possible future work, from design discussions (2026-08):
   re-readable: the costless lot subaccount names it emits (`{2026-01-15}`)
   are rejected on re-read ("lot subaccount name must contain a date and
   cost"). Either accept date-only lot subaccount names when the account's
-  method is AVERAGE, or omit lot subaccounts from AVERAGE print output.
+  method is AVERAGE, or omit lot subaccounts from AVERAGE print output,
+  or show each posting's lot with the pool cost it had then.
+  `close --lots` was fixed 2026-10: it adds the pool's average cost as of
+  the closing date to each lot name (`{2026-01-15, $55}`), using
+  `journalAveragePoolCosts` (shared with holdings), so a clopen entry can
+  start a new file. A non-terminating average is written with up to 8
+  decimal places, so the re-opened lots' total basis can drift by a tiny
+  amount.
   (The AVERAGE-vs-transfers item previously here was implemented 2026-08:
   transfers in re-average the pool, transfers out carry the pooled cost;
   see "Reduction methods".)

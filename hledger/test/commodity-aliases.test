@@ -201,11 +201,11 @@ P 2024-01-01 min 0.002 kilobucks
 
 $ hledger -f- print -x
 2024-01-01
-    a                                            h 1.5 @ USD 120
+    a                                            h 1.50 @ USD 120
     b                                       USD -180
 
 2024-01-02
-    a                                            h 0 = h 1.5
+    a                                            h 0.00 = h 1.5
 
 >=
 
@@ -257,4 +257,172 @@ commodity USD 1.00  ; alias: 2 X, alias: 3 X
 
 $ hledger -f- check
 >2 /alias "X" is declared more than once, with different quantities/
+>=1
+
+# ** 25. When an amount in an alias converts inexactly (10 min = 0.1666.. h),
+# its unit cost is replaced by the exact total cost, so amounts inferred from it are exact
+# and this balance assertion passes.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    work     10 min @ $1
+    client
+
+2026-01-02
+    client   $0 = $-10
+
+$ hledger -f- bal client
+                $-10  client
+--------------------
+                $-10  
+
+# ** 26. print -x shows the total cost.
+$ hledger -f- print -x --round=hard
+2026-01-01
+    work                                         h 0.17 @@ $10
+    client                                      $-10
+
+2026-01-02
+    client                                        $0 = $-10
+
+>=
+
+# ** 27. Balance assertions work with amounts in an alias with a quantity,
+# even when converting them is inexact: each 10 min is 0.1666.. h, but together they are exactly 0.5 h.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (time)   10 min
+
+2026-01-02
+    (time)   10 min
+
+2026-01-03
+    (time)   10 min  = 0.5 h
+
+2026-01-04
+    (time)    0 h  = 30 min
+
+$ hledger -f- check
+
+# ** 28. Also with mixed units, subaccount-inclusive assertions, and total assertions.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01 mixed units
+    (a)   10 min
+    (a)   10 min
+    (a)   10 min
+    (a)   0.5 h  = 60 min
+
+2026-01-02 subaccount-inclusive
+    (b:x)   10 min
+    (b:y)   10 min
+    (b:z)   10 min
+    (b)      0 h  =* 0.5 h
+
+2026-01-03 total assertion
+    (c)   10 min
+    (c)   10 min
+    (c)   10 min
+    (c)   0 h  == 0.5 h
+
+$ hledger -f- check
+
+# ** 29. A balance assignment calculates the amount exactly too.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (a)   10 min
+    (a)   10 min
+    (a)   10 min
+
+2026-01-02
+    (a)         = 1 h
+
+$ hledger -f- print -x date:2026-01-02
+2026-01-02
+    (a)                                          h 0.50 = h 1
+
+>=
+
+# ** 30. Converted amounts get the commodity's display style, including its precision
+# when the alias has a quantity. So eg these accounts aren't mistaken for zero and hidden.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (a)   10 min
+    (b)   20 min
+    (b)   10 min
+
+$ hledger -f- bal
+              h 0.17  a
+              h 0.50  b
+--------------------
+              h 0.67  
+
+# ** 31. An exactly converted amount gets more decimal places if needed, so it isn't mistaken for zero either.
+# (Here it is displayed as 0, since BTC's display precision is 2, but the account is not hidden.)
+<
+commodity BTC 1.00  ; alias: 100000000 sat
+
+2026-01-01
+    (a)   1000 sat
+
+$ hledger -f- bal
+                   0  a
+--------------------
+                   0  
+
+# ** 32. A balance assertion error shows converted amounts in the commodity's style.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (time)   10 min
+
+2026-01-02
+    (time)   10 min
+
+2026-01-03
+    (time)   10 min  = 0.6 h
+
+$ hledger -f- check
+>2
+hledger: Error: -:10:22:
+   | 2026-01-03
+10 |     (time)                                       h 0.17 = h 0.6
+   |                                                         ^^^^^^^
+
+Balance assertion failed in time
+In commodity h at this point, excluding subaccounts, ignoring costs,
+the asserted balance is:         h 0.6
+but the calculated balance is:  h 0.50
+(difference: h 0.10)
+To troubleshoot, check this account's running balance with assertions disabled, eg:
+hledger reg -E --ignore-assertions '2026-01-04'time$ cur:h -e
+>=1
+
+# ** 33. An unbalanced transaction error shows a repeating-decimal sum with 8 decimal places, not 255.
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    a   10 min
+    b   -0.2 h
+
+$ hledger -f- check
+>2
+hledger: Error: -:3-5:
+3 | 2026-01-01
+  |     a                                            h 0.17
+  |     b                                           h -0.2
+
+This transaction is unbalanced.
+The real postings' sum should be 0 but is h -0.03333333
+  h 0.16666667  +  h -0.2  =  h -0.03333333
 >=1

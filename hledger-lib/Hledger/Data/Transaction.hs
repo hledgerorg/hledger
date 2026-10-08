@@ -88,19 +88,20 @@ import Data.Function ((&))
 import Data.List (union)
 
 
--- | How to determine the precision used for checking that transactions are balanced. See #2402.
+-- | How to determine the precision used for checking that transactions are balanced,
+-- and so how much imbalance is tolerated (selected by --txn-tolerance). See #2402.
 data TransactionBalancingPrecision =
-    TBPOld
+    TBPDisplay
     -- ^ Legacy behaviour, as in hledger <1.50, included to ease upgrades.
     -- use precision inferred from the whole journal, overridable by commodity directive or -c.
     -- Display precision is also transaction balancing precision; increasing it can break journal reading.
     -- Some valid journals are rejected until commodity directives are added.
-    -- Small unbalanced remainders can be hidden, and in accounts that are never reconciled, can accumulate over time.
-  | TBPExact
-    -- ^ Simpler, more robust behaviour, like (I thought) Ledger: use precision inferred from the transaction.
+    -- Larger imbalances can be hidden, and in accounts that are never reconciled, can accumulate over time.
+  | TBPEntry
+    -- ^ Simpler, more robust behaviour, like Ledger: use precision inferred from the transaction's journal entry.
     -- Display precision and transaction balancing precision are independent; display precision never affects journal reading.
     -- Valid journals from ledger or beancount are accepted without needing commodity directives.
-    -- Every imbalance in a transaction is visibly accounted for in that transaction's journal entry.
+    -- Imbalances smaller than the entry's precision are still tolerated, and can accumulate.
 
   deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
@@ -282,11 +283,14 @@ transactionToCost cost t = t{tpostings = mapMaybe (postingToCost cost) $ tpostin
 
 -- | For any costs in this 'Transaction' which don't have associated equity conversion postings,
 -- generate and add those. Generated amounts are rounded to the transaction's local display
--- precision to avoid arithmetic artifacts (e.g. 9.216 * 1801.215277778 = 16600.000000002 -> 16600.00).
+-- precision to avoid arithmetic artifacts (e.g. 9.216 * 1801.215277778 = 16600.000000002 -> 16600.00),
+-- except in a transaction whose imbalance is shown by an imbalance posting (see --infer-imbalance):
+-- there, the conversion postings keep their exact cost amounts, so that every commodity balances exactly.
 transactionInferEquityPostings :: Bool -> AccountName -> Transaction -> Transaction
 transactionInferEquityPostings verbosetags equityAcct t =
-  t{tpostings = map roundGenerated $ go $ tpostings t}
+  t{tpostings = (if hasimbalanceposting then id else map roundGenerated) $ go $ tpostings t}
   where
+    hasimbalanceposting = any (postingHasTag imbalancePostingTagName) (tpostings t)
     -- The consecutive per-lot fragments of one posting (lotsplit-tagged and
     -- sharing poriginal, as in Lots.mergeLotSplits) get one set of conversion
     -- postings after the last fragment, so collapsing lot detail can still merge them.

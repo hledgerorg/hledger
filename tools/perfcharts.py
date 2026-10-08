@@ -23,7 +23,7 @@ hue = {"hledger":"#d4b000", "ledger":"#1f8a36", "beancount":"#2f6fd0", "rust":"#
 style = {  # name: (family, shade 1.0 = full, dashed)
  "rustledger 0.24.0 (cached)":    ("rust",1.0,True),
  "rustledger 0.24.0 (first run)": ("rust",1.0,False),
- "Tackler 26.8.1":                ("tackler",1.0,False),
+ "Tackler 26.10.1":               ("tackler",1.0,False),
  "hledger 1.99.5 (repl)":           ("hledger",1.0,True),
  "hledger 1.99.5":                  ("hledger",1.0,False),
  "hledger 1.52":                  ("hledger",0.55,False),
@@ -40,7 +40,7 @@ lb = lambda v: ('lb', v)
 throughput = [
  ("rustledger 0.24.0 (cached)",    [lb(100e3),333e3,769e3,920e3]),
  ("rustledger 0.24.0 (first run)", [100e3,125e3,164e3,145e3]),
- ("Tackler 26.8.1",                [lb(100e3),250e3,625e3,750e3]),
+ ("Tackler 26.10.1",               [lb(100e3),500e3,910e3,1.15e6]),
  ("hledger 1.99.5 (repl)",           [77e3,150e3,310e3,380e3]),
  ("hledger 1.99.5",                  [20e3,53e3,71e3,72e3]),
  ("hledger 1.52",                  [12e3,22e3,25e3,25e3]),
@@ -53,7 +53,7 @@ throughput = [
 ]
 # Peak memory (RSS) in MB for the flat balance report, fresh uncached runs. Legend order.
 memory = [
- ("Tackler 26.8.1",                [7,24,139,1100]),
+ ("Tackler 26.10.1",               [7,24,139,1100]),
  ("Ledger 3.4.1",                  [15,53,405,None]),
  ("rustledger 0.24.0 (first run)", [14,72,574,5000]),
  ("Beancount 2.3.6 (first run)",   [36,68,748,8500]),
@@ -139,8 +139,8 @@ mem_ticks = [(v, f"{v} MB" if v<1000 else f"{v//1000} GB") for v in [10,20,50,10
 fresh = [r for r in throughput if '(cached)' not in r[0] and '(repl)' not in r[0]]
 
 linechart(out('performance-throughput-fresh.svg'), "Flat balance report throughput, uncached (transactions per second)",
-          fresh, 4e3, 1.2e6, "transactions per second (log scale)", tps_ticks, [])
+          fresh, 4e3, 1.5e6, "transactions per second (log scale)", tps_ticks, [])
 linechart(out('performance-throughput.svg'), "Flat balance report throughput, including cached/repl (transactions per second)",
-          throughput, 4e3, 1.2e6, "transactions per second (log scale)", tps_ticks, ["dashed: repl session or cached run"])
+          throughput, 4e3, 1.5e6, "transactions per second (log scale)", tps_ticks, ["dashed: repl session or cached run"])
 barchart(out('performance-memory.svg'), "Flat balance report peak memory (lower is better)",
          memory, 5, 12000, "peak memory, MB (log scale)", mem_ticks, ["fresh uncached runs"])

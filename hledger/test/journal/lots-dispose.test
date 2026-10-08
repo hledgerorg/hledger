@@ -1533,3 +1533,24 @@ $ hledger -f- print -x
     revenues:gain                              $-500
 
 >=
+
+# ** 76. With several accounts declared with the G/Gain type, inferred gain postings use the first one declared.
+<
+account revenues:zz gains  ; type:G
+account revenues:aa gains  ; type:G
+
+2026-01-15 buy
+    assets:broker    10 AAPL {$50}
+    assets:cash
+
+2026-02-15 sell
+    assets:cash       $600
+    assets:broker    -10 AAPL {$50} @ $60
+
+$ hledger -f- print desc:sell
+2026-02-15 sell
+    assets:cash                                 $600
+    assets:broker                                -10 AAPL {$50} @ $60
+    revenues:zz gains                          $-100
+
+>=

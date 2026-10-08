@@ -7,3 +7,12 @@
 $ hledger -f - check balanced
 >2 /real postings' sum should be 0 but is 16\$, -10£/
 >=1
+
+# ** 2. This also works when an amount comes from a balance assignment.
+<
+2011/01/01 x
+  a  -10£
+  b  = 16$
+$ hledger -f - check balanced
+>2 /real postings' sum should be 0 but is 16\$, -10£/
+>=1

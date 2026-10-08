@@ -190,6 +190,7 @@ data AccountType =
   | Conversion      -- ^ a subtype of Equity - account with which to balance commodity conversions
   | Gain            -- ^ a subtype of Revenue - realised capital gains/losses
   | UnrealisedGain  -- ^ a subtype of Equity - accumulated unrealised capital gains/losses
+  | Imbalance       -- ^ a subtype of Equity - transactions' tolerated imbalances, shown by --infer-imbalance
   deriving (Eq,Ord,Generic,Enum,Bounded)
 
 instance Show AccountType where
@@ -202,6 +203,7 @@ instance Show AccountType where
   show Conversion     = "V"
   show Gain           = "G"
   show UnrealisedGain = "U"
+  show Imbalance      = "M"
 
 isBalanceSheetAccountType :: AccountType -> Bool
 isBalanceSheetAccountType t = t `elem` [
@@ -210,7 +212,8 @@ isBalanceSheetAccountType t = t `elem` [
   Equity,
   Cash,
   Conversion,
-  UnrealisedGain
+  UnrealisedGain,
+  Imbalance
   ]
 
 isIncomeStatementAccountType :: AccountType -> Bool

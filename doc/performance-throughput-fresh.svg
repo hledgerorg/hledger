@@ -1,20 +1,20 @@
 <svg xmlns='http://www.w3.org/2000/svg' width='760' height='430' viewBox='0 0 760 430' font-family='-apple-system, Segoe UI, Helvetica, Arial, sans-serif' font-size='12'>
 <rect width='760' height='430' fill='white' rx='4'/>
 <text x='70' y='22' font-size='14' font-weight='bold' fill='#222'>Flat balance report throughput, uncached (transactions per second)</text>
-<line x1='70' x2='510' y1='325.4' y2='325.4' stroke='#e6e6e6'/>
-<text x='64' y='329.4' text-anchor='end' fill='#555'>10k</text>
-<line x1='70' x2='510' y1='284.1' y2='284.1' stroke='#e6e6e6'/>
-<text x='64' y='288.1' text-anchor='end' fill='#555'>20k</text>
-<line x1='70' x2='510' y1='229.4' y2='229.4' stroke='#e6e6e6'/>
-<text x='64' y='233.4' text-anchor='end' fill='#555'>50k</text>
-<line x1='70' x2='510' y1='188.1' y2='188.1' stroke='#e6e6e6'/>
-<text x='64' y='192.1' text-anchor='end' fill='#555'>100k</text>
-<line x1='70' x2='510' y1='146.8' y2='146.8' stroke='#e6e6e6'/>
-<text x='64' y='150.8' text-anchor='end' fill='#555'>200k</text>
-<line x1='70' x2='510' y1='92.2' y2='92.2' stroke='#e6e6e6'/>
-<text x='64' y='96.2' text-anchor='end' fill='#555'>500k</text>
-<line x1='70' x2='510' y1='50.9' y2='50.9' stroke='#e6e6e6'/>
-<text x='64' y='54.9' text-anchor='end' fill='#555'>1M</text>
+<line x1='70' x2='510' y1='327.4' y2='327.4' stroke='#e6e6e6'/>
+<text x='64' y='331.4' text-anchor='end' fill='#555'>10k</text>
+<line x1='70' x2='510' y1='287.7' y2='287.7' stroke='#e6e6e6'/>
+<text x='64' y='291.7' text-anchor='end' fill='#555'>20k</text>
+<line x1='70' x2='510' y1='235.1' y2='235.1' stroke='#e6e6e6'/>
+<text x='64' y='239.1' text-anchor='end' fill='#555'>50k</text>
+<line x1='70' x2='510' y1='195.3' y2='195.3' stroke='#e6e6e6'/>
+<text x='64' y='199.3' text-anchor='end' fill='#555'>100k</text>
+<line x1='70' x2='510' y1='155.6' y2='155.6' stroke='#e6e6e6'/>
+<text x='64' y='159.6' text-anchor='end' fill='#555'>200k</text>
+<line x1='70' x2='510' y1='103.0' y2='103.0' stroke='#e6e6e6'/>
+<text x='64' y='107.0' text-anchor='end' fill='#555'>500k</text>
+<line x1='70' x2='510' y1='63.3' y2='63.3' stroke='#e6e6e6'/>
+<text x='64' y='67.3' text-anchor='end' fill='#555'>1M</text>
 <text x='290' y='420' text-anchor='middle' fill='#555'>transactions in journal (log scale)</text>
 <text transform='translate(14,210) rotate(-90)' text-anchor='middle' fill='#555'>transactions per second (log scale)</text>
 <line x1='70.0' x2='70.0' y1='40' y2='380' stroke='#e6e6e6'/>
@@ -26,46 +26,46 @@
 <line x1='510.0' x2='510.0' y1='40' y2='380' stroke='#e6e6e6'/>
 <text x='510.0' y='398' text-anchor='middle' fill='#555'>1M</text>
 <rect x='70' y='40' width='440' height='340' fill='none' stroke='#999'/>
-<path d='M70.0,188.1 L216.7,174.8 L363.3,158.6 L510.0,166.0' fill='none' stroke='#d9700f' stroke-width='2.2' />
-<circle cx='70.0' cy='188.1' r='4' fill='#d9700f' stroke='#d9700f' stroke-width='2.2'/>
-<circle cx='216.7' cy='174.8' r='4' fill='#d9700f' stroke='#d9700f' stroke-width='2.2'/>
-<circle cx='363.3' cy='158.6' r='4' fill='#d9700f' stroke='#d9700f' stroke-width='2.2'/>
-<circle cx='510.0' cy='166.0' r='4' fill='#d9700f' stroke='#d9700f' stroke-width='2.2'/>
-<path d='M70.0,188.1 L216.7,133.5 L363.3,78.9 L510.0,68.0' fill='none' stroke='#c92a2a' stroke-width='2.2' />
-<circle cx='70.0' cy='188.1' r='4' fill='white' stroke='#c92a2a' stroke-width='2.2'/>
-<circle cx='216.7' cy='133.5' r='4' fill='#c92a2a' stroke='#c92a2a' stroke-width='2.2'/>
-<circle cx='363.3' cy='78.9' r='4' fill='#c92a2a' stroke='#c92a2a' stroke-width='2.2'/>
-<circle cx='510.0' cy='68.0' r='4' fill='#c92a2a' stroke='#c92a2a' stroke-width='2.2'/>
-<path d='M70.0,284.1 L216.7,226.0 L363.3,208.5 L510.0,207.7' fill='none' stroke='#d4b000' stroke-width='2.2' />
-<circle cx='70.0' cy='284.1' r='4' fill='#d4b000' stroke='#d4b000' stroke-width='2.2'/>
-<circle cx='216.7' cy='226.0' r='4' fill='#d4b000' stroke='#d4b000' stroke-width='2.2'/>
-<circle cx='363.3' cy='208.5' r='4' fill='#d4b000' stroke='#d4b000' stroke-width='2.2'/>
-<circle cx='510.0' cy='207.7' r='4' fill='#d4b000' stroke='#d4b000' stroke-width='2.2'/>
-<path d='M70.0,314.5 L216.7,278.4 L363.3,270.8 L510.0,270.8' fill='none' stroke='#e7d372' stroke-width='2.2' />
-<circle cx='70.0' cy='314.5' r='4' fill='#e7d372' stroke='#e7d372' stroke-width='2.2'/>
-<circle cx='216.7' cy='278.4' r='4' fill='#e7d372' stroke='#e7d372' stroke-width='2.2'/>
-<circle cx='363.3' cy='270.8' r='4' fill='#e7d372' stroke='#e7d372' stroke-width='2.2'/>
-<circle cx='510.0' cy='270.8' r='4' fill='#e7d372' stroke='#e7d372' stroke-width='2.2'/>
-<path d='M70.0,254.2 L216.7,222.7 L363.3,349.3' fill='none' stroke='#1f8a36' stroke-width='2.2' />
-<circle cx='70.0' cy='254.2' r='4' fill='#1f8a36' stroke='#1f8a36' stroke-width='2.2'/>
-<circle cx='216.7' cy='222.7' r='4' fill='#1f8a36' stroke='#1f8a36' stroke-width='2.2'/>
-<circle cx='363.3' cy='349.3' r='4' fill='#1f8a36' stroke='#1f8a36' stroke-width='2.2'/>
-<path d='M70.0,336.5 L216.7,270.8 L363.3,290.3 L510.0,297.4' fill='none' stroke='#8cafe5' stroke-width='2.2' />
-<circle cx='70.0' cy='336.5' r='4' fill='#8cafe5' stroke='#8cafe5' stroke-width='2.2'/>
-<circle cx='216.7' cy='270.8' r='4' fill='#8cafe5' stroke='#8cafe5' stroke-width='2.2'/>
-<circle cx='363.3' cy='290.3' r='4' fill='#8cafe5' stroke='#8cafe5' stroke-width='2.2'/>
-<circle cx='510.0' cy='297.4' r='4' fill='#8cafe5' stroke='#8cafe5' stroke-width='2.2'/>
-<path d='M70.0,336.5 L216.7,278.4 L363.3,301.2 L510.0,305.3' fill='none' stroke='#2f6fd0' stroke-width='2.2' />
-<circle cx='70.0' cy='336.5' r='4' fill='#2f6fd0' stroke='#2f6fd0' stroke-width='2.2'/>
-<circle cx='216.7' cy='278.4' r='4' fill='#2f6fd0' stroke='#2f6fd0' stroke-width='2.2'/>
-<circle cx='363.3' cy='301.2' r='4' fill='#2f6fd0' stroke='#2f6fd0' stroke-width='2.2'/>
-<circle cx='510.0' cy='305.3' r='4' fill='#2f6fd0' stroke='#2f6fd0' stroke-width='2.2'/>
+<path d='M70.0,195.3 L216.7,182.5 L363.3,167.0 L510.0,174.0' fill='none' stroke='#d9700f' stroke-width='2.2' />
+<circle cx='70.0' cy='195.3' r='4' fill='#d9700f' stroke='#d9700f' stroke-width='2.2'/>
+<circle cx='216.7' cy='182.5' r='4' fill='#d9700f' stroke='#d9700f' stroke-width='2.2'/>
+<circle cx='363.3' cy='167.0' r='4' fill='#d9700f' stroke='#d9700f' stroke-width='2.2'/>
+<circle cx='510.0' cy='174.0' r='4' fill='#d9700f' stroke='#d9700f' stroke-width='2.2'/>
+<path d='M70.0,195.3 L216.7,103.0 L363.3,68.7 L510.0,55.2' fill='none' stroke='#c92a2a' stroke-width='2.2' />
+<circle cx='70.0' cy='195.3' r='4' fill='white' stroke='#c92a2a' stroke-width='2.2'/>
+<circle cx='216.7' cy='103.0' r='4' fill='#c92a2a' stroke='#c92a2a' stroke-width='2.2'/>
+<circle cx='363.3' cy='68.7' r='4' fill='#c92a2a' stroke='#c92a2a' stroke-width='2.2'/>
+<circle cx='510.0' cy='55.2' r='4' fill='#c92a2a' stroke='#c92a2a' stroke-width='2.2'/>
+<path d='M70.0,287.7 L216.7,231.8 L363.3,215.0 L510.0,214.2' fill='none' stroke='#d4b000' stroke-width='2.2' />
+<circle cx='70.0' cy='287.7' r='4' fill='#d4b000' stroke='#d4b000' stroke-width='2.2'/>
+<circle cx='216.7' cy='231.8' r='4' fill='#d4b000' stroke='#d4b000' stroke-width='2.2'/>
+<circle cx='363.3' cy='215.0' r='4' fill='#d4b000' stroke='#d4b000' stroke-width='2.2'/>
+<circle cx='510.0' cy='214.2' r='4' fill='#d4b000' stroke='#d4b000' stroke-width='2.2'/>
+<path d='M70.0,317.0 L216.7,282.2 L363.3,274.9 L510.0,274.9' fill='none' stroke='#e7d372' stroke-width='2.2' />
+<circle cx='70.0' cy='317.0' r='4' fill='#e7d372' stroke='#e7d372' stroke-width='2.2'/>
+<circle cx='216.7' cy='282.2' r='4' fill='#e7d372' stroke='#e7d372' stroke-width='2.2'/>
+<circle cx='363.3' cy='274.9' r='4' fill='#e7d372' stroke='#e7d372' stroke-width='2.2'/>
+<circle cx='510.0' cy='274.9' r='4' fill='#e7d372' stroke='#e7d372' stroke-width='2.2'/>
+<path d='M70.0,258.9 L216.7,228.6 L363.3,350.4' fill='none' stroke='#1f8a36' stroke-width='2.2' />
+<circle cx='70.0' cy='258.9' r='4' fill='#1f8a36' stroke='#1f8a36' stroke-width='2.2'/>
+<circle cx='216.7' cy='228.6' r='4' fill='#1f8a36' stroke='#1f8a36' stroke-width='2.2'/>
+<circle cx='363.3' cy='350.4' r='4' fill='#1f8a36' stroke='#1f8a36' stroke-width='2.2'/>
+<path d='M70.0,338.1 L216.7,274.9 L363.3,293.7 L510.0,300.5' fill='none' stroke='#8cafe5' stroke-width='2.2' />
+<circle cx='70.0' cy='338.1' r='4' fill='#8cafe5' stroke='#8cafe5' stroke-width='2.2'/>
+<circle cx='216.7' cy='274.9' r='4' fill='#8cafe5' stroke='#8cafe5' stroke-width='2.2'/>
+<circle cx='363.3' cy='293.7' r='4' fill='#8cafe5' stroke='#8cafe5' stroke-width='2.2'/>
+<circle cx='510.0' cy='300.5' r='4' fill='#8cafe5' stroke='#8cafe5' stroke-width='2.2'/>
+<path d='M70.0,338.1 L216.7,282.2 L363.3,304.2 L510.0,308.1' fill='none' stroke='#2f6fd0' stroke-width='2.2' />
+<circle cx='70.0' cy='338.1' r='4' fill='#2f6fd0' stroke='#2f6fd0' stroke-width='2.2'/>
+<circle cx='216.7' cy='282.2' r='4' fill='#2f6fd0' stroke='#2f6fd0' stroke-width='2.2'/>
+<circle cx='363.3' cy='304.2' r='4' fill='#2f6fd0' stroke='#2f6fd0' stroke-width='2.2'/>
+<circle cx='510.0' cy='308.1' r='4' fill='#2f6fd0' stroke='#2f6fd0' stroke-width='2.2'/>
 <line x1='530' x2='558' y1='54' y2='54' stroke='#d9700f' stroke-width='2.2' />
 <circle cx='544' cy='54' r='4' fill='#d9700f' stroke='#d9700f'/>
 <text x='566' y='58' fill='#222'>rustledger 0.24.0</text>
 <line x1='530' x2='558' y1='76' y2='76' stroke='#c92a2a' stroke-width='2.2' />
 <circle cx='544' cy='76' r='4' fill='#c92a2a' stroke='#c92a2a'/>
-<text x='566' y='80' fill='#222'>Tackler 26.8.1</text>
+<text x='566' y='80' fill='#222'>Tackler 26.10.1</text>
 <line x1='530' x2='558' y1='98' y2='98' stroke='#d4b000' stroke-width='2.2' />
 <circle cx='544' cy='98' r='4' fill='#d4b000' stroke='#d4b000'/>
 <text x='566' y='102' fill='#222'>hledger 1.99.5</text>

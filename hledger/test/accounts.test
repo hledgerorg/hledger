@@ -133,3 +133,49 @@ unused:acct
 # ** 15. A declared account is not misreported as undeclared when a date: query is added.
 $ hledger -f- accounts --undeclared date:2026
 income
+
+# ** 16. Account types can also be declared by their long names, case-insensitively.
+<
+account revenues:gain       ; type: Gain
+account equity:unrealised   ; type: UnrealisedGain
+$ hledger -f- accounts --types
+equity:unrealised    ; type: U
+revenues:gain        ; type: G
+
+# ** 17. With several accounts declared with the V/Conversion type, --infer-equity uses the first one declared.
+<
+account zz trade  ; type:V
+account aa trade  ; type:V
+
+2024-01-01
+  a    1A
+  b   -1B
+
+$ hledger -f- accounts --infer-equity
+zz trade
+zz trade:A-B:A
+zz trade:A-B:B
+aa trade
+a
+b
+
+# ** 18. With none declared, it uses an account whose name implies the V/Conversion type.
+<
+account equity:trading
+
+2024-01-01
+  a    1A
+  b   -1B
+
+$ hledger -f- accounts --infer-equity
+a
+b
+equity:trading
+equity:trading:A-B:A
+equity:trading:A-B:B
+
+# ** 19. equity:imbalance (and similar names) are detected as M/Imbalance type by default.
+<
+account equity:imbalance
+$ hledger -f- accounts --types
+equity:imbalance    ; type: M
