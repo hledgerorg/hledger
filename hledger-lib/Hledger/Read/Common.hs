@@ -64,7 +64,6 @@ module Hledger.Read.Common (
   getParentAccount,
   addAccountAlias,
   getAccountAliases,
-  clearAccountAliases,
   journalAddFile,
 
   -- * parsers
@@ -731,9 +730,6 @@ addAccountAlias a = modify' (\(j@Journal{..}) -> j{jparsealiases=a:jparsealiases
 
 getAccountAliases :: MonadState Journal m => m [AccountAlias]
 getAccountAliases = fmap jparsealiases get
-
-clearAccountAliases :: MonadState Journal m => m ()
-clearAccountAliases = modify' (\j -> j{jparsealiases=[]})
 
 -- getTransactionCount :: MonadState Journal m =>  m Integer
 -- getTransactionCount = fmap jparsetransactioncount get

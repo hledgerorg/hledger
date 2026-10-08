@@ -315,7 +315,7 @@ directivep iopts = (do
    -- (endtagdirectivep consumes "end" before failing, so it must come after the other end directives.)
    ,recordItem JINonExportedDirective $ choice [
      aliasdirectivep
-    ,endaliasesdirectivep
+    ,endaliasesdirectivep iopts
     ,applyaccountdirectivep
     ,endapplyaccountdirectivep
     ,applyfixeddirectivep
@@ -829,11 +829,13 @@ aliasdirectivep = do
   alias <- lift accountaliasp
   addAccountAlias alias
 
-endaliasesdirectivep :: JournalParser m ()
-endaliasesdirectivep = do
+endaliasesdirectivep :: InputOpts -> JournalParser m ()
+endaliasesdirectivep iopts = do
   keywordsp "end aliases" <?> "end aliases directive"
   lift restofline
-  clearAccountAliases
+  -- forget the aliases from alias directives/tags, but keep any from --alias options
+  -- (these are at the end of the list, in command line order, so they are still applied last)
+  modify' (\j -> j{jparsealiases = aliasesFromOpts iopts})
 
 tagdirectivep :: JournalParser m ()
 tagdirectivep = do

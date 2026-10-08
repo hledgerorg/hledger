@@ -390,3 +390,33 @@ account assets:bank:checking    ; alias:
 $ hledger -f- accounts
 >2 /an alias: tag on an account directive should have an account name as its value/
 >=1
+
+# ** 28. end aliases forgets alias directives (including account alias: tags), but not --alias options.
+<
+alias a = A
+account bank:checking    ; alias: b
+
+2024-01-01
+    a    1
+    b    1
+    c
+
+end aliases
+
+2024-01-02
+    a    1
+    b    1
+    c
+
+$ hledger -f- --alias c=C print
+2024-01-01
+    A                                              1
+    bank:checking                                  1
+    C
+
+2024-01-02
+    a                                              1
+    b                                              1
+    C
+
+>=

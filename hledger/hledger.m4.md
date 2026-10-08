@@ -1778,8 +1778,10 @@ account assets:bank:checking
 Each `alias:` tag declares one alias; add more tags to declare more aliases.
 Like an `alias` directive, it rewrites account names in the entries which follow it,
 in the current file and any files it includes, until the end of the file
-(see [Aliases and multiple files](#aliases-and-multiple-files)).
-Ledger's `alias NAME` subdirective, indented below the account directive, is accepted and treated as an `alias:` tag.
+(see [Aliases and multiple files](#aliases-and-multiple-files));
+and an [`end aliases`](#end-aliases-directive) directive will end its effect early.
+
+Ledger's `alias NAME` subdirective, indented below the account directive, is also accepted and treated as equivalent to an `alias:` tag.
 `hledger accounts --directives` shows account aliases in the tag form.
 
 ### Account error checking
@@ -2070,9 +2072,8 @@ include c.journal  ; also affected
 
 ### `end aliases` directive
 
-You can clear (forget) all currently defined aliases
-(seen in the journal so far, or defined on the command line)
-with this directive:
+This directive clears (forgets) all account aliases from `alias` directives and account `alias:` tags seen so far
+(but not aliases from command line `--alias` options):
 
 ```journal
 end aliases
