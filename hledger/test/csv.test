@@ -1628,7 +1628,7 @@ $  ./csvtest.sh
 
 >=0
 
-# ** 86. Comment lines, indented or not, can appear within an if table.
+# ** 86. Comment lines, indented or not, can appear within an ifs table.
 <
 2026-01-01,fuel,7
 RULES
@@ -1706,7 +1706,7 @@ $  ./csvtest.sh
 
 >=0
 
-# ** 90. The separator character inside a %{...} expression does not split an if table's values.
+# ** 90. The separator character inside a %{...} expression does not split an ifs table's values.
 <
 2026-01-05,fuel,7
 RULES
@@ -1907,7 +1907,7 @@ $  ./csvtest.sh
 >2 /substr's position should be a number other than 0/
 >=1
 
-# ** 102. An if table's header line can have spaces around the field names, for alignment.
+# ** 102. An ifs table's header line (here in the older if| form) can have spaces around the field names, for alignment.
 <
 2026-01-01,cafe,3
 RULES
@@ -1923,7 +1923,7 @@ $  ./csvtest.sh
 
 >=0
 
-# ** 103. An if table's values have surrounding whitespace removed.
+# ** 103. An ifs table's values have surrounding whitespace removed.
 <
 2026-01-01,cafe,3
 RULES
@@ -1939,7 +1939,7 @@ $  ./csvtest.sh
 
 >=0
 
-# ** 104. A blank value in an if table does not assign that field,
+# ** 104. A blank value in an ifs table does not assign that field,
 # leaving any value it had from earlier rules.
 <
 2026-01-01,big thing,12345
@@ -1967,7 +1967,7 @@ $  ./csvtest.sh
 
 >=0
 
-# ** 105. An if table can begin with ifs, which allows spaces before the first delimiter too.
+# ** 105. An ifs table can have spaces before the first delimiter too.
 <
 2026-01-01,cafe,3
 2026-01-02,atm withdrawal fee,2

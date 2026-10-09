@@ -33,7 +33,7 @@ number   = [ "-" ] digits ;
 ```
 
 - An expression can appear anywhere a field reference can in a field assignment value,
-  in `if` blocks and `if` tables too. In an `if` table, the delimiter does not
+  in `if` rules and `ifs` tables too. In an `ifs` table, the delimiter does not
   separate values when it is inside `%{...}`.
 - Inside braces, CSV field references keep their `%`, and a bare name
   (not followed by `(`) is a hledger field: `date`, `date2`, `status`, `code`,
@@ -193,4 +193,4 @@ by offset.
 - No shorthand for appending (eg `comment+ shop:amazon` for
   `comment %{join(", ", comment, "shop:amazon")}`); it would need a
   separator per field (`, ` for comments, a space for descriptions) and has
-  no place in `if` tables. Possible later if the full form proves too wordy.
+  no place in `ifs` tables. Possible later if the full form proves too wordy.
