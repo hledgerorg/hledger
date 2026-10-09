@@ -7198,70 +7198,133 @@ File: hledger.info,  Node: Directives,  Next: account directive,  Prev: Tags,  U
 ================
 
 You can add directives to a 'journal' file, to add error checking,
-improve parsing, et cetera.  hledger's directives are broadly similar to
-Ledger's, though with differences.  Directives begin with a keyword, not
-a date.  Some of them can have indented subdirectives.
+improve parsing, et cetera.  Directives begin with a keyword, not a
+date.  Some of them can have indented subdirectives.  hledger's
+directives are broadly similar to Ledger's, though with differences.
 
-   *Some directives affect only the subsequent entries, and any included
-subfiles, until the end of the current file.*  This makes reports stable
-and deterministic, regardless of the order of -f options or the
-positions of include directives.  This is sometimes inconvenient, but
-there are usually workarounds.  Eg, to have 'alias' directives affect
-all of your files, put them at the start of the main file, before any
-'include's.
+* Menu:
 
-directivewhat it does                                                 ends
-                                                                      at
-                                                                      file
-                                                                      end?
+* Directive scopes::
+* Directives summary::
+
+
+File: hledger.info,  Node: Directive scopes,  Next: Directives summary,  Up: Directives
+
+17.17.1 Directive scopes
+------------------------
+
+Directives differ in which entries they affect.  Some affect only the
+following entries, others affect both preceding and following entries;
+and some reach only the current file and its subfiles, others reach
+every file.  Assuming this command and file layout:
+
+hledger -f main.journal -f other.journal
+
+main.journal           ; the parent file
+  include a.journal    ; a child of main.journal
+    include aa.journal ; a child of a.journal
+  include b.journal    ; a child of main.journal, and a sibling of a.journal
+
+other.journal          ; a separate file tree
+
+   here are the possible scopes, for a directive written in 'a.journal':
+
+scope           affects
+--------------------------------------------------------------------------
+*rest of file   following entries in or below 'a.journal' (including
++ subfiles*     'aa.journal' if it is included after the directive)
+*rest of file   as above, plus following entries in parent files
+tree*           ('main.journal' entries after the 'include a.journal'
+                directive, including 'b.journal')
+*file tree*     all entries in 'main.journal', 'a.journal',
+                'aa.journal' and 'b.journal', before and after the
+                directive
+*all files*     all entries in all file trees, no matter where the
+                directive is written
+
+   The limited scopes help keep reports stable and deterministic,
+independent of the order of -f options or include directives.  This is
+sometimes inconvenient, but there are usually workarounds.  In
+particular, to have account aliases affect all entries in a file tree,
+declare them at the start of the main file, before any 'include's.  (Or
+to affect all file trees specified at runtime, use '--alias' options.)
+
+
+File: hledger.info,  Node: Directives summary,  Prev: Directive scopes,  Up: Directives
+
+17.17.2 Directives summary
+--------------------------
+
+directivewhat it does                                          scope
 ---------------------------------------------------------------------------
 *Affects
 file
 reading:*
-*'alias'*Rewrites account names, in following entries until 'end      Y
-       aliases' or file end.
-*'comment'*Ignores following entries, until 'end comment' or file end.Y
-*'decimal-mark'*Declares the decimal mark, for parsing amounts of all Y
-       commodities in following entries until next 'decimal-mark'
-       or file end.  Subfiles can override.
-*'include'*Includes entries from another file, as if they were written
-       inline.
+*'include'*Includes entries from another file (a "subfile"),
+         as if they were written inline.
+*'comment'*Ignores following entries and directives, until     rest of
+         'end comment'.                                        file +
+                                                               subfiles
+*'alias'*Rewrites following matched account names, until       rest of
+         'end aliases'.                                        file +
+                                                               subfiles
+*'account'*Rewrites following matched account names to this    rest of
+'alias:' account's full name, until 'end aliases'.             file +
+tag                                                            subfiles
+*'decimal-mark'*Declares the decimal mark for parsing followingrest of
+         amounts of all commodities, until the next            file +
+         'decimal-mark' (subfiles can override).               subfiles
+*'commodity'*Declares the decimal mark for parsing following   rest of
+sample   amounts of this commodity ('decimal-mark' can         file tree
+amount   override).
 *Declares
 data:*
-*'account'*Declares an account, for checking all entries in all files,N
-       and its display order, and optionally its type, cost basis
-       method and aliases (which, like 'alias', apply until file
-       end).
-*'commodity'*Declares 1.  a commodity symbol, for checking all amounts inN
-       all files 2.  the commodity's display style 3.  optional       N
-       commodity aliases and lotfulness, and 4.  the decimal mark     N
-       for parsing this commodity, until file end (overridden by      N
-       'decimal-mark').
-*'payee'*Declares a payee name, for checking all entries in all       N
-       files.
-*'tag'*Declares a tag name, for checking all entries in all files.    N
-*'P'*  Declares a commodity's market price on some date, for value
-       and gain reports.
+*'account'*Declares an account, and its display order.         all files
+*'account'*Declares the account's type.                        all files
+'type:'
+tag
+*'account'*Declares the account's cost basis method.           file tree
+'lots:'
+tag
+*'commodity'*Declares a commodity symbol.                      all files
+*'commodity'*Declares the commodity's display style.           all files
+sample
+amount
+*'commodity'*Declares equivalent or related symbols for this   file tree
+'alias:' commodity.
+tag
+*'commodity'*Declares that the commodity tracks lots, and      file tree
+'lots:'  optionally their cost basis method.
+tag
+*'payee'*Declares a payee name.                                all files
+*'tag'*  Declares a tag name.                                  all files
+*'P'*    Declares a commodity's market price on some date,     all files
+         for value and gain reports.
 *Generates
 data:*
-*'='*  Declares an auto posting rule that generates extra postings    partly
-       with '--auto', in current/parent/subfiles (but not sibling
-       files, see #1212).
-*'~'*  Declares a periodic transaction rule that generates 1.         N
-       future transactions with '--forecast', and 2.  budget goals
-       with 'balance --budget'.
+*'='*    Generates extra postings (after matched postings),    file tree
+         with '--auto'.  (Does not see sibling files:
+         #1212.)
+*'~'*    Generates future transactions (after latest           file tree
+         transaction in file tree, by default), with
+         '--forecast'.
+*'~'*    Generates budget goals and actual/goal percentages,   all files
+         with 'balance --budget'.
 *File
 reading
 (legacy/deprecated):*
-'apply Prepends a common parent account to all account names, in      Y
-account'following entries until 'end apply account' or file end.
-'D'    Sets 1.a default commodity to use for no-symbol amounts 2.     Y,
-       the decimal mark for parsing it 3.  the display style for      N,
-       showing it (these are overridden by 'commodity' or             N
-       'decimal-mark').
-'Y'    Sets a default year to use for any yearless dates, in          Y
-       following entries until file end.
-other  These other Ledger directives are accepted but ignored.
+'apply   Prepends a common parent account to all following     rest of
+account' account names, until 'end apply account'.             file +
+                                                               subfiles
+'D'      Sets a default commodity for following no-symbol      rest of
+         amounts.  Also sets its parsing decimal mark          file +
+         (overridden by 'commodity' or 'decimal-mark') and     subfiles
+         display style (overridden by 'commodity').
+'Y'      Sets a default year for following yearless dates.     rest of
+                                                               file +
+                                                               subfiles
+other    These other Ledger directives are accepted but
+         ignored.
 
 
 File: hledger.info,  Node: account directive,  Next: alias directive,  Prev: Directives,  Up: Journal
@@ -7339,22 +7402,45 @@ File: hledger.info,  Node: Account aliases,  Next: Account error checking,  Prev
 17.18.3 Account aliases
 -----------------------
 
-An 'alias:' tag on an account directive declares an account alias for
-that account, just as if an 'alias' directive had been written at that
-point.  These two are equivalent:
+An 'alias:' tag on an account directive declares an alternate, usually
+shorter, name for that account.  This could make data entry quicker, and
+your journal less verbose (but also adds more names for you to
+remember).  Eg:
 
 account assets:bank:checking    ; alias: checking
 
-alias checking = assets:bank:checking
-account assets:bank:checking
+2024-01-01
+    expenses:food     5
+    checking
 
-   Each 'alias:' tag declares one alias; add more tags to declare more
-aliases.  Like an 'alias' directive, it rewrites account names in the
-entries which follow it, in the current file and any files it includes,
-until the end of the file (see Aliases and multiple files).  Ledger's
-'alias NAME' subdirective, indented below the account directive, is
-accepted and treated as an 'alias:' tag.  'hledger accounts
---directives' shows account aliases in the tag form.
+   When hledger reads this, it rewrites 'checking' to
+'assets:bank:checking'.  Reports, queries and 'print' output show only
+the full name.  Subaccounts are rewritten too: 'checking:pending'
+becomes 'assets:bank:checking:pending'.  (The alias must match the whole
+account name or its leading components, exactly and case sensitively;
+'Checking', 'checkingfoo' or 'old:checking' would not be affected.)
+
+   To declare multiple aliases, add more 'alias:' tags.  A Ledger-style
+'alias' subdirective, indented below the account directive, is also
+accepted, and treated as an 'alias:' tag.
+
+   An alias affects the entries which follow it, in the current file and
+any files it includes (see directive scopes), until an 'end aliases'
+directive.  So it's best to declare accounts at the start of your main
+file, before any 'include' directives.
+
+   More powerful aliases, such as regular expression aliases which
+rewrite many accounts at once, can be declared with the 'alias'
+directive, described below.  An alias: tag is equivalent to a basic
+alias directive written just after the account directive:
+
+account assets:bank:checking    ; alias: checking
+
+account assets:bank:checking
+alias checking = assets:bank:checking
+
+   You can also apply aliases at runtime, without editing your files,
+using the '--alias' option.
 
 
 File: hledger.info,  Node: Account error checking,  Next: Account display order,  Prev: Account aliases,  Up: account directive
@@ -7375,9 +7461,7 @@ account directive.  Some notes:
 
    * The declaration is case-sensitive; transactions must use the
      correct account name capitalisation.
-   * The account directive's scope is "whole file and below" (see
-     directives).  This means it affects all of the current file, and
-     any files it includes, but not parent or sibling files.  The
+   * Account declarations affect all files (see directive scopes).  The
      position of account directives within the file does not matter,
      though it's usual to put them at the top.
    * Accounts can only be declared in 'journal' files, but will affect
@@ -7544,12 +7628,19 @@ File: hledger.info,  Node: alias directive,  Next: comment directive,  Prev: acc
 17.19 'alias' directive
 =======================
 
-(hledger has three kinds of alias: the account aliases described here,
-commodity aliases declared on 'commodity' directives, and command
-aliases defined in a config file.)
+(Note: this section is about account aliases, not commodity aliases or
+command aliases.)
 
-   You can define account alias rules which rewrite your account names,
-or parts of them, before generating reports.  This can be useful for:
+   'alias' directives are a more general and powerful form of the
+account aliases tags described above.  (There is also a runtime variant,
+defined with the '--alias' option.)
+
+   Account alias rules rewrite your account names, or parts of them,
+after reading the journal (affecting both directives and transactions),
+before generating reports.  They do not affect account names being
+entered via hledger add or hledger-web.
+
+   Account aliases can be useful for:
 
    * expanding shorthand account names to their full form, allowing
      easier data entry and a less verbose journal
@@ -7559,20 +7650,11 @@ or parts of them, before generating reports.  This can be useful for:
      on one line
    * customising reports
 
-   Account aliases also rewrite account names in account directives.
-They do not affect account names being entered via hledger add or
-hledger-web.
-
-   Account aliases are very powerful.  They are generally easy to use
-correctly, but you can also generate invalid account names with them;
-more on this below.
-
-   See also Rewrite account names.
-
 * Menu:
 
 * Basic aliases::
 * Regex aliases::
+* --alias option::
 * Combining aliases::
 * Aliases and multiple files::
 * end aliases directive::
@@ -7587,14 +7669,12 @@ File: hledger.info,  Node: Basic aliases,  Next: Regex aliases,  Up: alias direc
 
 To set an account alias, use the 'alias' directive in your journal file.
 This affects all subsequent journal entries in the current file or its
-included files (but note: not sibling or parent files).  The spaces
-around the = are optional:
+included files (but note: not sibling or parent files; see directive
+scopes).  The spaces around the = are optional:
 
 alias OLD = NEW
 
-   Or, you can use the '--alias 'OLD=NEW'' option on the command line.
-This affects all entries.  It's useful for trying out aliases
-interactively.
+   Or, you can use '--alias 'OLD=NEW'' on the command line.
 
    Or, for a declared account, you can write the alias as an 'alias:'
 tag on its account directive.
@@ -7607,7 +7687,7 @@ alias checking = assets:bank:wells fargo:checking
 ; rewrites "checking" to "assets:bank:wells fargo:checking", or "checking:a" to "assets:bank:wells fargo:checking:a"
 
 
-File: hledger.info,  Node: Regex aliases,  Next: Combining aliases,  Prev: Basic aliases,  Up: alias directive
+File: hledger.info,  Node: Regex aliases,  Next: --alias option,  Prev: Basic aliases,  Up: alias directive
 
 17.19.2 Regex aliases
 ---------------------
@@ -7641,9 +7721,30 @@ alias /^(.+):bank:([^:]+):(.*)/ = \1:\2 \3
 of option argument), so it can contain trailing whitespace.
 
 
-File: hledger.info,  Node: Combining aliases,  Next: Aliases and multiple files,  Prev: Regex aliases,  Up: alias directive
+File: hledger.info,  Node: --alias option,  Next: Combining aliases,  Prev: Regex aliases,  Up: alias directive
 
-17.19.3 Combining aliases
+17.19.3 '--alias' option
+------------------------
+
+The '--alias' command line option defines an account alias, using the
+same syntax as an 'alias' directive (basic or regex), without editing
+your files.  Eg:
+
+$ hledger bal --alias checking=assets:bank:checking
+$ hledger bal --alias '/^expenses:(food|dining)/=expenses:food'
+
+   It can be repeated to define more aliases.  These aliases affect all
+entries in all files (including CSV, timeclock and timedot files),
+wherever the option appears on the command line; and they are applied
+after any 'alias' directives or 'alias:' tags (see Combining aliases).
+They are not cleared by 'end aliases'.  This makes '--alias' useful for
+trying out aliases interactively, or for customising particular reports.
+You can also put '--alias' options in a config file.
+
+
+File: hledger.info,  Node: Combining aliases,  Next: Aliases and multiple files,  Prev: --alias option,  Up: alias directive
+
+17.19.4 Combining aliases
 -------------------------
 
 You can define as many aliases as you like, using journal directives
@@ -7680,11 +7781,11 @@ which aliases are being applied when.
 
 File: hledger.info,  Node: Aliases and multiple files,  Next: end aliases directive,  Prev: Combining aliases,  Up: alias directive
 
-17.19.4 Aliases and multiple files
+17.19.5 Aliases and multiple files
 ----------------------------------
 
-As explained at Directives, 'alias' directives do not affect parent or
-sibling files.  Eg in this command,
+As explained at Directive scopes, 'alias' directives (and 'alias:' tags)
+do not affect parent or sibling files.  Eg in this command,
 
 hledger -f a.aliases -f b.journal
 
@@ -7709,21 +7810,28 @@ alias bar=Bar
 
 include c.journal  ; also affected
 
+   To affect all files read, whether they are included, or referenced by
+'-f' or the 'import' command, use '--alias' options (which could be in a
+config file).  Eg here the alias affects both a.journal and b.journal:
+
+hledger -f a.journal -f b.journal --alias foo=Foo
+
 
 File: hledger.info,  Node: end aliases directive,  Next: Aliases can generate bad account names,  Prev: Aliases and multiple files,  Up: alias directive
 
-17.19.5 'end aliases' directive
+17.19.6 'end aliases' directive
 -------------------------------
 
-You can clear (forget) all currently defined aliases (seen in the
-journal so far, or defined on the command line) with this directive:
+This directive clears (forgets) all account aliases from 'alias'
+directives and account 'alias:' tags seen so far (but not aliases from
+command line '--alias' options):
 
 end aliases
 
 
 File: hledger.info,  Node: Aliases can generate bad account names,  Next: Aliases and account types,  Prev: end aliases directive,  Up: alias directive
 
-17.19.6 Aliases can generate bad account names
+17.19.7 Aliases can generate bad account names
 ----------------------------------------------
 
 Be aware that account aliases can produce malformed account names, which
@@ -7754,7 +7862,7 @@ $ hledger print --alias old="new  USD" | hledger -f- print
 
 File: hledger.info,  Node: Aliases and account types,  Prev: Aliases can generate bad account names,  Up: alias directive
 
-17.19.7 Aliases and account types
+17.19.8 Aliases and account types
 ---------------------------------
 
 If an account with a type declaration (see Declaring accounts > Account
@@ -7815,10 +7923,10 @@ commodity 1000.   ; the no-symbol commodity
    The sample amount must include a decimal mark (even if there are no
 decimal digits after it).  This tells the parser which decimal mark
 (period or comma) is used for this commodity in the journal file, which
-can be useful in case of ambiguous digit group marks.  This effect lasts
-until the end of the current file tree (from a single '-f' or
-'LEDGER_FILE'), and it can be overridden by by a 'decimal-mark'
-directive.
+can be useful in case of ambiguous digit group marks.  This affects
+subsequent entries in the current file, its included files, and the rest
+of any parent files (see directive scopes), and it can be overridden by
+a 'decimal-mark' directive.
 
 * Menu:
 
@@ -7966,13 +8074,14 @@ File: hledger.info,  Node: decimal-mark directive,  Next: include directive,  Pr
 
 You can use a 'decimal-mark' directive to declare unambiguously which
 character (period or comma) represents a decimal mark, for all
-subsequent amounts until the end of the current file.  This helps when
-parsing ambiguous numbers (like '1.000' or '1,000' where you mean one
-thousand, not one).  It also makes hledger check that numbers use that
-decimal mark and no other, which catches some typos and misparsed
-numbers.  With 'decimal-mark ,', a number like '1,000.00' is reported as
-an error; and with 'decimal-mark .', a number like '1.2.34' is reported
-as an error, instead of being read as '1234'.
+subsequent amounts in the current file and its included files (see
+directive scopes).  This helps when parsing ambiguous numbers (like
+'1.000' or '1,000' where you mean one thousand, not one).  It also makes
+hledger check that numbers use that decimal mark and no other, which
+catches some typos and misparsed numbers.  With 'decimal-mark ,', a
+number like '1,000.00' is reported as an error; and with 'decimal-mark
+.', a number like '1.2.34' is reported as an error, instead of being
+read as '1234'.
 
    Eg, at the top of each journal file:
 
@@ -8533,8 +8642,9 @@ File: hledger.info,  Node: D directive,  Next: apply account directive,  Prev: B
 
    This directive sets a default commodity, to be used for any
 subsequent commodityless amounts (ie, plain numbers) seen while parsing
-the journal.  This effect lasts until the next 'D' directive, or the end
-of the current file.
+the journal.  This affects subsequent entries until the next 'D'
+directive, or the end of the current file (including its included files;
+see directive scopes).
 
    For compatibility/historical reasons, 'D' also acts like a
 'commodity' directive (setting the commodity's decimal mark for parsing
@@ -9319,7 +9429,8 @@ the standard hledger field/pseudo-field names, defined below), a space,
 followed by a text value on the same line.  This text value may
 interpolate CSV fields, referenced either by their 1-based position in
 the CSV record ('%N') or by the name they were given in the fields list
-('%CSVFIELD'), and regular expression match groups ('\N').  You can also
+('%CSVFIELD'), and regular expression match groups ('\N'), and can
+transform them with functions ('%{upper(%CSVFIELD)}').  You can also
 write '%(CSVFIELD)' to delimit the field name from adjacent text (eg
 '%(field)suffix').  When CSV records have been combined by a 'merge'
 rule, a '_ROWNUM' suffix (eg '%amt_2', '%4_2') references the later
@@ -9342,6 +9453,82 @@ account1 assets:%(type)checking
      becomes '1' when interpolated) (#1051).
    * Interpolations always refer to a CSV field - you can't interpolate
      a hledger field.  (See Referencing other fields below).
+
+* Menu:
+
+* Functions::
+
+
+File: hledger.info,  Node: Functions,  Up: Field assignment
+
+18.14.1 Functions
+-----------------
+
+_Since 1.99.6; experimental_
+
+   To transform a value while interpolating it, write a '%{...}'
+expression calling one of the built-in functions below.  Eg:
+
+# upper-case the description
+description %{upper(%desc)}
+
+# use the category in lower case, or "misc" if it's empty
+account2 expenses:%{lower(default(%category, "misc"))}
+
+# remove a reference number from the description
+description %{replace(%desc, " *ref#[0-9]+", "")}
+
+# put the date's year and month in a tag
+comment month:%{substr(%date, 1, 7)}
+
+   Function arguments can be CSV field references ('%desc', '%3'), match
+group references ('\1'), double-quoted text ('"misc"'), numbers, or
+other function calls.  Use '\"' for a double quote inside double-quoted
+text.  Each expression's result has outer whitespace removed, like other
+interpolated values.
+
+function            result
+--------------------------------------------------------------------------
+'upper(TEXT)'       TEXT in upper case
+'lower(TEXT)'       TEXT in lower case
+'capitalize(TEXT)'  TEXT with each word's first letter in upper case
+                    and the rest in lower case ('capitalise' also
+                    works)
+'trim(TEXT)'        TEXT without outer whitespace
+'negate(AMOUNT)'    AMOUNT with its sign flipped, eg '5' -> '-5', '-5'
+                    or '(5)' -> '5'
+'abs(AMOUNT)'       AMOUNT without a minus sign, eg '-5' or '(5)' ->
+                    '5'
+'concat(TEXT,       all the arguments joined together
+...)'
+'default(TEXT,      the first argument that's not empty
+...)'
+'replace(TEXT,      TEXT with each match of REGEX replaced by REPL
+REGEX, REPL)'
+'substr(TEXT,       LENGTH characters of TEXT, starting at position
+START, LENGTH)'     START (1 is the first); LENGTH is optional
+
+   For 'replace', REGEX must be double-quoted text, and is a
+case-insensitive regular expression.  REPL can use '\1', '\2' etc.  to
+insert REGEX's match groups.  (Unquoted '\1' etc.  outside double quotes
+refer to the match groups of an enclosing 'if' rule instead.)  For
+'substr', START and LENGTH must be numbers.
+
+   For 'negate' and 'abs', AMOUNT is a number, optionally with a
+commodity symbol before or after it, and optionally with a sign: '-' or
+'+' before it, or parentheses meaning negative around it.  The sign can
+be before or after a commodity symbol written in front of the number.
+Eg these are all negative amounts: '-5', '(5)', '-$5', '$-5', '$(5)',
+'USD -5', '-5 USD', '(5 USD)'.  The number itself isn't parsed, so its
+decimal mark and digit group marks don't matter.  'negate' converts '5'
+to '-5' and '$-1,000.50' to '$1,000.50', and 'abs' converts any of the
+above to the unsigned form.  A sign after the number ('5-'), or
+parentheses around just the number when the symbol comes after it ('(5)
+USD'), are not supported.
+
+   Mistakes in an expression, like an unknown function or the wrong
+number of arguments, are reported when the rules file is read.  Text
+beginning with '%{' is always taken as an expression.
 
 
 File: hledger.info,  Node: hledger field names,  Next: if,  Prev: Field assignment,  Up: CSV
@@ -9714,6 +9901,8 @@ format.
    * Comment lines, beginning with ';' or '#' (indented or not), are
      also allowed.
    * A blank line (or the end of the file) ends the table.
+   * The delimiter character does not separate values when it is inside
+     a '%{...}' expression.
 
    Eg:
 
@@ -10377,9 +10566,9 @@ understand which of these steps is failing:
                are more than one, the last one wins.
 
             2. Compute the field's actual value (as text), by
-               interpolating any %CSVFIELD references within the
-               assigned value; or by choosing a default value if there
-               was no assignment.
+               interpolating any %CSVFIELD references and %{...}
+               expressions within the assigned value; or by choosing a
+               default value if there was no assignment.
 
         * Generate a hledger transaction from the hledger field values,
           parsing them if needed (eg from text to an amount).
@@ -11583,8 +11772,10 @@ File: hledger.info,  Node: Queries and account aliases,  Next: Queries and valua
 23.6 Queries and account aliases
 ================================
 
-When account names are rewritten with '--alias' or 'alias', 'acct:' will
-match either the old or the new account name.
+When account names are rewritten by account aliases, queries see only
+the new account names.  Eg with 'alias checking = assets:bank:checking',
+'acct:bank' matches the rewritten postings, but 'acct:^checking' does
+not.
 
 
 File: hledger.info,  Node: Queries and valuation,  Prev: Queries and account aliases,  Up: Queries
@@ -14794,7 +14985,7 @@ names must be 'Assets', 'Liabilities', 'Equity', 'Income', and/or
 account whose account type is known (declared or inferred) will have the
 corresponding Beancount top level account prepended; eg with 'account
 bonds ; type:A', 'bonds:treasury' becomes 'Assets:Bonds:Treasury'.
-Otherwise, you should use '--alias' (see Account aliases, or this
+Otherwise, you should use '--alias' (see '--alias' option, or this
 hledger2beancount.conf file).
 
    Other adjustments hledger makes:
@@ -15806,269 +15997,273 @@ Node: When to use tags ?285914
 Node: Tag names286580
 Node: Tag values289211
 Node: Directives289529
-Node: account directive292947
-Node: Account comments294395
-Node: Account tags294984
-Node: Account aliases295455
-Node: Account error checking296386
-Node: Account display order298294
-Node: Account types299494
-Node: alias directive304100
-Node: Basic aliases305487
-Node: Regex aliases306465
-Node: Combining aliases307514
-Node: Aliases and multiple files308967
-Node: end aliases directive309733
-Node: Aliases can generate bad account names310103
-Node: Aliases and account types310938
-Node: comment directive311832
-Node: end comment directive312155
-Node: commodity directive312384
-Node: Commodity directive syntax313379
-Node: Commodity tags314836
-Node: Commodity aliases315370
-Node: Commodity error checking318404
-Node: decimal-mark directive318872
-Node: include directive320348
-Node: P directive323437
-Node: payee directive324473
-Node: tag directive325090
-Node: Periodic transactions325696
-Node: Periodic rule syntax327166
-Node: Periodic rules and relative dates327992
-Node: Two spaces between period expression and description!328771
-Node: Auto postings329734
-Node: Auto postings and multiple files333022
-Node: Auto postings and dates333429
-Node: Auto postings and transaction balancing / inferred amounts / balance assertions333872
-Node: Auto posting tags334663
-Node: Auto postings on forecast transactions only335560
-Node: Other syntax336032
-Node: Balance assignments336824
-Node: Balance assignments and costs338354
-Node: Balance assignments and multiple files338778
-Node: Bracketed posting dates339203
-Node: D directive339903
-Node: apply account directive341681
-Node: Y directive342550
-Node: Secondary dates343543
-Node: Star comments345030
-Node: Valuation expressions345434
-Node: Virtual postings345735
-Node: Other Ledger directives347361
-Node: Ledger virtual costs348121
-Node: Ledger cost basis348465
-Node: CSV349006
-Node: CSV rules cheatsheet351302
-Node: source353727
-Node: Data cleaning / data generating commands355529
-Node: archive357559
-Node: encoding358516
-Node: separator359269
-Node: skip359924
-Node: date-format360576
-Node: timezone361523
-Node: newest-first362651
-Node: intra-day-reversed363366
-Node: decimal-mark363970
-Node: CSV fields vs hledger fields364716
-Node: fields list366234
-Node: Field assignment368060
-Node: hledger field names369630
-Node: date field370131
-Node: date2 field370324
-Node: status field370529
-Node: code field370729
-Node: description field371112
-Node: comment field371578
-Node: account field372145
-Node: amount field372881
-Node: currency field375730
-Node: balance field376148
-Node: if376681
-Node: Matchers378559
-Node: Multiple matchers380534
-Node: Match groups381283
-Node: if table382157
-Node: merge384144
-Node: balance-type386986
-Node: include387812
-Node: Working with CSV388570
-Node: Rapid feedback389161
-Node: Valid CSV389746
-Node: File Extension390624
-Node: Reading CSV from standard input391361
-Node: Reading multiple CSV files391749
-Node: Reading files specified by rule392403
-Node: Valid transactions393775
-Node: Deduplicating importing394602
-Node: Regular expressions in CSV rules395845
-Node: Setting amounts397339
-Node: Amount signs399879
-Node: Setting currency/commodity400946
-Node: Amount decimal places402324
-Node: Referencing other fields403583
-Node: How CSV rules are evaluated404690
-Node: Well factored rules407697
-Node: CSV rules examples408189
-Node: Timeclock408563
-Node: Timedot412634
-Node: Timedot examples416643
-Node: PART 4 CONCEPTS418723
-Node: Time periods418857
-Node: Report start & end date419102
-Node: Smart dates420578
-Node: Report intervals422949
-Node: Date adjustments423523
-Node: Start date adjustment423746
-Node: End date adjustment424610
-Node: Period expressions425359
-Node: Period expressions with a report interval427494
-Node: More complex report intervals427942
-Node: Multiple weekday intervals430058
-Node: Queries431069
-Node: Query types433902
-Node: acct query434292
-Node: amt query434603
-Node: code query435300
-Node: cur query435495
-Node: desc query436235
-Node: date query436418
-Node: date2 query437032
-Node: depth query437373
-Node: find query437709
-Node: note query438820
-Node: payee query439087
-Node: real query439368
-Node: status query439573
-Node: type query439813
-Node: tag query440415
-Node: Negative queries441044
-Node: not query441226
-Node: Space-separated queries441513
-Node: Boolean queries442201
-Node: expr query443142
-Node: any query443871
-Node: all query444886
-Node: Queries and command options445613
-Node: Queries and account aliases446061
-Node: Queries and valuation446386
-Node: Depth446714
-Node: Combining depth options447682
-Node: Pivoting448632
-Node: Report titles450935
-Node: Languages452300
-Node: Amount arithmetic454609
-Node: Where hledger divides455744
-Node: Transaction balancing459116
-Node: How balancing is checked459859
-Node: Where imbalances come from461284
-Node: Accumulated imbalances462036
-Node: Showing imbalances463160
-Node: Avoiding imbalances465748
-Node: Transaction balancing before 150466443
-Node: Amount formatting467601
-Node: Commodity display style467894
-Node: Commodity style override469767
-Node: Display rounding470864
-Node: Trailing decimal marks471518
-Node: Amount parseability472389
-Node: Cost reporting473998
-Node: Recording costs474790
-Node: Reporting at cost476547
-Node: Equity conversion postings477917
-Node: Inferring equity conversion postings480696
-Node: Combining costs and equity conversion postings482978
-Node: Requirements for detecting equity conversion postings484319
-Node: Value reporting485978
-Node: -X Value in specified commodity486943
-Node: -V Value in default commoditys488069
-Node: Valuation date488806
-Node: Finding market price489638
-Node: --infer-market-prices market prices from transactions491018
-Node: Valuation commodity494042
-Node: --value Flexible valuation495475
-Node: Valuation examples497870
-Node: Interaction of valuation and queries500014
-Node: Effect of valuation on reports500731
-Node: Lots and capital gains508502
-Node: First lots example510401
-Node: Writing lot entries514425
-Node: Cost basis annotations515225
-Node: Lotful commodities516440
-Node: Lot subaccounts517208
-Node: Several ways to write lot entries518476
-Node: Disabling lot tracking520073
-Node: Lot movements521441
-Node: Acquire522013
-Node: Transfer524806
-Node: Transfer fees526012
-Node: Capitalising fees527266
-Node: Dispose527965
-Node: Short positions529389
-Node: Other lot events531913
-Node: Cost basis methods532394
-Node: Changing the cost basis method536048
-Node: Gains537594
-Node: Gain accounts539472
-Node: Recording gains540845
-Node: Lot reports543089
-Node: Realised gains543868
-Node: Unrealised gains545098
-Node: Lot details547274
-Node: Lot labels547554
-Node: Cost basis precision548510
-Node: Lot postings and balance assertions549553
-Node: Troubleshooting lots550588
-Node: Generating data552447
-Node: Forecasting554282
-Node: --forecast554938
-Node: Inspecting forecast transactions556039
-Node: Forecast reports557372
-Node: Forecast tags558481
-Node: Forecast period in detail559101
-Node: Forecast troubleshooting560189
-Node: Budgeting561260
-Node: Posting types561815
-Node: PART 5 MORE ABOUT THE COMMAND LINE564608
-Node: Output564799
-Node: Output destination565004
-Node: Output format565564
-Node: Text output567494
-Node: Box-drawing characters568690
-Node: Colour569192
-Node: Paging569923
-Node: HTML output571466
-Node: CSV / TSV output572114
-Node: FODS output572370
-Node: Ledger output573304
-Node: Beancount output573856
-Node: SQL output578580
-Node: JSON output579321
-Node: Debug output580028
-Node: Command line tips581146
-Node: Special characters581515
-Node: Escaping shell special characters582517
-Node: Escaping regular expression special characters583878
-Node: Escaping in other situations585395
-Node: Unicode characters586695
-Node: Regular expressions588128
-Node: hledger's regular expressions591320
-Node: Argument files592993
-Node: Shell completions593907
-Node: PART 6 COMMON TASKS594416
-Node: Setting LEDGER_FILE594864
-Node: Set LEDGER_FILE on unix595380
-Node: Set LEDGER_FILE on mac595895
-Node: Set LEDGER_FILE on Windows596449
-Node: Reconciling598088
-Node: Closing a journal file600423
-Node: hledger 1 and hledger 2600890
-Node: Migrating hledger 1 data to hledger 2601442
-Node: Switching back to hledger 1603538
-Node: Keeping data usable with both604893
-Node: BUGS605617
-Node: Troubleshooting607269
+Node: Directive scopes289981
+Node: Directives summary291856
+Node: account directive295404
+Node: Account comments296852
+Node: Account tags297441
+Node: Account aliases297912
+Node: Account error checking299722
+Node: Account display order301500
+Node: Account types302700
+Node: alias directive307306
+Node: Basic aliases308604
+Node: Regex aliases309516
+Node: --alias option310562
+Node: Combining aliases311482
+Node: Aliases and multiple files312936
+Node: end aliases directive313997
+Node: Aliases can generate bad account names314401
+Node: Aliases and account types315236
+Node: comment directive316130
+Node: end comment directive316453
+Node: commodity directive316682
+Node: Commodity directive syntax317708
+Node: Commodity tags319165
+Node: Commodity aliases319699
+Node: Commodity error checking322733
+Node: decimal-mark directive323201
+Node: include directive324709
+Node: P directive327798
+Node: payee directive328834
+Node: tag directive329451
+Node: Periodic transactions330057
+Node: Periodic rule syntax331527
+Node: Periodic rules and relative dates332353
+Node: Two spaces between period expression and description!333132
+Node: Auto postings334095
+Node: Auto postings and multiple files337383
+Node: Auto postings and dates337790
+Node: Auto postings and transaction balancing / inferred amounts / balance assertions338233
+Node: Auto posting tags339024
+Node: Auto postings on forecast transactions only339921
+Node: Other syntax340393
+Node: Balance assignments341185
+Node: Balance assignments and costs342715
+Node: Balance assignments and multiple files343139
+Node: Bracketed posting dates343564
+Node: D directive344264
+Node: apply account directive346109
+Node: Y directive346978
+Node: Secondary dates347971
+Node: Star comments349458
+Node: Valuation expressions349862
+Node: Virtual postings350163
+Node: Other Ledger directives351789
+Node: Ledger virtual costs352549
+Node: Ledger cost basis352893
+Node: CSV353434
+Node: CSV rules cheatsheet355730
+Node: source358155
+Node: Data cleaning / data generating commands359957
+Node: archive361987
+Node: encoding362944
+Node: separator363697
+Node: skip364352
+Node: date-format365004
+Node: timezone365951
+Node: newest-first367079
+Node: intra-day-reversed367794
+Node: decimal-mark368398
+Node: CSV fields vs hledger fields369144
+Node: fields list370662
+Node: Field assignment372488
+Node: Functions374145
+Node: hledger field names377223
+Node: date field377724
+Node: date2 field377917
+Node: status field378122
+Node: code field378322
+Node: description field378705
+Node: comment field379171
+Node: account field379738
+Node: amount field380474
+Node: currency field383323
+Node: balance field383741
+Node: if384274
+Node: Matchers386152
+Node: Multiple matchers388127
+Node: Match groups388876
+Node: if table389750
+Node: merge391837
+Node: balance-type394679
+Node: include395505
+Node: Working with CSV396263
+Node: Rapid feedback396854
+Node: Valid CSV397439
+Node: File Extension398317
+Node: Reading CSV from standard input399054
+Node: Reading multiple CSV files399442
+Node: Reading files specified by rule400096
+Node: Valid transactions401468
+Node: Deduplicating importing402295
+Node: Regular expressions in CSV rules403538
+Node: Setting amounts405032
+Node: Amount signs407572
+Node: Setting currency/commodity408639
+Node: Amount decimal places410017
+Node: Referencing other fields411276
+Node: How CSV rules are evaluated412383
+Node: Well factored rules415413
+Node: CSV rules examples415905
+Node: Timeclock416279
+Node: Timedot420350
+Node: Timedot examples424359
+Node: PART 4 CONCEPTS426439
+Node: Time periods426573
+Node: Report start & end date426818
+Node: Smart dates428294
+Node: Report intervals430665
+Node: Date adjustments431239
+Node: Start date adjustment431462
+Node: End date adjustment432326
+Node: Period expressions433075
+Node: Period expressions with a report interval435210
+Node: More complex report intervals435658
+Node: Multiple weekday intervals437774
+Node: Queries438785
+Node: Query types441618
+Node: acct query442008
+Node: amt query442319
+Node: code query443016
+Node: cur query443211
+Node: desc query443951
+Node: date query444134
+Node: date2 query444748
+Node: depth query445089
+Node: find query445425
+Node: note query446536
+Node: payee query446803
+Node: real query447084
+Node: status query447289
+Node: type query447529
+Node: tag query448131
+Node: Negative queries448760
+Node: not query448942
+Node: Space-separated queries449229
+Node: Boolean queries449917
+Node: expr query450858
+Node: any query451587
+Node: all query452602
+Node: Queries and command options453329
+Node: Queries and account aliases453777
+Node: Queries and valuation454201
+Node: Depth454529
+Node: Combining depth options455497
+Node: Pivoting456447
+Node: Report titles458750
+Node: Languages460115
+Node: Amount arithmetic462424
+Node: Where hledger divides463559
+Node: Transaction balancing466931
+Node: How balancing is checked467674
+Node: Where imbalances come from469099
+Node: Accumulated imbalances469851
+Node: Showing imbalances470975
+Node: Avoiding imbalances473563
+Node: Transaction balancing before 150474258
+Node: Amount formatting475416
+Node: Commodity display style475709
+Node: Commodity style override477582
+Node: Display rounding478679
+Node: Trailing decimal marks479333
+Node: Amount parseability480204
+Node: Cost reporting481813
+Node: Recording costs482605
+Node: Reporting at cost484362
+Node: Equity conversion postings485732
+Node: Inferring equity conversion postings488511
+Node: Combining costs and equity conversion postings490793
+Node: Requirements for detecting equity conversion postings492134
+Node: Value reporting493793
+Node: -X Value in specified commodity494758
+Node: -V Value in default commoditys495884
+Node: Valuation date496621
+Node: Finding market price497453
+Node: --infer-market-prices market prices from transactions498833
+Node: Valuation commodity501857
+Node: --value Flexible valuation503290
+Node: Valuation examples505685
+Node: Interaction of valuation and queries507829
+Node: Effect of valuation on reports508546
+Node: Lots and capital gains516317
+Node: First lots example518216
+Node: Writing lot entries522240
+Node: Cost basis annotations523040
+Node: Lotful commodities524255
+Node: Lot subaccounts525023
+Node: Several ways to write lot entries526291
+Node: Disabling lot tracking527888
+Node: Lot movements529256
+Node: Acquire529828
+Node: Transfer532621
+Node: Transfer fees533827
+Node: Capitalising fees535081
+Node: Dispose535780
+Node: Short positions537204
+Node: Other lot events539728
+Node: Cost basis methods540209
+Node: Changing the cost basis method543863
+Node: Gains545409
+Node: Gain accounts547287
+Node: Recording gains548660
+Node: Lot reports550904
+Node: Realised gains551683
+Node: Unrealised gains552913
+Node: Lot details555089
+Node: Lot labels555369
+Node: Cost basis precision556325
+Node: Lot postings and balance assertions557368
+Node: Troubleshooting lots558403
+Node: Generating data560262
+Node: Forecasting562097
+Node: --forecast562753
+Node: Inspecting forecast transactions563854
+Node: Forecast reports565187
+Node: Forecast tags566296
+Node: Forecast period in detail566916
+Node: Forecast troubleshooting568004
+Node: Budgeting569075
+Node: Posting types569630
+Node: PART 5 MORE ABOUT THE COMMAND LINE572423
+Node: Output572614
+Node: Output destination572819
+Node: Output format573379
+Node: Text output575309
+Node: Box-drawing characters576505
+Node: Colour577007
+Node: Paging577738
+Node: HTML output579281
+Node: CSV / TSV output579929
+Node: FODS output580185
+Node: Ledger output581119
+Node: Beancount output581671
+Node: SQL output586396
+Node: JSON output587137
+Node: Debug output587844
+Node: Command line tips588962
+Node: Special characters589331
+Node: Escaping shell special characters590333
+Node: Escaping regular expression special characters591694
+Node: Escaping in other situations593211
+Node: Unicode characters594511
+Node: Regular expressions595944
+Node: hledger's regular expressions599136
+Node: Argument files600809
+Node: Shell completions601723
+Node: PART 6 COMMON TASKS602232
+Node: Setting LEDGER_FILE602680
+Node: Set LEDGER_FILE on unix603196
+Node: Set LEDGER_FILE on mac603711
+Node: Set LEDGER_FILE on Windows604265
+Node: Reconciling605904
+Node: Closing a journal file608239
+Node: hledger 1 and hledger 2608706
+Node: Migrating hledger 1 data to hledger 2609258
+Node: Switching back to hledger 1611354
+Node: Keeping data usable with both612709
+Node: BUGS613433
+Node: Troubleshooting615085
 
 End Tag Table
 

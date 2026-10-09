@@ -7134,28 +7134,86 @@ Eg \f[CR]; foo:a, foo:b\f[R].
 .SS Directives
 You can add directives to a \f[CR]journal\f[R] file, to add error
 checking, improve parsing, et cetera.
-hledger\(aqs directives are broadly similar to Ledger\(aqs, though with
-differences.
 Directives begin with a keyword, not a date.
 Some of them can have indented subdirectives.
+hledger\(aqs directives are broadly similar to Ledger\(aqs, though with
+differences.
+.SS Directive scopes
+Directives differ in which entries they affect.
+Some affect only the following entries, others affect both preceding and
+following entries; and some reach only the current file and its
+subfiles, others reach every file.
+Assuming this command and file layout:
+.IP
+.EX
+hledger \-f main.journal \-f other.journal
+
+main.journal           ; the parent file
+  include a.journal    ; a child of main.journal
+    include aa.journal ; a child of a.journal
+  include b.journal    ; a child of main.journal, and a sibling of a.journal
+
+other.journal          ; a separate file tree
+.EE
 .PP
-\f[B]Some directives affect only the subsequent entries, and any
-included subfiles, until the end of the current file.\f[R] This makes
-reports stable and deterministic, regardless of the order of \-f options
-or the positions of include directives.
-This is sometimes inconvenient, but there are usually workarounds.
-Eg, to have \f[CR]alias\f[R] directives affect all of your files, put
-them at the start of the main file, before any \f[CR]include\f[R]s.
+here are the possible scopes, for a directive written in
+\f[CR]a.journal\f[R]:
 .PP
 .TS
 tab(@);
-lw(5.6n) lw(60.0n) lw(4.4n).
+lw(14.7n) lw(55.3n).
+T{
+scope
+T}@T{
+affects
+T}
+_
+T{
+\f[B]rest of file + subfiles\f[R]
+T}@T{
+following entries in or below \f[CR]a.journal\f[R] (including
+\f[CR]aa.journal\f[R] if it is included after the directive)
+T}
+T{
+\f[B]rest of file tree\f[R]
+T}@T{
+as above, plus following entries in parent files
+(\f[CR]main.journal\f[R] entries after the \f[CR]include a.journal\f[R]
+directive, including \f[CR]b.journal\f[R])
+T}
+T{
+\f[B]file tree\f[R]
+T}@T{
+all entries in \f[CR]main.journal\f[R], \f[CR]a.journal\f[R],
+\f[CR]aa.journal\f[R] and \f[CR]b.journal\f[R], before and after the
+directive
+T}
+T{
+\f[B]all files\f[R]
+T}@T{
+all entries in all file trees, no matter where the directive is written
+T}
+.TE
+.PP
+The limited scopes help keep reports stable and deterministic,
+independent of the order of \-f options or include directives.
+This is sometimes inconvenient, but there are usually workarounds.
+In particular, to have account aliases affect all entries in a file
+tree, declare them at the start of the main file, before any
+\f[CR]include\f[R]s.
+(Or to affect all file trees specified at runtime, use
+\f[CR]\-\-alias\f[R] options.)
+.SS Directives summary
+.PP
+.TS
+tab(@);
+lw(7.9n) lw(51.6n) lw(10.5n).
 T{
 directive
 T}@T{
 what it does
 T}@T{
-ends at file end?
+scope
 T}
 _
 T{
@@ -7164,34 +7222,50 @@ T}@T{
 T}@T{
 T}
 T{
-\f[B]\f[CB]alias\f[B]\f[R]
+\f[B]\f[CB]include\f[B]\f[R]
 T}@T{
-Rewrites account names, in following entries until
-\f[CR]end aliases\f[R] or file end.
+Includes entries from another file (a \(dqsubfile\(dq), as if they were
+written inline.
 T}@T{
-Y
 T}
 T{
 \f[B]\f[CB]comment\f[B]\f[R]
 T}@T{
-Ignores following entries, until \f[CR]end comment\f[R] or file end.
+Ignores following entries and directives, until \f[CR]end comment\f[R].
 T}@T{
-Y
+rest of file + subfiles
+T}
+T{
+\f[B]\f[CB]alias\f[B]\f[R]
+T}@T{
+Rewrites following matched account names, until \f[CR]end aliases\f[R].
+T}@T{
+rest of file + subfiles
+T}
+T{
+\f[B]\f[CB]account\f[B]\f[R] \f[CR]alias:\f[R] tag
+T}@T{
+Rewrites following matched account names to this account\(aqs full name,
+until \f[CR]end aliases\f[R].
+T}@T{
+rest of file + subfiles
 T}
 T{
 \f[B]\f[CB]decimal\-mark\f[B]\f[R]
 T}@T{
-Declares the decimal mark, for parsing amounts of all commodities in
-following entries until next \f[CR]decimal\-mark\f[R] or file end.
-Subfiles can override.
+Declares the decimal mark for parsing following amounts of all
+commodities, until the next \f[CR]decimal\-mark\f[R] (subfiles can
+override).
 T}@T{
-Y
+rest of file + subfiles
 T}
 T{
-\f[B]\f[CB]include\f[B]\f[R]
+\f[B]\f[CB]commodity\f[B]\f[R] sample amount
 T}@T{
-Includes entries from another file, as if they were written inline.
+Declares the decimal mark for parsing following amounts of this
+commodity (\f[CR]decimal\-mark\f[R] can override).
 T}@T{
+rest of file tree
 T}
 T{
 T}@T{
@@ -7201,37 +7275,66 @@ T}
 T{
 \f[B]\f[CB]account\f[B]\f[R]
 T}@T{
-Declares an account, for checking all entries in all files, and its
-display order, and optionally its type, cost basis method and aliases
-(which, like \f[CR]alias\f[R], apply until file end).
+Declares an account, and its display order.
 T}@T{
-N
+all files
+T}
+T{
+\f[B]\f[CB]account\f[B]\f[R] \f[CR]type:\f[R] tag
+T}@T{
+Declares the account\(aqs type.
+T}@T{
+all files
+T}
+T{
+\f[B]\f[CB]account\f[B]\f[R] \f[CR]lots:\f[R] tag
+T}@T{
+Declares the account\(aqs cost basis method.
+T}@T{
+file tree
 T}
 T{
 \f[B]\f[CB]commodity\f[B]\f[R]
 T}@T{
-Declares 1.
-a commodity symbol, for checking all amounts in all files 2.
-the commodity\(aqs display style 3.
-optional commodity aliases and lotfulness, and 4.
-the decimal mark for parsing this commodity, until file end (overridden
-by \f[CR]decimal\-mark\f[R]).
+Declares a commodity symbol.
 T}@T{
-N N N N
+all files
+T}
+T{
+\f[B]\f[CB]commodity\f[B]\f[R] sample amount
+T}@T{
+Declares the commodity\(aqs display style.
+T}@T{
+all files
+T}
+T{
+\f[B]\f[CB]commodity\f[B]\f[R] \f[CR]alias:\f[R] tag
+T}@T{
+Declares equivalent or related symbols for this commodity.
+T}@T{
+file tree
+T}
+T{
+\f[B]\f[CB]commodity\f[B]\f[R] \f[CR]lots:\f[R] tag
+T}@T{
+Declares that the commodity tracks lots, and optionally their cost basis
+method.
+T}@T{
+file tree
 T}
 T{
 \f[B]\f[CB]payee\f[B]\f[R]
 T}@T{
-Declares a payee name, for checking all entries in all files.
+Declares a payee name.
 T}@T{
-N
+all files
 T}
 T{
 \f[B]\f[CB]tag\f[B]\f[R]
 T}@T{
-Declares a tag name, for checking all entries in all files.
+Declares a tag name.
 T}@T{
-N
+all files
 T}
 T{
 \f[B]\f[CB]P\f[B]\f[R]
@@ -7239,6 +7342,7 @@ T}@T{
 Declares a commodity\(aqs market price on some date, for value and gain
 reports.
 T}@T{
+all files
 T}
 T{
 T}@T{
@@ -7248,20 +7352,27 @@ T}
 T{
 \f[B]\f[CB]=\f[B]\f[R]
 T}@T{
-Declares an auto posting rule that generates extra postings with
-\f[CR]\-\-auto\f[R], in current/parent/subfiles (but not sibling files,
-see #1212).
+Generates extra postings (after matched postings), with
+\f[CR]\-\-auto\f[R].
+(Does not see sibling files: #1212.)
 T}@T{
-partly
+file tree
 T}
 T{
 \f[B]\f[CB]\(ti\f[B]\f[R]
 T}@T{
-Declares a periodic transaction rule that generates 1.
-future transactions with \f[CR]\-\-forecast\f[R], and 2.
-budget goals with \f[CR]balance \-\-budget\f[R].
+Generates future transactions (after latest transaction in file tree, by
+default), with \f[CR]\-\-forecast\f[R].
 T}@T{
-N
+file tree
+T}
+T{
+\f[B]\f[CB]\(ti\f[B]\f[R]
+T}@T{
+Generates budget goals and actual/goal percentages, with
+\f[CR]balance \-\-budget\f[R].
+T}@T{
+all files
 T}
 T{
 T}@T{
@@ -7271,28 +7382,27 @@ T}
 T{
 \f[CR]apply account\f[R]
 T}@T{
-Prepends a common parent account to all account names, in following
-entries until \f[CR]end apply account\f[R] or file end.
+Prepends a common parent account to all following account names, until
+\f[CR]end apply account\f[R].
 T}@T{
-Y
+rest of file + subfiles
 T}
 T{
 \f[CR]D\f[R]
 T}@T{
-Sets 1.a default commodity to use for no\-symbol amounts 2.
-the decimal mark for parsing it 3.
-the display style for showing it (these are overridden by
-\f[CR]commodity\f[R] or \f[CR]decimal\-mark\f[R]).
+Sets a default commodity for following no\-symbol amounts.
+Also sets its parsing decimal mark (overridden by \f[CR]commodity\f[R]
+or \f[CR]decimal\-mark\f[R]) and display style (overridden by
+\f[CR]commodity\f[R]).
 T}@T{
-Y, N, N
+rest of file + subfiles
 T}
 T{
 \f[CR]Y\f[R]
 T}@T{
-Sets a default year to use for any yearless dates, in following entries
-until file end.
+Sets a default year for following yearless dates.
 T}@T{
-Y
+rest of file + subfiles
 T}
 T{
 other
@@ -7356,29 +7466,58 @@ the posting already has a value for that tag.
 Note, these tags will be queryable but won\(aqt be shown in
 \f[CR]print\f[R] output, even with \-\-verbose\-tags.
 .SS Account aliases
-An \f[CR]alias:\f[R] tag on an account directive declares an account
-alias for that account, just as if an \f[CR]alias\f[R] directive had
-been written at that point.
-These two are equivalent:
+An \f[CR]alias:\f[R] tag on an account directive declares an alternate,
+usually shorter, name for that account.
+This could make data entry quicker, and your journal less verbose (but
+also adds more names for you to remember).
+Eg:
+.IP
+.EX
+account assets:bank:checking    ; alias: checking
+
+2024\-01\-01
+    expenses:food     5
+    checking
+.EE
+.PP
+When hledger reads this, it rewrites \f[CR]checking\f[R] to
+\f[CR]assets:bank:checking\f[R].
+Reports, queries and \f[CR]print\f[R] output show only the full name.
+Subaccounts are rewritten too: \f[CR]checking:pending\f[R] becomes
+\f[CR]assets:bank:checking:pending\f[R].
+(The alias must match the whole account name or its leading components,
+exactly and case sensitively; \f[CR]Checking\f[R],
+\f[CR]checkingfoo\f[R] or \f[CR]old:checking\f[R] would not be
+affected.)
+.PP
+To declare multiple aliases, add more \f[CR]alias:\f[R] tags.
+A Ledger\-style \f[CR]alias\f[R] subdirective, indented below the
+account directive, is also accepted, and treated as an \f[CR]alias:\f[R]
+tag.
+.PP
+An alias affects the entries which follow it, in the current file and
+any files it includes (see directive scopes), until an
+\f[CR]end aliases\f[R] directive.
+So it\(aqs best to declare accounts at the start of your main file,
+before any \f[CR]include\f[R] directives.
+.PP
+More powerful aliases, such as regular expression aliases which rewrite
+many accounts at once, can be declared with the \f[CR]alias\f[R]
+directive, described below.
+An alias: tag is equivalent to a basic alias directive written just
+after the account directive:
 .IP
 .EX
 account assets:bank:checking    ; alias: checking
 .EE
 .IP
 .EX
-alias checking = assets:bank:checking
 account assets:bank:checking
+alias checking = assets:bank:checking
 .EE
 .PP
-Each \f[CR]alias:\f[R] tag declares one alias; add more tags to declare
-more aliases.
-Like an \f[CR]alias\f[R] directive, it rewrites account names in the
-entries which follow it, in the current file and any files it includes,
-until the end of the file (see Aliases and multiple files).
-Ledger\(aqs \f[CR]alias NAME\f[R] subdirective, indented below the
-account directive, is accepted and treated as an \f[CR]alias:\f[R] tag.
-\f[CR]hledger accounts \-\-directives\f[R] shows account aliases in the
-tag form.
+You can also apply aliases at runtime, without editing your files, using
+the \f[CR]\-\-alias\f[R] option.
 .SS Account error checking
 By default, accounts need not be declared; they come into existence when
 a posting references them.
@@ -7396,10 +7535,7 @@ Some notes:
 The declaration is case\-sensitive; transactions must use the correct
 account name capitalisation.
 .IP \(bu 2
-The account directive\(aqs scope is \(dqwhole file and below\(dq (see
-directives).
-This means it affects all of the current file, and any files it
-includes, but not parent or sibling files.
+Account declarations affect all files (see directive scopes).
 The position of account directives within the file does not matter,
 though it\(aqs usual to put them at the top.
 .IP \(bu 2
@@ -7643,13 +7779,21 @@ Otherwise, it will have no type.
 .IP \(bu 2
 Account aliases can disrupt account types.
 .SS \f[CR]alias\f[R] directive
-(hledger has three kinds of alias: the account aliases described here,
-commodity aliases declared on \f[CR]commodity\f[R] directives, and
-command aliases defined in a config file.)
+(Note: this section is about account aliases, not commodity aliases or
+command aliases.)
 .PP
-You can define account alias rules which rewrite your account names, or
-parts of them, before generating reports.
-This can be useful for:
+\f[CR]alias\f[R] directives are a more general and powerful form of the
+account aliases tags described above.
+(There is also a runtime variant, defined with the \f[CR]\-\-alias\f[R]
+option.)
+.PP
+Account alias rules rewrite your account names, or parts of them, after
+reading the journal (affecting both directives and transactions), before
+generating reports.
+They do not affect account names being entered via hledger add or
+hledger\-web.
+.PP
+Account aliases can be useful for:
 .IP \(bu 2
 expanding shorthand account names to their full form, allowing easier
 data entry and a less verbose journal
@@ -7662,31 +7806,20 @@ combining two accounts into one, eg to see their sum or difference on
 one line
 .IP \(bu 2
 customising reports
-.PP
-Account aliases also rewrite account names in account directives.
-They do not affect account names being entered via hledger add or
-hledger\-web.
-.PP
-Account aliases are very powerful.
-They are generally easy to use correctly, but you can also generate
-invalid account names with them; more on this below.
-.PP
-See also Rewrite account names.
 .SS Basic aliases
 To set an account alias, use the \f[CR]alias\f[R] directive in your
 journal file.
 This affects all subsequent journal entries in the current file or its
-included files (but note: not sibling or parent files).
+included files (but note: not sibling or parent files; see directive
+scopes).
 The spaces around the = are optional:
 .IP
 .EX
 alias OLD = NEW
 .EE
 .PP
-Or, you can use the \f[CR]\-\-alias \(aqOLD=NEW\(aq\f[R] option on the
-command line.
-This affects all entries.
-It\(aqs useful for trying out aliases interactively.
+Or, you can use \f[CR]\-\-alias \(aqOLD=NEW\(aq\f[R] on the command
+line.
 .PP
 Or, for a declared account, you can write the alias as an
 \f[CR]alias:\f[R] tag on its account directive.
@@ -7736,6 +7869,26 @@ alias /\(ha(.+):bank:([\(ha:]+):(.*)/ = \(rs1:\(rs2 \(rs3
 .PP
 REPLACEMENT continues to the end of line (or on command line, to end of
 option argument), so it can contain trailing whitespace.
+.SS \f[CR]\-\-alias\f[R] option
+The \f[CR]\-\-alias\f[R] command line option defines an account alias,
+using the same syntax as an \f[CR]alias\f[R] directive (basic or regex),
+without editing your files.
+Eg:
+.IP
+.EX
+$ hledger bal \-\-alias checking=assets:bank:checking
+$ hledger bal \-\-alias \(aq/\(haexpenses:(food|dining)/=expenses:food\(aq
+.EE
+.PP
+It can be repeated to define more aliases.
+These aliases affect all entries in all files (including CSV, timeclock
+and timedot files), wherever the option appears on the command line; and
+they are applied after any \f[CR]alias\f[R] directives or
+\f[CR]alias:\f[R] tags (see Combining aliases).
+They are not cleared by \f[CR]end aliases\f[R].
+This makes \f[CR]\-\-alias\f[R] useful for trying out aliases
+interactively, or for customising particular reports.
+You can also put \f[CR]\-\-alias\f[R] options in a config file.
 .SS Combining aliases
 You can define as many aliases as you like, using journal directives
 and/or command line options.
@@ -7769,8 +7922,8 @@ independent of which files are being read and in which order.
 In case of trouble, adding \f[CR]\-\-debug=6\f[R] to the command line
 will show which aliases are being applied when.
 .SS Aliases and multiple files
-As explained at Directives, \f[CR]alias\f[R] directives do not affect
-parent or sibling files.
+As explained at Directive scopes, \f[CR]alias\f[R] directives (and
+\f[CR]alias:\f[R] tags) do not affect parent or sibling files.
 Eg in this command,
 .IP
 .EX
@@ -7801,9 +7954,19 @@ alias bar=Bar
 
 include c.journal  ; also affected
 .EE
+.PP
+To affect all files read, whether they are included, or referenced by
+\f[CR]\-f\f[R] or the \f[CR]import\f[R] command, use
+\f[CR]\-\-alias\f[R] options (which could be in a config file).
+Eg here the alias affects both a.journal and b.journal:
+.IP
+.EX
+hledger \-f a.journal \-f b.journal \-\-alias foo=Foo
+.EE
 .SS \f[CR]end aliases\f[R] directive
-You can clear (forget) all currently defined aliases (seen in the
-journal so far, or defined on the command line) with this directive:
+This directive clears (forgets) all account aliases from
+\f[CR]alias\f[R] directives and account \f[CR]alias:\f[R] tags seen so
+far (but not aliases from command line \f[CR]\-\-alias\f[R] options):
 .IP
 .EX
 end aliases
@@ -7884,9 +8047,9 @@ decimal digits after it).
 This tells the parser which decimal mark (period or comma) is used for
 this commodity in the journal file, which can be useful in case of
 ambiguous digit group marks.
-This effect lasts until the end of the current file tree (from a single
-\f[CR]\-f\f[R] or \f[CR]LEDGER_FILE\f[R]), and it can be overridden by
-by a \f[CR]decimal\-mark\f[R] directive.
+This affects subsequent entries in the current file, its included files,
+and the rest of any parent files (see directive scopes), and it can be
+overridden by a \f[CR]decimal\-mark\f[R] directive.
 .SS Commodity directive syntax
 In more detail.
 A commodity directive is normally the word \f[CR]commodity\f[R] followed
@@ -8026,7 +8189,8 @@ It works like account error checking (described above).
 .SS \f[CR]decimal\-mark\f[R] directive
 You can use a \f[CR]decimal\-mark\f[R] directive to declare
 unambiguously which character (period or comma) represents a decimal
-mark, for all subsequent amounts until the end of the current file.
+mark, for all subsequent amounts in the current file and its included
+files (see directive scopes).
 This helps when parsing ambiguous numbers (like \f[CR]1.000\f[R] or
 \f[CR]1,000\f[R] where you mean one thousand, not one).
 It also makes hledger check that numbers use that decimal mark and no
@@ -8522,8 +8686,9 @@ Ledger\(aqs lot date syntax.
 This directive sets a default commodity, to be used for any subsequent
 commodityless amounts (ie, plain numbers) seen while parsing the
 journal.
-This effect lasts until the next \f[CR]D\f[R] directive, or the end of
-the current file.
+This affects subsequent entries until the next \f[CR]D\f[R] directive,
+or the end of the current file (including its included files; see
+directive scopes).
 .PP
 For compatibility/historical reasons, \f[CR]D\f[R] also acts like a
 \f[CR]commodity\f[R] directive (setting the commodity\(aqs decimal mark
@@ -9354,7 +9519,8 @@ followed by a text value on the same line.
 This text value may interpolate CSV fields, referenced either by their
 1\-based position in the CSV record (\f[CR]%N\f[R]) or by the name they
 were given in the fields list (\f[CR]%CSVFIELD\f[R]), and regular
-expression match groups (\f[CR]\(rsN\f[R]).
+expression match groups (\f[CR]\(rsN\f[R]), and can transform them with
+functions (\f[CR]%{upper(%CSVFIELD)}\f[R]).
 You can also write \f[CR]%(CSVFIELD)\f[R] to delimit the field name from
 adjacent text (eg \f[CR]%(field)suffix\f[R]).
 When CSV records have been combined by a \f[CR]merge\f[R] rule, a
@@ -9382,6 +9548,130 @@ Interpolation strips outer whitespace (so a CSV value like
 Interpolations always refer to a CSV field \- you can\(aqt interpolate a
 hledger field.
 (See Referencing other fields below).
+.SS Functions
+\f[I]Since 1.99.6; experimental\f[R]
+.PP
+To transform a value while interpolating it, write a \f[CR]%{...}\f[R]
+expression calling one of the built\-in functions below.
+Eg:
+.IP
+.EX
+# upper\-case the description
+description %{upper(%desc)}
+
+# use the category in lower case, or \(dqmisc\(dq if it\(aqs empty
+account2 expenses:%{lower(default(%category, \(dqmisc\(dq))}
+
+# remove a reference number from the description
+description %{replace(%desc, \(dq *ref#[0\-9]+\(dq, \(dq\(dq)}
+
+# put the date\(aqs year and month in a tag
+comment month:%{substr(%date, 1, 7)}
+.EE
+.PP
+Function arguments can be CSV field references (\f[CR]%desc\f[R],
+\f[CR]%3\f[R]), match group references (\f[CR]\(rs1\f[R]),
+double\-quoted text (\f[CR]\(dqmisc\(dq\f[R]), numbers, or other
+function calls.
+Use \f[CR]\(rs\(dq\f[R] for a double quote inside double\-quoted text.
+Each expression\(aqs result has outer whitespace removed, like other
+interpolated values.
+.PP
+.TS
+tab(@);
+lw(18.8n) lw(51.2n).
+T{
+function
+T}@T{
+result
+T}
+_
+T{
+\f[CR]upper(TEXT)\f[R]
+T}@T{
+TEXT in upper case
+T}
+T{
+\f[CR]lower(TEXT)\f[R]
+T}@T{
+TEXT in lower case
+T}
+T{
+\f[CR]capitalize(TEXT)\f[R]
+T}@T{
+TEXT with each word\(aqs first letter in upper case and the rest in
+lower case (\f[CR]capitalise\f[R] also works)
+T}
+T{
+\f[CR]trim(TEXT)\f[R]
+T}@T{
+TEXT without outer whitespace
+T}
+T{
+\f[CR]negate(AMOUNT)\f[R]
+T}@T{
+AMOUNT with its sign flipped, eg \f[CR]5\f[R] \-> \f[CR]\-5\f[R],
+\f[CR]\-5\f[R] or \f[CR](5)\f[R] \-> \f[CR]5\f[R]
+T}
+T{
+\f[CR]abs(AMOUNT)\f[R]
+T}@T{
+AMOUNT without a minus sign, eg \f[CR]\-5\f[R] or \f[CR](5)\f[R] \->
+\f[CR]5\f[R]
+T}
+T{
+\f[CR]concat(TEXT, ...)\f[R]
+T}@T{
+all the arguments joined together
+T}
+T{
+\f[CR]default(TEXT, ...)\f[R]
+T}@T{
+the first argument that\(aqs not empty
+T}
+T{
+\f[CR]replace(TEXT, REGEX, REPL)\f[R]
+T}@T{
+TEXT with each match of REGEX replaced by REPL
+T}
+T{
+\f[CR]substr(TEXT, START, LENGTH)\f[R]
+T}@T{
+LENGTH characters of TEXT, starting at position START (1 is the first);
+LENGTH is optional
+T}
+.TE
+.PP
+For \f[CR]replace\f[R], REGEX must be double\-quoted text, and is a
+case\-insensitive regular expression.
+REPL can use \f[CR]\(rs1\f[R], \f[CR]\(rs2\f[R] etc.
+to insert REGEX\(aqs match groups.
+(Unquoted \f[CR]\(rs1\f[R] etc.
+outside double quotes refer to the match groups of an enclosing
+\f[CR]if\f[R] rule instead.)
+For \f[CR]substr\f[R], START and LENGTH must be numbers.
+.PP
+For \f[CR]negate\f[R] and \f[CR]abs\f[R], AMOUNT is a number, optionally
+with a commodity symbol before or after it, and optionally with a sign:
+\f[CR]\-\f[R] or \f[CR]+\f[R] before it, or parentheses meaning negative
+around it.
+The sign can be before or after a commodity symbol written in front of
+the number.
+Eg these are all negative amounts: \f[CR]\-5\f[R], \f[CR](5)\f[R],
+\f[CR]\-$5\f[R], \f[CR]$\-5\f[R], \f[CR]$(5)\f[R], \f[CR]USD \-5\f[R],
+\f[CR]\-5 USD\f[R], \f[CR](5 USD)\f[R].
+The number itself isn\(aqt parsed, so its decimal mark and digit group
+marks don\(aqt matter.
+\f[CR]negate\f[R] converts \f[CR]5\f[R] to \f[CR]\-5\f[R] and
+\f[CR]$\-1,000.50\f[R] to \f[CR]$1,000.50\f[R], and \f[CR]abs\f[R]
+converts any of the above to the unsigned form.
+A sign after the number (\f[CR]5\-\f[R]), or parentheses around just the
+number when the symbol comes after it (\f[CR](5) USD\f[R]), are not
+supported.
+.PP
+Mistakes in an expression, like an unknown function or the wrong number
+of arguments, are reported when the rules file is read.
+Text beginning with \f[CR]%{\f[R] is always taken as an expression.
 .SS hledger field names
 Here are all the hledger fields you can assign to.
 They correspond to parts of a journal entry, or in some cases they are
@@ -9704,6 +9994,9 @@ Comment lines, beginning with \f[CR];\f[R] or \f[CR]#\f[R] (indented or
 not), are also allowed.
 .IP \(bu 2
 A blank line (or the end of the file) ends the table.
+.IP \(bu 2
+The delimiter character does not separate values when it is inside a
+\f[CR]%{...}\f[R] expression.
 .PP
 Eg:
 .IP
@@ -10418,8 +10711,8 @@ assignments made inside succeeding \f[CR]if\f[R] blocks.
 If there are more than one, the last one wins.
 .IP "2." 3
 Compute the field\(aqs actual value (as text), by interpolating any
-%CSVFIELD references within the assigned value; or by choosing a default
-value if there was no assignment.
+%CSVFIELD references and %{...} expressions within the assigned value;
+or by choosing a default value if there was no assignment.
 .RE
 .IP \(bu 2
 Generate a hledger transaction from the hledger field values, parsing
@@ -11747,9 +12040,11 @@ Some queries can also be expressed as command\-line options:
 When you mix command options and query arguments, generally the
 resulting query is their intersection.
 .SS Queries and account aliases
-When account names are rewritten with \f[CR]\-\-alias\f[R] or
-\f[CR]alias\f[R], \f[CR]acct:\f[R] will match either the old or the new
-account name.
+When account names are rewritten by account aliases, queries see only
+the new account names.
+Eg with \f[CR]alias checking = assets:bank:checking\f[R],
+\f[CR]acct:bank\f[R] matches the rewritten postings, but
+\f[CR]acct:\(hachecking\f[R] does not.
 .SS Queries and valuation
 When amounts are converted to other commodities in cost or value
 reports, \f[CR]cur:\f[R] and \f[CR]amt:\f[R] match the old commodity
@@ -15319,8 +15614,8 @@ Any other top level account whose account type is known (declared or
 inferred) will have the corresponding Beancount top level account
 prepended; eg with \f[CR]account bonds  ; type:A\f[R],
 \f[CR]bonds:treasury\f[R] becomes \f[CR]Assets:Bonds:Treasury\f[R].
-Otherwise, you should use \f[CR]\-\-alias\f[R] (see Account aliases, or
-this hledger2beancount.conf file).
+Otherwise, you should use \f[CR]\-\-alias\f[R] (see \f[CR]\-\-alias\f[R]
+option, or this hledger2beancount.conf file).
 .PP
 Other adjustments hledger makes:
 .IP \(bu 2
