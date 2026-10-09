@@ -1939,6 +1939,34 @@ $  ./csvtest.sh
 
 >=0
 
+# ** 104. A blank value in an if table does not assign that field,
+# leaving any value it had from earlier rules.
+<
+2026-01-01,big thing,12345
+2026-01-02,cafe,12345
+2026-01-03,cafe,3
+RULES
+fields date, description, amount
+account1 a
+
+if|                 account2          | comment
+%amount [0-9]{4,}   |                   | TODO: large amount, check it
+cafe                | expenses:dining   |
+$  ./csvtest.sh
+2026-01-01 big thing  ; TODO: large amount, check it
+    a                                          12345
+    income:unknown                            -12345
+
+2026-01-02 cafe  ; TODO: large amount, check it
+    a                                          12345
+    expenses:dining                           -12345
+
+2026-01-03 cafe
+    a                                              3
+    expenses:dining                               -3
+
+>=0
+
 # ** .
 #<
 #$  ./csvtest.sh

@@ -1307,8 +1307,8 @@ conditionaltablep = do
   when (null body) $
     customFailure $ parseErrorAt start $ "start of conditional table found, but no assignment rules afterward"
   return $ flip map body $ \(ms,vs,pos) ->
-    -- values have surrounding whitespace removed, so they can be aligned
-    CB{cbMatchers=ms, cbAssignments=zipWith (\f v -> FieldAssignment f (T.strip v) pos) fields vs}
+    -- values have surrounding whitespace removed, so they can be aligned; blank values don't assign
+    CB{cbMatchers=ms, cbAssignments=[FieldAssignment f v pos | (f, v) <- zip fields (map T.strip vs), not $ T.null v]}
   <?> "conditional table"
   where
     bodylinep :: Char -> [Text] -> CsvRulesParser ([Matcher],[FieldTemplate],Maybe (FilePath,Int))
