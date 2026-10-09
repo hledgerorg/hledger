@@ -205,7 +205,7 @@ Click error names to see an example. The table headings mean:
 
 
 <!-- GENERATED: -->
-hledger 1.99-g9dfb4f207-20261009 error messages:
+hledger 1.99-gfb3ed53b7-20261009 error messages:
 
 ### accounts
 ```
@@ -648,7 +648,7 @@ hledger: Error: /path/to/csvifblocknomatchers.csv.rules:3:1:
   |
 3 | # a comment, not a matcher
   | ^
-start of conditional block found, but no matchers afterward
+start of if rule found, but no matchers afterward
 (matchers should be on the same line as "if", or on the following lines.
 Note: a line beginning with a comment character (# or ;) is a comment;
 to match a leading comment character, escape it, eg \#)
@@ -661,8 +661,8 @@ hledger: Error: /path/to/csvifblocknonempty.csv.rules:2:1:
   |
 2 | if foo
   | ^
-start of conditional block found, but no assignment rules afterward
-(assignment rules in a conditional block should be indented)
+start of if rule found, but no assignment rules afterward
+(assignment rules in an if rule should be indented)
 ```
 
 

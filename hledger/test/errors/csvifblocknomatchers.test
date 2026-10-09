@@ -3,6 +3,6 @@ $ hledger check -f  csvifblocknomatchers.csv
   \|
 3 \| # a comment, not a matcher
   \| \^
-start of conditional block found, but no matchers afterward
+start of if rule found, but no matchers afterward
 /
 >= 1

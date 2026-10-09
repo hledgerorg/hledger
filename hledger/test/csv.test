@@ -816,8 +816,8 @@ $  ./csvtest.sh
   \|
 5 \| if Flubber
   \| \^
-start of conditional block found, but no assignment rules afterward
-\(assignment rules in a conditional block should be indented\)
+start of if rule found, but no assignment rules afterward
+\(assignment rules in an if rule should be indented\)
 /
 >=1
 # XXX
@@ -843,7 +843,7 @@ $  ./csvtest.sh
 6 \|   myaccount2 acct
   \|   \^\^\^\^\^\^\^\^\^\^\^\^
 unexpected "myaccount2 a"
-expecting conditional block
+expecting if rule
 /
 >=1
 # XXX
@@ -890,8 +890,8 @@ $  ./csvtest.sh
   \|
 5 \| if account2 comment
   \| \^
-start of conditional block found, but no assignment rules afterward
-\(assignment rules in a conditional block should be indented\)
+start of if rule found, but no assignment rules afterward
+\(assignment rules in an if rule should be indented\)
 /
 >=1
 # XXX

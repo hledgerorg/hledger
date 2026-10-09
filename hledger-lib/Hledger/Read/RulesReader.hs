@@ -898,7 +898,7 @@ rulesp = do
          fieldnamelistp >>= modify' . setIndexesAndAssignmentsFromList pos) <?> "field name list"
     ,(fieldassignmentp  >>= modify' . addAssignment)                    <?> "field assignment"
     -- conditionalblockp backtracks because it shares "if" prefix with conditionaltablep.
-    ,try (conditionalblockp >>= modify' . addConditionalBlock)          <?> "conditional block"
+    ,try (conditionalblockp >>= modify' . addConditionalBlock)          <?> "if rule"
     -- 'reverse' is there to ensure that conditions are added in the order they listed in the file
     ,(conditionaltablep >>= modify' . addConditionalBlocks . reverse)   <?> "ifs table"
     ]
@@ -1267,7 +1267,7 @@ conditionalblockp = do
         else many matcherlinep
   when (null ms) $
     customFailure $ parseErrorAt moff $
-      "start of conditional block found, but no matchers afterward\n"
+      "start of if rule found, but no matchers afterward\n"
       ++ "(matchers should be on the same line as \"if\", or on the following lines.\n"
       ++ "Note: a line beginning with a comment character (# or ;) is a comment;\n"
       ++ "to match a leading comment character, escape it, eg \\#)"
@@ -1282,9 +1282,9 @@ conditionalblockp = do
                    ]
           ])
   when (null as) $
-    customFailure $ parseErrorAt start $  "start of conditional block found, but no assignment rules afterward\n(assignment rules in a conditional block should be indented)"
+    customFailure $ parseErrorAt start $  "start of if rule found, but no assignment rules afterward\n(assignment rules in an if rule should be indented)"
   return $ CB{cbMatchers=ms, cbAssignments=as}
-  <?> "conditional block"
+  <?> "if rule"
 
 -- An ifs table (AKA if table, conditional table): "ifs" (or "if") followed by separator, followed by some field names,
 -- followed by many lines, each of which is either:

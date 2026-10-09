@@ -3,7 +3,7 @@ $ hledger check -f  csvifblocknonempty.csv
   \|
 2 \| if foo
   \| \^
-start of conditional block found, but no assignment rules afterward
-\(assignment rules in a conditional block should be indented\)
+start of if rule found, but no assignment rules afterward
+\(assignment rules in an if rule should be indented\)
 /
 >= 1
