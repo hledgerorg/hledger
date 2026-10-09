@@ -794,7 +794,7 @@ $  ./csvtest.sh
   \|
 6 \| %amount 150\|acct2
   \| \^
-line of conditional table should have 2 values, but this one has only 1
+line of ifs table should have 2 values, but this one has 1
 /
 >=1
 # XXX regex needed for error tests with ghc 9.10, https://gitlab.haskell.org/ghc/ghc/-/issues/25116

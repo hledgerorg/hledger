@@ -1,2 +1,2 @@
-# no (indented) rules following if table
+# no rows following ifs table
 if,date,description,comment

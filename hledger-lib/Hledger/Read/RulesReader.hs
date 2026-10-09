@@ -900,7 +900,7 @@ rulesp = do
     -- conditionalblockp backtracks because it shares "if" prefix with conditionaltablep.
     ,try (conditionalblockp >>= modify' . addConditionalBlock)          <?> "conditional block"
     -- 'reverse' is there to ensure that conditions are added in the order they listed in the file
-    ,(conditionaltablep >>= modify' . addConditionalBlocks . reverse)   <?> "conditional table"
+    ,(conditionaltablep >>= modify' . addConditionalBlocks . reverse)   <?> "ifs table"
     ]
   eof
   rules <- mkrules <$> get
@@ -1286,7 +1286,7 @@ conditionalblockp = do
   return $ CB{cbMatchers=ms, cbAssignments=as}
   <?> "conditional block"
 
--- A conditional table: "if" followed by separator, followed by some field names,
+-- An ifs table (AKA if table, conditional table): "ifs" (or "if") followed by separator, followed by some field names,
 -- followed by many lines, each of which is either:
 -- a comment line (possibly indented), or
 -- one matcher, followed by field assignments (as many as there were fields in the header).
@@ -1309,11 +1309,11 @@ conditionaltablep = do
                  , fmap Just $ bodylinep sep fields
                  ])
   when (null body) $
-    customFailure $ parseErrorAt start $ "start of conditional table found, but no assignment rules afterward"
+    customFailure $ parseErrorAt start $ "start of ifs table found, but no table rows afterward"
   return $ flip map body $ \(ms,vs,pos) ->
     -- values have surrounding whitespace removed, so they can be aligned; blank values don't assign
     CB{cbMatchers=ms, cbAssignments=[FieldAssignment f v pos | (f, v) <- zip fields (map T.strip vs), not $ T.null v]}
-  <?> "conditional table"
+  <?> "ifs table"
   where
     bodylinep :: Char -> [Text] -> CsvRulesParser ([Matcher],[FieldTemplate],Maybe (FilePath,Int))
     bodylinep sep fields = do
@@ -1323,8 +1323,12 @@ conditionaltablep = do
       -- separators inside %{...} expressions don't separate values
       vs <- lift $ (T.concat <$> many (templatepartp (\c -> c /= sep && c /= '\n'))) `sepBy` char sep <* eolof
       if (length vs /= length fields)
-        then customFailure $ parseErrorAt off $ ((printf "line of conditional table should have %d values, but this one has only %d" (length fields) (length vs)) :: String)
+        then customFailure $ parseErrorAt off $ ((printf "line of ifs table should have %s, but this one has %d" (values $ length fields) (length vs)) :: String)
         else return (ms,vs,pos)
+      where
+        values :: Int -> String
+        values 1 = "1 value"
+        values n = show n <> " values"
 
 
 -- A single matcher, on one line.

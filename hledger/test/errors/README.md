@@ -205,7 +205,7 @@ Click error names to see an example. The table headings mean:
 
 
 <!-- GENERATED: -->
-hledger 1.99-gefcbbc8e6-20260930 error messages:
+hledger 1.99-g9dfb4f207-20261009 error messages:
 
 ### accounts
 ```
@@ -683,7 +683,7 @@ hledger: Error: /path/to/csviftablenonempty.csv.rules:2:1:
   |
 2 | if,date,description,comment
   | ^
-start of conditional table found, but no assignment rules afterward
+start of ifs table found, but no table rows afterward
 ```
 
 
@@ -693,7 +693,7 @@ hledger: Error: /path/to/csviftablevaluecount.csv.rules:4:1:
   |
 4 | one,val1
   | ^
-line of conditional table should have 2 values, but this one has only 1
+line of ifs table should have 2 values, but this one has 1
 ```
 
 

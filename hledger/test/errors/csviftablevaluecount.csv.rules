@@ -1,4 +1,4 @@
-# if table where some records have wrong number of values.
+# ifs table where some records have wrong number of values.
 if,date,description
 two,val1,val2
 one,val1

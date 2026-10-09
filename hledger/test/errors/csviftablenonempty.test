@@ -3,6 +3,6 @@ $ hledger check -f  csviftablenonempty.csv
   \|
 2 \| if,date,description,comment
   \| \^
-start of conditional table found, but no assignment rules afterward
+start of ifs table found, but no table rows afterward
 /
 >= 1
