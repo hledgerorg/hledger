@@ -3060,7 +3060,7 @@ The following kinds of rule can appear in the rules file, in any order.
 | [**`if` block**](#if)                     | conditionally assign values to hledger fields, or `skip` a record or `end` (skip rest of file) |
 | [**`skip`**](#if)                         | (inside an `if` rule) skip current record(s)                                                   |
 | [**`end`**](#if)                          | (inside an `if` rule) skip all remaining records                                               |
-| [**`if` table**](#if-table)                     | conditionally assign values to hledger fields, using compact syntax                            |
+| [**`if` table**](#if-table)                     | conditionally assign values to hledger fields, using compact syntax (`ifs`)                    |
 | [**`merge`**](#merge)                     | combine this record with the next one(s), to be converted to a single transaction              |
 | [**`newest-first`**](#newest-first)             | improve txn order when: there are multiple records, newest first, all with the same date       |
 | [**`intra-day-reversed`**](#intra-day-reversed) | improve txn order when: same-day txns are in opposite order to the overall file                |
@@ -3972,41 +3972,34 @@ Here are some examples:
 - Is it >= 10 ? `if %foo [1-9][0-9]+\.` (assuming a decimal period and no leading zeros)
 - Is it >= 10 and < 20 ? `if %foo \b1[0-9]\.`
 
-## `if` table
+<a name="if-table"></a>
 
-"if tables" are another way of writing [if rules](#if), in a more compact format.
+## `ifs`
 
-- The first line begins with `if`,
-  immediately followed by a delimiter character (any punctuation character),
-  then one or more delimiter-separated [hledger field names](#hledger-field-names).
-- The following lines begin with a [matcher](#matchers),
-  then values to assign to each of those hledger fields.
+An "ifs table" is another way of writing [if rules](#if), in a more compact format
+which may be useful when you have many of them ("ifs" = "many if rules").
+
+- The first line begins with `ifs`, then one or more [hledger field names](#hledger-field-names),
+  all separated by a delimiter character (any punctuation character, your choice) plus optional whitespace.
+  (An older form is also supported for backward compatibility: `if` followed by the delimiter with no space between them.)
+- The following lines begin with a [matcher](#matchers), then values to assign to each of those hledger fields.
 - Comment lines, beginning with `;` or `#` (optionally indented), are also allowed.
 - A blank line (or the end of the file) ends the table.
 
 Eg:
 
 ```rules
-if|HLEDGERFIELD1|HLEDGERFIELD2|...
-MATCHER|VALUE1|VALUE2|...
-MATCHER|VALUE1|VALUE2|...
-MATCHER|VALUE1|VALUE2|...
-<empty line>
-```
-
-or, using whitespace for alignment (except between the `if` keyword and the first delimiter, where it's not allowed):
-
-```rules
-if|       HLEDGERFIELD1 | HLEDGERFIELD2 | ...
+ifs     | HLEDGERFIELD1 | HLEDGERFIELD2 | ...
 MATCHER | VALUE         | VALUE         | ...
 MATCHER | VALUE         | VALUE         | ...
 MATCHER | VALUE         | VALUE         | ...
 <empty line>
 ```
 
-This means: for each line in turn, if the matcher matches the CSV record, assign all of the non-blank values on that line to the corresponding hledger fields.
-All of the lines are processed, so later lines could override earlier ones.
-It's equivalent to these if rules (except a blank value leaves the field unchanged):
+This means: for each line in turn, if the matcher matches the current CSV record,
+assign all of the non-blank values on that line, without their surrounding whitespace, to the corresponding hledger fields.
+All of the lines are processed, so later lines may override earlier ones.
+Except for the blank/whitespace handling, it's equivalent to writing these if rules:
 
 ```rules
 if MATCHER
@@ -4025,7 +4018,7 @@ if MATCHER
   ...
 ```
 
-Note, the delimiter character here is unrelated to the one used in the CSV file.
+Note, the delimiter character in an ifs table is unrelated to the one used in the CSV file.
 It must appear the same number of times in each line of the table,
 and it must not appear in the field names, matchers, or values used in the table
 (though inside `%{...}` expressions is ok). You cannot escape it with a backslash.
@@ -4033,15 +4026,15 @@ and it must not appear in the field names, matchers, or values used in the table
 It's hard to find a delimiter character that never clashes with anything,
 so the flexibility can be useful. Eg:
 
-- `,` and `;` are common as field separators in data files, which might make the if table confusing to read
-- `|` reads well, but then you can't use it as the regular expression "or" operator in the table's matchers
-- `!` is also readable, but then you can't begin a line with a negated matcher, or assign `!` as a status mark.
+- `,` and `;` are common as field separators in data files, so using them might cause confusion
+- `|` looks good, but then you can't use it as the regular expression "or" operator in the matchers
+- `!` is also readable, but then you can't begin a line with a negated matcher, or assign `!` as a status mark
 - `` ` `` (backquote) might be a good choice to minimise clashing.
 
 Some examples:
 
 ```rules
-if|                               account2         | comment
+ifs                             | account2         | comment
 %amount [0-9]{4,}               |                  | TODO: large amount, check it
 atm withdrawal fee              | expenses:banking |
 Plumbing LLC                    | expenses:home    |
@@ -4050,13 +4043,13 @@ cafe && ! %amount [0-9][0-9]+\. | expenses:snack   |
 ```
 
 ```rules
-if!                 account2
+ifs               ! account2
 %desc amazon|amzn ! expenses:shopping
 cafe              ! expenses:dining
 ```
 
 ```rules
-if`                               account2          ` comment
+ifs                             ` account2          ` comment
 %amount [0-9]{4,}               `                   ` TODO: large amount, check it
 atm withdrawal fee              ` expenses:banking  `
 Plumbing LLC                    ` expenses:home     `
