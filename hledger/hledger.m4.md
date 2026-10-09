@@ -3976,59 +3976,59 @@ Here are some examples:
 
 "if tables" are another way of writing [if rules](#if), in a more compact format.
 
-- The first line begins with `if`, immediately followed by a delimiter character
-  (any punctuation character - more on this below), then one or more [hledger field names](#hledger-field-names).
-- The following lines begin with a matcher expression,
+- The first line begins with `if`,
+  immediately followed by a delimiter character (any punctuation character),
+  then one or more delimiter-separated [hledger field names](#hledger-field-names).
+- The following lines begin with a [matcher](#matchers),
   then values to assign to each of those hledger fields.
-- Comment lines, beginning with `;` or `#` (indented or not), are also allowed.
+- Comment lines, beginning with `;` or `#` (optionally indented), are also allowed.
 - A blank line (or the end of the file) ends the table.
 
 Eg:
 
 ```rules
 if|HLEDGERFIELD1|HLEDGERFIELD2|...
-MATCHERA|VALUE1|VALUE2|...
-MATCHERB && MATCHERC|VALUE1|VALUE2|...
-MATCHERD|VALUE1|VALUE2|...
+MATCHER|VALUE1|VALUE2|...
+MATCHER|VALUE1|VALUE2|...
+MATCHER|VALUE1|VALUE2|...
 <empty line>
 ```
 
-An if table is applied as follows:
-
-- try each of the matchers in turn
-- when a matcher matches the CSV record, assign all of the non-blank values on that line to the corresponding hledger fields
-- if multiple matchers succeed, later lines override earlier ones.
-
-So the above is equivalent to:
+or, using whitespace for alignment (except between the `if` keyword and the first delimiter, where it's not allowed):
 
 ```rules
-if MATCHERA
-  HLEDGERFIELD1 VALUE1
-  HLEDGERFIELD2 VALUE2
+if|       HLEDGERFIELD1 | HLEDGERFIELD2 | ...
+MATCHER | VALUE         | VALUE         | ...
+MATCHER | VALUE         | VALUE         | ...
+MATCHER | VALUE         | VALUE         | ...
+<empty line>
+```
+
+This means: for each line in turn, if the matcher matches the CSV record, assign all of the non-blank values on that line to the corresponding hledger fields.
+All of the lines are processed, so later lines could override earlier ones.
+It's equivalent to these if rules (except a blank value leaves the field unchanged):
+
+```rules
+if MATCHER
+  HLEDGERFIELD1 VALUE
+  HLEDGERFIELD2 VALUE
   ...
 
-if MATCHERB && MATCHERC
-  HLEDGERFIELD1 VALUE1
-  HLEDGERFIELD2 VALUE2
+if MATCHER
+  HLEDGERFIELD1 VALUE
+  HLEDGERFIELD2 VALUE
   ...
 
-if MATCHERD
-  HLEDGERFIELD1 VALUE1
-  HLEDGERFIELD2 VALUE2
+if MATCHER
+  HLEDGERFIELD1 VALUE
+  HLEDGERFIELD2 VALUE
   ...
 ```
 
-Whichever punctuation character you write after `if` is used as the table's field delimiter.
-Note, this delimiter has nothing to do with the one used in the CSV/SSV/TSV file.
+Note, the delimiter character here is unrelated to the one used in the CSV file.
 It must appear the same number of times in each line of the table,
 and it must not appear in the field names, matchers, or values used in the table
 (though inside `%{...}` expressions is ok). You cannot escape it with a backslash.
-
-You can use whitespace around delimiters for alignment if you like,
-except there must be no space between the `if` keyword and the first delimiter
-(to distinguish an if table from an ordinary `if` rule).
-When assigning a value, its surrounding whitespace is trimmed.
-(And if the value is blank, that field is not assigned, preserving its current value.)
 
 It's hard to find a delimiter character that never clashes with anything,
 so the flexibility can be useful. Eg:
