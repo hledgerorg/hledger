@@ -3976,13 +3976,12 @@ Here are some examples:
 
 "if tables" are another way of writing [if rules](#if), in a more compact format.
 
-- The first line begins with `if`, immediately followed by a delimiter character,
-  then one or more [hledger field names](#hledger-field-names).
+- The first line begins with `if`, immediately followed by a delimiter character
+  (any punctuation character - more on this below), then one or more [hledger field names](#hledger-field-names).
 - The following lines begin with a matcher expression,
   then values to assign to each of those hledger fields.
 - Comment lines, beginning with `;` or `#` (indented or not), are also allowed.
 - A blank line (or the end of the file) ends the table.
-- The delimiter character does not separate values when it is inside a [`%{...}` expression](#functions).
 
 Eg:
 
@@ -3997,7 +3996,7 @@ MATCHERD|VALUE1|VALUE2|...
 An if table is applied as follows:
 
 - try each of the matchers in turn
-- when a matcher matches the CSV record, assign all of the values on that line to the corresponding hledger fields
+- when a matcher matches the CSV record, assign all of the non-blank values on that line to the corresponding hledger fields
 - if multiple matchers succeed, later lines override earlier ones.
 
 So the above is equivalent to:
@@ -4019,21 +4018,51 @@ if MATCHERD
   ...
 ```
 
-The character after `if` is used as the if table's field delimiter.
-It must not appear in the field names, values, or matchers (you cannot escape it with a backslash).
-`|` is conventional, but you can use a different character if it's more convenient.
-Just remember this delimiter has nothing to do with the one used in the CSV file.
-Each line must contain the same number of delimiters.
+Whichever punctuation character you write after `if` is used as the table's field delimiter.
+Note, this delimiter has nothing to do with the one used in the CSV/SSV/TSV file.
+It must appear the same number of times in each line of the table,
+and it must not appear in the field names, matchers, or values used in the table
+(though inside `%{...}` expressions is ok). You cannot escape it with a backslash.
 
-Here's an example.
-Note you can add whitespace in the matcher lines for readability (but not in the if line, currently):
+You can use whitespace around delimiters for alignment if you like,
+except there must be no space between the `if` keyword and the first delimiter
+(to distinguish an if table from an ordinary `if` rule).
+When assigning a value, its surrounding whitespace is trimmed.
+(And if the value is blank, that field is not assigned, preserving its current value.)
+
+It's hard to find a delimiter character that never clashes with anything,
+so the flexibility can be useful. Eg:
+
+- `,` and `;` are common as field separators in data files, which might make the if table confusing to read
+- `|` reads well, but then you can't use it as the regular expression "or" operator in the table's matchers
+- `!` is also readable, but then you can't begin a line with a negated matcher, or assign `!` as a status mark.
+- `` ` `` (backquote) might be a good choice to minimise clashing.
+
+Some examples:
 
 ```rules
-if|account2|comment
-%amount [0-9]{4,}  |                    | TODO: large amount, check it
-atm withdrawal fee | expenses:banking   |
-cafe               | expenses:dining    |
-Plumbing LLC       | expenses:home      |
+if|                               account2         | comment
+%amount [0-9]{4,}               |                  | TODO: large amount, check it
+atm withdrawal fee              | expenses:banking |
+Plumbing LLC                    | expenses:home    |
+cafe                            | expenses:dining  |
+cafe && ! %amount [0-9][0-9]+\. | expenses:snack   |
+```
+
+```rules
+if!                 account2
+%desc amazon|amzn ! expenses:shopping
+cafe              ! expenses:dining
+```
+
+```rules
+if`                               account2          ` comment
+%amount [0-9]{4,}               `                   ` TODO: large amount, check it
+atm withdrawal fee              ` expenses:banking  `
+Plumbing LLC                    ` expenses:home     `
+cafe                            ` expenses:dining   `
+cafe && ! %amount [0-9][0-9]+\. ` expenses:snack    `
+%desc amazon|amzn               ` expenses:shopping `
 ```
 
 ## `merge`
