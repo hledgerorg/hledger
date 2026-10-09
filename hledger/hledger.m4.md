@@ -3046,27 +3046,26 @@ and a larger collection at <https://github.com/hledgerorg/hledger/tree/main/exam
 The following kinds of rule can appear in the rules file, in any order.
 (Blank lines and lines beginning with `#` or `;` are ignored.)
 
-|                                                 |                                                                                                |
-|-------------------------------------------------|------------------------------------------------------------------------------------------------|
-| [**`separator`**](#separator)                   | declare the field separator, instead of relying on file extension                              |
-| [**`encoding`**](#encoding)                     | optionally declare which text encoding the data has                                            |
-| [**`skip`**](#skip)                             | (at top level) skip header line(s) at start of file                                            |
-| [**`fields` list**](#fields-list)               | name CSV fields for easy reference, and optionally assign their values to hledger fields       |
-| [**Field assignment**](#field-assignment)       | assign a CSV value or interpolated text value to a hledger field                               |
-| [**`date-format`**](#date-format)               | declare how to parse CSV dates/date-times                                                      |
-| [**`timezone`**](#timezone)                     | declare the time zone of ambiguous CSV date-times                                              |
-| [**`decimal-mark`**](#decimal-mark)           | declare the decimal mark used in CSV amounts, when ambiguous                                   |
-| [**`balance-type`**](#balance-type)             | select which type of balance assertions/assignments to generate                                |
-| [**`if` block**](#if)                     | conditionally assign values to hledger fields, or `skip` a record or `end` (skip rest of file) |
-| [**`skip`**](#if)                         | (inside an `if` rule) skip current record(s)                                                   |
-| [**`end`**](#if)                          | (inside an `if` rule) skip all remaining records                                               |
-| [**`if` table**](#if-table)                     | conditionally assign values to hledger fields, using compact syntax (`ifs`)                    |
-| [**`merge`**](#merge)                     | combine this record with the next one(s), to be converted to a single transaction              |
-| [**`newest-first`**](#newest-first)             | improve txn order when: there are multiple records, newest first, all with the same date       |
-| [**`intra-day-reversed`**](#intra-day-reversed) | improve txn order when: same-day txns are in opposite order to the overall file                |
-| [**`include`**](#include)                       | inline another CSV rules file                                                                  |
-| [**`source`**](#source)                         | optionally declare which file to read data from                                                |
-| [**`archive`**](#archive)                       | optionally enable an archive of imported files                                                 |
+|                                                 |                                                                                          |
+|-------------------------------------------------|------------------------------------------------------------------------------------------|
+| [**`separator`**](#separator)                   | declare the field separator, instead of relying on file extension                        |
+| [**`encoding`**](#encoding)                     | optionally declare which text encoding the data has                                      |
+| [**`skip`**](#skip)                             | skip header line(s) at start of file, or (inside an if rule) the current record(s)       |
+| [**`fields` list**](#fields-list)               | name CSV fields for easy reference, and optionally assign their values to hledger fields |
+| [**Field assignment**](#field-assignment)       | assign a CSV value or interpolated text value to a hledger field                         |
+| [**`date-format`**](#date-format)               | declare how to parse CSV dates/date-times                                                |
+| [**`timezone`**](#timezone)                     | declare the time zone of ambiguous CSV date-times                                        |
+| [**`decimal-mark`**](#decimal-mark)             | declare the decimal mark used in CSV amounts, when ambiguous                             |
+| [**`balance-type`**](#balance-type)             | select which type of balance assertions/assignments to generate                          |
+| [**`if`**](#if)                                 | conditionally assign values to hledger fields, or skip one or more records               |
+| [**`ifs`**](#ifs)                               | declare multiple if rules in a compact table format                                      |
+| [**`end`**](#end)                               | (inside an if rule) skip the current and all remaining records                           |
+| [**`merge`**](#merge)                           | combine this record with the next one(s), to be converted to a single transaction        |
+| [**`newest-first`**](#newest-first)             | improve txn order when: there are multiple records, newest first, all with the same date |
+| [**`intra-day-reversed`**](#intra-day-reversed) | improve txn order when: same-day txns are in opposite order to the overall file          |
+| [**`include`**](#include)                       | inline another CSV rules file                                                            |
+| [**`source`**](#source)                         | optionally declare which file to read data from                                          |
+| [**`archive`**](#archive)                       | optionally enable an archive of imported files                                           |
 
 [Working with CSV](#working-with-csv) tips
 and [How CSV rules are evaluated](#how-csv-rules-are-evaluated) can be found below.
@@ -3225,7 +3224,7 @@ tells hledger to ignore this many non-empty lines at the start of the input data
 You'll need this whenever your CSV data contains header lines.
 Note, empty and blank lines are skipped automatically, so you don't need to count those.
 
-`skip` has a second meaning: it can be used inside [if blocks](#if) (described below),
+`skip` has a second meaning: it can be used inside an [if block](#if) or [ifs table](#ifs) (described below),
 to skip one or more records whenever the condition is true.
 Records skipped in this way are ignored, except they are still required to be [valid CSV](#valid-csv).
 
@@ -3845,8 +3844,8 @@ If any of the matchers succeeds, all of the indented rules will be applied.
 The rules are usually [field assignments](#field-assignment),
 but the following special rules may also be used within an if block:
 
-- `skip`  - skips the matched CSV record (generating no transaction from it)
-- `end`   - skips the rest of the current CSV file.
+- `skip`  - skips the matched CSV record (generating no transaction from it) ([described above](#skip)).
+- `end`   - skips the rest of the current CSV file ([described below](#end)).
 - `merge` - combines the matched CSV record and the next record(s) into one record ([described below](#merge)).
 
 Some examples:
@@ -3865,12 +3864,6 @@ atm transaction fee
 banking thru software
  account2 expenses:business:banking
  comment  XXX deductible ? check it
-```
-
-```rules
-# if an empty record is seen (assuming five fields), ignore the rest of the CSV file
-if ,,,,
- end
 ```
 
 ## Matchers
@@ -3976,8 +3969,7 @@ Here are some examples:
 
 ## `ifs`
 
-An "ifs table" is another way of writing [if rules](#if), in a more compact format
-which may be useful when you have many of them ("ifs" = "many if rules").
+An "ifs table" is a more compact way to write many [if rules](#if).
 
 - The first line begins with `ifs`, then one or more [hledger field names](#hledger-field-names),
   all separated by a delimiter character (any punctuation character, your choice) plus optional whitespace.
@@ -4018,6 +4010,17 @@ if MATCHER
   ...
 ```
 
+The [`skip`](#skip), [`end`](#end) and [`merge`](#merge) actions can also be table columns.
+Write a number in the cell on lines where the action should happen, and leave it blank on other lines.
+For `skip` and `merge` the number is how many records to skip or merge (1 or more);
+for `end`, write 1 (any non-blank value will end). Eg:
+
+```rules
+ifs                 | account2         | skip
+atm withdrawal fee  | expenses:banking |
+transfer to savings |                  | 1
+```
+
 Note, the delimiter character in an ifs table is unrelated to the one used in the CSV file.
 It must appear the same number of times in each line of the table,
 and it must not appear in the field names, matchers, or values used in the table
@@ -4056,6 +4059,18 @@ Plumbing LLC                    ` expenses:home     `
 cafe                            ` expenses:dining   `
 cafe && ! %amount [0-9][0-9]+\. ` expenses:snack    `
 %desc amazon|amzn               ` expenses:shopping `
+```
+
+## `end`
+
+The word `end`, used inside an [if block](#if) or [ifs table](#ifs),
+tells hledger to skip the current record and remaining records in the current CSV file, whenever the condition is true.
+Eg:
+
+```rules
+# if an empty record is seen (assuming five fields), ignore the rest of the CSV file
+if ,,,,
+ end
 ```
 
 ## `merge`

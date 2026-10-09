@@ -2001,6 +2001,36 @@ $  ./csvtest.sh
 )*expecting delimiter/
 >=1
 
+# ** 107. skip, end and merge can be ifs table columns; they act on lines with a non-blank value.
+<
+2026-09-01,PAYMENT,cafe,-3.00,EUR
+2026-09-01,PAYMENT,transfer to savings,-100.00,EUR
+2026-09-02,CONVERT,conversion,-100.00,USD
+2026-09-02,CONVERT,conversion,90.00,EUR
+2026-09-03,STOP,,,
+2026-09-04,PAYMENT,cafe,-4.00,EUR
+RULES
+fields date, type, desc, amt, cur
+description %desc
+account1 assets:bank:%cur
+amount1  %amt %cur
+
+ifs                 | account2           | amount2       | skip | merge | end
+%type PAYMENT       | expenses:food      |               |      |       |
+transfer to savings |                    |               | 1    |       |
+%type CONVERT       | assets:bank:%cur_2 | %amt_2 %cur_2 |      | 1     |
+%type STOP          |                    |               |      |       | 1
+$  ./csvtest.sh
+2026-09-01 cafe
+    assets:bank:EUR                               -3.00 EUR
+    expenses:food
+
+2026-09-02 conversion
+    assets:bank:USD                             -100.00 USD
+    assets:bank:EUR                               90.00 EUR
+
+>=0
+
 # ** .
 #<
 #$  ./csvtest.sh
