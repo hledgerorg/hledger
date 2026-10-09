@@ -13,7 +13,7 @@ amount1     %{negate(%amt)}
 User docs: hledger manual, CSV > Field assignment > Functions.
 Code: `hledger-lib/Hledger/Read/RulesReader.hs` (`TemplateExpr`,
 `templateexprp`, `templateFunctions`, `evalTemplateExpr`).
-Tests: `hledger/test/csv.test` 88-94.
+Tests: `hledger/test/csv.test` 88-95.
 
 ## Syntax
 
@@ -59,6 +59,7 @@ number   = digits ;
 | `negate(amt)` | sign flipped |
 | `abs(amt)` | sign removed |
 | `concat(s, ...)` | arguments joined |
+| `join(sep, s, ...)` | the `s` arguments that are not empty or all whitespace, separated by `sep` |
 | `default(s, ...)` | first argument that is not empty or all whitespace, or `""` |
 | `replace(s, "re", repl)` | all case-insensitive matches of `re` replaced by `repl`, which can use `\N` for `re`'s groups |
 | `substr(s, start, len)` | `len` characters (or all, if omitted) from 1-based position `start`; out-of-range positions are clamped |
@@ -114,6 +115,12 @@ by offset.
   `Mcdonald'S` like spreadsheet `PROPER` and Python's `title()` do.
 - **Text-based amounts**: `negate` and `abs` don't depend on `decimal-mark`
   or digit group settings, matching how `-%amt` already works.
+- **`join` takes the separator first**, unlike the other functions' text-first
+  order, as in SQL `CONCAT_WS` and Sheets `TEXTJOIN`, which also take a
+  variable number of texts. It skips empty parts like `TEXTJOIN` with
+  ignore-empty, so optional parts don't produce stray separators.
+  It treats all-whitespace parts as empty, like `default`, so it is not quite
+  `concat` with a separator: `concat(%a, " ", %b)` keeps the space.
 - **Checks when reading rules, not while converting**, so mistakes are
   reported once, with a position, before any conversion.
 

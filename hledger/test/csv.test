@@ -1788,6 +1788,26 @@ $  ./csvtest.sh
 
 >=0
 
+# ** 95. join joins its texts which are not empty or all whitespace, with a separator between them.
+<
+2026-01-05,fuel,7,ref1
+2026-01-06,fuel,7,
+RULES
+fields date, desc, amt, ref
+amount %amt USD
+account1 assets:bank
+comment %{join(", ", concat("note:", %desc), %ref, "  ", "x")}
+$  ./csvtest.sh
+2026-01-05  ; note:fuel, ref1, x
+    assets:bank                                    7 USD
+    income:unknown                                -7 USD
+
+2026-01-06  ; note:fuel, x
+    assets:bank                                    7 USD
+    income:unknown                                -7 USD
+
+>=0
+
 # ** .
 #<
 #$  ./csvtest.sh

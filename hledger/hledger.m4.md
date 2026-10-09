@@ -3511,6 +3511,7 @@ Each expression's result has outer whitespace removed, like other interpolated v
 | `negate(AMOUNT)`               | AMOUNT with its sign flipped, eg `5` -> `-5`, `-5` or `(5)` -> `5`                    |
 | `abs(AMOUNT)`                  | AMOUNT without a minus sign, eg `-5` or `(5)` -> `5`                                  |
 | `concat(TEXT, ...)`            | all the arguments joined together                                                     |
+| `join(SEP, TEXT, ...)`         | the TEXTs that aren't empty, joined with SEP between them                             |
 | `default(TEXT, ...)`           | the first argument that's not empty                                                   |
 | `replace(TEXT, REGEX, REPL)`   | TEXT with each match of REGEX replaced by REPL                                        |
 | `substr(TEXT, START, LENGTH)`  | LENGTH characters of TEXT, starting at position START (1 is the first); LENGTH is optional |
@@ -3531,6 +3532,9 @@ The number itself isn't parsed, so its decimal mark and digit group marks don't 
 `negate` converts `5` to `-5` and `$-1,000.50` to `$1,000.50`,
 and `abs` converts any of the above to the unsigned form.
 A sign after the number (`5-`), or parentheses around just the number when the symbol comes after it (`(5) USD`), are not supported.
+
+`join` is useful for combining parts which may be empty, without stray separators.
+Eg `comment %{join(", ", %note, %ref)}`.
 
 Mistakes in an expression, like an unknown function or the wrong number of arguments,
 are reported when the rules file is read.

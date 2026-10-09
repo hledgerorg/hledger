@@ -1131,13 +1131,18 @@ templateFunctions =
   ,TemplateFunction "negate"  (1, Just 1) noCheck (signedPart (simplifySign . negateStr) . arg1)
   ,TemplateFunction "abs"     (1, Just 1) noCheck (signedPart (absStr . simplifySign) . arg1)
   ,TemplateFunction "concat"  (1, Nothing) noCheck T.concat
-  ,TemplateFunction "default" (1, Nothing) noCheck (headDef "" . filter (not . T.null . T.strip))
+  ,TemplateFunction "join"    (2, Nothing) noCheck joinFn
+  ,TemplateFunction "default" (1, Nothing) noCheck (headDef "" . filter nonBlank)
   ,TemplateFunction "replace" (3, Just 3) checkReplace replaceFn
   ,TemplateFunction "substr"  (2, Just 3) checkSubstr substrFn
   ]
   where
     noCheck = const Nothing
     arg1 = headDef ""
+    nonBlank = not . T.null . T.strip
+    -- join(SEPARATOR, TEXT, ...): the texts which are not empty or all whitespace, separated by SEPARATOR
+    joinFn (sep:ts) = T.intercalate sep $ filter nonBlank ts
+    joinFn []       = ""
     -- upper-case the first letter of each whitespace-separated word, and lower-case the rest
     capitalize = snd . T.mapAccumL (\atstart c -> (isSpace c, if atstart then toUpper c else toLower c)) True
     absStr t = fromMaybe t $ T.stripPrefix "-" t
