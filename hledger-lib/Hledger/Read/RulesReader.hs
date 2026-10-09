@@ -1296,9 +1296,13 @@ conditionaltablep = do
   lift $ dbgparse 8 "trying conditionaltablep"
   start <- getOffset
   string "if"
-  sep <- lift $ satisfy (\c -> not (isAlphaNum c || isSpace c))
-  -- spaces are allowed around the field names (but not before the first delimiter, where they would start an if block)
-  fields <- (lift skipNonNewlineSpaces *> journalfieldnamep <* lift skipNonNewlineSpaces) `sepBy1` (char sep)
+  -- "ifs" (preferred) allows spaces before the first delimiter;
+  -- plain "if" does not, since a space there would start an if block
+  ifs <- isJust <$> optional (char 's')
+  when ifs $ lift skipNonNewlineSpaces
+  sep <- lift (satisfy (\c -> not (isAlphaNum c || isSpace c)) <?> "delimiter (a punctuation character)")
+  -- spaces are allowed around the field names
+  fields <-(lift skipNonNewlineSpaces *> journalfieldnamep <* lift skipNonNewlineSpaces) `sepBy1` (char sep)
   newline
   body <- catMaybes <$> (flip manyTill (try blanklinep <|> lift eof) $
           choice [ try commentlinep >> return Nothing

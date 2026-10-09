@@ -1967,6 +1967,40 @@ $  ./csvtest.sh
 
 >=0
 
+# ** 105. An if table can begin with ifs, which allows spaces before the first delimiter too.
+<
+2026-01-01,cafe,3
+2026-01-02,atm withdrawal fee,2
+RULES
+fields date, description, amount
+account1 a
+
+ifs                | account2         | comment
+atm withdrawal fee | expenses:banking |
+cafe               | expenses:dining  | coffee
+$  ./csvtest.sh
+2026-01-01 cafe  ; coffee
+    a                                              3
+    expenses:dining                               -3
+
+2026-01-02 atm withdrawal fee
+    a                                              2
+    expenses:banking                              -2
+
+>=0
+
+# ** 106. ifs needs a delimiter.
+<
+2026-01-01,cafe,3
+RULES
+fields date, description, amount
+ifs account2
+cafe|expenses:dining
+$  ./csvtest.sh
+>2 /rules:2:5:(.|
+)*expecting delimiter/
+>=1
+
 # ** .
 #<
 #$  ./csvtest.sh
