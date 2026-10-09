@@ -3224,7 +3224,7 @@ tells hledger to ignore this many non-empty lines at the start of the input data
 You'll need this whenever your CSV data contains header lines.
 Note, empty and blank lines are skipped automatically, so you don't need to count those.
 
-`skip` has a second meaning: it can be used inside an [if block](#if) or [ifs table](#ifs) (described below),
+`skip` has a second meaning: it can be used inside an [`if`](#if) rule (described below),
 to skip one or more records whenever the condition is true.
 Records skipped in this way are ignored, except they are still required to be [valid CSV](#valid-csv).
 
@@ -3420,8 +3420,8 @@ if refund
 
 "Previous assignment" here means the one before this one, in this order:
 top-level assignments (including those made by `fields`),
-then assignments in matched `if` blocks, each in the order written.
-(So a top-level assignment comes before any `if` block's, even if written after it.)
+then assignments in matched `if` rules, each in the order written.
+(So a top-level assignment comes before any `if` rule's, even if written after it.)
 
 In an assignment to a different field, a hledger field's name gives that field's final value,
 wherever it is assigned. Eg here, comment is set to the final value of the hledger description:
@@ -3550,7 +3550,7 @@ and causes that posting to be generated.
 
 Most often there are two postings, so you'll want to set `account1` and `account2`.
 Typically `account1` is associated with the CSV file, and is set once with a top-level assignment,
-while `account2` is set based on each transaction's description, in [conditional rules](#if).
+while `account2` is set based on each transaction's description, in [`if` rules](#if).
 
 If a posting's account name is left unset but its amount is set,
 the account name will be set to `expenses:unknown` or `income:unknown` (depending on the amount's sign).
@@ -3605,7 +3605,7 @@ Which amount fields to use depends on how the CSV shows amounts:
    N is usually 1 or 2 but can go up to 99.
 
    b. **If another field indicates direction of flow:**\
-   Use one or more conditional rules to set the appropriate amount sign. Eg:
+   Use one or more `if` rules to set the appropriate amount sign. Eg:
    ```rules
    # assume a withdrawal unless Type contains "deposit":
    amount1  -%Amount
@@ -3633,7 +3633,7 @@ Which amount fields to use depends on how the CSV shows amounts:
    c. **If both fields can contain a non-zero value (or both can be empty):**\
      The -in/-out rules normally choose the value which is non-zero/non-empty.
      Some value pairs can be ambiguous, such as `1` and `none`.
-     For such cases, use [conditional rules](#if) to help select the amount.
+     For such cases, use [`if` rules](#if) to help select the amount.
      Eg, to handle the above you could select the value containing non-zero digits:
      ```rules
      fields date, description, in, out
@@ -3813,7 +3813,7 @@ Here are the balance assertion types for quick reference:
 Rules can be applied conditionally, depending on patterns in the CSV data.
 This is how you can categorise transactions, selecting an appropriate account based on their description (eg).
 
-An "if block" is the word `if`,
+An `if` rule is the word `if`,
 followed by one or more "matcher" expressions starting on the same line or the next line,
 followed by one or more indented rules.
 Eg,
@@ -3834,9 +3834,9 @@ MATCHER
  RULE
 ```
 
-Comment lines can appear anywhere within an if block,
+Comment lines can appear anywhere within an `if` rule,
 and blank lines can also appear among the indented rules;
-these do not end the block.
+these do not end the rule.
 (One exception: a matcher on the same line as `if` can begin with a comment character
 (eg `if #groceries` matches records containing "#groceries");
 but on the lines below `if`, such a line would be read as a comment.
@@ -3844,7 +3844,7 @@ There, escape the comment character with a backslash, eg `\#groceries`.)
 
 If any of the matchers succeeds, all of the indented rules will be applied.
 The rules are usually [field assignments](#field-assignment),
-but the following special rules may also be used within an if block:
+but the following special rules may also be used within an `if` rule:
 
 - `skip`  - skips the matched CSV record (generating no transaction from it) ([described above](#skip)).
 - `end`   - skips the rest of the current CSV file ([described below](#end)).
@@ -3904,7 +3904,7 @@ For more details and tips, see [Regular expressions in CSV rules](#regular-expre
 
 ### Multiple matchers
 
-When an if block has multiple matchers, each on its own line,
+When an `if` rule has multiple matchers, each on its own line,
 
 - By default they are OR'd (any of them can match).
 - Matcher lines beginning with `&` (or `&&`) are AND'ed with the matcher above (all in the AND'ed group must match).
@@ -3920,7 +3920,7 @@ Matchers can define match groups: parenthesised portions of the regular expressi
 which are available for reference in field assignments. Groups are enclosed
 in regular parentheses (`(` and `)`) and can be nested. Each group is available
 in field assignments using the token `\N`, where N is an index into the match groups
-for this conditional block (e.g. `\1`, `\2`, etc.).
+for this `if` rule (e.g. `\1`, `\2`, etc.).
 
 Example: Warp credit card payment postings to the beginning of the billing period (Month
 start), to match how they are presented in statements, using [posting dates](#posting-dates):
@@ -4065,7 +4065,7 @@ cafe && ! %amount [0-9][0-9]+\. ` expenses:snack    `
 
 ## `end`
 
-The word `end`, used inside an [if block](#if) or [ifs table](#ifs),
+The word `end`, used inside an [`if`](#if) or [`ifs`](#ifs) rule,
 tells hledger to skip the current record and remaining records in the current CSV file, whenever the condition is true.
 Eg:
 
@@ -4087,7 +4087,7 @@ eg a currency conversion or stock trade, with each side of the trade on its own 
 The `merge` rule combines such related records,
 so that they can generate a single journal transaction.
 
-When a record matches an `if` block containing `merge N`
+When a record matches an `if` rule containing `merge N`
 (the word `merge` followed by a number, or no number, meaning 1),
 the next N records are joined onto the matched record, forming a group of rows.
 Conversion then proceeds as usual, with the whole group generating one transaction.
@@ -4148,7 +4148,7 @@ Things to note:
 - Matchers which (if successful) will trigger a `merge` rule,
   can only usefully reference the first row's fields -
   the other row fields will be empty at this stage.
-- But once a `merge` rule has been evaluated, later `if` blocks 
+- But once a `merge` rule has been evaluated, later `if` rules 
   can see the whole group; eg
   a whole-record matcher will see all of its rows combined as one,
   and field matchers can use `%FIELD_ROWNUM` references.
@@ -4222,7 +4222,7 @@ Some things than can help reduce duplication and complexity in rules files:
 
 - Extracting common rules usable with multiple CSV files into a `common.rules`, and adding `include common.rules` to each CSV's rules file.
 
-- Splitting if blocks into smaller if blocks, extracting the frequently used parts.
+- Splitting `if` rules into smaller `if` rules, extracting the frequently used parts.
 
 ## Working with CSV
 
@@ -4442,7 +4442,7 @@ If you get a confusing error while reading a CSV file, it may help to try to und
 5. Now any remaining CSV records are processed. For each CSV record, in file order:
 
    - Is there a conditional skip/end rule that applies for this record ?
-     Search the `if` blocks, from top to bottom, for a succeeding one containing a `skip` or `end` rule.
+     Search the `if` rules, from top to bottom, for a succeeding one containing a `skip` or `end` rule.
      If found, skip the specified number of CSV records, then continue at 5.\
      Otherwise...
 
@@ -4455,7 +4455,7 @@ If you get a confusing error while reading a CSV file, it may help to try to und
  
      1. Get the field's assigned value,
         first searching top level assignments, made directly or by the `fields` rule,
-        then assignments made inside succeeding `if` blocks.
+        then assignments made inside succeeding `if` rules.
         If there are more than one, the last one wins
         (though it can include the previous one's value with `%{FIELDNAME}`).
 

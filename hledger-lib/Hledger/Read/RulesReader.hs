@@ -624,7 +624,7 @@ data CsvRules' a = CsvRules' {
   rassignments       :: [FieldAssignment],
     -- ^ top-level assignments to hledger fields
   rconditionalblocks :: [ConditionalBlock],
-    -- ^ conditional blocks, which containing additional assignments/rules to apply to matched csv records
+    -- ^ conditional blocks (AKA "if rules"), which containing additional assignments/rules to apply to matched csv records
   rblocksassigning :: a -- (String -> [ConditionalBlock])
     -- ^ all conditional blocks which can potentially assign field with a given name (memoized)
 }
