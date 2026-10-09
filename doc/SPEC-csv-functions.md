@@ -123,4 +123,10 @@ by offset.
   `renderTemplate`. Parsing them once when reading the rules could speed up
   conversion.
 - Expressions are not allowed in matchers (`if %{lower(%desc)} amazon`).
+- Results have no size limit or warning. Output size is linear in the CSV
+  data, except that nesting `replace` multiplies it at each level, and
+  `replace` with a field as the replacement can give output the size of
+  one field times the other. (Rules are not Turing complete: expressions
+  have no loops, recursion or state, and always terminate.
+  `replace` takes linear time.)
 - No arithmetic, date functions, or references to hledger fields already assigned.

@@ -68,7 +68,7 @@ where
 import Control.DeepSeq (NFData(..), rwhnf)
 import Control.Monad (foldM)
 import Data.Aeson (ToJSON(..), Value(String))
-import Data.Array ((!), elems, indices)
+import Data.Array (Array, (!), elems, indices)
 import Data.Char (isDigit)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
@@ -78,7 +78,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Text.Regex.TDFA (
   Regex, CompOption(..), defaultCompOpt, defaultExecOpt,
-  makeRegexOptsM, AllMatches(getAllMatches), match, MatchText,
+  makeRegexOptsM, AllMatches(getAllMatches), match, MatchArray,
   RegexLike(..), RegexMaker(..), RegexOptions(..), RegexContext(..)
   )
 
@@ -211,32 +211,50 @@ regexReplace re repl = memo $ regexReplaceUnmemo re repl
 -- parsing errors these days since Regexp's compiled form is used,
 -- but there can still be a runtime error from the replacement
 -- pattern, eg a backreference referring to a nonexistent match group.)
+--
+-- This takes time linear in the length of the string: it makes one pass,
+-- left to right, and takes match group texts from the part of the string
+-- being processed (not from the start, as MatchText would).
+--
+-- >>> regexReplaceUnmemo (toRegex' "a") "b" "banana"
+-- Right "bbnbnb"
+-- >>> regexReplaceUnmemo (toRegex' "([0-9]+)-([0-9]+)") "\\2/\\1" "x 1-2 y 30-40"
+-- Right "x 2/1 y 40/30"
+-- >>> regexReplaceUnmemo (toRegex' "a(x)?") "[\\1]" "a ax"
+-- Right "[] [x]"
+-- >>> regexReplaceUnmemo (toRegex' "x*") "-" "abc"
+-- Right "-a-b-c-"
+-- >>> regexReplaceUnmemo (toRegex' "a") "\\1" "a"
+-- Left "no match group exists for backreference \"\\1\""
 regexReplaceUnmemo :: Regexp -> Replacement -> String -> Either RegexError String
-regexReplaceUnmemo re repl str = foldM (replaceMatch repl) str (reverse $ match (reCompiled re) str :: [MatchText String])
+regexReplaceUnmemo re repl str =
+    foldM replaceMatch (0, str, id) (match (reCompiled re) str :: [MatchArray])
+    >>= \(_, rest, prependdone) -> Right $ prependdone rest
   where
-    -- Replace one match within the string with the replacement text
-    -- appropriate for this match. Or return an error message.
-    replaceMatch :: Replacement -> String -> MatchText String -> Either RegexError String
-    replaceMatch replpat s matchgroups =
-      case elems matchgroups of 
-        [] -> Right s
-        ((_,(off,len)):_) ->   -- groups should have 0-based indexes, and there should always be at least one, since this is a match
-          erpl >>= \rpl -> Right $ pre ++ rpl ++ post
-          where
-            (pre, post') = splitAt off s
-            post = drop len post'
-            -- The replacement text: the replacement pattern with all
-            -- numeric backreferences replaced by the appropriate groups
-            -- from this match. Or an error message.
-            erpl = regexReplaceAllByM backrefRegex (lookupMatchGroup matchgroups) replpat
-              where
-                -- Given some match groups and a numeric backreference,
-                -- return the referenced group text, or an error message.
-                lookupMatchGroup :: MatchText String -> String -> Either RegexError String
-                lookupMatchGroup grps ('\\':s2@(_:_)) | all isDigit s2 =
-                  case read s2 of n | n `elem` indices grps -> Right $ fst (grps ! n)  -- PARTIAL: should not fail, all digits
-                                  _                         -> Left $ "no match group exists for backreference \"\\"++s++"\""
-                lookupMatchGroup _ s2 = Left $ "lookupMatchGroup called on non-numeric-backreference \""++s2++"\", shouldn't happen"
+    -- Given the position reached in the original string, the rest of the string from there,
+    -- and the output so far, replace one match with the replacement text appropriate
+    -- for this match. Or return an error message.
+    replaceMatch :: (Int, String, String -> String) -> MatchArray -> Either RegexError (Int, String, String -> String)
+    replaceMatch (pos, todo, prepend) groups =
+      case elems groups of
+        [] -> Right (pos, todo, prepend)
+        (off,len):_ -> do  -- groups should have 0-based indexes, and there should always be at least one, since this is a match
+          let (prematch, matchandrest) = splitAt (off - pos) todo
+              groupText (goff, glen)
+                | goff < 0  = ""  -- an optional group that did not participate in the match
+                | otherwise = take glen $ drop (goff - off) matchandrest
+          -- The replacement text: the replacement pattern with all
+          -- numeric backreferences replaced by the appropriate groups
+          -- from this match. Or an error message.
+          rpl <- regexReplaceAllByM backrefRegex (lookupMatchGroup $ fmap groupText groups) repl
+          Right (off + len, drop len matchandrest, prepend . (prematch ++) . (rpl ++))
+    -- Given some match groups and a numeric backreference,
+    -- return the referenced group text, or an error message.
+    lookupMatchGroup :: Array Int String -> String -> Either RegexError String
+    lookupMatchGroup grps ('\\':s@(_:_)) | all isDigit s =
+      case read s of n | n `elem` indices grps -> Right $ grps ! n  -- PARTIAL: should not fail, all digits
+                     _                         -> Left $ "no match group exists for backreference \"\\"++s++"\""
+    lookupMatchGroup _ s = Left $ "lookupMatchGroup called on non-numeric-backreference \""++s++"\", shouldn't happen"
     backrefRegex = toRegex' "\\\\[0-9]+"  -- PARTIAL: should not fail
 
 -- regexReplace' :: Regexp -> Replacement -> String -> String
