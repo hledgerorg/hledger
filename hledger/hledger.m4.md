@@ -3048,9 +3048,13 @@ The following kinds of rule can appear in the rules file, in any order.
 
 |                                                 |                                                                                          |
 |-------------------------------------------------|------------------------------------------------------------------------------------------|
+| [**`source`**](#source)                         | optionally declare which file to read data from                                          |
+| [**`archive`**](#archive)                       | optionally enable an archive of imported files                                           |
 | [**`separator`**](#separator)                   | declare the field separator, instead of relying on file extension                        |
 | [**`encoding`**](#encoding)                     | optionally declare which text encoding the data has                                      |
 | [**`skip`**](#skip)                             | skip header line(s) at start of file, or (inside an if rule) the current record(s)       |
+| [**`newest-first`**](#newest-first)             | improve txn order when: there are multiple records, newest first, all with the same date |
+| [**`intra-day-reversed`**](#intra-day-reversed) | improve txn order when: same-day txns are in opposite order to the overall file          |
 | [**`fields`**](#fields)                         | name CSV fields for easy reference, and optionally assign their values to hledger fields |
 | [**Field assignment**](#field-assignment)       | assign a CSV value or interpolated text value to a hledger field                         |
 | [**`date-format`**](#date-format)               | declare how to parse CSV dates/date-times                                                |
@@ -3061,11 +3065,7 @@ The following kinds of rule can appear in the rules file, in any order.
 | [**`ifs`**](#ifs)                               | declare multiple if rules in a compact table format                                      |
 | [**`end`**](#end)                               | (inside an if rule) skip the current and all remaining records                           |
 | [**`merge`**](#merge)                           | combine this record with the next one(s), to be converted to a single transaction        |
-| [**`newest-first`**](#newest-first)             | improve txn order when: there are multiple records, newest first, all with the same date |
-| [**`intra-day-reversed`**](#intra-day-reversed) | improve txn order when: same-day txns are in opposite order to the overall file          |
 | [**`include`**](#include)                       | inline another CSV rules file                                                            |
-| [**`source`**](#source)                         | optionally declare which file to read data from                                          |
-| [**`archive`**](#archive)                       | optionally enable an archive of imported files                                           |
 
 [Working with CSV](#working-with-csv) tips
 and [How CSV rules are evaluated](#how-csv-rules-are-evaluated) can be found below.
@@ -3114,10 +3114,140 @@ if %date 2026
 comment %{join(", ", comment, "imported:")}
 ```
 
-## Reading the data
+## Finding the data
 
-These tips and rules help hledger read the CSV data correctly:
-recognise the file and its separator, decode its text, and skip any header lines.
+### Reading files specified by rule
+
+Instead of specifying a CSV file in the command line, you can specify
+a rules file, as in `hledger -f foo.csv.rules CMD`. 
+By default this will read data from foo.csv in the same directory,
+but you can add a [source](#source) rule to specify a different data file,
+perhaps located in your web browser's download directory.
+(A rules file can also be [included](#include-directive) by a journal file.)
+
+This feature helps remove some of the busywork of managing CSV downloads.
+Most of your financial institutions's default CSV filenames are
+different and can be recognised by a glob pattern.  So you can put a
+rule like `source Checking1*.csv` in foo-checking.csv.rules, and then
+periodically follow a workflow like:
+
+1. Download CSV from Foo's website, using your browser's defaults
+2. Run `hledger import foo-checking.csv.rules` to import any new transactions
+
+After import, you can: discard the CSV, or leave it where it is for a
+while, or move it into your archives, as you prefer. If you do nothing,
+next time your browser will save something like Checking1-2.csv, 
+and hledger will use that because of the `*` wild card and because
+it is the most recent.
+
+### `source`
+
+If you tell hledger to read a csv file with `-f foo.csv`, it will look for rules in `foo.csv.rules`.
+Or, you can tell it to read the rules file, with `-f foo.csv.rules`, and it will look for data in `foo.csv`.
+These are mostly equivalent, but the second method provides some extra features.
+For one, the data file can be missing, without causing an error; it is just considered empty.
+
+For more flexibility, add a `source` rule, which lets you specify a different data file:
+
+```rules
+source ./Checking1.csv
+```
+
+If the file does not exist, it is just considered empty, without raising an error.
+
+The file path is resolved this way:
+
+- Absolute paths and `~`-prefixed paths are used as-is.
+- A path beginning with `./` or `../` (`source ./Checking1.csv`)
+  is anchored relative to the rules file's directory (as in hledger 1).
+- Any other relative path (`source bank/Checking1.csv`), or a bare file name (`source Checking1.csv`),
+  is searched for first in a `data/` directory next to the main journal file
+  (also used by the [`archive`](#archive) rule and the [`get`](#get) command),
+  then in your `~/Downloads` folder.
+
+You can use a glob pattern, to avoid specifying the file name exactly:
+
+```rules
+source Checking1*.csv
+```
+
+This has another benefit: if the pattern matches multiple files, hledger will read the newest (most recently modified) one.
+This avoids problems if you have downloaded a file multiple times without cleaning up.
+
+All this enables a convenient workflow where can you just download CSV files, then run `hledger import rules/*`.
+
+See also ["Working with CSV > Reading files specified by rule"](#reading-files-specified-by-rule).
+
+<!--
+The source rule supports ~ for home directory and absolute paths: `source ~/Downloads/foo.csv`, `source /abs/foo.csv`.
+
+Bare filenames and relative paths are looked for in a `data/` directory next to the main journal file first, then in `~/Downloads`: `source foo.csv`, `source sub/foo.csv`.
+
+Paths beginning with `./` or `../` are anchored relative to the rules file's directory (no `data/` re-anchoring, no `~/Downloads` fallback): `source ./foo.csv`.
+
+The source rule can specify a glob pattern: `source foo*.csv`.
+
+If the glob pattern matches multiple files, the newest (last modified) file is used (with one exception, described below).
+
+The source rule can specify a data-cleaning command, after a `|` separator: `source foo*.csv | sed -e 's/USD/$/g'`.
+This command is executed by the user's default shell, receives the data file's content on stdin,
+and should output CSV data suitable for the conversion rules.
+A # character can be used to comment out the data-cleaning command: `source foo*.csv  # | ...`.
+
+Or the source rule can specify a data-generating command, with no file pattern: `source | foo-csv.sh`.
+In this case the command receives no input; it should output CSV data suitable for the conversion rules.
+-->
+
+#### Data cleaning / data generating commands
+
+After `source`'s file pattern, you can write `|` (pipe) and a data cleaning command (or command pipeline) (since hledger 1.50).
+If hledger's CSV rules aren't enough, you can pre-process the downloaded data here with a shell command or script, to make it more suitable for conversion.
+The command will be executed by your default shell, in the directory of the rules file, will receive the data file's content as standard input,
+and should output zero or more lines of character-separated-values, suitable for conversion by the CSV rules.
+
+Examples:
+```
+source ./paypal.json | paypalcsv
+source data/simplefin.json | simplefincsv - 'chase.*card'
+source OfxDownload*.csv | grep -vE '^(([^,]*,){6}[^,]*|)$' | sort -t, -n +2
+source History_for_Account_Z20144832*.csv   # | grep -E '^([^,]*,){12}[^,]*$' | sed -E -e 's/^ //' -e 's/\.([0-9]),/.\10,/g' -e 's/,([0-9]+),/,\1.00,/g'
+```
+
+Or, after `source` you can write `|` and a data generating command (with no file pattern before the `|`).
+This command receives no input, and should output zero or more lines of character-separated values, suitable for conversion by the CSV rules.
+
+Examples:
+```
+source | paypaljson | paypalcsv
+source | paypalcsv data/paypal.json 
+source | simplefinjson >data/simplefin.json && simplefincsv data/simplefin.json 'chase.*card'
+source | simplefincsv data/simplefin.json 'unify.*checking'
+```
+
+(`paypal*` and `simplefin*` scripts are in [bin/](https://github.com/hledgerorg/hledger/tree/main/bin#readme))
+
+Whenever hledger runs one of these commands, it will echo the command on stderr.
+If the command produces error output, but exits successfully, hledger will show the error output as a warning.
+If a data cleaning command fails, hledger will fail and show the error output in the error message.
+If a data generating command fails, hledger will show the error as a warning and continue, treating this as if no data was found.
+
+### `archive`
+
+With `archive` added to a rules file, the `import` command
+will archive each successfully processed data file or data command output in an `archive/` subdirectory
+of the `data/` directory next to the main journal file.
+The archive file name will be based on the rules file and the data file's modification date and extension
+(or for a data-generating command, the current date and the ".csv" extension).
+The original data file, once archived, will be removed.
+
+Also, in this mode `import` will prefer the oldest file matched by the `source` rule's glob pattern, not the newest.
+(So if there are multiple downloads, they will be imported and archived oldest first.)
+
+Archiving is optional, but it can be useful for
+troubleshooting your CSV rules,
+regenerating entries with improved rules,
+checking for variations in your bank's CSV,
+etc.
 
 ### File Extension
 
@@ -3153,6 +3283,11 @@ But if you specify a rules file with `--rules`, that rules file will be used for
 
 Alternatively, a journal file can [include](#include-directive) CSV files (or rules files).
 In this case each CSV file always uses its correspondingly-named rules file; `--rules` has no effect.
+
+## Reading the data
+
+These tips and rules help hledger read the CSV data correctly:
+recognise the file and its separator, decode its text, and skip any header lines.
 
 ### Valid CSV
 
@@ -3227,6 +3362,43 @@ Note, empty and blank lines are skipped automatically, so you don't need to coun
 `skip` has a second meaning: it can be used inside an [`if`](#if) rule (described below),
 to skip one or more records whenever the condition is true.
 Records skipped in this way are ignored, except they are still required to be [valid CSV](#valid-csv).
+
+### `newest-first`
+
+hledger tries to ensure that the generated transactions will be ordered chronologically,
+including same-day transactions.
+Usually it can auto-detect how the CSV records are ordered.
+But if it encounters CSV where all records are on the same date,
+it assumes that the records are oldest first.
+If in fact the CSV's records are normally newest first, like:
+```csv
+2022-10-01, txn 3...
+2022-10-01, txn 2...
+2022-10-01, txn 1...
+```
+you can add the `newest-first` rule to help
+hledger generate the transactions in correct order.
+
+```rules
+# same-day CSV records are newest first
+newest-first
+```
+
+### `intra-day-reversed`
+
+If CSV records within a single day are ordered opposite to the overall record order,
+you can add the `intra-day-reversed` rule to improve the order of journal entries.
+Eg, here the overall record order is newest first, but same-day records are oldest first:
+```csv
+2022-10-02, txn 3...
+2022-10-02, txn 4...
+2022-10-01, txn 1...
+2022-10-01, txn 2...
+```
+```rules
+# transactions within each day are reversed with respect to the overall date order
+intra-day-reversed
+```
 
 <a name="fields-list"></a>
 
@@ -3785,7 +3957,6 @@ You can adjust the type of assertion/assignment with the
 [`balance-type` rule](#balance-type) (see below).
 If the CSV has only balances, not transaction amounts, see [Setting amounts](#setting-amounts).
 
-
 #### `balance-type`
 
 Balance assertions generated by [assigning to balanceN](#hledger-field-names)
@@ -4154,43 +4325,6 @@ Things to note:
   and field matchers can use `%FIELD_ROWNUM` references.
 - If fewer than N records remain in the file, just those are merged.
 
-## `newest-first`
-
-hledger tries to ensure that the generated transactions will be ordered chronologically,
-including same-day transactions.
-Usually it can auto-detect how the CSV records are ordered.
-But if it encounters CSV where all records are on the same date,
-it assumes that the records are oldest first.
-If in fact the CSV's records are normally newest first, like:
-```csv
-2022-10-01, txn 3...
-2022-10-01, txn 2...
-2022-10-01, txn 1...
-```
-you can add the `newest-first` rule to help
-hledger generate the transactions in correct order.
-
-```rules
-# same-day CSV records are newest first
-newest-first
-```
-
-## `intra-day-reversed`
-
-If CSV records within a single day are ordered opposite to the overall record order,
-you can add the `intra-day-reversed` rule to improve the order of journal entries.
-Eg, here the overall record order is newest first, but same-day records are oldest first:
-```csv
-2022-10-02, txn 3...
-2022-10-02, txn 4...
-2022-10-01, txn 1...
-2022-10-01, txn 2...
-```
-```rules
-# transactions within each day are reversed with respect to the overall date order
-intra-day-reversed
-```
-
 ## `include`
 
 ```rules
@@ -4238,139 +4372,6 @@ $ ls foo.csv* | entr bash -c 'echo ----; hledger -f foo.csv print desc:SOMEDESC'
 A desc: query (eg) is used to select just one, or a few, transactions of interest.
 "bash -c" is used to run multiple commands, so we can echo a separator each time
 the command re-runs, making it easier to read the output.
-
-### `source`
-
-If you tell hledger to read a csv file with `-f foo.csv`, it will look for rules in `foo.csv.rules`.
-Or, you can tell it to read the rules file, with `-f foo.csv.rules`, and it will look for data in `foo.csv`.
-These are mostly equivalent, but the second method provides some extra features.
-For one, the data file can be missing, without causing an error; it is just considered empty.
-
-For more flexibility, add a `source` rule, which lets you specify a different data file:
-
-```rules
-source ./Checking1.csv
-```
-
-If the file does not exist, it is just considered empty, without raising an error.
-
-The file path is resolved this way:
-
-- Absolute paths and `~`-prefixed paths are used as-is.
-- A path beginning with `./` or `../` (`source ./Checking1.csv`)
-  is anchored relative to the rules file's directory (as in hledger 1).
-- Any other relative path (`source bank/Checking1.csv`), or a bare file name (`source Checking1.csv`),
-  is searched for first in a `data/` directory next to the main journal file
-  (also used by the [`archive`](#archive) rule and the [`get`](#get) command),
-  then in your `~/Downloads` folder.
-
-You can use a glob pattern, to avoid specifying the file name exactly:
-
-```rules
-source Checking1*.csv
-```
-
-This has another benefit: if the pattern matches multiple files, hledger will read the newest (most recently modified) one.
-This avoids problems if you have downloaded a file multiple times without cleaning up.
-
-All this enables a convenient workflow where can you just download CSV files, then run `hledger import rules/*`.
-
-See also ["Working with CSV > Reading files specified by rule"](#reading-files-specified-by-rule).
-
-<!--
-The source rule supports ~ for home directory and absolute paths: `source ~/Downloads/foo.csv`, `source /abs/foo.csv`.
-
-Bare filenames and relative paths are looked for in a `data/` directory next to the main journal file first, then in `~/Downloads`: `source foo.csv`, `source sub/foo.csv`.
-
-Paths beginning with `./` or `../` are anchored relative to the rules file's directory (no `data/` re-anchoring, no `~/Downloads` fallback): `source ./foo.csv`.
-
-The source rule can specify a glob pattern: `source foo*.csv`.
-
-If the glob pattern matches multiple files, the newest (last modified) file is used (with one exception, described below).
-
-The source rule can specify a data-cleaning command, after a `|` separator: `source foo*.csv | sed -e 's/USD/$/g'`.
-This command is executed by the user's default shell, receives the data file's content on stdin,
-and should output CSV data suitable for the conversion rules.
-A # character can be used to comment out the data-cleaning command: `source foo*.csv  # | ...`.
-
-Or the source rule can specify a data-generating command, with no file pattern: `source | foo-csv.sh`.
-In this case the command receives no input; it should output CSV data suitable for the conversion rules.
--->
-
-#### Data cleaning / data generating commands
-
-After `source`'s file pattern, you can write `|` (pipe) and a data cleaning command (or command pipeline) (since hledger 1.50).
-If hledger's CSV rules aren't enough, you can pre-process the downloaded data here with a shell command or script, to make it more suitable for conversion.
-The command will be executed by your default shell, in the directory of the rules file, will receive the data file's content as standard input,
-and should output zero or more lines of character-separated-values, suitable for conversion by the CSV rules.
-
-Examples:
-```
-source ./paypal.json | paypalcsv
-source data/simplefin.json | simplefincsv - 'chase.*card'
-source OfxDownload*.csv | grep -vE '^(([^,]*,){6}[^,]*|)$' | sort -t, -n +2
-source History_for_Account_Z20144832*.csv   # | grep -E '^([^,]*,){12}[^,]*$' | sed -E -e 's/^ //' -e 's/\.([0-9]),/.\10,/g' -e 's/,([0-9]+),/,\1.00,/g'
-```
-
-Or, after `source` you can write `|` and a data generating command (with no file pattern before the `|`).
-This command receives no input, and should output zero or more lines of character-separated values, suitable for conversion by the CSV rules.
-
-Examples:
-```
-source | paypaljson | paypalcsv
-source | paypalcsv data/paypal.json 
-source | simplefinjson >data/simplefin.json && simplefincsv data/simplefin.json 'chase.*card'
-source | simplefincsv data/simplefin.json 'unify.*checking'
-```
-
-(`paypal*` and `simplefin*` scripts are in [bin/](https://github.com/hledgerorg/hledger/tree/main/bin#readme))
-
-Whenever hledger runs one of these commands, it will echo the command on stderr.
-If the command produces error output, but exits successfully, hledger will show the error output as a warning.
-If a data cleaning command fails, hledger will fail and show the error output in the error message.
-If a data generating command fails, hledger will show the error as a warning and continue, treating this as if no data was found.
-
-### Reading files specified by rule
-
-Instead of specifying a CSV file in the command line, you can specify
-a rules file, as in `hledger -f foo.csv.rules CMD`. 
-By default this will read data from foo.csv in the same directory,
-but you can add a [source](#source) rule to specify a different data file,
-perhaps located in your web browser's download directory.
-(A rules file can also be [included](#include-directive) by a journal file.)
-
-This feature helps remove some of the busywork of managing CSV downloads.
-Most of your financial institutions's default CSV filenames are
-different and can be recognised by a glob pattern.  So you can put a
-rule like `source Checking1*.csv` in foo-checking.csv.rules, and then
-periodically follow a workflow like:
-
-1. Download CSV from Foo's website, using your browser's defaults
-2. Run `hledger import foo-checking.csv.rules` to import any new transactions
-
-After import, you can: discard the CSV, or leave it where it is for a
-while, or move it into your archives, as you prefer. If you do nothing,
-next time your browser will save something like Checking1-2.csv, 
-and hledger will use that because of the `*` wild card and because
-it is the most recent.
-
-### `archive`
-
-With `archive` added to a rules file, the `import` command
-will archive each successfully processed data file or data command output in an `archive/` subdirectory
-of the `data/` directory next to the main journal file.
-The archive file name will be based on the rules file and the data file's modification date and extension
-(or for a data-generating command, the current date and the ".csv" extension).
-The original data file, once archived, will be removed.
-
-Also, in this mode `import` will prefer the oldest file matched by the `source` rule's glob pattern, not the newest.
-(So if there are multiple downloads, they will be imported and archived oldest first.)
-
-Archiving is optional, but it can be useful for
-troubleshooting your CSV rules,
-regenerating entries with improved rules,
-checking for variations in your bank's CSV,
-etc.
 
 ### Deduplicating, importing
 
