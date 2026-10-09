@@ -3057,13 +3057,13 @@ The following kinds of rule can appear in the rules file, in any order.
 | [**`separator`**](#separator)                   | declare the field separator, instead of relying on file extension                        |
 | [**`encoding`**](#encoding)                     | optionally declare which text encoding the data has                                      |
 | [**`skip`**](#skip)                             | skip header line(s) at start of file, or (inside an if rule) the current record(s)       |
+| [**`date-format`**](#date-format)               | declare how to parse CSV dates/date-times                                                |
+| [**`timezone`**](#timezone)                     | declare the time zone of ambiguous CSV date-times                                        |
+| [**`decimal-mark`**](#decimal-mark)             | declare the decimal mark used in CSV amounts, when ambiguous                             |
 | [**`newest-first`**](#newest-first)             | improve txn order when: there are multiple records, newest first, all with the same date |
 | [**`intra-day-reversed`**](#intra-day-reversed) | improve txn order when: same-day txns are in opposite order to the overall file          |
 | [**`fields`**](#fields)                         | name CSV fields for easy reference, and optionally assign their values to hledger fields |
 | [**Field assignment**](#field-assignment)       | assign a CSV value or interpolated text value to a hledger field                         |
-| [**`date-format`**](#date-format)               | declare how to parse CSV dates/date-times                                                |
-| [**`timezone`**](#timezone)                     | declare the time zone of ambiguous CSV date-times                                        |
-| [**`decimal-mark`**](#decimal-mark)             | declare the decimal mark used in CSV amounts, when ambiguous                             |
 | [**`balance-type`**](#balance-type)             | select which type of balance assertions/assignments to generate                          |
 | [**`if`**](#if)                                 | conditionally assign values to hledger fields, or skip one or more records               |
 | [**`ifs`**](#ifs)                               | declare multiple if rules in a compact table format                                      |
@@ -3290,7 +3290,7 @@ In this case each CSV file always uses its correspondingly-named rules file; `--
 
 These tips and rules help hledger read the CSV data correctly:
 check that it's valid, choose its separator, decode its text, skip any header lines,
-and put its records in the right order.
+parse its dates and numbers, and put its records in the right order.
 
 ### Valid CSV
 
@@ -3365,6 +3365,83 @@ Note, empty and blank lines are skipped automatically, so you don't need to coun
 `skip` has a second meaning: it can be used inside an [`if`](#if) rule (described below),
 to skip one or more records whenever the condition is true.
 Records skipped in this way are ignored, except they are still required to be [valid CSV](#valid-csv).
+
+### `date-format`
+
+```rules
+date-format DATEFMT
+```
+This is a helper for the [`date`](#date-field) (and [`date2`](#date2-field)) fields.
+If your CSV dates are not formatted like `YYYY-MM-DD`, `YYYY/MM/DD` or `YYYY.MM.DD`,
+you'll need to add a date-format rule describing them with a strptime-style date parsing pattern - 
+see <https://hackage.haskell.org/package/time/docs/Data-Time-Format.html#v:formatTime>.
+The pattern must parse the CSV date value completely.
+Some examples:
+``` rules
+# MM/DD/YY
+date-format %m/%d/%y
+```
+``` rules
+# D/M/YYYY
+# The - makes leading zeros optional.
+date-format %-d/%-m/%Y
+```
+``` rules
+# YYYY-Mmm-DD
+date-format %Y-%h-%d
+```
+``` rules
+# M/D/YYYY HH:MM AM some other junk
+# Note the time and junk must be fully parsed, though only the date is used.
+date-format %-m/%-d/%Y %l:%M %p some other junk
+```
+
+Note currently there is no locale awareness for things like `%b`, and setting LC_TIME won't help.
+
+### `timezone`
+
+```rules
+timezone TIMEZONE
+```
+
+When CSV contains date-times that are implicitly in some time zone
+other than yours, but containing no explicit time zone information,
+you can use this rule to declare the CSV's native time zone,
+which helps prevent off-by-one dates.
+
+When the CSV date-times do contain time zone information, 
+you don't need this rule; instead, use `%Z` in `date-format`
+(or `%z`, `%EZ`, `%Ez`; see the formatTime link above).
+
+In either of these cases, hledger will do a time-zone-aware conversion,
+localising the CSV date-times to your current system time zone.
+If you prefer to localise to some other time zone, eg for reproducibility,
+you can (on unix at least) set the output timezone with the TZ environment variable, eg:
+```cli
+$ TZ=-1000 hledger print -f foo.csv  # or TZ=-1000 hledger import foo.csv
+```
+
+`timezone` currently does not understand timezone names, except
+"UTC", "GMT", "EST", "EDT", "CST", "CDT", "MST", "MDT", "PST", or "PDT".
+For others, use numeric format: +HHMM or -HHMM.
+
+### `decimal-mark`
+
+```rules
+decimal-mark .
+```
+or:
+```rules
+decimal-mark ,
+```
+
+hledger automatically accepts either period or comma as a decimal mark when parsing numbers
+(cf [Amounts](#amounts)).
+However if any numbers in the CSV contain digit group marks, such as thousand-separating commas,
+you should declare the decimal mark explicitly with this rule, to avoid misparsed numbers.
+Like the [`decimal-mark` directive](#decimal-mark-directive), this also makes hledger report
+numbers using a different decimal mark, or repeating the declared one (like `1.2.34`), as errors.
+This applies to amounts from the CSV fields and to amounts written in the rules.
 
 ### `newest-first`
 
@@ -3621,65 +3698,7 @@ except for the `-in`/`-out` amount fields.
 ### date field
 
 Assigning to `date` sets the [transaction date](#simple-dates). This is required.
-
-#### `date-format`
-
-```rules
-date-format DATEFMT
-```
-This is a helper for the `date` (and `date2`) fields.
-If your CSV dates are not formatted like `YYYY-MM-DD`, `YYYY/MM/DD` or `YYYY.MM.DD`,
-you'll need to add a date-format rule describing them with a strptime-style date parsing pattern - 
-see <https://hackage.haskell.org/package/time/docs/Data-Time-Format.html#v:formatTime>.
-The pattern must parse the CSV date value completely.
-Some examples:
-``` rules
-# MM/DD/YY
-date-format %m/%d/%y
-```
-``` rules
-# D/M/YYYY
-# The - makes leading zeros optional.
-date-format %-d/%-m/%Y
-```
-``` rules
-# YYYY-Mmm-DD
-date-format %Y-%h-%d
-```
-``` rules
-# M/D/YYYY HH:MM AM some other junk
-# Note the time and junk must be fully parsed, though only the date is used.
-date-format %-m/%-d/%Y %l:%M %p some other junk
-```
-
-Note currently there is no locale awareness for things like `%b`, and setting LC_TIME won't help.
-
-#### `timezone`
-
-```rules
-timezone TIMEZONE
-```
-
-When CSV contains date-times that are implicitly in some time zone
-other than yours, but containing no explicit time zone information,
-you can use this rule to declare the CSV's native time zone,
-which helps prevent off-by-one dates.
-
-When the CSV date-times do contain time zone information, 
-you don't need this rule; instead, use `%Z` in `date-format`
-(or `%z`, `%EZ`, `%Ez`; see the formatTime link above).
-
-In either of these cases, hledger will do a time-zone-aware conversion,
-localising the CSV date-times to your current system time zone.
-If you prefer to localise to some other time zone, eg for reproducibility,
-you can (on unix at least) set the output timezone with the TZ environment variable, eg:
-```cli
-$ TZ=-1000 hledger print -f foo.csv  # or TZ=-1000 hledger import foo.csv
-```
-
-`timezone` currently does not understand timezone names, except
-"UTC", "GMT", "EST", "EDT", "CST", "CDT", "MST", "MDT", "PST", or "PDT".
-For others, use numeric format: +HHMM or -HHMM.
+If the CSV dates aren't like `YYYY-MM-DD`, see [`date-format`](#date-format) (and [`timezone`](#timezone)).
 
 ### date2 field
 
@@ -3769,6 +3788,8 @@ There are several ways to set posting amounts from CSV, useful in different situ
   to set amounts conditionally. See [Setting amounts](#setting-amounts) below
   for more on this and on amount-setting generally.
 
+If the CSV numbers have digit group marks (like `1,000.00`), see [`decimal-mark`](#decimal-mark).
+
 #### Setting amounts
 
 Which amount fields to use depends on how the CSV shows amounts:
@@ -3845,24 +3866,6 @@ There is some special handling making it easier to parse and to reverse amount s
   that is removed, making it an empty value. `"+"` or `"-"` or `"()"` becomes `""`.
 
 To set an amount to its absolute value, ie discard its sign, use the [`abs`](#functions) function, eg `amount1 %{abs(%amt)}`.
-
-#### `decimal-mark`
-
-```rules
-decimal-mark .
-```
-or:
-```rules
-decimal-mark ,
-```
-
-hledger automatically accepts either period or comma as a decimal mark when parsing numbers
-(cf [Amounts](#amounts)).
-However if any numbers in the CSV contain digit group marks, such as thousand-separating commas,
-you should declare the decimal mark explicitly with this rule, to avoid misparsed numbers.
-Like the [`decimal-mark` directive](#decimal-mark-directive), this also makes hledger report
-numbers using a different decimal mark, or repeating the declared one (like `1.2.34`), as errors.
-This applies to amounts from the CSV fields and to amounts written in the rules.
 
 #### Amount decimal places
 
@@ -3960,9 +3963,9 @@ You can adjust the type of assertion/assignment with the
 [`balance-type` rule](#balance-type) (see below).
 If the CSV has only balances, not transaction amounts, see [Setting amounts](#setting-amounts).
 
-#### `balance-type`
+## `balance-type`
 
-Balance assertions generated by [assigning to balanceN](#hledger-field-names)
+Balance assertions generated by [assigning to balanceN](#balance-field)
 are of the simple `=` type by default,
 which is a [single-commodity](#assertions-and-commodities),
 [subaccount-excluding](#assertions-and-subaccounts) assertion.
