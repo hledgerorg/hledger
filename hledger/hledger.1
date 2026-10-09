@@ -9422,21 +9422,24 @@ are the parts of a hledger journal entry (see hledger field names) (eg
 \f[CR]date\f[R], \f[CR]description\f[R], \f[CR]account1\f[R],
 \f[CR]amount1\f[R])
 .IP \(bu 2
-are written to by rules to construct a journal entry
+are assigned to by rules, to construct a journal entry
 .IP \(bu 2
-are write\-only.
+can be referenced by their name, without a \f[CR]%\f[R] prefix, inside a
+\f[CR]%{...}\f[R] expression (eg \f[CR]%{description}\f[R]; see
+Referencing other fields).
 .RE
 .PP
-CSV rules can\(aqt read what has been written to a hledger field, or
-make new fields.
-In other words, you can\(aqt use \(dqvariables\(dq in a rules file.
+CSV rules can\(aqt make new fields; you can\(aqt define your own
+variables in a rules file.
 (But you could add new CSV fields to the data before running rules, with
 a preprocessing script.)
 .PP
-It\(aqs ok for a CSV field and a hledger field to have the same name;
-this causes the CSV field\(aqs value to be copied to the hledger field.
-hledger knows which kind of field is meant from the context; also, CSV
-fields are usually written with a \f[CR]%\f[R] prefix.
+It\(aqs ok for a CSV field and a hledger field to have the same name; in
+a fields list, this causes the CSV field\(aqs value to be assigned to
+the hledger field (\(dqfield name punning\(dq).
+hledger knows which kind of field is meant from the context: in field
+values and matchers, \f[CR]%NAME\f[R] is a CSV field, and a bare
+\f[CR]HLEDGERFIELDNAME\f[R] inside \f[CR]%{...}\f[R] is a hledger field.
 Some examples:
 .IP
 .EX
@@ -9451,6 +9454,11 @@ fields date, bankamt
 # test the value of the CSV date field
 if %date 2026
  ...
+.EE
+.IP
+.EX
+# add a tag to the hledger comment field, keeping any comment assigned before
+comment %{join(\(dq, \(dq, comment, \(dqimported:\(dq)}
 .EE
 .SS \f[CR]fields\f[R] list
 .IP
@@ -9545,8 +9553,9 @@ Tips:
 Interpolation strips outer whitespace (so a CSV value like
 \f[CR]\(dq 1 \(dq\f[R] becomes \f[CR]1\f[R] when interpolated) (#1051).
 .IP \(bu 2
-Interpolations always refer to a CSV field \- you can\(aqt interpolate a
-hledger field.
+\f[CR]%NAME\f[R] always refers to a CSV field.
+To refer to a hledger field, write its name inside \f[CR]%{...}\f[R], eg
+\f[CR]%{description}\f[R].
 (See Referencing other fields below).
 .SS Functions
 \f[I]Since 1.99.6; experimental\f[R]
@@ -9570,9 +9579,9 @@ comment month:%{substr(%date, 1, 7)}
 .EE
 .PP
 Function arguments can be CSV field references (\f[CR]%desc\f[R],
-\f[CR]%3\f[R]), match group references (\f[CR]\(rs1\f[R]),
-double\-quoted text (\f[CR]\(dqmisc\(dq\f[R]), numbers, or other
-function calls.
+\f[CR]%3\f[R]), hledger field names (\f[CR]comment\f[R]), match group
+references (\f[CR]\(rs1\f[R]), double\-quoted text
+(\f[CR]\(dqmisc\(dq\f[R]), numbers, or other function calls.
 Use \f[CR]\(rs\(dq\f[R] for a double quote inside double\-quoted text.
 Each expression\(aqs result has outer whitespace removed, like other
 interpolated values.
@@ -9625,6 +9634,11 @@ T}@T{
 all the arguments joined together
 T}
 T{
+\f[CR]join(SEP, TEXT, ...)\f[R]
+T}@T{
+the TEXTs that aren\(aqt empty, joined with SEP between them
+T}
+T{
 \f[CR]default(TEXT, ...)\f[R]
 T}@T{
 the first argument that\(aqs not empty
@@ -9669,6 +9683,10 @@ A sign after the number (\f[CR]5\-\f[R]), or parentheses around just the
 number when the symbol comes after it (\f[CR](5) USD\f[R]), are not
 supported.
 .PP
+\f[CR]join\f[R] is useful for combining parts which may be empty,
+without stray separators.
+Eg \f[CR]comment %{join(\(dq, \(dq, %note, %ref)}\f[R].
+.PP
 Mistakes in an expression, like an unknown function or the wrong number
 of arguments, are reported when the rules file is read.
 Text beginning with \f[CR]%{\f[R] is always taken as an expression.
@@ -9676,6 +9694,8 @@ Text beginning with \f[CR]%{\f[R] is always taken as an expression.
 Here are all the hledger fields you can assign to.
 They correspond to parts of a journal entry, or in some cases they are
 pseudo\-fields which have a special effect.
+You can also interpolate their values in \f[CR]%{...}\f[R] expressions,
+except for the \f[CR]\-in\f[R]/\f[CR]\-out\f[R] amount fields.
 .SS date field
 Assigning to \f[CR]date\f[R] sets the transaction date.
 This is required.
@@ -10524,8 +10544,8 @@ that is removed, making it an empty value.
 \f[CR]\(dq+\(dq\f[R] or \f[CR]\(dq\-\(dq\f[R] or \f[CR]\(dq()\(dq\f[R]
 becomes \f[CR]\(dq\(dq\f[R].
 .PP
-It\(aqs not possible (without preprocessing the CSV) to set an amount to
-its absolute value, ie discard its sign.
+To set an amount to its absolute value, ie discard its sign, use the
+\f[CR]abs\f[R] function, eg \f[CR]amount1 %{abs(%amt)}\f[R].
 .SS Setting currency/commodity
 If the currency/commodity symbol is included in the CSV\(aqs amount
 field(s):
@@ -10615,11 +10635,10 @@ rules.
 TLDR: if \f[CR]import\f[R] is not generating the precisions or styles
 you want, add a \f[CR]commodity\f[R] directive to specify them.
 .SS Referencing other fields
-In field assignments, you can interpolate only CSV fields, not hledger
-fields.
+In field assignments, \f[CR]%NAME\f[R] always means a CSV field, not a
+hledger field.
 In the example below, there\(aqs both a CSV field and a hledger field
-named amount1, but %amount1 always means the CSV field, not the hledger
-field:
+named amount1, but %amount1 means the CSV field:
 .IP
 .EX
 # Name the third CSV field \(dqamount1\(dq
@@ -10632,18 +10651,22 @@ amount1 %amount1 USD
 comment %amount1
 .EE
 .PP
-Here, since there\(aqs no CSV amount1 field, %amount1 will produce a
-literal \(dqamount1\(dq:
+Here, since there\(aqs no CSV amount1 field, \f[CR]%amount1\f[R]
+produces empty text; to get hledger\(aqs amount1 field, write
+\f[CR]%{amount1}\f[R]:
 .IP
 .EX
 fields date,description,csvamount
 amount1 %csvamount USD
-# Can\(aqt interpolate amount1 here
+# Empty: there\(aqs no CSV amount1 field
 comment %amount1
+# hledger\(aqs amount1 field, eg \(dq5 USD\(dq
+comment1 %{amount1}
 .EE
 .PP
 When there are multiple field assignments to the same hledger field,
-only the last one takes effect.
+only the last one takes effect (though it can include the earlier value,
+see below).
 Here, comment\(aqs value will be B, or C if \(dqsomething\(dq is
 matched, but never A:
 .IP
@@ -10653,6 +10676,43 @@ comment B
 if something
  comment C
 .EE
+.PP
+To use a hledger field\(aqs value, write its name (without \f[CR]%\f[R])
+inside a \f[CR]%{...}\f[R] expression.
+.PP
+In an assignment to the same field, this gives the field\(aqs value from
+its previous assignment, so you can add to it.
+This is handy for appending to a comment:
+.IP
+.EX
+fields date, description, comment, amount
+if refund
+ # add a refund tag
+ comment %{comment}, refund:
+ # or, avoiding a redundant separator when comment is empty:
+ #comment %{join(\(dq, \(dq, comment, \(dqrefund:\(dq)}
+.EE
+.PP
+\(dqPrevious assignment\(dq here means the one before this one, in this
+order: top\-level assignments (including those made by the
+\f[CR]fields\f[R] list), then assignments in matched \f[CR]if\f[R]
+blocks, each in the order written.
+(So a top\-level assignment comes before any \f[CR]if\f[R] block\(aqs,
+even if written after it.)
+.PP
+In an assignment to a different field, a hledger field\(aqs name gives
+that field\(aqs final value, wherever it is assigned.
+Eg here, comment is set to the final value of the hledger description:
+.IP
+.EX
+comment %{description}
+.EE
+.PP
+When interpolating a hledger field, the value is the text assigned to
+the field by these rules, before further processing by hledger.
+Eg \f[CR]%{amount1}\f[R] is the amount text before any sign
+simplification, and \f[CR]%{account2}\f[R] is empty if account2 isn\(aqt
+assigned (not \f[CR]expenses:unknown\f[R]).
 .SS How CSV rules are evaluated
 Here\(aqs how to think of CSV rules being evaluated.
 If you get a confusing error while reading a CSV file, it may help to
@@ -10708,10 +10768,12 @@ For each hledger field (\f[CR]date\f[R], \f[CR]description\f[R],
 Get the field\(aqs assigned value, first searching top level
 assignments, made directly or by the \f[CR]fields\f[R] rule, then
 assignments made inside succeeding \f[CR]if\f[R] blocks.
-If there are more than one, the last one wins.
+If there are more than one, the last one wins (though it can include the
+previous one\(aqs value with \f[CR]%{FIELDNAME}\f[R]).
 .IP "2." 3
 Compute the field\(aqs actual value (as text), by interpolating any
-%CSVFIELD references and %{...} expressions within the assigned value;
+%CSVFIELD references and %{...} expressions within the assigned value
+(which may use other hledger fields\(aq values, computing them first);
 or by choosing a default value if there was no assignment.
 .RE
 .IP \(bu 2
@@ -11725,7 +11787,12 @@ referenced in a posting query.
 A few commands match in more specific ways.
 (Eg \f[CR]aregister\f[R], which has a special first argument.)
 .SS Query types
-Here are the query types available:
+Here are the query types available.
+.PP
+In the ones which take a regular expression, an empty one (eg
+\f[CR]desc:\f[R] or \f[CR]::\f[R]) matches anything.
+(Except in \f[CR]cur:\f[R], which must match the whole symbol, so an
+empty \f[CR]cur:\f[R] matches amounts with no commodity symbol.)
 .SS acct: query
 \f[B]\f[CB]acct:REGEX\f[B]\f[R], or just \f[B]\f[CB]REGEX\f[B]\f[R]
 .PD 0
@@ -11907,7 +11974,13 @@ If you need a complete match, use \f[CR]\(ha\f[R] and \f[CR]$\f[R].
 Eg: \f[CR]tag:\(aq\(hafullname$\(aq\f[R],
 \f[CR]tag:\(aq\(hafullname$=\(hafullvalue$\f[R]
 .IP \(bu 2
-To match values, ignoring names, do \f[CR]tag:.=VALREGEX\f[R]
+To match values, ignoring names, do \f[CR]tag:=VALREGEX\f[R]
+.IP \(bu 2
+With an empty NAMEREGEX, \f[CR]tag:\f[R] matches anything which has a
+tag, and \f[CR]not:tag:\f[R] matches anything which has none.
+.IP \(bu 2
+With an empty VALREGEX, \f[CR]tag:NAMEREGEX=\f[R] matches that tag with
+any value.
 .IP \(bu 2
 Accounts also inherit the tags of their parent accounts.
 .IP \(bu 2

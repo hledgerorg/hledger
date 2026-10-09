@@ -9344,18 +9344,21 @@ rules:
   2. hledger fields
         * are the parts of a hledger journal entry (see hledger field
           names) (eg 'date', 'description', 'account1', 'amount1')
-        * are written to by rules to construct a journal entry
-        * are write-only.
+        * are assigned to by rules, to construct a journal entry
+        * can be referenced by their name, without a '%' prefix, inside
+          a '%{...}' expression (eg '%{description}'; see Referencing
+          other fields).
 
-   CSV rules can't read what has been written to a hledger field, or
-make new fields.  In other words, you can't use "variables" in a rules
-file.  (But you could add new CSV fields to the data before running
-rules, with a preprocessing script.)
+   CSV rules can't make new fields; you can't define your own variables
+in a rules file.  (But you could add new CSV fields to the data before
+running rules, with a preprocessing script.)
 
-   It's ok for a CSV field and a hledger field to have the same name;
-this causes the CSV field's value to be copied to the hledger field.
-hledger knows which kind of field is meant from the context; also, CSV
-fields are usually written with a '%' prefix.  Some examples:
+   It's ok for a CSV field and a hledger field to have the same name; in
+a fields list, this causes the CSV field's value to be assigned to the
+hledger field ("field name punning").  hledger knows which kind of field
+is meant from the context: in field values and matchers, '%NAME' is a
+CSV field, and a bare 'HLEDGERFIELDNAME' inside '%{...}' is a hledger
+field.  Some examples:
 
 # set the journal entry's date to the value of CSV field 1
 date %1
@@ -9366,6 +9369,9 @@ fields date, bankamt
 # test the value of the CSV date field
 if %date 2026
  ...
+
+# add a tag to the hledger comment field, keeping any comment assigned before
+comment %{join(", ", comment, "imported:")}
 
 
 File: hledger.info,  Node: fields list,  Next: Field assignment,  Prev: CSV fields vs hledger fields,  Up: CSV
@@ -9451,8 +9457,9 @@ account1 assets:%(type)checking
 
    * Interpolation strips outer whitespace (so a CSV value like '" 1 "'
      becomes '1' when interpolated) (#1051).
-   * Interpolations always refer to a CSV field - you can't interpolate
-     a hledger field.  (See Referencing other fields below).
+   * '%NAME' always refers to a CSV field.  To refer to a hledger field,
+     write its name inside '%{...}', eg '%{description}'.  (See
+     Referencing other fields below).
 
 * Menu:
 
@@ -9481,11 +9488,11 @@ description %{replace(%desc, " *ref#[0-9]+", "")}
 # put the date's year and month in a tag
 comment month:%{substr(%date, 1, 7)}
 
-   Function arguments can be CSV field references ('%desc', '%3'), match
-group references ('\1'), double-quoted text ('"misc"'), numbers, or
-other function calls.  Use '\"' for a double quote inside double-quoted
-text.  Each expression's result has outer whitespace removed, like other
-interpolated values.
+   Function arguments can be CSV field references ('%desc', '%3'),
+hledger field names ('comment'), match group references ('\1'),
+double-quoted text ('"misc"'), numbers, or other function calls.  Use
+'\"' for a double quote inside double-quoted text.  Each expression's
+result has outer whitespace removed, like other interpolated values.
 
 function            result
 --------------------------------------------------------------------------
@@ -9501,6 +9508,8 @@ function            result
                     '5'
 'concat(TEXT,       all the arguments joined together
 ...)'
+'join(SEP, TEXT,    the TEXTs that aren't empty, joined with SEP
+...)'               between them
 'default(TEXT,      the first argument that's not empty
 ...)'
 'replace(TEXT,      TEXT with each match of REGEX replaced by REPL
@@ -9526,6 +9535,9 @@ above to the unsigned form.  A sign after the number ('5-'), or
 parentheses around just the number when the symbol comes after it ('(5)
 USD'), are not supported.
 
+   'join' is useful for combining parts which may be empty, without
+stray separators.  Eg 'comment %{join(", ", %note, %ref)}'.
+
    Mistakes in an expression, like an unknown function or the wrong
 number of arguments, are reported when the rules file is read.  Text
 beginning with '%{' is always taken as an expression.
@@ -9538,7 +9550,8 @@ File: hledger.info,  Node: hledger field names,  Next: if,  Prev: Field assignme
 
 Here are all the hledger fields you can assign to.  They correspond to
 parts of a journal entry, or in some cases they are pseudo-fields which
-have a special effect.
+have a special effect.  You can also interpolate their values in
+'%{...}' expressions, except for the '-in'/'-out' amount fields.
 
 * Menu:
 
@@ -10395,8 +10408,8 @@ such as COST in 'amount1 AMT @ COST'):
      that is removed, making it an empty value.  '"+"' or '"-"' or
      '"()"' becomes '""'.
 
-   It's not possible (without preprocessing the CSV) to set an amount to
-its absolute value, ie discard its sign.
+   To set an amount to its absolute value, ie discard its sign, use the
+'abs' function, eg 'amount1 %{abs(%amt)}'.
 
 
 File: hledger.info,  Node: Setting currency/commodity,  Next: Amount decimal places,  Prev: Amount signs,  Up: Working with CSV
@@ -10481,10 +10494,9 @@ File: hledger.info,  Node: Referencing other fields,  Next: How CSV rules are ev
 18.22.14 Referencing other fields
 ---------------------------------
 
-In field assignments, you can interpolate only CSV fields, not hledger
-fields.  In the example below, there's both a CSV field and a hledger
-field named amount1, but %amount1 always means the CSV field, not the
-hledger field:
+In field assignments, '%NAME' always means a CSV field, not a hledger
+field.  In the example below, there's both a CSV field and a hledger
+field named amount1, but %amount1 means the CSV field:
 
 # Name the third CSV field "amount1"
 fields date,description,amount1
@@ -10495,22 +10507,57 @@ amount1 %amount1 USD
 # Set comment to the CSV amount1 (not the amount1 assigned above)
 comment %amount1
 
-   Here, since there's no CSV amount1 field, %amount1 will produce a
-literal "amount1":
+   Here, since there's no CSV amount1 field, '%amount1' produces empty
+text; to get hledger's amount1 field, write '%{amount1}':
 
 fields date,description,csvamount
 amount1 %csvamount USD
-# Can't interpolate amount1 here
+# Empty: there's no CSV amount1 field
 comment %amount1
+# hledger's amount1 field, eg "5 USD"
+comment1 %{amount1}
 
    When there are multiple field assignments to the same hledger field,
-only the last one takes effect.  Here, comment's value will be B, or C
-if "something" is matched, but never A:
+only the last one takes effect (though it can include the earlier value,
+see below).  Here, comment's value will be B, or C if "something" is
+matched, but never A:
 
 comment A
 comment B
 if something
  comment C
+
+   To use a hledger field's value, write its name (without '%') inside a
+'%{...}' expression.
+
+   In an assignment to the same field, this gives the field's value from
+its previous assignment, so you can add to it.  This is handy for
+appending to a comment:
+
+fields date, description, comment, amount
+if refund
+ # add a refund tag
+ comment %{comment}, refund:
+ # or, avoiding a redundant separator when comment is empty:
+ #comment %{join(", ", comment, "refund:")}
+
+   "Previous assignment" here means the one before this one, in this
+order: top-level assignments (including those made by the 'fields'
+list), then assignments in matched 'if' blocks, each in the order
+written.  (So a top-level assignment comes before any 'if' block's, even
+if written after it.)
+
+   In an assignment to a different field, a hledger field's name gives
+that field's final value, wherever it is assigned.  Eg here, comment is
+set to the final value of the hledger description:
+
+comment %{description}
+
+   When interpolating a hledger field, the value is the text assigned to
+the field by these rules, before further processing by hledger.  Eg
+'%{amount1}' is the amount text before any sign simplification, and
+'%{account2}' is empty if account2 isn't assigned (not
+'expenses:unknown').
 
 
 File: hledger.info,  Node: How CSV rules are evaluated,  Next: Well factored rules,  Prev: Referencing other fields,  Up: Working with CSV
@@ -10563,12 +10610,14 @@ understand which of these steps is failing:
             1. Get the field's assigned value, first searching top level
                assignments, made directly or by the 'fields' rule, then
                assignments made inside succeeding 'if' blocks.  If there
-               are more than one, the last one wins.
+               are more than one, the last one wins (though it can
+               include the previous one's value with '%{FIELDNAME}').
 
             2. Compute the field's actual value (as text), by
                interpolating any %CSVFIELD references and %{...}
-               expressions within the assigned value; or by choosing a
-               default value if there was no assignment.
+               expressions within the assigned value (which may use
+               other hledger fields' values, computing them first); or
+               by choosing a default value if there was no assignment.
 
         * Generate a hledger transaction from the hledger field values,
           parsing them if needed (eg from text to an amount).
@@ -11400,7 +11449,12 @@ File: hledger.info,  Node: Query types,  Next: Negative queries,  Up: Queries
 23.1 Query types
 ================
 
-Here are the query types available:
+Here are the query types available.
+
+   In the ones which take a regular expression, an empty one (eg 'desc:'
+or '::') matches anything.  (Except in 'cur:', which must match the
+whole symbol, so an empty 'cur:' matches amounts with no commodity
+symbol.)
 
 * Menu:
 
@@ -11617,7 +11671,11 @@ Match by tag name, and optionally also by tag value.  Note:
    * Both regular expressions do infix matching.  If you need a complete
      match, use '^' and '$'.
      Eg: 'tag:'^fullname$'', 'tag:'^fullname$=^fullvalue$'
-   * To match values, ignoring names, do 'tag:.=VALREGEX'
+   * To match values, ignoring names, do 'tag:=VALREGEX'
+   * With an empty NAMEREGEX, 'tag:' matches anything which has a tag,
+     and 'not:tag:' matches anything which has none.
+   * With an empty VALREGEX, 'tag:NAMEREGEX=' matches that tag with any
+     value.
    * Accounts also inherit the tags of their parent accounts.
    * Postings also inherit the tags of their account and their
      transaction .
@@ -16066,204 +16124,204 @@ Node: newest-first367079
 Node: intra-day-reversed367794
 Node: decimal-mark368398
 Node: CSV fields vs hledger fields369144
-Node: fields list370662
-Node: Field assignment372488
-Node: Functions374145
-Node: hledger field names377223
-Node: date field377724
-Node: date2 field377917
-Node: status field378122
-Node: code field378322
-Node: description field378705
-Node: comment field379171
-Node: account field379738
-Node: amount field380474
-Node: currency field383323
-Node: balance field383741
-Node: if384274
-Node: Matchers386152
-Node: Multiple matchers388127
-Node: Match groups388876
-Node: if table389750
-Node: merge391837
-Node: balance-type394679
-Node: include395505
-Node: Working with CSV396263
-Node: Rapid feedback396854
-Node: Valid CSV397439
-Node: File Extension398317
-Node: Reading CSV from standard input399054
-Node: Reading multiple CSV files399442
-Node: Reading files specified by rule400096
-Node: Valid transactions401468
-Node: Deduplicating importing402295
-Node: Regular expressions in CSV rules403538
-Node: Setting amounts405032
-Node: Amount signs407572
-Node: Setting currency/commodity408639
-Node: Amount decimal places410017
-Node: Referencing other fields411276
-Node: How CSV rules are evaluated412383
-Node: Well factored rules415413
-Node: CSV rules examples415905
-Node: Timeclock416279
-Node: Timedot420350
-Node: Timedot examples424359
-Node: PART 4 CONCEPTS426439
-Node: Time periods426573
-Node: Report start & end date426818
-Node: Smart dates428294
-Node: Report intervals430665
-Node: Date adjustments431239
-Node: Start date adjustment431462
-Node: End date adjustment432326
-Node: Period expressions433075
-Node: Period expressions with a report interval435210
-Node: More complex report intervals435658
-Node: Multiple weekday intervals437774
-Node: Queries438785
-Node: Query types441618
-Node: acct query442008
-Node: amt query442319
-Node: code query443016
-Node: cur query443211
-Node: desc query443951
-Node: date query444134
-Node: date2 query444748
-Node: depth query445089
-Node: find query445425
-Node: note query446536
-Node: payee query446803
-Node: real query447084
-Node: status query447289
-Node: type query447529
-Node: tag query448131
-Node: Negative queries448760
-Node: not query448942
-Node: Space-separated queries449229
-Node: Boolean queries449917
-Node: expr query450858
-Node: any query451587
-Node: all query452602
-Node: Queries and command options453329
-Node: Queries and account aliases453777
-Node: Queries and valuation454201
-Node: Depth454529
-Node: Combining depth options455497
-Node: Pivoting456447
-Node: Report titles458750
-Node: Languages460115
-Node: Amount arithmetic462424
-Node: Where hledger divides463559
-Node: Transaction balancing466931
-Node: How balancing is checked467674
-Node: Where imbalances come from469099
-Node: Accumulated imbalances469851
-Node: Showing imbalances470975
-Node: Avoiding imbalances473563
-Node: Transaction balancing before 150474258
-Node: Amount formatting475416
-Node: Commodity display style475709
-Node: Commodity style override477582
-Node: Display rounding478679
-Node: Trailing decimal marks479333
-Node: Amount parseability480204
-Node: Cost reporting481813
-Node: Recording costs482605
-Node: Reporting at cost484362
-Node: Equity conversion postings485732
-Node: Inferring equity conversion postings488511
-Node: Combining costs and equity conversion postings490793
-Node: Requirements for detecting equity conversion postings492134
-Node: Value reporting493793
-Node: -X Value in specified commodity494758
-Node: -V Value in default commoditys495884
-Node: Valuation date496621
-Node: Finding market price497453
-Node: --infer-market-prices market prices from transactions498833
-Node: Valuation commodity501857
-Node: --value Flexible valuation503290
-Node: Valuation examples505685
-Node: Interaction of valuation and queries507829
-Node: Effect of valuation on reports508546
-Node: Lots and capital gains516317
-Node: First lots example518216
-Node: Writing lot entries522240
-Node: Cost basis annotations523040
-Node: Lotful commodities524255
-Node: Lot subaccounts525023
-Node: Several ways to write lot entries526291
-Node: Disabling lot tracking527888
-Node: Lot movements529256
-Node: Acquire529828
-Node: Transfer532621
-Node: Transfer fees533827
-Node: Capitalising fees535081
-Node: Dispose535780
-Node: Short positions537204
-Node: Other lot events539728
-Node: Cost basis methods540209
-Node: Changing the cost basis method543863
-Node: Gains545409
-Node: Gain accounts547287
-Node: Recording gains548660
-Node: Lot reports550904
-Node: Realised gains551683
-Node: Unrealised gains552913
-Node: Lot details555089
-Node: Lot labels555369
-Node: Cost basis precision556325
-Node: Lot postings and balance assertions557368
-Node: Troubleshooting lots558403
-Node: Generating data560262
-Node: Forecasting562097
-Node: --forecast562753
-Node: Inspecting forecast transactions563854
-Node: Forecast reports565187
-Node: Forecast tags566296
-Node: Forecast period in detail566916
-Node: Forecast troubleshooting568004
-Node: Budgeting569075
-Node: Posting types569630
-Node: PART 5 MORE ABOUT THE COMMAND LINE572423
-Node: Output572614
-Node: Output destination572819
-Node: Output format573379
-Node: Text output575309
-Node: Box-drawing characters576505
-Node: Colour577007
-Node: Paging577738
-Node: HTML output579281
-Node: CSV / TSV output579929
-Node: FODS output580185
-Node: Ledger output581119
-Node: Beancount output581671
-Node: SQL output586396
-Node: JSON output587137
-Node: Debug output587844
-Node: Command line tips588962
-Node: Special characters589331
-Node: Escaping shell special characters590333
-Node: Escaping regular expression special characters591694
-Node: Escaping in other situations593211
-Node: Unicode characters594511
-Node: Regular expressions595944
-Node: hledger's regular expressions599136
-Node: Argument files600809
-Node: Shell completions601723
-Node: PART 6 COMMON TASKS602232
-Node: Setting LEDGER_FILE602680
-Node: Set LEDGER_FILE on unix603196
-Node: Set LEDGER_FILE on mac603711
-Node: Set LEDGER_FILE on Windows604265
-Node: Reconciling605904
-Node: Closing a journal file608239
-Node: hledger 1 and hledger 2608706
-Node: Migrating hledger 1 data to hledger 2609258
-Node: Switching back to hledger 1611354
-Node: Keeping data usable with both612709
-Node: BUGS613433
-Node: Troubleshooting615085
+Node: fields list370979
+Node: Field assignment372805
+Node: Functions374504
+Node: hledger field names377842
+Node: date field378450
+Node: date2 field378643
+Node: status field378848
+Node: code field379048
+Node: description field379431
+Node: comment field379897
+Node: account field380464
+Node: amount field381200
+Node: currency field384049
+Node: balance field384467
+Node: if385000
+Node: Matchers386878
+Node: Multiple matchers388853
+Node: Match groups389602
+Node: if table390476
+Node: merge392563
+Node: balance-type395405
+Node: include396231
+Node: Working with CSV396989
+Node: Rapid feedback397580
+Node: Valid CSV398165
+Node: File Extension399043
+Node: Reading CSV from standard input399780
+Node: Reading multiple CSV files400168
+Node: Reading files specified by rule400822
+Node: Valid transactions402194
+Node: Deduplicating importing403021
+Node: Regular expressions in CSV rules404264
+Node: Setting amounts405758
+Node: Amount signs408298
+Node: Setting currency/commodity409366
+Node: Amount decimal places410744
+Node: Referencing other fields412003
+Node: How CSV rules are evaluated414504
+Node: Well factored rules417700
+Node: CSV rules examples418192
+Node: Timeclock418566
+Node: Timedot422637
+Node: Timedot examples426646
+Node: PART 4 CONCEPTS428726
+Node: Time periods428860
+Node: Report start & end date429105
+Node: Smart dates430581
+Node: Report intervals432952
+Node: Date adjustments433526
+Node: Start date adjustment433749
+Node: End date adjustment434613
+Node: Period expressions435362
+Node: Period expressions with a report interval437497
+Node: More complex report intervals437945
+Node: Multiple weekday intervals440061
+Node: Queries441072
+Node: Query types443905
+Node: acct query444513
+Node: amt query444824
+Node: code query445521
+Node: cur query445716
+Node: desc query446456
+Node: date query446639
+Node: date2 query447253
+Node: depth query447594
+Node: find query447930
+Node: note query449041
+Node: payee query449308
+Node: real query449589
+Node: status query449794
+Node: type query450034
+Node: tag query450636
+Node: Negative queries451472
+Node: not query451654
+Node: Space-separated queries451941
+Node: Boolean queries452629
+Node: expr query453570
+Node: any query454299
+Node: all query455314
+Node: Queries and command options456041
+Node: Queries and account aliases456489
+Node: Queries and valuation456913
+Node: Depth457241
+Node: Combining depth options458209
+Node: Pivoting459159
+Node: Report titles461462
+Node: Languages462827
+Node: Amount arithmetic465136
+Node: Where hledger divides466271
+Node: Transaction balancing469643
+Node: How balancing is checked470386
+Node: Where imbalances come from471811
+Node: Accumulated imbalances472563
+Node: Showing imbalances473687
+Node: Avoiding imbalances476275
+Node: Transaction balancing before 150476970
+Node: Amount formatting478128
+Node: Commodity display style478421
+Node: Commodity style override480294
+Node: Display rounding481391
+Node: Trailing decimal marks482045
+Node: Amount parseability482916
+Node: Cost reporting484525
+Node: Recording costs485317
+Node: Reporting at cost487074
+Node: Equity conversion postings488444
+Node: Inferring equity conversion postings491223
+Node: Combining costs and equity conversion postings493505
+Node: Requirements for detecting equity conversion postings494846
+Node: Value reporting496505
+Node: -X Value in specified commodity497470
+Node: -V Value in default commoditys498596
+Node: Valuation date499333
+Node: Finding market price500165
+Node: --infer-market-prices market prices from transactions501545
+Node: Valuation commodity504569
+Node: --value Flexible valuation506002
+Node: Valuation examples508397
+Node: Interaction of valuation and queries510541
+Node: Effect of valuation on reports511258
+Node: Lots and capital gains519029
+Node: First lots example520928
+Node: Writing lot entries524952
+Node: Cost basis annotations525752
+Node: Lotful commodities526967
+Node: Lot subaccounts527735
+Node: Several ways to write lot entries529003
+Node: Disabling lot tracking530600
+Node: Lot movements531968
+Node: Acquire532540
+Node: Transfer535333
+Node: Transfer fees536539
+Node: Capitalising fees537793
+Node: Dispose538492
+Node: Short positions539916
+Node: Other lot events542440
+Node: Cost basis methods542921
+Node: Changing the cost basis method546575
+Node: Gains548121
+Node: Gain accounts549999
+Node: Recording gains551372
+Node: Lot reports553616
+Node: Realised gains554395
+Node: Unrealised gains555625
+Node: Lot details557801
+Node: Lot labels558081
+Node: Cost basis precision559037
+Node: Lot postings and balance assertions560080
+Node: Troubleshooting lots561115
+Node: Generating data562974
+Node: Forecasting564809
+Node: --forecast565465
+Node: Inspecting forecast transactions566566
+Node: Forecast reports567899
+Node: Forecast tags569008
+Node: Forecast period in detail569628
+Node: Forecast troubleshooting570716
+Node: Budgeting571787
+Node: Posting types572342
+Node: PART 5 MORE ABOUT THE COMMAND LINE575135
+Node: Output575326
+Node: Output destination575531
+Node: Output format576091
+Node: Text output578021
+Node: Box-drawing characters579217
+Node: Colour579719
+Node: Paging580450
+Node: HTML output581993
+Node: CSV / TSV output582641
+Node: FODS output582897
+Node: Ledger output583831
+Node: Beancount output584383
+Node: SQL output589108
+Node: JSON output589849
+Node: Debug output590556
+Node: Command line tips591674
+Node: Special characters592043
+Node: Escaping shell special characters593045
+Node: Escaping regular expression special characters594406
+Node: Escaping in other situations595923
+Node: Unicode characters597223
+Node: Regular expressions598656
+Node: hledger's regular expressions601848
+Node: Argument files603521
+Node: Shell completions604435
+Node: PART 6 COMMON TASKS604944
+Node: Setting LEDGER_FILE605392
+Node: Set LEDGER_FILE on unix605908
+Node: Set LEDGER_FILE on mac606423
+Node: Set LEDGER_FILE on Windows606977
+Node: Reconciling608616
+Node: Closing a journal file610951
+Node: hledger 1 and hledger 2611418
+Node: Migrating hledger 1 data to hledger 2611970
+Node: Switching back to hledger 1614066
+Node: Keeping data usable with both615421
+Node: BUGS616145
+Node: Troubleshooting617797
 
 End Tag Table
 

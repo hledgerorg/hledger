@@ -7583,19 +7583,21 @@ CSV
          * are the parts of a hledger journal entry (see  hledger  field  names)
            (eg date, description, account1, amount1)
 
-         * are written to by rules to construct a journal entry
+         * are assigned to by rules, to construct a journal entry
 
-         * are write-only.
+         * can  be referenced by their name, without a % prefix, inside a %{...}
+           expression (eg %{description}; see Referencing other fields).
 
-     CSV  rules can't read what has been written to a hledger field, or make new
-     fields.  In other words, you can't use "variables" in a rules  file.   (But
-     you  could add new CSV fields to the data before running rules, with a pre-
-     processing script.)
+     CSV rules can't make new fields; you can't define your own variables  in  a
+     rules  file.   (But you could add new CSV fields to the data before running
+     rules, with a preprocessing script.)
 
-     It's ok for a CSV field and a hledger field to have  the  same  name;  this
-     causes  the  CSV  field's value to be copied to the hledger field.  hledger
-     knows which kind of field is meant from the context; also, CSV  fields  are
-     usually written with a % prefix.  Some examples:
+     It's ok for a CSV field and a hledger field to have the  same  name;  in  a
+     fields  list,  this  causes  the  CSV  field's  value to be assigned to the
+     hledger field ("field name punning").  hledger knows which kind of field is
+     meant from the context: in field values and matchers, %NAME is a CSV field,
+     and a bare HLEDGERFIELDNAME inside %{...} is a hledger field.   Some  exam-
+     ples:
 
             # set the journal entry's date to the value of CSV field 1
             date %1
@@ -7606,6 +7608,9 @@ CSV
             # test the value of the CSV date field
             if %date 2026
              ...
+
+            # add a tag to the hledger comment field, keeping any comment assigned before
+            comment %{join(", ", comment, "imported:")}
 
    fields list
             fields FIELDNAME1, FIELDNAME2, ...
@@ -7683,8 +7688,9 @@ CSV
      * Interpolation  strips outer whitespace (so a CSV value like " 1 " becomes
        1 when interpolated) (#1051).
 
-     * Interpolations always refer to a CSV field  -  you  can't  interpolate  a
-       hledger field.  (See Referencing other fields below).
+     * %NAME always refers to a CSV field.  To refer to a hledger  field,  write
+       its name inside %{...}, eg %{description}.  (See Referencing other fields
+       below).
 
    Functions
      Since 1.99.6; experimental
@@ -7704,44 +7710,50 @@ CSV
             # put the date's year and month in a tag
             comment month:%{substr(%date, 1, 7)}
 
-     Function arguments can be CSV field references  (%desc,  %3),  match  group
-     references  (\1),  double-quoted  text ("misc"), numbers, or other function
-     calls.  Use \" for a double quote inside double-quoted text.  Each  expres-
-     sion's result has outer whitespace removed, like other interpolated values.
+     Function arguments can be CSV field references (%desc, %3),  hledger  field
+     names  (comment), match group references (\1), double-quoted text ("misc"),
+     numbers, or other function calls.  Use \" for a double  quote  inside  dou-
+     ble-quoted  text.   Each  expression's result has outer whitespace removed,
+     like other interpolated values.
 
      function              result
      --------------------------------------------------------------------------
      upper(TEXT)           TEXT in upper case
      lower(TEXT)           TEXT in lower case
-     capitalize(TEXT)      TEXT  with  each  word's first letter in upper case
+     capitalize(TEXT)      TEXT with each word's first letter  in  upper  case
                            and the rest in lower case (capitalise also works)
      trim(TEXT)            TEXT without outer whitespace
      negate(AMOUNT)        AMOUNT with its sign flipped, eg 5 -> -5, -5 or (5)
                            -> 5
      abs(AMOUNT)           AMOUNT without a minus sign, eg -5 or (5) -> 5
      concat(TEXT, ...)     all the arguments joined together
+     join(SEP,     TEXT,   the TEXTs that aren't empty, joined  with  SEP  be-
+     ...)                  tween them
      default(TEXT, ...)    the first argument that's not empty
      replace(TEXT,         TEXT with each match of REGEX replaced by REPL
      REGEX, REPL)
-     substr(TEXT, START,   LENGTH characters of  TEXT,  starting  at  position
+     substr(TEXT, START,   LENGTH  characters  of  TEXT,  starting at position
      LENGTH)               START (1 is the first); LENGTH is optional
 
-     For  replace,  REGEX  must be double-quoted text, and is a case-insensitive
-     regular expression.  REPL can use \1, \2  etc.   to  insert  REGEX's  match
+     For replace, REGEX must be double-quoted text, and  is  a  case-insensitive
+     regular  expression.   REPL  can  use  \1, \2 etc.  to insert REGEX's match
      groups.  (Unquoted \1 etc.  outside double quotes refer to the match groups
-     of  an  enclosing  if  rule instead.)  For substr, START and LENGTH must be
+     of an enclosing if rule instead.)  For substr, START  and  LENGTH  must  be
      numbers.
 
-     For negate and abs, AMOUNT is a number, optionally with a commodity  symbol
+     For  negate and abs, AMOUNT is a number, optionally with a commodity symbol
      before or after it, and optionally with a sign: - or + before it, or paren-
-     theses  meaning negative around it.  The sign can be before or after a com-
-     modity symbol written in front of the number.  Eg these  are  all  negative
-     amounts:  -5, (5), -$5, $-5, $(5), USD -5, -5 USD, (5 USD).  The number it-
-     self isn't parsed, so its decimal mark and digit group marks don't  matter.
-     negate  converts  5 to -5 and $-1,000.50 to $1,000.50, and abs converts any
+     theses meaning negative around it.  The sign can be before or after a  com-
+     modity  symbol  written  in front of the number.  Eg these are all negative
+     amounts: -5, (5), -$5, $-5, $(5), USD -5, -5 USD, (5 USD).  The number  it-
+     self  isn't parsed, so its decimal mark and digit group marks don't matter.
+     negate converts 5 to -5 and $-1,000.50 to $1,000.50, and abs  converts  any
      of the above to the unsigned form.  A sign after the number (5-), or paren-
      theses around just the number when the symbol comes after it ((5) USD), are
      not supported.
+
+     join  is useful for combining parts which may be empty, without stray sepa-
+     rators.  Eg comment %{join(", ", %note, %ref)}.
 
      Mistakes in an expression, like an unknown function or the wrong number  of
      arguments,  are  reported when the rules file is read.  Text beginning with
@@ -7750,7 +7762,8 @@ CSV
    hledger field names
      Here are all the hledger fields you can  assign  to.   They  correspond  to
      parts  of  a  journal  entry, or in some cases they are pseudo-fields which
-     have a special effect.
+     have a special effect.  You can also interpolate their values in %{...} ex-
+     pressions, except for the -in/-out amount fields.
 
    date field
      Assigning to date sets the transaction date.  This is required.
@@ -8422,8 +8435,8 @@ CSV
      * If an amount value contains just a sign (or just a set of parentheses):
      that is removed, making it an empty value.  "+" or "-" or "()" becomes "".
 
-     It's  not  possible (without preprocessing the CSV) to set an amount to its
-     absolute value, ie discard its sign.
+     To  set  an  amount to its absolute value, ie discard its sign, use the abs
+     function, eg amount1 %{abs(%amt)}.
 
    Setting currency/commodity
      If the currency/commodity symbol is included in the CSV's amount field(s):
@@ -8492,10 +8505,9 @@ CSV
      commodity directive to specify them.
 
    Referencing other fields
-     In  field  assignments,  you  can  interpolate only CSV fields, not hledger
-     fields.  In the example below, there's both a CSV field and a hledger field
-     named amount1, but %amount1 always means the CSV  field,  not  the  hledger
-     field:
+     In  field assignments, %NAME always means a CSV field, not a hledger field.
+     In the example below, there's both a CSV field and a  hledger  field  named
+     amount1, but %amount1 means the CSV field:
 
             # Name the third CSV field "amount1"
             fields date,description,amount1
@@ -8506,57 +8518,90 @@ CSV
             # Set comment to the CSV amount1 (not the amount1 assigned above)
             comment %amount1
 
-     Here,  since  there's no CSV amount1 field, %amount1 will produce a literal
-     "amount1":
+     Here,  since there's no CSV amount1 field, %amount1 produces empty text; to
+     get hledger's amount1 field, write %{amount1}:
 
             fields date,description,csvamount
             amount1 %csvamount USD
-            # Can't interpolate amount1 here
+            # Empty: there's no CSV amount1 field
             comment %amount1
+            # hledger's amount1 field, eg "5 USD"
+            comment1 %{amount1}
 
      When there are multiple field assignments to the same hledger  field,  only
-     the last one takes effect.  Here, comment's value will be B, or C if "some-
-     thing" is matched, but never A:
+     the last one takes effect (though it can include the earlier value, see be-
+     low).  Here, comment's value will be B, or C if "something" is matched, but
+     never A:
 
             comment A
             comment B
             if something
              comment C
 
+     To  use a hledger field's value, write its name (without %) inside a %{...}
+     expression.
+
+     In an assignment to the same field, this gives the field's value  from  its
+     previous  assignment, so you can add to it.  This is handy for appending to
+     a comment:
+
+            fields date, description, comment, amount
+            if refund
+             # add a refund tag
+             comment %{comment}, refund:
+             # or, avoiding a redundant separator when comment is empty:
+             #comment %{join(", ", comment, "refund:")}
+
+     "Previous assignment" here means the one before this one,  in  this  order:
+     top-level  assignments  (including those made by the fields list), then as-
+     signments in matched if blocks, each in the order written.  (So a top-level
+     assignment comes before any if block's, even if written after it.)
+
+     In an assignment to a different field, a hledger field's  name  gives  that
+     field's  final  value, wherever it is assigned.  Eg here, comment is set to
+     the final value of the hledger description:
+
+            comment %{description}
+
+     When interpolating a hledger field, the value is the text assigned  to  the
+     field  by these rules, before further processing by hledger.  Eg %{amount1}
+     is the amount text before any sign simplification, and %{account2} is empty
+     if account2 isn't assigned (not expenses:unknown).
+
    How CSV rules are evaluated
-     Here's  how  to think of CSV rules being evaluated.  If you get a confusing
-     error while reading a CSV file, it may help to try to understand  which  of
+     Here's how to think of CSV rules being evaluated.  If you get  a  confusing
+     error  while  reading a CSV file, it may help to try to understand which of
      these steps is failing:
 
-     1. Any  included  rules  files are inlined, from top to bottom, depth first
-        (scanning each included file for further includes,  recursively,  before
+     1. Any included rules files are inlined, from top to  bottom,  depth  first
+        (scanning  each  included file for further includes, recursively, before
         proceeding).
 
-     2. Top  level rules (date-format, fields, newest-first, skip etc) are read,
-        top to bottom.  "Top level rules" means  non-conditional  rules.   If  a
+     2. Top level rules (date-format, fields, newest-first, skip etc) are  read,
+        top  to  bottom.   "Top  level rules" means non-conditional rules.  If a
         rule occurs more than once, the last one wins; except for the skip rule,
-        where  the  first one wins.  A rule written after an include would over-
+        where the first one wins.  A rule written after an include  would  over-
         ride the same rule in the included file.
 
-     3. The CSV file is read as text.  Any non-ascii characters will be  decoded
-        using  the  text  encoding specified by the encoding rule, otherwise the
+     3. The  CSV file is read as text.  Any non-ascii characters will be decoded
+        using the text encoding specified by the encoding  rule,  otherwise  the
         system locale's text encoding.
 
-     4. Any top-level skip or end rule is applied.  skip [N]  immediately  skips
-        the  current  or next N CSV records; end immediately skips all remaining
+     4. Any  top-level  skip or end rule is applied.  skip [N] immediately skips
+        the current or next N CSV records; end immediately skips  all  remaining
         CSV records (not normally used at top level).
 
-     5. Now any remaining CSV records are processed.  For each  CSV  record,  in
+     5. Now  any  remaining  CSV records are processed.  For each CSV record, in
         file order:
 
-         * Is  there  a conditional skip/end rule that applies for this record ?
-           Search the if blocks, from top to bottom, for a succeeding  one  con-
-           taining  a  skip or end rule.  If found, skip the specified number of
+         * Is there a conditional skip/end rule that applies for this  record  ?
+           Search  the  if blocks, from top to bottom, for a succeeding one con-
+           taining a skip or end rule.  If found, skip the specified  number  of
            CSV records, then continue at 5.
          Otherwise...
 
          * Is there a merge rule that applies for this record (top level or con-
-           ditional) ?  If so, join the next N CSV  records  onto  this  record,
+           ditional)  ?   If  so,  join the next N CSV records onto this record,
            making one combined record.
 
          * Do some basic validation on this CSV record (eg, check that it has at
@@ -8564,45 +8609,47 @@ CSV
 
          * For each hledger field (date, description, account1, etc.):
 
-           1. Get  the field's assigned value, first searching top level assign-
-              ments, made directly or by the fields rule, then assignments  made
+           1. Get the field's assigned value, first searching top level  assign-
+              ments,  made directly or by the fields rule, then assignments made
               inside succeeding if blocks.  If there are more than one, the last
-              one wins.
+              one wins (though it can include  the  previous  one's  value  with
+              %{FIELDNAME}).
 
            2. Compute  the  field's actual value (as text), by interpolating any
               %CSVFIELD references and %{...} expressions  within  the  assigned
-              value; or by choosing a default value if there was no assignment.
+              value  (which may use other hledger fields' values, computing them
+              first); or by choosing a default value if there was no assignment.
 
          * Generate a hledger transaction from the hledger field values, parsing
            them if needed (eg from text to an amount).
 
-     This  is all done by the CSV reader, one of several readers hledger can use
-     to read transactions from an input file.  When all input  files  have  been
-     read  successfully, their transactions are passed to whichever hledger com-
+     This is all done by the CSV reader, one of several readers hledger can  use
+     to  read  transactions  from an input file.  When all input files have been
+     read successfully, their transactions are passed to whichever hledger  com-
      mand the user specified.
 
    Well factored rules
      Some things than can help reduce duplication and complexity in rules files:
 
-     * Extracting common rules usable  with  multiple  CSV  files  into  a  com-
+     * Extracting  common  rules  usable  with  multiple  CSV  files into a com-
        mon.rules, and adding include common.rules to each CSV's rules file.
 
-     * Splitting  if  blocks  into  smaller if blocks, extracting the frequently
+     * Splitting if blocks into smaller if  blocks,  extracting  the  frequently
        used parts.
 
    CSV rules examples
      For real-world rules files for many banks, brokers, exchanges and apps, see
-     the hledger CSV rules library in the hledger repo.  These aren't  necessar-
-     ily  maintained, and may need adapting, but they are a good source of ideas
+     the  hledger CSV rules library in the hledger repo.  These aren't necessar-
+     ily maintained, and may need adapting, but they are a good source of  ideas
      and examples.
 
 Timeclock
-     hledger can read time logs in the timeclock time logging  format  of  time-
-     clock.el.   As  with Ledger, hledger's timeclock format is a subset/variant
+     hledger  can  read  time logs in the timeclock time logging format of time-
+     clock.el.  As with Ledger, hledger's timeclock format is  a  subset/variant
      of timeclock.el's.
 
-     hledger's timeclock format was updated in hledger 1.43 and 1.50.   If  your
-     old  time  logs  are rejected, you should adapt them to modern hledger; for
+     hledger's  timeclock  format was updated in hledger 1.43 and 1.50.  If your
+     old time logs are rejected, you should adapt them to  modern  hledger;  for
      now, you can restore the pre-1.43 behaviour with the --old-timeclock flag.
 
      Here is the timeclock format (in hledger 1.50+):
@@ -8621,17 +8668,17 @@ Timeclock
             i SIMPLEDATE HH:MM[:SS][+-ZZZZ] ACCOUNT[  DESCRIPTION][;COMMENT]]
             o SIMPLEDATE HH:MM[:SS][+-ZZZZ][ ACCOUNT][;COMMENT]
 
-     The date is a hledger simple date (YYYY-MM-DD or similar).  The time  parts
-     must  use  two digits.  The seconds are optional.  A + or - four-digit time
+     The  date is a hledger simple date (YYYY-MM-DD or similar).  The time parts
+     must use two digits.  The seconds are optional.  A + or -  four-digit  time
      zone is accepted for compatibility, but currently ignored; times are always
      interpreted as a local time.
 
-     In clock-in entries (i), the account name is required.  A  transaction  de-
-     scription,  separated  from  the account name by 2+ spaces, is optional.  A
+     In  clock-in  entries (i), the account name is required.  A transaction de-
+     scription, separated from the account name by 2+ spaces,  is  optional.   A
      transaction comment, beginning with ;, is also optional.  (Indented follow-
      ing comment lines are also allowed, as in journal format.)
 
-     Clock-out entries (o) have no description, but can have a  comment  if  you
+     Clock-out  entries  (o)  have no description, but can have a comment if you
      wish.  A clock-in and clock-out pair form a "transaction" posting some num-
      ber of hours to an account - also known as a session.  Eg:
 
@@ -8642,10 +8689,10 @@ Timeclock
             2015-03-30 * 09:00-10:00
                 (session1)           1.00h
 
-     Clock-ins  and  clock-outs are matched by their account/session name.  If a
-     clock-out does not specify a name, the most  recent  unclosed  clock-in  is
+     Clock-ins and clock-outs are matched by their account/session name.   If  a
+     clock-out  does  not  specify  a name, the most recent unclosed clock-in is
      closed.  You can have multiple sessions active simultaneously.  Entries are
-     processed  in  the  order they are parsed.  Sessions spanning more than one
+     processed in the order they are parsed.  Sessions spanning  more  than  one
      day are automatically split at day boundaries.
 
      Eg, the following time log:
@@ -8690,17 +8737,17 @@ Timeclock
               alias ti='echo i `date "+%Y-%m-%d %H:%M:%S"` $* >>$TIMELOG'
               alias to='echo o `date "+%Y-%m-%d %H:%M:%S"` >>$TIMELOG'
 
-     * or Emacs's built-in timeclock.el, or  the  extended  timeclock-x.el,  and
+     * or  Emacs's  built-in  timeclock.el,  or the extended timeclock-x.el, and
        perhaps the extras in ledgerutils.el
 
-     * or  use  the  old  ti and to scripts in the ledger 2.x repository.  These
-       rely on a "timeclock" executable which I think is just the ledger 2  exe-
+     * or use the old ti and to scripts in the  ledger  2.x  repository.   These
+       rely  on a "timeclock" executable which I think is just the ledger 2 exe-
        cutable renamed.
 
 Timedot
-     timedot  format  is hledger's human-friendly time logging format.  Compared
-     to timeclock format, it is more  convenient  for  quick,  approximate,  and
-     retroactive  time logging, and more human-readable (you can see at a glance
+     timedot format is hledger's human-friendly time logging  format.   Compared
+     to  timeclock  format,  it  is  more convenient for quick, approximate, and
+     retroactive time logging, and more human-readable (you can see at a  glance
      where time was spent).  A quick example:
 
             2023-05-01
@@ -8708,7 +8755,7 @@ Timedot
             fos:hledger:timedot  ..         ; half an hour
             per:admin:finance               ; no time spent yet
 
-     hledger reads this as a transaction on this  day  with  three  (unbalanced)
+     hledger  reads  this  as  a transaction on this day with three (unbalanced)
      postings, where each dot represents 0.25 (of an hour, we usually assume).
 
             $ hledger -f a.timedot print   # .timedot file extension (or timedot: prefix) is required
@@ -8717,62 +8764,62 @@ Timedot
                 (fos:hledger:timedot)                          0.50  ; half an hour
                 (per:admin:finance)                            0.00  ; no time spent yet
 
-     A  timedot  file  specifies  a series of transactions, usually one per day.
+     A timedot file specifies a series of transactions,  usually  one  per  day.
      (Unlike in a journal file, these "transactions" don't need to balance; time
      logs use "single entry accounting".)
 
-     Each transaction begins with a date line: a line  whose  first  word  looks
-     like  a  simple date, ie three groups of digits separated by -, /, or . (if
-     these cannot be parsed as a valid date, an error  is  raised).   After  the
-     date,  on the same line, there can optionally be a transaction description,
+     Each  transaction  begins  with  a date line: a line whose first word looks
+     like a simple date, ie three groups of digits separated by -, /, or  .  (if
+     these  cannot  be  parsed  as a valid date, an error is raised).  After the
+     date, on the same line, there can optionally be a transaction  description,
      and after ;, a transaction comment (possibly containing tags).
 
      After the date line are zero or more posting lines.  A timedot posting line
-     begins with a hledger-style account name, optionally indented.   After  the
-     account  name  there are two or more spaces and then a timedot amount.  (Or
+     begins  with  a hledger-style account name, optionally indented.  After the
+     account name there are two or more spaces and then a timedot  amount.   (Or
      nothing, which is equivalent to a zero amount.)
 
      Timedot amounts can be written in several ways:
 
      * One or more dots (.)
      Each dot represents a quarter hour.  (There's no commodity symbol, but usu-
-     ally we assume hours.)  Spaces can  optionally  be  used  for  aligning  or
+     ally  we  assume  hours.)   Spaces  can  optionally be used for aligning or
      grouping dots, eg .... .... .. is easy to read as 2.5 hours.
 
      * A bare number (integer or decimal)
      This can be more precise or more convenient, eg for large durations.
 
      * A number followed by a time unit (s, m, h, d, w, mo, or y)
-     representing  seconds,  minutes, hours, days, weeks, months or years, which
-     will be converted to hours using these ratios: 60s = 1m, 60m =  1h,  24h  =
+     representing seconds, minutes, hours, days, weeks, months or  years,  which
+     will  be  converted  to hours using these ratios: 60s = 1m, 60m = 1h, 24h =
      1d, 7d = 1w, 30d = 1mo, 365d = 1y.  This allows use of more convenient time
      units.
 
      * One or more timedot letters
      These work like dots, except they also generate a posting tag t: (short for
-     "type")  with  the  letter as its value, and a separate posting for each of
+     "type") with the letter as its value, and a separate posting  for  each  of
      the letter values.  This adds a second dimension of categorisation - in ad-
-     dition to account name, you'll have the t tag's value, which can  be  shown
+     dition  to  account name, you'll have the t tag's value, which can be shown
      in reports with --pivot t, --pivot acct:t, etc.
 
-     Posting  lines can end with a hledger-style posting comment (text after ;),
+     Posting lines can end with a hledger-style posting comment (text after  ;),
      optionally containing tags.
 
-     Lines beginning with # or ; are comment lines, and  ignored.   Blank  lines
+     Lines  beginning  with  # or ; are comment lines, and ignored.  Blank lines
      are also ignored.
 
      There is some additional support for users of Emacs org mode:
 
-     * Before  the  first  date line, lines beginning with * are also treated as
-       comments, and ignored.  This allows top-level org headings in  a  timedot
+     * Before the first date line, lines beginning with * are  also  treated  as
+       comments,  and  ignored.  This allows top-level org headings in a timedot
        file.
 
-     * From  the  first  date line onward, org heading prefixes (one or more *'s
-       followed by a space) are ignored, with the rest of the line being  parsed
+     * From the first date line onward, org heading prefixes (one  or  more  *'s
+       followed  by a space) are ignored, with the rest of the line being parsed
        normally.  This allows timedot date or posting lines to also be org head-
        ings.
 
-     Timedot  files  don't  support  directives like journal files.  So a common
+     Timedot files don't support directives like journal  files.   So  a  common
      pattern is to have a main journal file that contains any needed directives,
      and then includes the timedot file (include time.timedot).
 
@@ -8874,20 +8921,20 @@ Timedot
 PART 4: CONCEPTS
 Time periods
    Report start & end date
-     Most hledger reports will by default show the full time period  represented
-     by  the journal.  The report start date will be the earliest transaction or
+     Most  hledger reports will by default show the full time period represented
+     by the journal.  The report start date will be the earliest transaction  or
      posting date, and the report end date will be the latest transaction, post-
      ing, or market price date.
 
-     Often you will want to see a shorter period, such  as  the  current  month.
-     You  can  specify a start and/or end date with the -b/--begin, -e/--end, or
-     -p/--period options, or a date: query argument, described  below.   All  of
+     Often  you  will  want  to see a shorter period, such as the current month.
+     You can specify a start and/or end date with the -b/--begin,  -e/--end,  or
+     -p/--period  options,  or  a date: query argument, described below.  All of
      these accept the smart date syntax, also described below.
 
      End dates are exclusive; specify the day after the last day you want to see
      in the report.
 
-     When  dates are specified by multiple options, the last (right-most) option
+     When dates are specified by multiple options, the last (right-most)  option
      wins.  And when date: queries and date options are combined, the report pe-
      riod will be their intersection.
 
@@ -8912,21 +8959,21 @@ Time periods
             same as above
 
      -b 2024 -e 2025 -p '2000 to 2030' date:2020-01 date:2020 :
-     during January 2020 (the smallest common period, with the -p overriding  -b
+     during  January 2020 (the smallest common period, with the -p overriding -b
      and -e)
 
    Smart dates
-     In  hledger's user interfaces (though not in the journal file), you can op-
-     tionally use "smart date" syntax.  Smart dates can be written with  english
-     words,  can be relative, and can have parts omitted.  Missing parts are in-
+     In hledger's user interfaces (though not in the journal file), you can  op-
+     tionally  use "smart date" syntax.  Smart dates can be written with english
+     words, can be relative, and can have parts omitted.  Missing parts are  in-
      ferred as 1, when needed.  Smart dates can be interpreted as dates or peri-
      ods depending on the context.
 
      Examples:
 
      2004-01-01, 2004/10/1, 2004.9.1, 20240504, 2024Q1 :
-     Exact dates.  The year must have at least four digits, the  month  must  be
-     1-12,  the  day  must be 1-31, the separator can be - or / or . or nothing.
+     Exact  dates.   The  year must have at least four digits, the month must be
+     1-12, the day must be 1-31, the separator can be - or / or  .  or  nothing.
      The q can be upper or lower case and the quarter number must be 1-4.
 
      2004-10
@@ -8955,7 +9002,7 @@ Time periods
             ter today
 
      last/this/next february
-            the previous occurrence of 1st of the named month, or the  next  oc-
+            the  previous  occurrence of 1st of the named month, or the next oc-
             currence after the current month
 
      in n days/weeks/months/quarters/years
@@ -8973,24 +9020,24 @@ Time periods
      201812
             6 digit YYYYMM with valid year and month
 
-     Dates  with  no separators are allowed but might give surprising results if
+     Dates with no separators are allowed but might give surprising  results  if
      mistyped:
 
-     * 20181301 (YYYYMMDD with an invalid month) is  parsed  as  an  eight-digit
+     * 20181301  (YYYYMMDD  with  an  invalid month) is parsed as an eight-digit
        year
 
      * 20181232 (YYYYMMDD with an invalid day) gives a parse error
 
-     * 201801012  (a valid YYYYMMDD followed by additional digits) gives a parse
+     * 201801012 (a valid YYYYMMDD followed by additional digits) gives a  parse
        error
 
      The meaning of relative dates depends on today's date.  If you need to test
-     or reproduce old reports, you can use the --today option to override  that.
+     or  reproduce old reports, you can use the --today option to override that.
      (Except for periodic transaction rules, which are not affected by --today.)
 
    Report intervals
-     A  report  interval can be specified so that reports like register, balance
-     or activity become multi-period, showing each subperiod as a  separate  row
+     A report interval can be specified so that reports like  register,  balance
+     or  activity  become multi-period, showing each subperiod as a separate row
      or column.
 
      The following standard intervals can be enabled with command-line flags:
@@ -9009,26 +9056,26 @@ Time periods
 
    Date adjustments
    Start date adjustment
-     If  you let hledger infer a report's start date, it will adjust the date to
-     the previous natural boundary of the report interval, for convenient  peri-
+     If you let hledger infer a report's start date, it will adjust the date  to
+     the  previous natural boundary of the report interval, for convenient peri-
      odic reports.  (If you don't want that, specify a start date.)
 
      For example, if the journal's first transaction is on january 10th,
 
-     * hledger  register  (no  report interval) will start the report on january
+     * hledger register (no report interval) will start the  report  on  january
        10th.
 
-     * hledger register --monthly will start the report on  the  previous  month
+     * hledger  register  --monthly  will start the report on the previous month
        boundary, january 1st.
 
-     * hledger  register  --monthly --begin 1/5 will start the report on january
+     * hledger register --monthly --begin 1/5 will start the report  on  january
        5th [1].
 
-     The start date of transactions generated by periodic transaction  rules  is
+     The  start  date of transactions generated by periodic transaction rules is
      chosen separately; see Forecast period, in detail.
 
    End date adjustment
-     A  report's end date is always adjusted to include a whole number of inter-
+     A report's end date is always adjusted to include a whole number of  inter-
      vals, so that the last subperiod has the same length as the others.
 
      For example, if the journal's last transaction is on february 20th,
@@ -9040,43 +9087,43 @@ Time periods
      * hledger register --monthly --end 2/14 also will end the report at the end
        of february (overriding the requested end date).
 
-     * hledger register --monthly --begin 1/5 --end 2/14 will end the report  on
+     * hledger  register --monthly --begin 1/5 --end 2/14 will end the report on
        march 4th.
 
    Period expressions
-     The  -p/--period  option  specifies a period expression, which is a compact
+     The -p/--period option specifies a period expression, which  is  a  compact
      way of expressing a start date, end date, and/or report interval.
 
-     Here's a period expression with a start and end date (specifying the  first
+     Here's  a period expression with a start and end date (specifying the first
      quarter of 2009):
 
      -p "from 2009/1/1 to 2009/4/1"
 
-     Several  keywords like "from" and "to" are supported for readability; these
-     are optional.  "to" can also be written as ".." or  "-".   (Except  that  a
-     lone  day  number, directly after a "-" with no spaces, is not accepted; eg
-     2026-13 is more likely a mistyped date than  "2026  to  the  13th  of  this
+     Several keywords like "from" and "to" are supported for readability;  these
+     are  optional.   "to"  can  also be written as ".." or "-".  (Except that a
+     lone day number, directly after a "-" with no spaces, is not  accepted;  eg
+     2026-13  is  more  likely  a  mistyped  date than "2026 to the 13th of this
      month", so it's an error.  To mean the latter, write 2026..13.)  The spaces
-     are  also  optional,  as  long as you don't run two dates together.  So the
+     are also optional, as long as you don't run two  dates  together.   So  the
      following are equivalent to the above:
 
      -p "2009/1/1 2009/4/1"
      -p2009/1/1to2009/4/1
      -p2009/1/1..2009/4/1
 
-     Dates are smart dates, so if the current  year  is  2009,  these  are  also
+     Dates  are  smart  dates,  so  if  the current year is 2009, these are also
      equivalent to the above:
 
      -p "1/1 4/1"
      -p "jan-apr"
      -p "this year to 4/1"
 
-     If  you  specify  only  one date, the missing start or end date will be the
+     If you specify only one date, the missing start or end  date  will  be  the
      earliest or latest transaction date in the journal:
 
      -p "from 2009/1/1"   everything after january 1,
                           2009
-     -p "since 2009/1"    the same, since is  a  syn-
+     -p "since 2009/1"    the  same,  since is a syn-
                           onym
      -p "from 2009"       the same
      -p "to 2009"         everything  before  january
@@ -9085,19 +9132,19 @@ Time periods
      You can also specify a period by writing a single partial or full date:
 
      -p "2009"        the year 2009; equivalent to "2009/1/1 to 2010/1/1"
-     -p "2009/1"      the month of january 2009; equivalent to  "2009/1/1  to
+     -p "2009/1"      the  month  of january 2009; equivalent to "2009/1/1 to
                       2009/2/1"
-     -p "2009/1/1"    the  first  day  of  2009;  equivalent  to "2009/1/1 to
+     -p "2009/1/1"    the first day  of  2009;  equivalent  to  "2009/1/1  to
                       2009/1/2"
 
      or by using the "Q" quarter-year syntax (case insensitive):
 
-     -p "2009Q1"       first quarter  of  2009,  equivalent  to  "2009/1/1  to
+     -p "2009Q1"       first  quarter  of  2009,  equivalent  to  "2009/1/1 to
                        2009/4/1"
      -p "q4"           fourth quarter of the current year
 
    Period expressions with a report interval
-     A  period  expression can also begin with a report interval, separated from
+     A period expression can also begin with a report interval,  separated  from
      the start/end dates (if any) by a space or the word in:
 
      -p "weekly from 2009/1/1 to 2009/4/1"
@@ -9105,7 +9152,7 @@ Time periods
      -p "quarterly"
 
    More complex report intervals
-     Some more complex intervals can be  specified  within  period  expressions,
+     Some  more  complex  intervals  can be specified within period expressions,
      such as:
 
      * biweekly (every two weeks)
@@ -9120,7 +9167,7 @@ Time periods
 
      Weekly on a custom day:
 
-     * every  Nth day of week (th, nd, rd, or st are all accepted after the num-
+     * every Nth day of week (th, nd, rd, or st are all accepted after the  num-
        ber)
 
      * every WEEKDAYNAME (full or three-letter english weekday name, case insen-
@@ -9128,7 +9175,7 @@ Time periods
 
      Monthly on a custom day:
 
-     * every Nth day [of month] (31st day will be adjusted to each month's  last
+     * every  Nth day [of month] (31st day will be adjusted to each month's last
        day)
 
      * every Nth WEEKDAYNAME [of month]
@@ -9137,7 +9184,7 @@ Time periods
 
      * every MM/DD [of year] (month number and day of month number)
 
-     * every  MONTHNAME DDth [of year] (full or three-letter english month name,
+     * every MONTHNAME DDth [of year] (full or three-letter english month  name,
        case insensitive, and day of month number)
 
      * every DDth MONTHNAME [of year] (equivalent to the above)
@@ -9150,21 +9197,21 @@ Time periods
      2009/03"
      -p "every 2nd day of week"    periods will go from Tue to Tue
      -p "every Tue"                same
-     -p "every 15th day"           period  boundaries  will be on 15th of each
+     -p "every 15th day"           period boundaries will be on 15th  of  each
                                    month
-     -p "every 2nd Monday"         period boundaries will be on second  Monday
+     -p "every 2nd Monday"         period  boundaries will be on second Monday
                                    of each month
-     -p "every 11/05"              yearly  periods  with  boundaries on 5th of
+     -p "every 11/05"              yearly periods with boundaries  on  5th  of
                                    November
      -p "every 5th November"       same
      -p "every Nov 5th"            same
 
-     Show historical balances at end of the 15th day of each month (N is an  end
+     Show  historical balances at end of the 15th day of each month (N is an end
      date, exclusive as always):
 
             $ hledger balance -H -p "every 16th day"
 
-     Group  postings from the start of wednesday to end of the following tuesday
+     Group postings from the start of wednesday to end of the following  tuesday
      (N is both (inclusive) start date and (exclusive) end date):
 
             $ hledger register checking -p "every 3rd day of week"
@@ -9172,44 +9219,44 @@ Time periods
    Multiple weekday intervals
      This special form is also supported:
 
-     * every WEEKDAYNAME,WEEKDAYNAME,... (full or three-letter  english  weekday
+     * every  WEEKDAYNAME,WEEKDAYNAME,...  (full or three-letter english weekday
        names, case insensitive)
 
-     Also,  weekday  and  weekendday  are  shorthand for mon,tue,wed,thu,fri and
+     Also, weekday and weekendday  are  shorthand  for  mon,tue,wed,thu,fri  and
      sat,sun.
 
-     This is mainly intended for  use  with  --forecast,  to  generate  periodic
+     This  is  mainly  intended  for  use  with --forecast, to generate periodic
      transactions on arbitrary days of the week.  It may be less useful with -p,
-     since  it divides each week into subperiods of unequal length, which is un-
+     since it divides each week into subperiods of unequal length, which is  un-
      usual.  (Related: #1632)
 
      Examples:
 
      -p          "every   dates  will  be  Mon,  Wed,  Fri;  periods  will  be
      mon,wed,fri"         Mon-Tue, Wed-Thu, Fri-Sun
-     -p "every weekday"   dates will be Mon, Tue, Wed, Thu, Fri; periods  will
+     -p "every weekday"   dates  will be Mon, Tue, Wed, Thu, Fri; periods will
                           be Mon, Tue, Wed, Thu, Fri-Sun
      -p "every weekend-   dates will be Sat, Sun; periods will be Sat, Sun-Fri
      day"
 
 Queries
-     Many  hledger  commands  accept query arguments, which restrict their scope
-     and let you report on a precise  subset  of  your  data.   Here's  a  quick
+     Many hledger commands accept query arguments, which  restrict  their  scope
+     and  let  you  report  on  a  precise  subset of your data.  Here's a quick
      overview of hledger's queries:
 
-     * By  default,  a query argument is treated as a case-insensitive substring
+     * By default, a query argument is treated as a  case-insensitive  substring
        pattern for matching account names.  Eg:
 
        dining groceries
        car:fuel
 
-     * Patterns containing spaces or other special characters must  be  enclosed
+     * Patterns  containing  spaces or other special characters must be enclosed
        in single or double quotes:
 
        'personal care'
 
      * Patterns  are  actually  regular  expressions,  so  you  can  add  regexp
-       metacharacters for more precision (or you may  need  to  backslash-escape
+       metacharacters  for  more  precision (or you may need to backslash-escape
        certain characters; see "Regular expressions" above):
 
        '^expenses\b'
@@ -9217,7 +9264,7 @@ Queries
        'fuel|repair'
        'accounts (payable|receivable)'
 
-     * To  match something other than the account name, you can add a query type
+     * To match something other than the account name, you can add a query  type
        prefix, such as:
 
        date:202312-
@@ -9226,10 +9273,10 @@ Queries
        cur:USD
        cur:\\$
        amt:'>0'
-       acct:groceries (but acct: is the default,  so  we  usually  don't  bother
+       acct:groceries  (but  acct:  is  the  default, so we usually don't bother
        writing it)
 
-     * To  match  in  any field, or by date, use the find: query type, or :: for
+     * To match in any field, or by date, use the find: query type,  or  ::  for
        short:
 
        ::amazon
@@ -9242,47 +9289,51 @@ Queries
        not:desc:'opening|closing'
        not:cur:USD
 
-     * Multiple query terms can be  combined,  as  space-separated  queries  Eg:
+     * Multiple  query  terms  can  be  combined, as space-separated queries Eg:
        hledger print date:2022 desc:amazon desc:amzn (show transactions dated in
        2022 whose description contains "amazon" or "amzn").
 
-     * Or  more  flexibly as boolean queries.  Eg: hledger print expr:'date:2022
+     * Or more flexibly as boolean queries.  Eg: hledger  print  expr:'date:2022
        and (desc:amazon or desc:amzn) and not date:202210'
 
-     All hledger commands use the same query language,  but  different  commands
+     All  hledger  commands  use the same query language, but different commands
      may interpret the query in different ways.  Here's the gist of it (see PART
      2: COMMANDS above for the commands):
 
-     * Transaction-oriented  commands (print, aregister, close, import, descrip-
-       tions..)  try to match transactions (including  the  transaction's  post-
+     * Transaction-oriented commands (print, aregister, close, import,  descrip-
+       tions..)   try  to  match transactions (including the transaction's post-
        ings).
 
-     * Posting-oriented  commands (register, balance, balancesheet, incomestate-
-       ment, accounts..)  try to match postings.  Postings inherit their  trans-
-       action's  attributes  for  querying  purposes, so transaction fields like
+     * Posting-oriented commands (register, balance, balancesheet,  incomestate-
+       ment,  accounts..)  try to match postings.  Postings inherit their trans-
+       action's attributes for querying purposes,  so  transaction  fields  like
        date or description can still be referenced in a posting query.
 
-     * A few commands match in more specific ways.  (Eg aregister, which  has  a
+     * A  few  commands match in more specific ways.  (Eg aregister, which has a
        special first argument.)
 
    Query types
-     Here are the query types available:
+     Here are the query types available.
+
+     In the ones which take a regular expression, an empty one (eg desc: or  ::)
+     matches  anything.   (Except in cur:, which must match the whole symbol, so
+     an empty cur: matches amounts with no commodity symbol.)
 
    acct: query
      acct:REGEX, or just REGEX
      Match account names containing this case insensitive regular expression.
-     This  is  the  default  query  type, so we usually don't bother writing the
+     This is the default query type, so we  usually  don't  bother  writing  the
      "acct:" prefix.
 
    amt: query
      amt:N, amt:'<N', amt:'<=N', amt:'>N', amt:'>=N'
-     Match postings with a single-commodity  amount  equal  to,  less  than,  or
-     greater  than  N. (Postings with multi-commodity amounts are not tested and
-     will always match.)  amt: needs quotes to hide the less  than/greater  than
+     Match  postings  with  a  single-commodity  amount  equal to, less than, or
+     greater than N. (Postings with multi-commodity amounts are not  tested  and
+     will  always  match.)  amt: needs quotes to hide the less than/greater than
      sign from the command line shell.
 
-     The  comparison has two modes: if N is preceded by a + or - sign (or is 0),
-     the two signed numbers are compared.  Otherwise,  the  absolute  magnitudes
+     The comparison has two modes: if N is preceded by a + or - sign (or is  0),
+     the  two  signed  numbers are compared.  Otherwise, the absolute magnitudes
      are compared, ignoring sign.
 
      Keep in mind that amt: matches posting amounts, not account balances.
@@ -9294,15 +9345,15 @@ Queries
    cur: query
      cur:FULLREGEX
      Match postings or transactions including any amounts whose currency/commod-
-     ity  symbol  is fully matched by REGEX.  (Contrary to hledger's usual infix
+     ity symbol is fully matched by REGEX.  (Contrary to hledger's  usual  infix
      matching.  To do infix matching, write .*REGEX.*.)
 
-     To match special characters which are regex-significant, escape  them  with
-     \.   And  at  the command line, characters which are shell-significant need
-     one more level of escaping - eg to match the dollar sign, write cur:\\$  or
+     To  match  special characters which are regex-significant, escape them with
+     \.  And at the command line, characters which  are  shell-significant  need
+     one  more level of escaping - eg to match the dollar sign, write cur:\\$ or
      cur:'\$'.
 
-     Amounts  written  with a commodity alias have been converted to the commod-
+     Amounts written with a commodity alias have been converted to  the  commod-
      ity, so cur: matches them by the commodity's symbol, not the alias.
 
    desc: query
@@ -9311,47 +9362,47 @@ Queries
 
    date: query
      date:PERIODEXPR
-     Match dates (or with the --date2 flag, secondary dates) within  the  speci-
+     Match  dates  (or with the --date2 flag, secondary dates) within the speci-
      fied period.  PERIODEXPR is a period expression.  Examples:
      date:2016, date:thismonth, date:2/1-2/15, date:2021-07-27..nextquarter.
 
-     PERIODEXPR  may  include  a  report  interval (since 1.52).  On the command
-     line, this is equivalent to specifying a report  interval  with  a  command
-     line  option.   In other contexts (hledger-ui, hledger-web), the report in-
+     PERIODEXPR may include a report interval  (since  1.52).   On  the  command
+     line,  this  is  equivalent  to specifying a report interval with a command
+     line option.  In other contexts (hledger-ui, hledger-web), the  report  in-
      terval may be ignored.
 
    date2: query
      date2:PERIODEXPR
-     If you use secondary dates: this matches secondary dates within the  speci-
+     If  you use secondary dates: this matches secondary dates within the speci-
      fied period.  It is not affected by the --date2 flag.  A report interval in
      PERIODEXPR will be ignored.
 
    depth: query
      depth:[REGEXP=]N
-     Match  (or  display, depending on command) accounts at or above this depth,
-     optionally only for accounts matching a provided regular  expression.   See
+     Match (or display, depending on command) accounts at or above  this  depth,
+     optionally  only  for accounts matching a provided regular expression.  See
      Depth for detailed rules.
 
    find: query
      find:REGEX, or ::REGEX
-     Match  if any visible text field contains this case insensitive regular ex-
+     Match if any visible text field contains this case insensitive regular  ex-
      pression: the account name, the amount (as it would be displayed), the com-
      ment, and the transaction's description, code and comment.  In other words,
-     the text you would see in print output.  Tags are searched as part  of  the
-     comment  text,  so hidden tags and tags inherited from account declarations
-     are not matched (use tag: for those).  Or, if REGEX is also a valid  period
-     expression,  match  if  the  date is within that period.  So ::amazon finds
-     "amazon" anywhere, and ::2024 finds "2024" in any field or a date in  2024.
+     the  text  you would see in print output.  Tags are searched as part of the
+     comment text, so hidden tags and tags inherited from  account  declarations
+     are  not matched (use tag: for those).  Or, if REGEX is also a valid period
+     expression, match if the date is within that  period.   So  ::amazon  finds
+     "amazon"  anywhere, and ::2024 finds "2024" in any field or a date in 2024.
      Unlike date:, this does not set the report period.
 
      Multiple find: terms must all match, like the words of a search.  Eg ::ama-
-     zon  ::2024 shows things matching both.  (In a transaction-oriented command
-     like print, the terms may be matched by different postings.)  To match  al-
+     zon ::2024 shows things matching both.  (In a transaction-oriented  command
+     like  print, the terms may be matched by different postings.)  To match al-
      ternatives, use a regular expression: ::'amazon|amzn'.
 
    note: query
      note:REGEX
-     Match  transaction  notes  (the  part of the description right of |, or the
+     Match transaction notes (the part of the description right  of  |,  or  the
      whole description if there's no |).
 
    payee: query
@@ -9369,22 +9420,27 @@ Queries
 
    type: query
      type:TYPECODES
-     Match by account type (see Declaring accounts > Account types).   TYPECODES
+     Match  by account type (see Declaring accounts > Account types).  TYPECODES
      is one or more of the single-letter account type codes ALERXCVGUM, case in-
-     sensitive.   Note  type:A, type:E, and type:R will also match their respec-
-     tive subtypes C (Cash), V (Conversion), U (UnrealisedGain)  and  M  (Imbal-
-     ance),  and  G  (Gain).  Certain kinds of account alias can disrupt account
+     sensitive.  Note type:A, type:E, and type:R will also match  their  respec-
+     tive  subtypes  C  (Cash), V (Conversion), U (UnrealisedGain) and M (Imbal-
+     ance), and G (Gain).  Certain kinds of account alias  can  disrupt  account
      types, see Rewriting accounts > Aliases and account types.
 
    tag: query
      tag:NAMEREGEX[=VALREGEX]
      Match by tag name, and optionally also by tag value.  Note:
 
-     * Both regular expressions do infix  matching.   If  you  need  a  complete
+     * Both  regular  expressions  do  infix  matching.   If you need a complete
        match, use ^ and $.
      Eg: tag:'^fullname$', tag:'^fullname$=^fullvalue$
 
-     * To match values, ignoring names, do tag:.=VALREGEX
+     * To match values, ignoring names, do tag:=VALREGEX
+
+     * With an empty NAMEREGEX, tag: matches  anything  which  has  a  tag,  and
+       not:tag: matches anything which has none.
+
+     * With an empty VALREGEX, tag:NAMEREGEX= matches that tag with any value.
 
      * Accounts also inherit the tags of their parent accounts.
 
