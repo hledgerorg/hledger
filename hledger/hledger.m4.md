@@ -3368,17 +3368,18 @@ It's important to know which is which, when you are creating rules:
 2. hledger fields
    - are the parts of a hledger journal entry (see [hledger field names](#hledger-field-names))
      (eg `date`, `description`, `account1`, `amount1`)
-   - are written to by rules to construct a journal entry
-   - are write-only.
+   - are assigned to by rules, to construct a journal entry
+   - can be referenced by their name, without a `%` prefix, inside a [`%{...}` expression](#functions)
+     (eg `%{description}`; see [Referencing other fields](#referencing-other-fields)).
 
-CSV rules can't read what has been written to a hledger field, or make new fields.
-In other words, you can't use "variables" in a rules file.
+CSV rules can't make new fields; you can't define your own variables in a rules file.
 (But you could add new CSV fields to the data before running rules, with a preprocessing script.)
 
 It's ok for a CSV field and a hledger field to have the same name;
-this causes the CSV field's value to be copied to the hledger field.
-hledger knows which kind of field is meant from the context;
-also, CSV fields are usually written with a `%` prefix.
+in a [fields list](#fields-list), this causes the CSV field's value to be assigned to the hledger field ("field name punning").
+hledger knows which kind of field is meant from the context:
+in field values and matchers, `%NAME` is a CSV field,
+and a bare `HLEDGERFIELDNAME` inside `%{...}` is a hledger field.
 Some examples:
 
 ```rules
@@ -3392,6 +3393,10 @@ fields date, bankamt
 # test the value of the CSV date field
 if %date 2026
  ...
+```
+```rules
+# add a tag to the hledger comment field, keeping any comment assigned before
+comment %{join(", ", comment, "imported:")}
 ```
 
 ## `fields` list
@@ -3471,8 +3476,8 @@ Tips:
 - Interpolation strips outer whitespace (so a CSV value like `" 1 "`
 becomes `1` when interpolated)
 ([#1051](https://github.com/hledgerorg/hledger/issues/1051)).
-- Interpolations always refer to a CSV field -
-  you can't interpolate a hledger field.
+- `%NAME` always refers to a CSV field.
+  To refer to a hledger field, write its name inside `%{...}`, eg `%{description}`.
   (See [Referencing other fields](#referencing-other-fields) below).
 
 ### Functions
@@ -3497,8 +3502,11 @@ comment month:%{substr(%date, 1, 7)}
 ```
 
 Function arguments can be CSV field references (`%desc`, `%3`),
-match group references (`\1`), double-quoted text (`"misc"`),
-numbers, or other function calls.
+[hledger field names](#referencing-other-fields) (`comment`),
+match group references (`\1`),
+double-quoted text (`"misc"`),
+numbers,
+or other function calls.
 Use `\"` for a double quote inside double-quoted text.
 Each expression's result has outer whitespace removed, like other interpolated values.
 
@@ -3545,6 +3553,8 @@ Text beginning with `%{` is always taken as an expression.
 Here are all the hledger fields you can assign to.
 They correspond to parts of a journal entry,
 or in some cases they are pseudo-fields which have a special effect.
+You can also interpolate their values in [`%{...}` expressions](#referencing-other-fields),
+except for the `-in`/`-out` amount fields.
 
 ### date field
 
@@ -4305,10 +4315,9 @@ TLDR: if `import` is not generating the precisions or styles you want, add a `co
 
 ### Referencing other fields
 
-In field assignments, you can interpolate only CSV fields, not hledger
-fields. In the example below, there's both a CSV field and a hledger
-field named amount1, but %amount1 always means the CSV field, not
-the hledger field:
+In field assignments, `%NAME` always means a CSV field, not a hledger field.
+In the example below, there's both a CSV field and a hledger field named amount1,
+but %amount1 means the CSV field:
 
 ```rules
 # Name the third CSV field "amount1"
@@ -4321,18 +4330,21 @@ amount1 %amount1 USD
 comment %amount1
 ```
 
-Here, since there's no CSV amount1 field, %amount1 will produce a literal "amount1":
+Here, since there's no CSV amount1 field, `%amount1` produces empty text;
+to get hledger's amount1 field, write `%{amount1}`:
 
 ```rules
 fields date,description,csvamount
 amount1 %csvamount USD
-# Can't interpolate amount1 here
+# Empty: there's no CSV amount1 field
 comment %amount1
+# hledger's amount1 field, eg "5 USD"
+comment1 %{amount1}
 ```
 
 When there are multiple field assignments to the same hledger field,
-only the last one takes effect. Here, comment's value will be B,
-or C if "something" is matched, but never A:
+only the last one takes effect (though it can include the earlier value, see below).
+Here, comment's value will be B, or C if "something" is matched, but never A:
 
 ```rules
 comment A
@@ -4340,6 +4352,37 @@ comment B
 if something
  comment C
 ```
+
+To use a hledger field's value, write its name (without `%`) inside a [`%{...}` expression](#functions).
+
+In an assignment to the same field, this gives the field's value from its previous assignment,
+so you can add to it. This is handy for appending to a comment:
+
+```rules
+fields date, description, comment, amount
+if refund
+ # add a refund tag
+ comment %{comment}, refund:
+ # or, avoiding a redundant separator when comment is empty:
+ #comment %{join(", ", comment, "refund:")}
+```
+
+"Previous assignment" here means the one before this one, in this order:
+top-level assignments (including those made by the `fields` list),
+then assignments in matched `if` blocks, each in the order written.
+(So a top-level assignment comes before any `if` block's, even if written after it.)
+
+In an assignment to a different field, a hledger field's name gives that field's final value,
+wherever it is assigned. Eg here, comment is set to the final value of the hledger description:
+
+```rules
+comment %{description}
+```
+
+When interpolating a hledger field, the value is the text assigned to the field by these rules,
+before further processing by hledger.
+Eg `%{amount1}` is the amount text before any sign simplification,
+and `%{account2}` is empty if account2 isn't assigned (not `expenses:unknown`).
 
 ### How CSV rules are evaluated
 
@@ -4380,10 +4423,12 @@ If you get a confusing error while reading a CSV file, it may help to try to und
      1. Get the field's assigned value,
         first searching top level assignments, made directly or by the `fields` rule,
         then assignments made inside succeeding `if` blocks.
-        If there are more than one, the last one wins.
+        If there are more than one, the last one wins
+        (though it can include the previous one's value with `%{FIELDNAME}`).
 
      2. Compute the field's actual value (as text),
-        by interpolating any %CSVFIELD references and %{...} expressions within the assigned value;
+        by interpolating any %CSVFIELD references and %{...} expressions within the assigned value
+        (which may use other hledger fields' values, computing them first);
         or by choosing a default value if there was no assignment.
 
    - Generate a hledger transaction from the hledger field values,

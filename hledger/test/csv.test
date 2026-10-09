@@ -1808,6 +1808,80 @@ $  ./csvtest.sh
 
 >=0
 
+# ** 96. In %{...}, the name of the field being assigned gives its value from the
+# previous assignment (here, from the fields list), so parts can be appended.
+# join skips empty parts.
+<
+2026-01-05,AMAZON mktp,ref:1,12
+2026-01-06,refund amazon,,5
+2026-01-07,cafe,,3
+RULES
+fields date, description, comment, amt
+amount %amt USD
+account1 assets:bank
+if amazon
+ comment %{join(", ", comment, "shop:amazon")}
+if refund
+ comment %{join(", ", comment, "refund:")}
+ comment %{comment} (checked)
+$  ./csvtest.sh
+2026-01-05 AMAZON mktp  ; ref:1, shop:amazon
+    assets:bank                                   12 USD
+    income:unknown                               -12 USD
+
+2026-01-06 refund amazon  ; shop:amazon, refund: (checked)
+    assets:bank                                    5 USD
+    income:unknown                                -5 USD
+
+2026-01-07 cafe
+    assets:bank                                    3 USD
+    income:unknown                                -3 USD
+
+>=0
+
+# ** 97. Another hledger field's name gives its final value, wherever that is assigned,
+# or "" if it is not assigned.
+<
+2026-01-05,Cafe,3
+RULES
+comment desc:%{description}, acct:%{account2}, code:%{code}.
+fields date, description, amt
+amount %amt USD
+account1 assets:bank
+if cafe
+ account2 expenses:%{lower(description)}
+ description %{upper(description)}
+$  ./csvtest.sh
+2026-01-05 CAFE  ; desc:CAFE, acct:expenses:cafe, code:.
+    assets:bank                                    3 USD
+    expenses:cafe                                 -3 USD
+
+>=0
+
+# ** 98. An unknown hledger field name is reported when reading the rules.
+<
+2026-01-05,fuel,7
+RULES
+fields date, desc, amt
+description %{desc}
+$  ./csvtest.sh
+>2 /rules:2:15:(.|
+)*unknown hledger field "desc". To refer to a CSV field, write %desc/
+>=1
+
+# ** 99. So are hledger field references which form a loop.
+<
+2026-01-05,fuel,7
+RULES
+fields date, desc, amt
+comment %{description}
+if fuel
+ description %desc %{comment}
+$  ./csvtest.sh
+>2 /rules:4:2:(.|
+)*depend on each other in a loop: comment, description/
+>=1
+
 # ** .
 #<
 #$  ./csvtest.sh

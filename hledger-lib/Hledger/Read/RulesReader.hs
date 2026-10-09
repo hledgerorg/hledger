@@ -62,7 +62,8 @@ import Data.Csv.Parser.Megaparsec qualified as CassavaMegaparsec
 import Data.Encoding (encodingFromStringExplicit, DynEncoding)
 import Data.Either (fromRight)
 import Data.Functor ((<&>))
-import Data.List (elemIndex, find, nub, sortOn, isInfixOf, isPrefixOf)
+import Data.Graph (SCC(..), stronglyConnComp)
+import Data.List (elemIndex, find, nub, sort, sortOn, isInfixOf, isPrefixOf)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
 #endif
@@ -695,6 +696,7 @@ type MatchGroupReference = Text
 data TemplateExpr =
     TECall Text [TemplateExpr]       -- ^ a built-in function call
   | TEField CsvFieldReference        -- ^ a csv field reference, eg %desc
+  | TEHledgerField HledgerFieldName  -- ^ a hledger field reference, eg comment
   | TEMatch MatchGroupReference      -- ^ a match group reference, eg \1
   | TEString Text                    -- ^ a double-quoted string
   | TENumber Int                     -- ^ a non-negative integer
@@ -888,6 +890,7 @@ addConditionalBlocks bs r = r{rconditionalblocks=bs++rconditionalblocks r}
 
 rulesp :: CsvRulesParser CsvRules
 rulesp = do
+  input <- getInput
   _ <- many $ choice
     [blankorcommentlinep                                                <?> "blank or comment line"
     ,(directivep        >>= modify' . addDirective)                     <?> "directive"
@@ -900,7 +903,33 @@ rulesp = do
     ,(conditionaltablep >>= modify' . addConditionalBlocks . reverse)   <?> "conditional table"
     ]
   eof
-  mkrules <$> get
+  rules <- mkrules <$> get
+  checkFieldReferenceLoops input rules
+  return rules
+
+-- | Check that the hledger field references in %{...} expressions don't form a loop,
+-- where a field's value would depend on itself through other fields.
+-- (A field's own name refers to its previous value, which is fine.)
+-- All assignments are considered, whether or not they could apply to the same CSV record.
+-- A loop is reported at the last-written assignment involved in it.
+-- This takes the rules text, from which the rules were parsed, to calculate the error position.
+checkFieldReferenceLoops :: Text -> CsvRules -> CsvRulesParser ()
+checkFieldReferenceLoops input rules =
+  case [loop | CyclicSCC loop <- stronglyConnComp graph] of
+    [] -> return ()
+    loop:_ -> customFailure $ parseErrorAt (lineOffset $ maybe 1 snd $ faPos =<< lastassignment) $
+      "these hledger fields' values depend on each other in a loop: " <> T.unpack (T.intercalate ", " $ sort loop)
+      where
+        lastassignment = lastMay $ sortOn (fmap snd . faPos)
+          [a | a <- assignments, faName a `elem` loop, any (`elem` loop) (otherRefs a)]
+  where
+    assignments = rassignments rules ++ concatMap cbAssignments (rconditionalblocks rules)
+    otherRefs a = filter (/= faName a) $ templateHledgerFieldRefs $ faTemplate a
+    graph = [ (f, f, nub $ concatMap otherRefs as)
+            | as@(a:_) <- groupOn faName $ sortOn faName assignments, let f = faName a ]
+    -- the offset of the first non-space character on this line of the input
+    lineOffset l = sum (map ((+1) . T.length) before) + maybe 0 (T.length . T.takeWhile isSpace) (headMay rest)
+      where (before, rest) = splitAt (l-1) $ T.lines input
 
 blankorcommentlinep :: CsvRulesParser ()
 blankorcommentlinep = lift (dbgparse 8 "trying blankorcommentlinep") >> choiceInState [blanklinep, commentlinep]
@@ -1080,18 +1109,21 @@ templateexprp = string "%{" *> region asFancy (sp *> termp <* sp <* char '}')
     asFancy e = e
     sp = skipNonNewlineSpaces
     termp = choice
-      [callp
+      [namedp
       ,TEField  <$> templatefieldrefp
       ,TEMatch  <$> templatematchrefp
       ,TEString <$> stringp
       ,TENumber <$> numberp
-      ] <?> "function call, field reference, match group reference, double-quoted string or number"
-    callp = do
+      ] <?> "function call, hledger field name, CSV field reference, match group reference, double-quoted string or number"
+    -- a function call, or a bare name, which refers to a hledger field
+    namedp = do
       off <- getOffset
       name <- T.cons <$> satisfy isAsciiLower <*> takeWhileP Nothing (\c -> isAsciiLower c || isDigit c || c == '_')
-      args <- sp *> char '(' *> sp *> (termp <* sp) `sepBy` (char ',' *> sp) <* char ')'
-      either (customFailure . parseErrorAt off) return $ checkTemplateCall name args
-      return $ TECall name args
+      margs <- optional $ try (sp *> char '(') *> sp *> (termp <* sp) `sepBy` (char ',' *> sp) <* char ')'
+      let check = either (customFailure . parseErrorAt off) return
+      case margs of
+        Just args -> check (checkTemplateCall name args) >> return (TECall name args)
+        Nothing   -> check (checkHledgerFieldReference name) >> return (TEHledgerField name)
     -- \" and \\ are escapes; other backslashes are kept, so "\1" can be a replace backreference
     stringp = char '"' *> (T.concat <$> many strpartp) <* char '"' <?> "double-quoted string"
     strpartp = takeWhile1P Nothing (`notElem` ['"', '\\', '\n'])
@@ -1115,6 +1147,18 @@ checkTemplateCall name args = case lookupTemplateFunction name of
     arity lo Nothing = printf "%d or more arguments" lo
     plural 1 = "1 argument"
     plural k = printf "%d arguments" k
+
+-- | Check that a bare name in a %{...} expression is a hledger field which can be referenced.
+-- skip, end and merge are actions, not values, and are kept free for use as keywords later;
+-- they get the unknown field error. amount-in/amount-out are not supported.
+checkHledgerFieldReference :: Text -> Either String ()
+checkHledgerFieldReference name
+  | isJust $ lookupTemplateFunction name =
+      Left $ printf "%s is a function; it should be followed by parentheses, eg %s(...)" name name
+  | name `elem` journalfieldnames, name `notElem` ["skip", "end", "merge"] = Right ()
+  | otherwise = Left $ printf
+      "unknown hledger field \"%s\". To refer to a CSV field, write %%%s. The hledger fields are: %s"
+      name name ("date, date2, status, code, description, comment, amount, balance, currency, and commentN, accountN, amountN, balanceN, currencyN (N = 1-99)" :: String)
 
 lookupTemplateFunction :: Text -> Maybe TemplateFunction
 lookupTemplateFunction name = find ((== name) . tfName) templateFunctions
@@ -1377,9 +1421,7 @@ csvRule rules = (`getDirective` rules)
 -- which is effective for a hledger field, considering field list/field
 -- assignment rules, the current record, and conditional rules.
 hledgerFieldAssignment :: CsvRules -> CsvRecordGroup -> HledgerFieldName -> Maybe FieldAssignment
-hledgerFieldAssignment rules record f = fmap
-  (either id (lastCBAssignment f))
-  (getEffectiveAssignment rules record f)
+hledgerFieldAssignment rules record f = fst <$> lastMay (hledgerFieldAssignments rules record f)
 
 -- | Look up the value template assigned to a hledger field by field
 -- list/field assignment rules, taking into account the current record and
@@ -1388,57 +1430,51 @@ hledgerField :: CsvRules -> CsvRecordGroup -> HledgerFieldName -> Maybe FieldTem
 hledgerField rules record f = faTemplate <$> hledgerFieldAssignment rules record f
 
 -- | Look up the final value assigned to a hledger field, with csv field
--- references and regular expression match group references interpolated.
+-- references, regular expression match group references and %{...} expressions interpolated.
+--
+-- In an assignment's %{...} expressions, the name of the field being assigned
+-- gives the value from its previous assignment, and another hledger field's name
+-- gives that field's final value. Both give "" if the field has no assignment.
 hledgerFieldValue :: CsvRules -> CsvRecordGroup -> HledgerFieldName -> Maybe Text
-hledgerFieldValue rules record f = (flip fmap) (getEffectiveAssignment rules record f)
-  $ either (renderTemplate rules record . faTemplate)
-  $ \cb -> let
-      t = faTemplate $ lastCBAssignment f cb
-      r = rules { rconditionalblocks = [cb] } -- XXX handle rblocksassigning
-      in renderTemplate r record t
-
-lastCBAssignment :: HledgerFieldName -> ConditionalBlock -> FieldAssignment
-lastCBAssignment f = last . filter ((==f).faName) . cbAssignments
+hledgerFieldValue rules record = fieldValue S.empty
+  where
+    -- The value of field f. seen holds the fields whose values are being computed,
+    -- so that a reference loop (which checkFieldReferenceLoops rejects) can't hang.
+    fieldValue seen f = valueFrom $ reverse $ hledgerFieldAssignments rules record f
+      where
+        seen' = S.insert f seen
+        -- the value from the first of these assignments, which are latest first
+        valueFrom [] = Nothing
+        valueFrom ((a, arules) : earlier) = Just $ renderTemplate arules record lookupField (faTemplate a)
+          where
+            previous = fromMaybe "" $ valueFrom earlier
+            lookupField g
+              | g == f             = previous
+              | g `S.member` seen' = ""
+              | otherwise          = fromMaybe "" $ fieldValue seen' g
 
 maybeNegate :: MatcherPrefix -> Bool -> Bool
 maybeNegate Not origbool = not origbool
 maybeNegate _   origbool = origbool
 
--- | Given the conversion rules, a CSV record and a hledger field name, find
--- either the last applicable `ConditionalBlock`, or the final value template
--- assigned to this field by a top-level field assignment, if any exist.
+-- | Given the conversion rules, a CSV record and a hledger field name, find all the
+-- assignments to that field which apply to this record, in the order they take effect:
+-- top-level ones, then those in matched if blocks, in rules file order.
+-- The last one is the effective one.
+-- Each is paired with the rules for rendering it: for an assignment in an if block,
+-- rules with just that block, so that its match group references use that block's matchers.
 --
 -- Note conditional blocks' patterns are matched against an approximation of the
 -- CSV record: all the field values, without enclosing quotes, comma-separated.
 --
-getEffectiveAssignment
-  :: CsvRules
-     -> CsvRecordGroup
-     -> HledgerFieldName
-     -> Maybe (Either FieldAssignment ConditionalBlock)
-getEffectiveAssignment rules record f = lastMay $ getEffectiveAssignments rules record f
-
--- | Like getEffectiveAssignment, but return all the assignments which could
--- apply to this field for the current record, in declaration order;
--- the last one is the effective one.
-getEffectiveAssignments
-  :: CsvRules
-     -> CsvRecordGroup
-     -> HledgerFieldName
-     -> [Either FieldAssignment ConditionalBlock]
-getEffectiveAssignments rules record f = assignments
+hledgerFieldAssignments :: CsvRules -> CsvRecordGroup -> HledgerFieldName -> [(FieldAssignment, CsvRules)]
+hledgerFieldAssignments rules record f =
+     [(a, rules) | a <- rassignments rules, faName a == f]
+  ++ [(a, rules{rconditionalblocks = [cb]})  -- XXX handle rblocksassigning
+     | cb <- dbg' $ filter (isBlockActive rules record) $ rblocksassigning rules f
+     , a <- cbAssignments cb
+     , faName a == f]
   where
-    -- all active assignments to field f, in order
-    assignments = toplevelassignments ++ conditionalassignments
-    -- all top level field assignments
-    toplevelassignments    = map Left $ filter ((==f).faName) $ rassignments rules
-    -- all conditional blocks assigning to field f and active for the current csv record
-    conditionalassignments = map Right
-                           $ filter (any ((==f).faName) . cbAssignments)
-                           $ dbg'
-                           $ filter (isBlockActive rules record)
-                           $ (rblocksassigning rules) f
-
     dbg' [] = []
     dbg' ms = dbg2Msg (
       " for the " ++ T.unpack f ++ " field, these if rules matched:"
@@ -1494,20 +1530,43 @@ isBlockActive rules record CB{..} = any (all matcherMatches) $ groupedMatchers c
 recordAsApproximateText :: CsvRecordGroup -> Text
 recordAsApproximateText = T.intercalate "," . concat
 
+-- | A way to get the values of hledger fields referenced in %{...} expressions.
+type HledgerFieldLookup = HledgerFieldName -> Text
+
+-- | A part of a field assignment's template.
+data TemplatePart =
+    TPText Text                   -- ^ literal text
+  | TPMatch MatchGroupReference   -- ^ eg \1
+  | TPExpr TemplateExpr           -- ^ eg %{upper(%desc)}
+  | TPField CsvFieldReference     -- ^ eg %desc
+
 -- | Render a field assignment's template, possibly interpolating referenced
 -- CSV field values, match groups, or %{...} expressions.
 -- Outer whitespace is removed from interpolated values.
-renderTemplate ::  CsvRules -> CsvRecordGroup -> FieldTemplate -> Text
-renderTemplate rules record t =
-  maybe t mconcat $ parseMaybe
-    (many
-      (   literaltextp
-      <|> (templatematchrefp <&> replaceRegexGroupReference rules record)
-      <|> (templateexprp     <&> evalTemplateExpr           rules record)
-      <|> (templatefieldrefp <&> replaceCsvFieldReference   rules record <&> fromMaybe "")
-      )
-    )
-    t
+renderTemplate :: CsvRules -> CsvRecordGroup -> HledgerFieldLookup -> FieldTemplate -> Text
+renderTemplate rules record lookupfield t = maybe t (mconcat . map render) $ templateParts t
+  where
+    render (TPText s)  = s
+    render (TPMatch m) = replaceRegexGroupReference rules record m
+    render (TPExpr e)  = evalTemplateExpr rules record lookupfield e
+    render (TPField r) = fromMaybe "" $ replaceCsvFieldReference rules record r
+
+-- | The hledger fields referenced by a field assignment's template.
+templateHledgerFieldRefs :: FieldTemplate -> [HledgerFieldName]
+templateHledgerFieldRefs t = [f | TPExpr e <- fromMaybe [] $ templateParts t, f <- exprRefs e]
+  where
+    exprRefs (TECall _ args)    = concatMap exprRefs args
+    exprRefs (TEHledgerField f) = [f]
+    exprRefs _                  = []
+
+-- | Parse a field assignment's template into parts.
+templateParts :: FieldTemplate -> Maybe [TemplatePart]
+templateParts = parseMaybe $ many
+  (   TPText  <$> literaltextp
+  <|> TPMatch <$> templatematchrefp
+  <|> TPExpr  <$> templateexprp
+  <|> TPField <$> templatefieldrefp
+  )
   where
     literaltextp :: SimpleTextParser Text
     literaltextp = some (nonBackslashOrPercent <|> nonRefBackslash <|> nonRefPercent) <&> T.pack
@@ -1535,11 +1594,12 @@ isFieldNameChar :: Char -> Bool
 isFieldNameChar c = isAlphaNum c || c == '_' || c == '-'
 
 -- | Evaluate a %{...} expression for this CSV record. The result has outer whitespace removed.
-evalTemplateExpr :: CsvRules -> CsvRecordGroup -> TemplateExpr -> Text
-evalTemplateExpr rules record = T.strip . eval
+evalTemplateExpr :: CsvRules -> CsvRecordGroup -> HledgerFieldLookup -> TemplateExpr -> Text
+evalTemplateExpr rules record lookupfield = T.strip . eval
   where
     eval (TECall name args) = maybe "" (\f -> tfApply f $ map eval args) $ lookupTemplateFunction name
     eval (TEField r)        = fromMaybe "" $ replaceCsvFieldReference rules record r
+    eval (TEHledgerField f) = T.strip $ lookupfield f
     eval (TEMatch m)        = replaceRegexGroupReference rules record m
     eval (TEString s)       = s
     eval (TENumber n)       = T.pack $ show n
@@ -2208,7 +2268,7 @@ showRules rules record = T.unlines $ "hledger field assignment rules:" : concatM
   where
     -- the field's effective rule, and below it any earlier-declared rules it overrides
     showfieldrules fld =
-      case reverse $ map (either id (lastCBAssignment fld)) $ getEffectiveAssignments rules record fld of
+      case reverse $ map fst $ hledgerFieldAssignments rules record fld of
         (a:overridden) ->
           withRulesPos (fieldlabel <> faTemplate a) (faPos a)
           : [ withRulesPos ("    (overrides: "<>faTemplate o) (faPos o) <> ")" | o <- overridden ]
