@@ -54,7 +54,7 @@ number   = [ "-" ] digits ;
   - In an assignment to the same field, it gives the value from the
     field's previous assignment, or `""` if there is none. Assignments are
     applied in the documented order: top-level ones (including those made by
-    the `fields` list), then those in matched `if` blocks, each in file order.
+    `fields`), then those in matched `if` blocks, each in file order.
     So a top-level assignment written after an `if` block still comes before it.
   - In an assignment to another field, it gives that field's final value, or `""`
     if it has no assignment. This doesn't depend on where the assignments are written.
@@ -150,7 +150,7 @@ by offset.
 - **Bare names are hledger fields**: CSV fields keep `%` inside braces, so
   `%{comment}` can only mean the hledger field, whereas a plain `%comment`
   is the CSV field named `comment` (often present, since naming CSV fields
-  after hledger fields is how a `fields` list assigns them).
+  after hledger fields is how `fields` assigns them).
   Function names and hledger field names don't overlap; keep it that way,
   except perhaps deliberately (a future `date()` function), since a forgotten
   `(...)` would then silently give a field value. `skip`, `end` and `merge`

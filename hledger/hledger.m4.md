@@ -3051,7 +3051,7 @@ The following kinds of rule can appear in the rules file, in any order.
 | [**`separator`**](#separator)                   | declare the field separator, instead of relying on file extension                        |
 | [**`encoding`**](#encoding)                     | optionally declare which text encoding the data has                                      |
 | [**`skip`**](#skip)                             | skip header line(s) at start of file, or (inside an if rule) the current record(s)       |
-| [**`fields` list**](#fields-list)               | name CSV fields for easy reference, and optionally assign their values to hledger fields |
+| [**`fields`**](#fields)                         | name CSV fields for easy reference, and optionally assign their values to hledger fields |
 | [**Field assignment**](#field-assignment)       | assign a CSV value or interpolated text value to a hledger field                         |
 | [**`date-format`**](#date-format)               | declare how to parse CSV dates/date-times                                                |
 | [**`timezone`**](#timezone)                     | declare the time zone of ambiguous CSV date-times                                        |
@@ -3091,7 +3091,7 @@ CSV rules can't make new fields; you can't define your own variables in a rules 
 (But you could add new CSV fields to the data before running rules, with a preprocessing script.)
 
 It's ok for a CSV field and a hledger field to have the same name;
-in a [fields list](#fields-list), this causes the CSV field's value to be assigned to the hledger field ("field name punning").
+in a [`fields`](#fields) list, this causes the CSV field's value to be assigned to the hledger field ("field name punning").
 hledger knows which kind of field is meant from the context:
 in field values and matchers, `%NAME` is a CSV field,
 and a bare `HLEDGERFIELDNAME` inside `%{...}` is a hledger field.
@@ -3228,12 +3228,14 @@ Note, empty and blank lines are skipped automatically, so you don't need to coun
 to skip one or more records whenever the condition is true.
 Records skipped in this way are ignored, except they are still required to be [valid CSV](#valid-csv).
 
-## `fields` list
+<a name="fields-list"></a>
+
+## `fields`
 
 ```rules
 fields FIELDNAME1, FIELDNAME2, ...
 ```
-A fields list (the word `fields` followed by comma-separated field names) is optional, but convenient.
+A `fields` list (the word `fields` followed by comma-separated field names) is optional, but convenient.
 It does two things:
 
 1. It names the CSV field in each column.
@@ -3251,7 +3253,7 @@ name the last two fields for later reference; and ignore the others":
 fields date, description, , amount, , , somefield, anotherfield
 ```
 
-In a fields list, the separator is always comma; it is unrelated to the CSV file's separator.
+In `fields`, the names are always separated by commas; this is unrelated to the CSV file's separator.
 Also:
 
 - There must be least two items in the list (at least one comma).
@@ -3272,14 +3274,14 @@ HLEDGERFIELD FIELDVALUE
 ```
 
 Field assignments are the more flexible way to assign CSV values to hledger fields.
-They can be used instead of or in addition to a [fields list](#fields-list) (see above).
+They can be used instead of or in addition to a [`fields`](#fields) list (see above).
 
 To assign a value to a hledger field, write the [field name](#hledger-field-names)
 (any of the standard hledger field/pseudo-field names, defined below),
 a space, followed by a text value on the same line.
 This text value may interpolate CSV fields,
 referenced either by their 1-based position in the CSV record (`%N`)
-or by the name they were given in the fields list (`%CSVFIELD`),
+or by the name they were given by [`fields`](#fields) (`%CSVFIELD`),
 and regular expression [match groups](#match-groups) (`\N`),
 and can transform them with [functions](#functions) (`%{upper(%CSVFIELD)}`)
 or use other hledger fields' values (`%{description}`; see [Referencing other fields](#referencing-other-fields)).
@@ -3417,7 +3419,7 @@ if refund
 ```
 
 "Previous assignment" here means the one before this one, in this order:
-top-level assignments (including those made by the `fields` list),
+top-level assignments (including those made by `fields`),
 then assignments in matched `if` blocks, each in the order written.
 (So a top-level assignment comes before any `if` block's, even if written after it.)
 
@@ -3584,8 +3586,8 @@ There are several ways to set posting amounts from CSV, useful in different situ
   the CSV has two amount fields.
   This is analogous to `amount-in` and `amount-out`, and those tips also apply here.
 
-5. Remember that a `fields` list can also do assignments. So in a fields list if you name a CSV field
-  "amount", that counts as assigning to `amount`. (If you don't want that, call it something else in the fields list,
+5. Remember that `fields` can also do assignments. So if you name a CSV field "amount" in `fields`,
+  that counts as assigning to `amount`. (If you don't want that, call it something else there,
   like "amount_".)
 
 6. The above don't handle every situation; if you need more flexibility, use an `if` rule
@@ -3888,7 +3890,7 @@ When using these, there's two things to be aware of:
    Eg when reading an SSV record like:   `2023-01-01 ; "Acme, Inc. " ;  1,000`\
    the whole record matcher sees instead: `2023-01-01,Acme, Inc. ,1,000`
 
-2. Field matchers expect either a CSV field number, or a [CSV field name](#csv-fields-vs-hledger-fields) declared with [`fields`](#fields-list).
+2. Field matchers expect either a CSV field number, or a [CSV field name](#csv-fields-vs-hledger-fields) declared with [`fields`](#fields).
    Anything else will cause it to match against the empty string, and probably fail silently
    (this makes it easier to reuse common rules with different CSV files).
    Don't use a hledger field name here (see [CSV fields vs hledger fields](#csv-fields-vs-hledger-fields)).
@@ -4094,7 +4096,7 @@ Fields of the later rows are referenced by adding a `_ROWNUM` suffix
 (row number 2 or greater) to the usual field name or number:
 `%amt_2` or `%4_2` is row 2's `amt`/fourth field.
 Unsuffixed references (`%amt`, `%4`) always mean the first row,
-so the same [`fields` list](#fields-list) describes every row.
+so the same [`fields`](#fields) list describes every row.
 A reference to a row that isn't there (eg in an unmerged record)
 just has an empty value.
 And if you have declared a field name that looks like `NAME_ROWNUM`,
