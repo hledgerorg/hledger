@@ -1159,7 +1159,7 @@ templateFunctions =
     checkReplace _ = Just "replace's second argument (the regular expression) should be a double-quoted string"
     replaceFn (s:r:repl:_) = either (const s) T.pack $ do
       re <- toRegexCI r
-      regexReplace re (T.unpack repl) (T.unpack s)
+      regexReplaceUnmemo re (T.unpack repl) (T.unpack s)
     replaceFn as = arg1 as
 
     -- substr(TEXT, START, LENGTH): LENGTH characters (or all) from 1-based position START.
