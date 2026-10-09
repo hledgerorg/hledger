@@ -699,7 +699,7 @@ data TemplateExpr =
   | TEHledgerField HledgerFieldName  -- ^ a hledger field reference, eg comment
   | TEMatch MatchGroupReference      -- ^ a match group reference, eg \1
   | TEString Text                    -- ^ a double-quoted string
-  | TENumber Int                     -- ^ a non-negative integer
+  | TENumber Int                     -- ^ an integer
   deriving (Show)
 
 -- | A built-in function usable in template expressions.
@@ -1128,7 +1128,10 @@ templateexprp = string "%{" *> region asFancy (sp *> termp <* sp <* char '}')
     stringp = char '"' *> (T.concat <$> many strpartp) <* char '"' <?> "double-quoted string"
     strpartp = takeWhile1P Nothing (`notElem` ['"', '\\', '\n'])
            <|> (char '\\' *> option "\\" (T.singleton <$> oneOf ['"', '\\']))
-    numberp = takeWhile1P (Just "digit") isDigit >>= maybe (fail "invalid number") return . readMay . T.unpack
+    numberp = do
+      sign <- option "" (string "-")
+      digits <- takeWhile1P (Just "digit") isDigit
+      maybe (fail "invalid number") return $ readMay $ T.unpack $ sign <> digits
 
 -- | Check a template function call's name and arguments.
 checkTemplateCall :: Text -> [TemplateExpr] -> Either String ()
@@ -1211,13 +1214,15 @@ templateFunctions =
       regexReplaceUnmemo re (T.unpack repl) (T.unpack s)
     replaceFn as = arg1 as
 
-    -- substr(TEXT, START, LENGTH): LENGTH characters (or all) from 1-based position START.
-    checkSubstr (_:TENumber start:rest) | start >= 1, all isNumber rest = Nothing
-      where isNumber TENumber{} = True
-            isNumber _          = False
-    checkSubstr _ = Just "substr's position and length should be numbers, and the position should be at least 1"
+    -- substr(TEXT, START, LENGTH): LENGTH characters (or all) from position START,
+    -- where 1 is the first character and -1 the last (as in SQLite and Oracle).
+    checkSubstr (_:TENumber start:rest) | start /= 0, all isLength rest = Nothing
+      where isLength (TENumber n) = n >= 0
+            isLength _            = False
+    checkSubstr _ = Just "substr's position should be a number other than 0 (1 is the first character, -1 the last), and its length a number, at least 0"
     substrFn (s:start:rest) =
-      let s' = T.drop (readDef 1 (T.unpack start) - 1) s
+      let i  = readDef 1 (T.unpack start)
+          s' = if i < 0 then T.takeEnd (negate i) s else T.drop (i - 1) s
       in case rest of
            len:_ -> T.take (readDef (T.length s') (T.unpack len)) s'
            []    -> s'

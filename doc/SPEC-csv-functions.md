@@ -16,7 +16,7 @@ User docs: hledger manual, CSV > Field assignment > Functions.
 Code: `hledger-lib/Hledger/Read/RulesReader.hs` (`TemplateExpr`,
 `templateexprp`, `templateFunctions`, `evalTemplateExpr`, `hledgerFieldValue`,
 `checkFieldReferenceLoops`).
-Tests: `hledger/test/csv.test` 88-99.
+Tests: `hledger/test/csv.test` 88-101.
 
 ## Syntax
 
@@ -29,7 +29,7 @@ hfieldref = name ;                                               (a hledger fiel
 fieldref = "%" fieldname [ "_" rownum ] | "%(" fieldname ")" ;   (as elsewhere in values)
 matchref = "\" digits ;                                          (as elsewhere in values)
 string   = '"' { char | '\"' | '\\' } '"' ;
-number   = digits ;
+number   = [ "-" ] digits ;
 ```
 
 - An expression can appear anywhere a field reference can in a field assignment value,
@@ -80,7 +80,7 @@ number   = digits ;
 | `join(sep, s, ...)` | the `s` arguments that are not empty or all whitespace, separated by `sep` |
 | `default(s, ...)` | first argument that is not empty or all whitespace, or `""` |
 | `replace(s, "re", repl)` | all case-insensitive matches of `re` replaced by `repl`, which can use `\N` for `re`'s groups |
-| `substr(s, start, len)` | `len` characters (or all, if omitted) from 1-based position `start`; out-of-range positions are clamped |
+| `substr(s, start, len)` | `len` characters (or all, if omitted) from position `start`, where 1 is the first character and -1 the last; out-of-range positions are clamped |
 
 `negate` and `abs` work on amount text without parsing the number (via
 `simplifySign`): an optional commodity symbol before or after, and a sign
@@ -99,7 +99,7 @@ other rules parse errors; `hledger/test/errors/csvskipvalue.test` covers it):
 - `replace`: the regex must be a string literal and valid; a literal
   replacement's `\N` must not exceed the regex's group count (counted
   approximately: unescaped `(` outside bracket expressions)
-- `substr`: `start` and `len` must be number literals, `start` at least 1
+- `substr`: `start` and `len` must be number literals, `start` not 0, `len` at least 0
 - unknown hledger field name (the message suggests `%NAME` for a CSV field,
   and lists the hledger fields); a function name without parentheses
 - hledger field references forming a loop, where a field's value depends on
@@ -127,10 +127,16 @@ by offset.
   spreadsheet and SQL users who prepare CSV, and they nest. Pipes could be
   added later inside braces as sugar.
 - **Resembles SQL and spreadsheet formulas**: `upper`, `lower`, `trim`,
-  `abs`, `concat`, `substr(s, start, len)` (1-based, as in SQL `SUBSTR`),
+  `abs`, `concat`, `substr(s, start, len)` (as in SQL `SUBSTR`),
   `replace` (like SQL `REGEXP_REPLACE` and Sheets `REGEXREPLACE`).
   `capitalize` is named as in Python/Jinja but works per word, like spreadsheet `PROPER`.
   `default` is named as in Jinja/Liquid; it is SQL's `COALESCE`.
+- **1-based positions**, with negative ones counting from the end (as in SQLite
+  and Oracle `SUBSTR`). Consistent with `%1` and `\1` in CSV rules, and with the
+  text tools used on CSV (awk `substr`, `cut`, `sort -k`, spreadsheet `MID`);
+  0-based positions are mostly a general-purpose programming language
+  convention, usually paired with end-exclusive slices (a possible separate
+  `slice` function, not a different `substr`).
 - **Text to transform first**: as in SQL and spreadsheet functions (and method calls),
   unlike Python's `re.sub` or PHP's `preg_replace`. Consistent across all
   functions, and would read naturally with pipes.

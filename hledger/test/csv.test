@@ -1882,6 +1882,31 @@ $  ./csvtest.sh
 )*depend on each other in a loop: comment, description/
 >=1
 
+# ** 100. substr's position can be negative, counting from the end.
+<
+2026-01-05,4111222233334444
+RULES
+fields date, card
+account1 a
+amount 0
+comment last4:%{substr(%card, -4)}, mid:%{substr(%card, -8, 4)}, clamped:%{substr(%card, -99, 3)}
+$  ./csvtest.sh
+2026-01-05  ; last4:4444, mid:3333, clamped:411
+    a                                              0
+    expenses:unknown                               0
+
+>=0
+
+# ** 101. A substr position of 0 is an error.
+<
+2026-01-05,4111222233334444
+RULES
+fields date, card
+comment %{substr(%card, 0)}
+$  ./csvtest.sh
+>2 /substr's position should be a number other than 0/
+>=1
+
 # ** .
 #<
 #$  ./csvtest.sh

@@ -3499,6 +3499,9 @@ description %{replace(%desc, " *ref#[0-9]+", "")}
 
 # put the date's year and month in a tag
 comment month:%{substr(%date, 1, 7)}
+
+# show the last four digits of the card number
+comment card:%{substr(%card, -4)}
 ```
 
 Function arguments can be CSV field references (`%desc`, `%3`),
@@ -3522,13 +3525,15 @@ Each expression's result has outer whitespace removed, like other interpolated v
 | `join(SEP, TEXT, ...)`         | the TEXTs that aren't empty, joined with SEP between them                             |
 | `default(TEXT, ...)`           | the first argument that's not empty                                                   |
 | `replace(TEXT, REGEX, REPL)`   | TEXT with each match of REGEX replaced by REPL                                        |
-| `substr(TEXT, START, LENGTH)`  | LENGTH characters of TEXT, starting at position START (1 is the first); LENGTH is optional |
+| `substr(TEXT, START, LENGTH)`  | LENGTH characters of TEXT, starting at position START (1 is the first, -1 the last); LENGTH is optional |
 
 For `replace`, REGEX must be double-quoted text,
 and is a case-insensitive [regular expression](#regular-expressions-in-csv-rules).
 REPL can use `\1`, `\2` etc. to insert REGEX's match groups.
 (Unquoted `\1` etc. outside double quotes refer to the [match groups](#match-groups) of an enclosing `if` rule instead.)
 For `substr`, START and LENGTH must be numbers.
+A negative START counts from the end, so eg `substr(%card, -4)` gives the last four characters.
+Positions before the start or after the end of TEXT are treated as the start or end.
 
 For `negate` and `abs`, AMOUNT is a number,
 optionally with a commodity symbol before or after it,
