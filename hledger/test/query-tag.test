@@ -216,3 +216,32 @@ $ hledger -f- bal -N tag:type=a
 # ** 21.
 $ hledger -f- reg -w80 tag:type=a
 2022-01-01                      (a:aa)                           1             1
+
+# ** 22. An empty tag: argument matches anything which has a tag.
+<
+2026-01-01 tagged
+    a    1  ; t:1
+    b
+
+2026-01-02 untagged
+    a    1
+    b
+
+$ hledger -f- print tag:
+2026-01-01 tagged
+    a                                              1  ; t:1
+    b
+
+>=
+
+# ** 23. So not:tag: matches anything which has no tags.
+$ hledger -f- print not:tag:
+2026-01-02 untagged
+    a                                              1
+    b
+
+>=
+
+# ** 24. An empty tag value matches any value.
+$ hledger -f- reg tag:t=
+2026-01-01 tagged               a                                1             1

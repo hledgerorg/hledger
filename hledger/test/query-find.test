@@ -162,3 +162,13 @@ $ hledger -f - print tag:bankname=chase
 
 # ** 19.
 $ hledger -f - print ::chase
+
+# ** 20. An empty find: or :: argument matches anything.
+<
+2024-01-01 a
+    expenses:food   $1
+    assets:cash
+
+$ hledger -f - reg ::
+2024-01-01 a                    expenses:food                   $1            $1
+                                assets:cash                    $-1             0

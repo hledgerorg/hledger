@@ -5159,7 +5159,10 @@ Here's the gist of it (see [PART 2: COMMANDS](#part-2-commands) above for the co
 
 ## Query types
 
-Here are the query types available:
+Here are the query types available.
+
+In the ones which take a regular expression, an empty one (eg `desc:` or `::`) matches anything.
+(Except in `cur:`, which must match the whole symbol, so an empty `cur:` matches amounts with no commodity symbol.)
 
 ### acct: query
 **`acct:REGEX`**, or just **`REGEX`**\
@@ -5275,7 +5278,10 @@ Match by tag name, and optionally also by tag value. Note:
 - Both regular expressions do infix matching.
   If you need a complete match, use `^` and `$`.\
   Eg: `tag:'^fullname$'`, `tag:'^fullname$=^fullvalue$`
-- To match values, ignoring names, do `tag:.=VALREGEX`
+- To match values, ignoring names, do `tag:=VALREGEX`
+- With an empty NAMEREGEX, `tag:` matches anything which has a tag,
+  and `not:tag:` matches anything which has none.
+- With an empty VALREGEX, `tag:NAMEREGEX=` matches that tag with any value.
 - Accounts also inherit the tags of their parent accounts.
 - Postings also inherit the tags of their account and their transaction .
 - Transactions also acquire the tags of their postings.

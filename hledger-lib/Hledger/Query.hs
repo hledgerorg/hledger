@@ -141,11 +141,11 @@ instance Default Query where def = Any
 
 -- | Construct a query for the payee: tag
 payeeTag :: Maybe Text -> Either RegexError Query
-payeeTag = fmap (Tag (toRegexCI' "payee")) . maybe (pure Nothing) (fmap Just . toRegexCI)
+payeeTag = fmap (Tag (toRegexCI' "payee")) . maybe (pure Nothing) (fmap Just . toQueryRegex)
 
 -- | Construct a query for the note: tag
 noteTag :: Maybe Text -> Either RegexError Query
-noteTag = fmap (Tag (toRegexCI' "note")) . maybe (pure Nothing) (fmap Just . toRegexCI)
+noteTag = fmap (Tag (toRegexCI' "note")) . maybe (pure Nothing) (fmap Just . toQueryRegex)
 
 -- | Construct a query for the generated-transaction: tag
 generatedTransactionTag :: Query
@@ -306,11 +306,11 @@ parseQueryTerm d (T.stripPrefix "not:" -> Just s) =
   case parseQueryTerm d s of
     Right (q, qopts) -> Right (Not q, qopts)
     Left err         -> Left err
-parseQueryTerm _ (T.stripPrefix "code:" -> Just s) = (,[]) . Code <$> toRegexCI s
-parseQueryTerm _ (T.stripPrefix "desc:" -> Just s) = (,[]) . Desc <$> toRegexCI s
+parseQueryTerm _ (T.stripPrefix "code:" -> Just s) = (,[]) . Code <$> toQueryRegex s
+parseQueryTerm _ (T.stripPrefix "desc:" -> Just s) = (,[]) . Desc <$> toQueryRegex s
 parseQueryTerm _ (T.stripPrefix "payee:" -> Just s) = (,[]) <$> payeeTag (Just s)
 parseQueryTerm _ (T.stripPrefix "note:" -> Just s) = (,[]) <$> noteTag (Just s)
-parseQueryTerm _ (T.stripPrefix "acct:" -> Just s) = (,[]) . Acct <$> toRegexCI s
+parseQueryTerm _ (T.stripPrefix "acct:" -> Just s) = (,[]) . Acct <$> toQueryRegex s
 parseQueryTerm d (T.stripPrefix "find:" -> Just s) = (,[]) <$> parseFindQuery d s
 parseQueryTerm d (T.stripPrefix "::" -> Just s) = (,[]) <$> parseFindQuery d s
 parseQueryTerm d (T.stripPrefix "date2:" -> Just s) =
@@ -452,7 +452,7 @@ parseBooleanQuery d t =
 -- as a period expression with a start or end date, a date span to be
 -- matched against dates.
 parseFindQuery :: Day -> T.Text -> Either RegexError Query
-parseFindQuery d s = Find <$> toRegexCI s <*> pure mspan
+parseFindQuery d s = Find <$> toQueryRegex s <*> pure mspan
   where
     mspan = case parsePeriodExpr d s of
       Right (_, spn) | spn /= nulldatespan -> Just spn
@@ -501,10 +501,16 @@ parseAmountQueryTerm amtarg =
     parse :: T.Text -> T.Text -> Maybe Quantity
     parse p s = (T.stripPrefix p . T.strip) s >>= readMay . T.unpack . T.filter (/=' ')
 
+-- | Compile the regular expression argument of a query term, case-insensitively.
+-- An empty argument (which the regex engine rejects) is replaced by an empty
+-- group, so that it matches anything.
+toQueryRegex :: T.Text -> Either RegexError Regexp
+toQueryRegex s = toRegexCI $ if T.null s then "()" else s
+
 parseTag :: T.Text -> Either RegexError Query
 parseTag s = do
-    tag <- toRegexCI $ if T.null v then s else n
-    body <- if T.null v then pure Nothing else Just <$> toRegexCI (T.tail v)
+    tag <- toQueryRegex $ if T.null v then s else n
+    body <- if T.null v then pure Nothing else Just <$> toQueryRegex (T.tail v)
     return $ Tag tag body
   where (n,v) = T.break (=='=') s
 
@@ -515,7 +521,7 @@ parseDepthSpec s = do
         Just d | d >= 0 -> Right d
         _ -> Left $ "could not parse depth \"" ++ T.unpack s ++ "\": "
                ++ "it should be a whole number, 0 or more, optionally preceded by ACCTREGEX="
-    regexp <- mapM toRegexCI $ if T.null b then Nothing else Just a
+    regexp <- mapM toQueryRegex $ if T.null b then Nothing else Just a
     return $ case regexp of
       Nothing -> DepthSpec (Just depth) []
       Just r  -> DepthSpec Nothing [(r, depth)]

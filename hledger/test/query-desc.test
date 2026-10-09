@@ -13,3 +13,15 @@ $ hledger -f - print desc:x
     b
 
 >= 0
+
+# An empty desc: or acct: argument matches anything.
+$ hledger -f - print desc: acct:
+2009-01-01 x
+    a                                              1
+    b
+
+2009-01-01 y
+    a                                              1
+    b
+
+>= 0
