@@ -3037,6 +3037,10 @@ $ hledger print -f basic.csv
 
 ```
 
+Or you can read the rules file itself, if it has a [`source`](#source) rule saying where the data is
+(eg `source ./basic.csv`): `hledger print -f basic.csv.rules`.
+This is the usual setup for regular [importing](#import); see [Finding the data](#finding-the-data).
+
 There's an introductory [Tutorial: Import CSV data](/import-csv.html) on hledger.org,
 and more [CSV rules examples](#csv-rules-examples) below,
 and a larger collection at <https://github.com/hledgerorg/hledger/tree/main/examples/csv>.
@@ -3116,13 +3120,17 @@ comment %{join(", ", comment, "imported:")}
 
 ## Finding the data
 
+You can name a CSV file on the command line, and hledger will use the rules file named like it.
+Or you can name the rules file, and its `source` rule will say where the data is.
+The second way is more powerful and convenient for regular imports.
+
 ### Reading files specified by rule
 
 Instead of specifying a CSV file in the command line, you can specify
-a rules file, as in `hledger -f foo.csv.rules CMD`. 
-By default this will read data from foo.csv in the same directory,
-but you can add a [source](#source) rule to specify a different data file,
-perhaps located in your web browser's download directory.
+a rules file, as in `hledger -f foo.csv.rules CMD`.
+The rules file must then have a [`source`](#source) rule (described below),
+saying which data file to read (perhaps in your web browser's download directory),
+or which command to run to get the data.
 (A rules file can also be [included](#include-directive) by a journal file.)
 
 This feature helps remove some of the busywork of managing CSV downloads.
@@ -3142,12 +3150,8 @@ it is the most recent.
 
 ### `source`
 
-If you tell hledger to read a csv file with `-f foo.csv`, it will look for rules in `foo.csv.rules`.
-Or, you can tell it to read the rules file, with `-f foo.csv.rules`, and it will look for data in `foo.csv`.
-These are mostly equivalent, but the second method provides some extra features.
-For one, the data file can be missing, without causing an error; it is just considered empty.
-
-For more flexibility, add a `source` rule, which lets you specify a different data file:
+When hledger reads a rules file (`-f foo.csv.rules`), the `source` rule says which data file to read
+(it is ignored if you name the data file instead, as in `-f foo.csv`):
 
 ```rules
 source ./Checking1.csv
@@ -3175,8 +3179,6 @@ This has another benefit: if the pattern matches multiple files, hledger will re
 This avoids problems if you have downloaded a file multiple times without cleaning up.
 
 All this enables a convenient workflow where can you just download CSV files, then run `hledger import rules/*`.
-
-See also ["Working with CSV > Reading files specified by rule"](#reading-files-specified-by-rule).
 
 <!--
 The source rule supports ~ for home directory and absolute paths: `source ~/Downloads/foo.csv`, `source /abs/foo.csv`.
@@ -3287,7 +3289,8 @@ In this case each CSV file always uses its correspondingly-named rules file; `--
 ## Reading the data
 
 These tips and rules help hledger read the CSV data correctly:
-recognise the file and its separator, decode its text, and skip any header lines.
+check that it's valid, choose its separator, decode its text, skip any header lines,
+and put its records in the right order.
 
 ### Valid CSV
 
