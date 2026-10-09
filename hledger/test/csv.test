@@ -1923,6 +1923,22 @@ $  ./csvtest.sh
 
 >=0
 
+# ** 103. An if table's values have surrounding whitespace removed.
+<
+2026-01-01,cafe,3
+RULES
+fields date, description, amount
+account1 a
+
+if|account2              | comment
+cafe   | expenses:dining |   note   
+$  ./csvtest.sh
+2026-01-01 cafe  ; note
+    a                                              3
+    expenses:dining                               -3
+
+>=0
+
 # ** .
 #<
 #$  ./csvtest.sh
