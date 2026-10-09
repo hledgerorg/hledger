@@ -3446,7 +3446,8 @@ a space, followed by a text value on the same line.
 This text value may interpolate CSV fields,
 referenced either by their 1-based position in the CSV record (`%N`)
 or by the name they were given in the fields list (`%CSVFIELD`),
-and regular expression [match groups](#match-groups) (`\N`).
+and regular expression [match groups](#match-groups) (`\N`),
+and can transform them with [functions](#functions) (`%{upper(%CSVFIELD)}`).
 You can also write `%(CSVFIELD)` to delimit the field name from adjacent text
 (eg `%(field)suffix`).
 When CSV records have been combined by a [`merge` rule](#merge),
@@ -3473,6 +3474,67 @@ becomes `1` when interpolated)
 - Interpolations always refer to a CSV field -
   you can't interpolate a hledger field.
   (See [Referencing other fields](#referencing-other-fields) below).
+
+### Functions
+
+*Since 1.99.6; experimental*
+
+To transform a value while interpolating it, write a `%{...}` expression
+calling one of the built-in functions below. Eg:
+
+```rules
+# upper-case the description
+description %{upper(%desc)}
+
+# use the category in lower case, or "misc" if it's empty
+account2 expenses:%{lower(default(%category, "misc"))}
+
+# remove a reference number from the description
+description %{replace(%desc, " *ref#[0-9]+", "")}
+
+# put the date's year and month in a tag
+comment month:%{substr(%date, 1, 7)}
+```
+
+Function arguments can be CSV field references (`%desc`, `%3`),
+match group references (`\1`), double-quoted text (`"misc"`),
+numbers, or other function calls.
+Use `\"` for a double quote inside double-quoted text.
+Each expression's result has outer whitespace removed, like other interpolated values.
+
+| function                       | result                                                                                |
+|--------------------------------|---------------------------------------------------------------------------------------|
+| `upper(TEXT)`                  | TEXT in upper case                                                                    |
+| `lower(TEXT)`                  | TEXT in lower case                                                                    |
+| `capitalize(TEXT)`             | TEXT with each word's first letter in upper case and the rest in lower case (`capitalise` also works) |
+| `trim(TEXT)`                   | TEXT without outer whitespace                                                         |
+| `negate(AMOUNT)`               | AMOUNT with its sign flipped, eg `5` -> `-5`, `-5` or `(5)` -> `5`                    |
+| `abs(AMOUNT)`                  | AMOUNT without a minus sign, eg `-5` or `(5)` -> `5`                                  |
+| `concat(TEXT, ...)`            | all the arguments joined together                                                     |
+| `default(TEXT, ...)`           | the first argument that's not empty                                                   |
+| `replace(TEXT, REGEX, REPL)`   | TEXT with each match of REGEX replaced by REPL                                        |
+| `substr(TEXT, START, LENGTH)`  | LENGTH characters of TEXT, starting at position START (1 is the first); LENGTH is optional |
+
+For `replace`, REGEX must be double-quoted text,
+and is a case-insensitive [regular expression](#regular-expressions-in-csv-rules).
+REPL can use `\1`, `\2` etc. to insert REGEX's match groups.
+(Unquoted `\1` etc. outside double quotes refer to the [match groups](#match-groups) of an enclosing `if` rule instead.)
+For `substr`, START and LENGTH must be numbers.
+
+For `negate` and `abs`, AMOUNT is a number,
+optionally with a commodity symbol before or after it,
+and optionally with a sign: `-` or `+` before it,
+or parentheses meaning negative around it.
+The sign can be before or after a commodity symbol written in front of the number.
+Eg these are all negative amounts: `-5`, `(5)`, `-$5`, `$-5`, `$(5)`, `USD -5`, `-5 USD`, `(5 USD)`.
+The number itself isn't parsed, so its decimal mark and digit group marks don't matter.
+`negate` converts `5` to `-5` and `$-1,000.50` to `$1,000.50`,
+and `abs` converts any of the above to the unsigned form.
+A sign after the number (`5-`), or parentheses around just the number when the symbol comes after it (`(5) USD`), are not supported.
+
+Mistakes in an expression, like an unknown function or the wrong number of arguments,
+are reported when the rules file is read.
+Text beginning with `%{` is always taken as an expression.
 
 ## hledger field names
 
@@ -3739,6 +3801,7 @@ if %account1 liabilities:family:(expenses:.*)
   then values to assign to each of those hledger fields.
 - Comment lines, beginning with `;` or `#` (indented or not), are also allowed.
 - A blank line (or the end of the file) ends the table.
+- The delimiter character does not separate values when it is inside a [`%{...}` expression](#functions).
 
 Eg:
 
@@ -4316,7 +4379,7 @@ If you get a confusing error while reading a CSV file, it may help to try to und
         If there are more than one, the last one wins.
 
      2. Compute the field's actual value (as text),
-        by interpolating any %CSVFIELD references within the assigned value;
+        by interpolating any %CSVFIELD references and %{...} expressions within the assigned value;
         or by choosing a default value if there was no assignment.
 
    - Generate a hledger transaction from the hledger field values,

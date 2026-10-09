@@ -1665,6 +1665,129 @@ $  ./csvtest.sh
 
 >=0
 
+# ** 88. %{...} expressions call built-in functions on CSV values.
+<
+2026-01-05,  AMAZON mktp  ,Shopping,(12.50),usd,
+2026-01-06,Payroll,,1000,usd,ACME
+RULES
+fields date, desc, cat, amt, cur, payee
+description %{default(%payee, upper(%desc))}
+account1 assets:bank:%{upper(%cur)}
+account2 expenses:%{lower(default(%cat, "misc"))}
+amount1 %{negate(%amt)} %{upper(%cur)}
+comment month:%{substr(%date, 1, 7)}, rest:%{concat(substr(%desc, 8), " ", trim("  x  "))}, name:%{capitalize(%desc)}, cat:%{capitalise(%cat)}, abs:%{abs(%amt)}
+$  ./csvtest.sh
+2026-01-05 AMAZON MKTP  ; month:2026-01, rest:mktp x, name:Amazon Mktp, cat:Shopping, abs:12.50
+    assets:bank:USD                               12.50 USD
+    expenses:shopping
+
+2026-01-06 ACME  ; month:2026-01, rest:x, name:Payroll, cat:, abs:1000
+    assets:bank:USD                            -1000 USD
+    expenses:misc
+
+>=0
+
+# ** 89. replace's replacement can use its own regex's match groups (\N in a
+# string), while an if block's match groups can be passed as arguments (bare \N).
+<
+2026-01-05,Card purchase REF#123 at Cafe,-3
+RULES
+fields date, desc, amt
+amount %amt USD
+account1 assets:bank
+description %{replace(%desc, " *ref#([0-9]+)", "")}
+if %desc at (.*)
+ account2 expenses:%{lower(\1)}
+ comment ref:%{replace(%desc, ".*ref#([0-9]+).*", "\1")}
+$  ./csvtest.sh
+2026-01-05 Card purchase at Cafe  ; ref:123
+    assets:bank                                   -3 USD
+    expenses:cafe                                  3 USD
+
+>=0
+
+# ** 90. The separator character inside a %{...} expression does not split an if table's values.
+<
+2026-01-05,fuel,7
+RULES
+fields date, desc, amt
+amount %amt USD
+account1 assets:bank
+if,account2,comment
+fuel,expenses:%{replace(%desc, "u", "oo")},note:%{concat("a,b", "c")}
+$  ./csvtest.sh
+2026-01-05  ; note:a,bc
+    assets:bank                                    7 USD
+    expenses:fooel                                -7 USD
+
+>=0
+
+# ** 91. An unknown function is reported when reading the rules.
+<
+2026-01-05,fuel,7
+RULES
+fields date, desc, amt
+description %{uper(%desc)}
+$  ./csvtest.sh
+>2 /rules:2:15:(.|
+)*unknown function "uper"/
+>=1
+
+# ** 92. So is a wrong number of arguments, or a syntax error in an expression.
+<
+2026-01-05,fuel,7
+RULES
+fields date, desc, amt
+description %{upper(%desc, %amt)}
+comment %{lower(%desc}
+$  ./csvtest.sh
+>2 /upper takes 1 argument, but was given 2/
+>=1
+
+# ** 93.
+<
+2026-01-05,fuel,7
+RULES
+fields date, desc, amt
+if fuel
+ comment %{lower(%desc}
+$  ./csvtest.sh
+>2 /rules:3:23:(.|
+)*unexpected '}'/
+>=1
+
+# ** 94. negate and abs handle a sign before or after a leading commodity symbol,
+# and parentheses meaning negative.
+<
+2026-01-01|$-5
+2026-01-02|USD -5
+2026-01-03|(5 USD)
+2026-01-04|-$1,000.50
+RULES
+separator |
+fields date, amt
+account1 a
+amount 0
+comment %amt, negate:%{negate(%amt)}, abs:%{abs(%amt)}
+$  ./csvtest.sh
+2026-01-01  ; $-5, negate:$5, abs:$5
+    a                                              0
+    expenses:unknown                               0
+
+2026-01-02  ; USD -5, negate:USD 5, abs:USD 5
+    a                                              0
+    expenses:unknown                               0
+
+2026-01-03  ; (5 USD), negate:5 USD, abs:5 USD
+    a                                              0
+    expenses:unknown                               0
+
+2026-01-04  ; -$1,000.50, negate:$1,000.50, abs:$1,000.50
+    a                                              0
+    expenses:unknown                               0
+
+>=0
+
 # ** .
 #<
 #$  ./csvtest.sh

@@ -53,7 +53,7 @@ import Control.Monad.Fail qualified as Fail
 import Control.Monad.IO.Class     (MonadIO, liftIO)
 import Control.Monad.State.Strict (StateT, get, modify', evalStateT)
 import Control.Monad.Trans.Class  (lift)
-import Data.Char                  (toLower, isDigit, isSpace, isAlphaNum, ord)
+import Data.Char                  (toLower, toUpper, isAsciiLower, isDigit, isSpace, isAlphaNum, ord)
 import Data.Bifunctor             (first)
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as BL
@@ -62,13 +62,14 @@ import Data.Csv.Parser.Megaparsec qualified as CassavaMegaparsec
 import Data.Encoding (encodingFromStringExplicit, DynEncoding)
 import Data.Either (fromRight)
 import Data.Functor ((<&>))
-import Data.List (elemIndex, nub, sortOn, isInfixOf, isPrefixOf)
+import Data.List (elemIndex, find, nub, sortOn, isInfixOf, isPrefixOf)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
 #endif
 import Data.List.Extra (groupOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
+import Data.Set qualified as S
 import Data.MemoUgly (memo)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -76,7 +77,7 @@ import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
 import Data.Time ( Day, TimeZone, UTCTime, LocalTime, ZonedTime(ZonedTime),
   defaultTimeLocale, getCurrentTimeZone, localDay, parseTimeM, utcToLocalTime, localTimeToUTC, zonedTimeToUTC, utctDay)
-import Safe (atMay, headDef, headMay, lastDef, lastMay, readMay)
+import Safe (atMay, headDef, headMay, lastDef, lastMay, readDef, readMay)
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, getHomeDirectory, getModificationTime, listDirectory, removeFile)
 import System.Exit      (ExitCode(..))
 import System.FilePath (isAbsolute, splitDirectories, stripExtension, takeBaseName, takeDirectory, takeExtension, (<.>), (</>))
@@ -84,6 +85,7 @@ import System.IO       (Handle, hClose, hPutStrLn, stderr, hGetContents')
 import System.Process  (CreateProcess(..), StdStream(CreatePipe), shell, waitForProcess, withCreateProcess)
 import Data.Foldable (asum, toList)
 import Text.Megaparsec hiding (match, parse)
+import Text.Megaparsec qualified as P (match)
 import Text.Megaparsec.Char (char, newline, string, digitChar)
 import Text.Printf (printf)
 
@@ -689,6 +691,23 @@ fa n t = FieldAssignment n t Nothing
 -- | A reference to a regular expression match group. Eg \1.
 type MatchGroupReference = Text
 
+-- | A %{...} expression in a field assignment's value, eg %{upper(%desc)}.
+data TemplateExpr =
+    TECall Text [TemplateExpr]       -- ^ a built-in function call
+  | TEField CsvFieldReference        -- ^ a csv field reference, eg %desc
+  | TEMatch MatchGroupReference      -- ^ a match group reference, eg \1
+  | TEString Text                    -- ^ a double-quoted string
+  | TENumber Int                     -- ^ a non-negative integer
+  deriving (Show)
+
+-- | A built-in function usable in template expressions.
+data TemplateFunction = TemplateFunction {
+   tfName  :: Text
+  ,tfArity :: (Int, Maybe Int)                -- ^ minimum and (if limited) maximum number of arguments
+  ,tfCheck :: [TemplateExpr] -> Maybe String  -- ^ further checks on the arguments as written, returning an error message
+  ,tfApply :: [Text] -> Text                  -- ^ the implementation, applied to the evaluated arguments
+  }
+
 -- | A strptime date parsing pattern, as supported by Data.Time.Format.
 type DateFormat       = Text
 
@@ -1036,7 +1055,145 @@ assignmentseparatorp = do
 fieldvalp :: CsvRulesParser Text
 fieldvalp = do
   lift $ dbgparse 8 "trying fieldvalp"
-  T.pack <$> anySingle `manyTill` lift eolof
+  T.concat <$> lift (templatepartp (/= '\n')) `manyTill` lift eolof
+
+-- | Parse part of a field assignment's value, returning it as written:
+-- a %{...} expression (which is checked here, so that errors are reported
+-- with their position in the rules file), or other text whose characters
+-- satisfy the predicate.
+templatepartp :: (Char -> Bool) -> TextParser m Text
+templatepartp ok =
+      takeWhile1P Nothing (\c -> ok c && c /= '%')
+  <|> fst <$> P.match templateexprp
+  <|> T.singleton <$> satisfy ok
+
+-- | Parse a %{...} expression. Unknown functions, wrong numbers of
+-- arguments, and other invalid arguments are reported as parse errors.
+templateexprp :: TextParser m TemplateExpr
+templateexprp = string "%{" *> region asFancy (sp *> termp <* sp <* char '}')
+  where
+    -- Make syntax errors "fancy", so that an enclosing try followed by
+    -- an alternative doesn't replace them with the alternative's error
+    -- (megaparsec 9.8+ prefers the error at the alternative's start).
+    asFancy e@TrivialError{} = FancyError (errorOffset e) $ S.singleton $ ErrorFail $
+                                 T.unpack $ T.stripEnd $ T.pack $ parseErrorTextPretty e
+    asFancy e = e
+    sp = skipNonNewlineSpaces
+    termp = choice
+      [callp
+      ,TEField  <$> templatefieldrefp
+      ,TEMatch  <$> templatematchrefp
+      ,TEString <$> stringp
+      ,TENumber <$> numberp
+      ] <?> "function call, field reference, match group reference, double-quoted string or number"
+    callp = do
+      off <- getOffset
+      name <- T.cons <$> satisfy isAsciiLower <*> takeWhileP Nothing (\c -> isAsciiLower c || isDigit c || c == '_')
+      args <- sp *> char '(' *> sp *> (termp <* sp) `sepBy` (char ',' *> sp) <* char ')'
+      either (customFailure . parseErrorAt off) return $ checkTemplateCall name args
+      return $ TECall name args
+    -- \" and \\ are escapes; other backslashes are kept, so "\1" can be a replace backreference
+    stringp = char '"' *> (T.concat <$> many strpartp) <* char '"' <?> "double-quoted string"
+    strpartp = takeWhile1P Nothing (`notElem` ['"', '\\', '\n'])
+           <|> (char '\\' *> option "\\" (T.singleton <$> oneOf ['"', '\\']))
+    numberp = takeWhile1P (Just "digit") isDigit >>= maybe (fail "invalid number") return . readMay . T.unpack
+
+-- | Check a template function call's name and arguments.
+checkTemplateCall :: Text -> [TemplateExpr] -> Either String ()
+checkTemplateCall name args = case lookupTemplateFunction name of
+  Nothing -> Left $ "unknown function \"" <> T.unpack name <> "\" (known functions: "
+                    <> T.unpack (T.intercalate ", " $ map tfName templateFunctions) <> ")"
+  Just TemplateFunction{tfArity=(lo,mhi), tfCheck}
+    | n < lo || maybe False (n >) mhi ->
+        Left $ printf "%s takes %s, but was given %d" name (arity lo mhi) n
+    | otherwise -> maybe (Right ()) Left $ tfCheck args
+  where
+    n = length args
+    arity :: Int -> Maybe Int -> String
+    arity lo (Just hi) | lo == hi = plural lo
+                       | otherwise = printf "%d to %d arguments" lo hi
+    arity lo Nothing = printf "%d or more arguments" lo
+    plural 1 = "1 argument"
+    plural k = printf "%d arguments" k
+
+lookupTemplateFunction :: Text -> Maybe TemplateFunction
+lookupTemplateFunction name = find ((== name) . tfName) templateFunctions
+
+-- | The built-in functions available in %{...} expressions.
+-- All arguments and results are text.
+templateFunctions :: [TemplateFunction]
+templateFunctions =
+  [TemplateFunction "upper"   (1, Just 1) noCheck (T.toUpper . arg1)
+  ,TemplateFunction "lower"   (1, Just 1) noCheck (T.toLower . arg1)
+  ,TemplateFunction "capitalize" (1, Just 1) noCheck (capitalize . arg1)
+  ,TemplateFunction "capitalise" (1, Just 1) noCheck (capitalize . arg1)
+  ,TemplateFunction "trim"    (1, Just 1) noCheck (T.strip . arg1)
+  ,TemplateFunction "negate"  (1, Just 1) noCheck (signedPart (simplifySign . negateStr) . arg1)
+  ,TemplateFunction "abs"     (1, Just 1) noCheck (signedPart (absStr . simplifySign) . arg1)
+  ,TemplateFunction "concat"  (1, Nothing) noCheck T.concat
+  ,TemplateFunction "default" (1, Nothing) noCheck (headDef "" . filter (not . T.null . T.strip))
+  ,TemplateFunction "replace" (3, Just 3) checkReplace replaceFn
+  ,TemplateFunction "substr"  (2, Just 3) checkSubstr substrFn
+  ]
+  where
+    noCheck = const Nothing
+    arg1 = headDef ""
+    -- upper-case the first letter of each whitespace-separated word, and lower-case the rest
+    capitalize = snd . T.mapAccumL (\atstart c -> (isSpace c, if atstart then toUpper c else toLower c)) True
+    absStr t = fromMaybe t $ T.stripPrefix "-" t
+    -- Apply a sign-changing function to an amount text, or to the part
+    -- after a commodity symbol written before the sign (eg the -5 in $-5).
+    signedPart f t = case T.break (\c -> isDigit c || isSign c) t of
+      (sym, rest) | not (T.null sym), Just (c, _) <- T.uncons rest, isSign c -> sym <> f rest
+      _ -> f t
+      where isSign c = c `elem` ['-', '+', '(']
+
+    -- replace(TEXT, "REGEX", REPLACEMENT): replace all case-insensitive matches of REGEX,
+    -- REPLACEMENT may use \N to insert REGEX's match groups.
+    checkReplace [_, TEString r, repl] = case toRegexCI r of
+      Left e -> Just e
+      Right _ | TEString t <- repl, maxBackref t > regexGroupCount r ->
+        Just $ "replace's replacement refers to match group \\" <> show (maxBackref t)
+               <> ", but the regular expression has only " <> show (regexGroupCount r) <> " group(s)"
+      _ -> Nothing
+    checkReplace _ = Just "replace's second argument (the regular expression) should be a double-quoted string"
+    replaceFn (s:r:repl:_) = either (const s) T.pack $ do
+      re <- toRegexCI r
+      regexReplace re (T.unpack repl) (T.unpack s)
+    replaceFn as = arg1 as
+
+    -- substr(TEXT, START, LENGTH): LENGTH characters (or all) from 1-based position START.
+    checkSubstr (_:TENumber start:rest) | start >= 1, all isNumber rest = Nothing
+      where isNumber TENumber{} = True
+            isNumber _          = False
+    checkSubstr _ = Just "substr's position and length should be numbers, and the position should be at least 1"
+    substrFn (s:start:rest) =
+      let s' = T.drop (readDef 1 (T.unpack start) - 1) s
+      in case rest of
+           len:_ -> T.take (readDef (T.length s') (T.unpack len)) s'
+           []    -> s'
+    substrFn as = arg1 as
+
+    -- the highest \N backreference in a replacement pattern
+    maxBackref = go . T.unpack
+      where
+        go ('\\':cs) | (ds@(_:_), rest) <- span isDigit cs = max (readDef 0 ds) (go rest)
+        go (_:cs) = go cs
+        go []     = 0
+
+    -- the number of parenthesised groups in a regular expression
+    -- (approximately: open parentheses not escaped or in a bracket expression)
+    regexGroupCount :: Text -> Int
+    regexGroupCount = go . T.unpack
+      where
+        go ('\\':_:cs) = go cs
+        go ('[':cs)    = go (skipBracket cs)
+        go ('(':cs)    = 1 + go cs
+        go (_:cs)      = go cs
+        go []          = 0
+        -- a ] at the start of a bracket expression (after any ^) is a literal
+        skipBracket cs = let cs' = fromMaybe cs (T.unpack <$> T.stripPrefix "^" (T.pack cs))
+                         in drop 1 $ dropWhile (/= ']') $ drop 1 cs'
 
 -- A conditional block: one or more matchers, one per line, followed by one or more indented rules.
 conditionalblockp :: CsvRulesParser ConditionalBlock
@@ -1103,7 +1260,8 @@ conditionaltablep = do
       off <- getOffset
       pos <- getRulesPos
       ms <- matcherp' (lookAhead . void . char $ sep) `manyTill` char sep
-      vs <- T.split (==sep) . T.pack <$> lift restofline
+      -- separators inside %{...} expressions don't separate values
+      vs <- lift $ (T.concat <$> many (templatepartp (\c -> c /= sep && c /= '\n'))) `sepBy` char sep <* eolof
       if (length vs /= length fields)
         then customFailure $ parseErrorAt off $ ((printf "line of conditional table should have %d values, but this one has only %d" (length fields) (length vs)) :: String)
         else return (ms,vs,pos)
@@ -1332,14 +1490,16 @@ recordAsApproximateText :: CsvRecordGroup -> Text
 recordAsApproximateText = T.intercalate "," . concat
 
 -- | Render a field assignment's template, possibly interpolating referenced
--- CSV field values or match groups. Outer whitespace is removed from interpolated values.
+-- CSV field values, match groups, or %{...} expressions.
+-- Outer whitespace is removed from interpolated values.
 renderTemplate ::  CsvRules -> CsvRecordGroup -> FieldTemplate -> Text
 renderTemplate rules record t =
   maybe t mconcat $ parseMaybe
     (many
       (   literaltextp
-      <|> (matchrefp <&> replaceRegexGroupReference rules record)
-      <|> (fieldrefp <&> replaceCsvFieldReference   rules record <&> fromMaybe "")
+      <|> (templatematchrefp <&> replaceRegexGroupReference rules record)
+      <|> (templateexprp     <&> evalTemplateExpr           rules record)
+      <|> (templatefieldrefp <&> replaceCsvFieldReference   rules record <&> fromMaybe "")
       )
     )
     t
@@ -1349,16 +1509,35 @@ renderTemplate rules record t =
       where
         nonBackslashOrPercent = noneOf ['\\', '%'] <?> "character other than backslash or percent"
         nonRefBackslash = try (char '\\' <* notFollowedBy digitChar) <?> "backslash that does not begin a match group reference"
-        nonRefPercent   = try (char '%'  <* notFollowedBy (satisfy (\c -> isFieldNameChar c || c == '('))) <?> "percent that does not begin a field reference"
-    matchrefp    = liftA2 T.cons (char '\\') (takeWhile1P (Just "matchref")  isDigit)
-    fieldrefp    = try parenFieldrefp <|> bareFieldrefp
+        nonRefPercent   = try (char '%'  <* notFollowedBy (satisfy (\c -> isFieldNameChar c || c == '(' || c == '{'))) <?> "percent that does not begin a field reference or expression"
+
+-- | Parse a match group reference in a template, eg \1.
+templatematchrefp :: TextParser m MatchGroupReference
+templatematchrefp = liftA2 T.cons (char '\\') (takeWhile1P (Just "matchref") isDigit)
+
+-- | Parse a csv field reference in a template, eg %date, %1, %(date).
+templatefieldrefp :: TextParser m CsvFieldReference
+templatefieldrefp = try parenFieldrefp <|> bareFieldrefp
+  where
     bareFieldrefp  = liftA2 T.cons (char '%')  (takeWhile1P (Just "reference") isFieldNameChar)
     parenFieldrefp = do
       _ <- string "%("
       name <- takeWhile1P (Just "reference") isFieldNameChar
       _ <- char ')'
       return $ "%(" <> name <> ")"
-    isFieldNameChar c = isAlphaNum c || c == '_' || c == '-'
+
+isFieldNameChar :: Char -> Bool
+isFieldNameChar c = isAlphaNum c || c == '_' || c == '-'
+
+-- | Evaluate a %{...} expression for this CSV record. The result has outer whitespace removed.
+evalTemplateExpr :: CsvRules -> CsvRecordGroup -> TemplateExpr -> Text
+evalTemplateExpr rules record = T.strip . eval
+  where
+    eval (TECall name args) = maybe "" (\f -> tfApply f $ map eval args) $ lookupTemplateFunction name
+    eval (TEField r)        = fromMaybe "" $ replaceCsvFieldReference rules record r
+    eval (TEMatch m)        = replaceRegexGroupReference rules record m
+    eval (TEString s)       = s
+    eval (TENumber n)       = T.pack $ show n
 
 -- | Replace something that looks like a Regex match group reference with the
 -- resulting match group value after applying the Regex.
