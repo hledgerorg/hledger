@@ -3000,8 +3000,7 @@ hledger can read transactions from CSV (comma-separated values) files.
 More precisely, it can read [DSV](https://en.wikipedia.org/wiki/Delimiter-separated_values) (delimiter-separated values),
 from a file or standard input.
 Comma-separated, semicolon-separated and tab-separated are the most common variants,
-and hledger will recognise these three automatically based on a `.csv`, `.ssv` or `.tsv`
-file name extension or a `csv:`, `ssv:` or `tsv:` file path prefix.
+and hledger recognises these three automatically from the [file extension](#file-extension).
 
 (To learn about producing CSV or TSV *output*, see [Output format](#output-format).)
 
@@ -3117,6 +3116,9 @@ comment %{join(", ", comment, "imported:")}
 ```
 
 ## Reading the data
+
+These tips and rules help hledger read the CSV data correctly:
+recognise the file and its separator, decode its text, and skip any header lines.
 
 ### File Extension
 
@@ -3280,11 +3282,15 @@ This text value may interpolate CSV fields,
 referenced either by their 1-based position in the CSV record (`%N`)
 or by the name they were given in the fields list (`%CSVFIELD`),
 and regular expression [match groups](#match-groups) (`\N`),
-and can transform them with [functions](#functions) (`%{upper(%CSVFIELD)}`).
+and can transform them with [functions](#functions) (`%{upper(%CSVFIELD)}`)
+or use other hledger fields' values (`%{description}`; see [Referencing other fields](#referencing-other-fields)).
 You can also write `%(CSVFIELD)` to delimit the field name from adjacent text
 (eg `%(field)suffix`).
 When CSV records have been combined by a [`merge` rule](#merge),
 a `_ROWNUM` suffix (eg `%amt_2`, `%4_2`) references the later rows' fields.
+Interpolation strips outer whitespace (so a CSV value like `" 1 "`
+becomes `1` when interpolated)
+([#1051](https://github.com/hledgerorg/hledger/issues/1051)).
 
 Some examples:
 
@@ -3298,15 +3304,6 @@ comment note: %somefield - %anotherfield, date: %1
 # use parenthesised form when the field name would run into adjacent text
 account1 assets:%(type)checking
 ```
-
-Tips:
-
-- Interpolation strips outer whitespace (so a CSV value like `" 1 "`
-becomes `1` when interpolated)
-([#1051](https://github.com/hledgerorg/hledger/issues/1051)).
-- `%NAME` always refers to a CSV field.
-  To refer to a hledger field, write its name inside `%{...}`, eg `%{description}`.
-  (See [Referencing other fields](#referencing-other-fields) below).
 
 ### Functions
 
@@ -3383,28 +3380,15 @@ Text beginning with `%{` is always taken as an expression.
 
 ### Referencing other fields
 
-In field assignments, `%NAME` always means a CSV field, not a hledger field.
-In the example below, there's both a CSV field and a hledger field named amount1,
-but %amount1 means the CSV field:
+To use a hledger field's value, write its name (without `%`) inside a [`%{...}` expression](#functions).
+`%NAME` always means a CSV field, even when a hledger field has the same name:
 
 ```rules
-# Name the third CSV field "amount1"
-fields date,description,amount1
-
-# Set hledger's amount1 to the CSV amount1 field followed by USD
+# name the third CSV field "amount1"
+fields date, description, amount1
+# set hledger's amount1 to the CSV amount1 field, followed by USD
 amount1 %amount1 USD
-
-# Set comment to the CSV amount1 (not the amount1 assigned above)
-comment %amount1
-```
-
-Here, since there's no CSV amount1 field, `%amount1` produces empty text;
-to get hledger's amount1 field, write `%{amount1}`:
-
-```rules
-fields date,description,csvamount
-amount1 %csvamount USD
-# Empty: there's no CSV amount1 field
+# the CSV amount1 field, eg "5"
 comment %amount1
 # hledger's amount1 field, eg "5 USD"
 comment1 %{amount1}
@@ -3421,9 +3405,7 @@ if something
  comment C
 ```
 
-To use a hledger field's value, write its name (without `%`) inside a [`%{...}` expression](#functions).
-
-In an assignment to the same field, this gives the field's value from its previous assignment,
+In an assignment to the same field, a hledger field's name gives the field's value from its previous assignment,
 so you can add to it. This is handy for appending to a comment:
 
 ```rules
@@ -3590,7 +3572,7 @@ There are several ways to set posting amounts from CSV, useful in different situ
       choose based on whether the amount is in a single CSV field or spread across two fields.
     - In each record, at most one of the two CSV fields should contain a non-zero amount; the other field must contain a zero or nothing.
     - hledger assumes both CSV fields contain unsigned numbers, and it automatically negates the amount-out values.
-    - If the data doesn't fit these requirements, you'll probably need an if rule (see below).
+    - If the data doesn't fit these requirements, you'll probably need an if rule (see [Setting amounts](#setting-amounts)).
 
 3. **`amountN`** (where N is a number from 1 to 99) sets the amount of only a single posting:
   the Nth posting in the transaction.
@@ -3613,7 +3595,7 @@ There are several ways to set posting amounts from CSV, useful in different situ
 
 #### Setting amounts
 
-Continuing from [amount field](#amount-field) above, here are more tips for amount-setting:
+Which amount fields to use depends on how the CSV shows amounts:
 
 1. **If the amount is in a single CSV field:**\
 
@@ -3800,6 +3782,7 @@ it is equivalent to `balance1`.
 
 You can adjust the type of assertion/assignment with the
 [`balance-type` rule](#balance-type) (see below).
+If the CSV has only balances, not transaction amounts, see [Setting amounts](#setting-amounts).
 
 
 #### `balance-type`
@@ -4204,7 +4187,7 @@ Some things than can help reduce duplication and complexity in rules files:
 
 ## Working with CSV
 
-Some tips:
+Some tips for creating rules and importing CSV data regularly:
 
 ### Rapid feedback
 
