@@ -1907,6 +1907,22 @@ $  ./csvtest.sh
 >2 /substr's position should be a number other than 0/
 >=1
 
+# ** 102. An if table's header line can have spaces around the field names, for alignment.
+<
+2026-01-01,cafe,3
+RULES
+fields date, description, amount
+account1 a
+
+if|      account2          | comment  
+cafe   | expenses:dining   |note
+$  ./csvtest.sh
+2026-01-01 cafe  ; note
+    a                                              3
+    expenses:dining                               -3
+
+>=0
+
 # ** .
 #<
 #$  ./csvtest.sh

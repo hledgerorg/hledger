@@ -1297,7 +1297,8 @@ conditionaltablep = do
   start <- getOffset
   string "if"
   sep <- lift $ satisfy (\c -> not (isAlphaNum c || isSpace c))
-  fields <- journalfieldnamep `sepBy1` (char sep)
+  -- spaces are allowed around the field names (but not before the first delimiter, where they would start an if block)
+  fields <- (lift skipNonNewlineSpaces *> journalfieldnamep <* lift skipNonNewlineSpaces) `sepBy1` (char sep)
   newline
   body <- catMaybes <$> (flip manyTill (try blanklinep <|> lift eof) $
           choice [ try commentlinep >> return Nothing
