@@ -4224,7 +4224,7 @@ There is some special handling making it easier to parse and to reverse amount s
 - **If an amount value contains just a sign (or just a set of parentheses):**\
   that is removed, making it an empty value. `"+"` or `"-"` or `"()"` becomes `""`.
 
-It's not possible (without preprocessing the CSV) to set an amount to its absolute value, ie discard its sign. 
+To set an amount to its absolute value, ie discard its sign, use the [`abs`](#functions) function, eg `amount1 %{abs(%amt)}`.
 
 ### Setting currency/commodity
 
