@@ -254,7 +254,7 @@ Here are two kinds of "deduplication" which `import` does not handle
 
 If you have a download whose file name varies, you could rename it to a fixed name after each download.
 Or you could use a [CSV `source` rule](#source) with a suitable glob pattern,
-and import [from the .rules file](#reading-files-specified-by-rule).
+and import [from the .rules file](#finding-the-data).
 
 #### Multiple versions
 
