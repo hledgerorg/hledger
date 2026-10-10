@@ -678,6 +678,17 @@ getRunningBalanceB :: AccountName -> Balancing s MixedAmount
 getRunningBalanceB acc = withRunningBalance $ \BalancingState{bsBalances, bsAliases} -> do
   maConvertAliases bsAliases . fromMaybe nullmixedamt <$> H.lookup bsBalances acc
 
+-- | Get this account's current inclusive running balance, including all subaccounts,
+-- converting the account's own balance and its subaccounts' total separately, as
+-- setInclusiveRunningBalanceB does. Commodities that a partial inclusive assignment
+-- preserves from this then cancel exactly when the new balance is set.
+getInclusiveRunningBalanceForAssignmentB :: AccountName -> Balancing s MixedAmount
+getInclusiveRunningBalanceForAssignmentB acc = withRunningBalance $ \BalancingState{bsBalances, bsAliases} -> do
+  ebal     <- fromMaybe nullmixedamt <$> H.lookup bsBalances acc
+  allebals <- H.toList bsBalances
+  let subsibal = maSum . map snd $ filter ((acc `isAccountNamePrefixOf`).fst) allebals
+  return $ maConvertAliases bsAliases ebal `maPlus` maConvertAliases bsAliases subsibal
+
 -- | Add this amount to this account's exclusive running balance.
 -- Returns the new running balance.
 addToRunningBalanceB :: AccountName -> MixedAmount -> Balancing s MixedAmount
@@ -898,7 +909,8 @@ addOrAssignAmountAndCheckAssertionB (i,p@Posting{paccount=acc, pbalanceassertion
                    then return $ mixedAmount baamount
                    -- a partial balance assignment (=, one commodity)
                    else do
-                     oldbalothercommodities <- filterMixedAmount ((acommodity baamount /=) . acommodity) <$> getRunningBalanceB acc
+                     oldbal <- (if bainclusive then getInclusiveRunningBalanceForAssignmentB else getRunningBalanceB) acc
+                     let oldbalothercommodities = filterMixedAmount ((acommodity baamount /=) . acommodity) oldbal
                      return $ maAddAmount oldbalothercommodities baamount
       diff <- (if bainclusive then setInclusiveRunningBalanceB else setRunningBalanceB) acc newbal
       let p' = p{pamount=filterMixedAmount (not . amountIsZero) diff, poriginal=Just $ originalPosting p}
@@ -1365,6 +1377,81 @@ tests_Balancing =
       assertRight ej
       case ej of Right j -> (jtxns j & headErr & tpostings & headErr & pamount & amountsRaw) @?= [num 1]  -- PARTIAL headErrs succeed because non-null txns & postings lists given
                  Left _  -> error' "balance-assignment test: shouldn't happen"
+
+    ,testGroup "balance-assignment operators" [
+      testCase name $ do
+        let opening acc amt = transaction (fromGregorian 2026 01 01)
+              [post acc amt, post "equity" missingamt]
+            assignment = transaction (fromGregorian 2026 01 02)
+              [post' "assets" missingamt (assertion (usd 20)), post "equity" missingamt]
+            ej = journalBalanceTransactions defbalancingopts nulljournal{jtxns =
+              [ opening "assets" (eur 7)
+              , opening "assets" (usd 3)
+              , opening "assets:cash" (eur 10)
+              , opening "assets:cash" (usd 12)
+              , assignment
+              ]}
+        assertRight ej
+        case ej of
+          Right j -> do
+            let ps = tpostings $ headErr $ reverse $ jtxns j
+            map pamount ps @?= [expected, maNegate expected]
+            map paccount ps @?= ["assets", "equity"]
+          Left _ -> assertFailure "balance-assignment operators: journal did not balance"
+      | (name, assertion, expected) <-
+          [ ("partial exclusive", balassert, mixed [usd 17])
+          , ("total exclusive", balassertTot, mixed [eur (-7), usd 17])
+          , ("partial inclusive", balassertParInc, mixed [usd 5])
+          , ("total inclusive", balassertTotInc, mixed [eur (-17), usd 5])
+          ]
+      ]
+
+    ,testGroup "partial inclusive assignments preserve raw amounts" [
+      testCase name $ do
+        let ps = [vpost acc amt | (acc, amt) <- holdings] ++
+              [ vpost "assets:cash" (usd 12)
+              , vpost' "assets" missingamt (balassertParInc (usd 20))
+              , vpost' "assets" missingamt (balassertParInc (usd 20))
+              ]
+            ej = journalBalanceTransactions defbalancingopts nulljournal{jtxns =
+              [transaction (fromGregorian 2026 01 01) ps]}
+            expected = [(acc, [amt]) | (acc, amt) <- holdings] ++
+              [("assets:cash", [usd 12]), ("assets", [usd 8]), ("assets", [])]
+        assertRight ej
+        case ej of
+          Right j -> map (\p -> (paccount p, amountsRaw $ pamount p)) (journalPostings j) @?= expected
+          Left _ -> assertFailure "partial inclusive assignment: journal did not balance"
+      | (name, holdings) <-
+          [ ("positive other commodity", [("assets:cash", eur 10)])
+          , ("negative other commodity", [("assets:cash", eur (-10))])
+          , ("zero other commodity", [("assets:cash", eur 0)])
+          , ("direct and nested balances",
+              [("assets", eur 7), ("assets:cash", eur 3), ("assets:cash:coins", eur 7)])
+          , ("unit cost", [("assets:cash", (eur 10){acost=Just $ UnitCost (usd 2)})])
+          , ("total cost", [("assets:cash", (eur 10){acost=Just $ TotalCost (usd 20)})])
+          , ("matching unit costs on parent and child",
+              [ ("assets", (eur 7){acost=Just $ UnitCost (usd 2)})
+              , ("assets:cash", (eur 10){acost=Just $ UnitCost (usd 2)})
+              ])
+          , ("opposite quantities with different unit costs",
+              [ ("assets:cash", (eur 10){acost=Just $ UnitCost (usd 2)})
+              , ("assets:cash", (eur (-10)){acost=Just $ UnitCost (usd 3)})
+              ])
+          ]
+      ]
+
+    ,testCase "partial inclusive assignment retains costs on its target" $ do
+      let target = (usd 20){acost=Just $ UnitCost (eur 2)}
+          ej = journalBalanceTransactions defbalancingopts nulljournal{jtxns =
+            [transaction (fromGregorian 2026 01 01)
+              [ vpost "assets:cash" (eur 10)
+              , vpost "assets:cash" (usd 12)
+              , vpost' "assets" missingamt (balassertParInc target)
+              ]]}
+      assertRight ej
+      case ej of
+        Right j -> (pamount $ headErr $ reverse $ journalPostings j) @?= mixed [usd (-12), target]
+        Left _ -> assertFailure "cost-bearing inclusive assignment: journal did not balance"
 
     ,testCase "same-day-1" $ do
       assertRight $ journalBalanceTransactions defbalancingopts $

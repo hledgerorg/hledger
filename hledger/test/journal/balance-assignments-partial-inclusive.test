@@ -1,0 +1,910 @@
+# Partial inclusive balance assignments preserve other commodities (#2093).
+
+# = uses the correct balance scope
+<
+2026-01-01
+    assets             7 EUR
+    assets             3 USD
+    assets:cash       10 EUR
+    assets:cash       12 USD
+    equity
+
+2026-01-02
+    assets             = 20 USD
+    equity
+
+2026-01-03
+    assets        0 EUR = 7 EUR
+    assets        0 USD = 20 USD
+    assets        0 EUR =* 17 EUR
+    assets        0 USD =* 32 USD
+    assets:cash   0 EUR = 10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = -17 EUR
+    equity        0 USD = -32 USD
+
+$ hledger -f- check
+
+# == uses the correct balance scope
+<
+2026-01-01
+    assets             7 EUR
+    assets             3 USD
+    assets:cash       10 EUR
+    assets:cash       12 USD
+    equity
+
+2026-01-02
+    assets             == 20 USD
+    equity
+
+2026-01-03
+    assets        0 EUR = 0 EUR
+    assets        0 USD = 20 USD
+    assets        0 EUR =* 10 EUR
+    assets        0 USD =* 32 USD
+    assets:cash   0 EUR = 10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = -10 EUR
+    equity        0 USD = -32 USD
+
+$ hledger -f- check
+
+# =* uses the correct balance scope
+<
+2026-01-01
+    assets             7 EUR
+    assets             3 USD
+    assets:cash       10 EUR
+    assets:cash       12 USD
+    equity
+
+2026-01-02
+    assets             =* 20 USD
+    equity
+
+2026-01-03
+    assets        0 EUR = 7 EUR
+    assets        0 USD = 8 USD
+    assets        0 EUR =* 17 EUR
+    assets        0 USD =* 20 USD
+    assets:cash   0 EUR = 10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = -17 EUR
+    equity        0 USD = -20 USD
+
+$ hledger -f- check
+
+# ==* uses the correct balance scope
+<
+2026-01-01
+    assets             7 EUR
+    assets             3 USD
+    assets:cash       10 EUR
+    assets:cash       12 USD
+    equity
+
+2026-01-02
+    assets             ==* 20 USD
+    equity
+
+2026-01-03
+    assets        0 EUR = -10 EUR
+    assets        0 USD = 8 USD
+    assets        0 EUR =* 0 EUR
+    assets        0 USD =* 20 USD
+    assets:cash   0 EUR = 10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = 0 EUR
+    equity        0 USD = -20 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR 10, USD 12 to 20, repeated
+<
+2026-01-01
+    assets:cash        10 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 20 USD
+    assets             =* 20 USD
+    equity
+
+2026-01-03
+    assets             =* 20 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 10 EUR
+    assets        0 USD =* 20 USD
+    assets:cash   0 EUR = 10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = -10 EUR
+    equity        0 USD = -20 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR 10, USD 12 to 5, repeated
+<
+2026-01-01
+    assets:cash        10 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 5 USD
+    assets             =* 5 USD
+    equity
+
+2026-01-03
+    assets             =* 5 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 10 EUR
+    assets        0 USD =* 5 USD
+    assets:cash   0 EUR = 10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = -10 EUR
+    equity        0 USD = -5 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR 10, USD 12 to 12, repeated
+<
+2026-01-01
+    assets:cash        10 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 12 USD
+    assets             =* 12 USD
+    equity
+
+2026-01-03
+    assets             =* 12 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 10 EUR
+    assets        0 USD =* 12 USD
+    assets:cash   0 EUR = 10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = -10 EUR
+    equity        0 USD = -12 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR 10, USD 12 to 0, repeated
+<
+2026-01-01
+    assets:cash        10 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 0 USD
+    assets             =* 0 USD
+    equity
+
+2026-01-03
+    assets             =* 0 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 10 EUR
+    assets        0 USD =* 0 USD
+    assets:cash   0 EUR = 10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = -10 EUR
+    equity        0 USD = 0 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR 10, USD -12 to -20, repeated
+<
+2026-01-01
+    assets:cash        10 EUR
+    assets:cash        -12 USD
+    equity
+
+2026-01-02
+    assets             =* -20 USD
+    assets             =* -20 USD
+    equity
+
+2026-01-03
+    assets             =* -20 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 10 EUR
+    assets        0 USD =* -20 USD
+    assets:cash   0 EUR = 10 EUR
+    assets:cash   0 USD = -12 USD
+    equity        0 EUR = -10 EUR
+    equity        0 USD = 20 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR 10, USD -12 to 20, repeated
+<
+2026-01-01
+    assets:cash        10 EUR
+    assets:cash        -12 USD
+    equity
+
+2026-01-02
+    assets             =* 20 USD
+    assets             =* 20 USD
+    equity
+
+2026-01-03
+    assets             =* 20 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 10 EUR
+    assets        0 USD =* 20 USD
+    assets:cash   0 EUR = 10 EUR
+    assets:cash   0 USD = -12 USD
+    equity        0 EUR = -10 EUR
+    equity        0 USD = -20 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR -10, USD 12 to 20, repeated
+<
+2026-01-01
+    assets:cash        -10 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 20 USD
+    assets             =* 20 USD
+    equity
+
+2026-01-03
+    assets             =* 20 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* -10 EUR
+    assets        0 USD =* 20 USD
+    assets:cash   0 EUR = -10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = 10 EUR
+    equity        0 USD = -20 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR -10, USD 12 to 5, repeated
+<
+2026-01-01
+    assets:cash        -10 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 5 USD
+    assets             =* 5 USD
+    equity
+
+2026-01-03
+    assets             =* 5 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* -10 EUR
+    assets        0 USD =* 5 USD
+    assets:cash   0 EUR = -10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = 10 EUR
+    equity        0 USD = -5 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR -10, USD 12 to 12, repeated
+<
+2026-01-01
+    assets:cash        -10 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 12 USD
+    assets             =* 12 USD
+    equity
+
+2026-01-03
+    assets             =* 12 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* -10 EUR
+    assets        0 USD =* 12 USD
+    assets:cash   0 EUR = -10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = 10 EUR
+    equity        0 USD = -12 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR -10, USD 12 to 0, repeated
+<
+2026-01-01
+    assets:cash        -10 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 0 USD
+    assets             =* 0 USD
+    equity
+
+2026-01-03
+    assets             =* 0 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* -10 EUR
+    assets        0 USD =* 0 USD
+    assets:cash   0 EUR = -10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = 10 EUR
+    equity        0 USD = 0 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR -10, USD -12 to -20, repeated
+<
+2026-01-01
+    assets:cash        -10 EUR
+    assets:cash        -12 USD
+    equity
+
+2026-01-02
+    assets             =* -20 USD
+    assets             =* -20 USD
+    equity
+
+2026-01-03
+    assets             =* -20 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* -10 EUR
+    assets        0 USD =* -20 USD
+    assets:cash   0 EUR = -10 EUR
+    assets:cash   0 USD = -12 USD
+    equity        0 EUR = 10 EUR
+    equity        0 USD = 20 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR -10, USD -12 to 20, repeated
+<
+2026-01-01
+    assets:cash        -10 EUR
+    assets:cash        -12 USD
+    equity
+
+2026-01-02
+    assets             =* 20 USD
+    assets             =* 20 USD
+    equity
+
+2026-01-03
+    assets             =* 20 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* -10 EUR
+    assets        0 USD =* 20 USD
+    assets:cash   0 EUR = -10 EUR
+    assets:cash   0 USD = -12 USD
+    equity        0 EUR = 10 EUR
+    equity        0 USD = -20 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR 0, USD 12 to 20, repeated
+<
+2026-01-01
+    assets:cash        0 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 20 USD
+    assets             =* 20 USD
+    equity
+
+2026-01-03
+    assets             =* 20 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 0 EUR
+    assets        0 USD =* 20 USD
+    assets:cash   0 EUR = 0 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = 0 EUR
+    equity        0 USD = -20 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR 0, USD 12 to 5, repeated
+<
+2026-01-01
+    assets:cash        0 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 5 USD
+    assets             =* 5 USD
+    equity
+
+2026-01-03
+    assets             =* 5 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 0 EUR
+    assets        0 USD =* 5 USD
+    assets:cash   0 EUR = 0 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = 0 EUR
+    equity        0 USD = -5 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR 0, USD 12 to 12, repeated
+<
+2026-01-01
+    assets:cash        0 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 12 USD
+    assets             =* 12 USD
+    equity
+
+2026-01-03
+    assets             =* 12 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 0 EUR
+    assets        0 USD =* 12 USD
+    assets:cash   0 EUR = 0 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = 0 EUR
+    equity        0 USD = -12 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR 0, USD 12 to 0, repeated
+<
+2026-01-01
+    assets:cash        0 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 0 USD
+    assets             =* 0 USD
+    equity
+
+2026-01-03
+    assets             =* 0 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 0 EUR
+    assets        0 USD =* 0 USD
+    assets:cash   0 EUR = 0 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = 0 EUR
+    equity        0 USD = 0 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR 0, USD -12 to -20, repeated
+<
+2026-01-01
+    assets:cash        0 EUR
+    assets:cash        -12 USD
+    equity
+
+2026-01-02
+    assets             =* -20 USD
+    assets             =* -20 USD
+    equity
+
+2026-01-03
+    assets             =* -20 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 0 EUR
+    assets        0 USD =* -20 USD
+    assets:cash   0 EUR = 0 EUR
+    assets:cash   0 USD = -12 USD
+    equity        0 EUR = 0 EUR
+    equity        0 USD = 20 USD
+
+$ hledger -f- check
+
+# Partial inclusive: EUR 0, USD -12 to 20, repeated
+<
+2026-01-01
+    assets:cash        0 EUR
+    assets:cash        -12 USD
+    equity
+
+2026-01-02
+    assets             =* 20 USD
+    assets             =* 20 USD
+    equity
+
+2026-01-03
+    assets             =* 20 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 0 EUR
+    assets        0 USD =* 20 USD
+    assets:cash   0 EUR = 0 EUR
+    assets:cash   0 USD = -12 USD
+    equity        0 EUR = 0 EUR
+    equity        0 USD = -20 USD
+
+$ hledger -f- check
+
+# Nested accounts, siblings and similar names are counted correctly
+<
+2026-01-01
+    assets                 7 EUR
+    assets                 3 USD
+    assets:cash            3 EUR
+    assets:cash:coins      7 EUR
+    assets:savings         5 USD
+    assets:savings:usd     7 USD
+    assets-other          99 EUR
+    assets2               99 USD
+    liabilities:assets    99 USD
+    equity
+
+2026-01-02
+    assets                 =* 20 USD
+    equity
+
+2026-01-03
+    assets            0 EUR =* 17 EUR
+    assets            0 USD =* 20 USD
+    assets            0 EUR = 7 EUR
+    assets            0 USD = 8 USD
+    assets-other      0 EUR = 99 EUR
+    assets2           0 USD = 99 USD
+    liabilities:assets 0 USD = 99 USD
+
+$ hledger -f- check
+
+# Changing USD, EUR and USD targets, same transaction: False
+<
+2026-01-01
+    assets:cash        10 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 20 USD
+    equity
+
+2026-01-03
+    assets             =* 15 EUR
+    assets             =* 22 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 15 EUR
+    assets        0 USD =* 22 USD
+    assets        0 EUR = 5 EUR
+    assets        0 USD = 10 USD
+    equity        0 EUR = -15 EUR
+    equity        0 USD = -22 USD
+
+$ hledger -f- check
+
+# Changing USD, EUR and USD targets, same transaction: True
+<
+2026-01-01
+    assets:cash        10 EUR
+    assets:cash        12 USD
+    equity
+
+2026-01-02
+    assets             =* 20 USD
+    assets             =* 15 EUR
+    assets             =* 22 USD
+    equity
+
+2026-01-04
+    assets        0 EUR =* 15 EUR
+    assets        0 USD =* 22 USD
+    assets        0 EUR = 5 EUR
+    assets        0 USD = 10 USD
+    equity        0 EUR = -15 EUR
+    equity        0 USD = -22 USD
+
+$ hledger -f- check
+
+# Dates determine assignment state, while same-day and posting order are retained
+<
+2026-01-02
+    assets:cash    10 EUR
+    assets:cash    12 USD
+    assets         =* 20 USD
+    equity
+
+2026-01-04
+    assets:cash     2 EUR
+    equity
+
+2026-01-03
+    assets          =* 20 USD
+    equity
+
+2026-01-01
+    assets:cash     5 EUR
+    equity
+
+2026-01-05
+    assets        0 EUR =* 17 EUR
+    assets        0 USD =* 20 USD
+    assets:cash   0 EUR = 17 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = -17 EUR
+    equity        0 USD = -20 USD
+
+$ hledger -f- check
+
+# Explicit zero remains a partial inclusive assertion
+<
+2026-01-01
+    assets:cash    10 EUR
+    assets:cash    12 USD
+    equity
+
+2026-01-02
+    assets         0 USD =* 12 USD
+    equity          = 0 GBP
+
+2026-01-03
+    assets        0 EUR =* 10 EUR
+    assets        0 USD =* 12 USD
+    equity        0 EUR = -10 EUR
+    equity        0 USD = -12 USD
+
+$ hledger -f- check
+
+# Partial inclusive virtual assignments preserve other commodities
+<
+2026-01-01
+    (assets:cash)    10 EUR
+    (assets:cash)    12 USD
+    (equity)       -10 EUR
+    (equity)       -12 USD
+
+2026-01-02
+    (assets)          =* 20 USD
+    (assets)          =* 20 USD
+    (equity)        -8 USD
+
+2026-01-03
+    (assets)       0 EUR =* 10 EUR
+    (assets)       0 USD =* 20 USD
+    (equity)       0 EUR = -10 EUR
+    (equity)       0 USD = -20 USD
+
+$ hledger -f- check
+
+# Partial inclusive balanced virtual assignments preserve other commodities
+<
+2026-01-01
+    [assets:cash]    10 EUR
+    [assets:cash]    12 USD
+    [equity]       -10 EUR
+    [equity]       -12 USD
+
+2026-01-02
+    [assets]          =* 20 USD
+    [assets]          =* 20 USD
+    [equity]        -8 USD
+
+2026-01-03
+    [assets]       0 EUR =* 10 EUR
+    [assets]       0 USD =* 20 USD
+    [equity]       0 EUR = -10 EUR
+    [equity]       0 USD = -20 USD
+
+$ hledger -f- check
+
+# Real assignments include virtual postings in the existing running-balance scope
+<
+2026-01-01
+    assets:cash     10 EUR
+    equity         -10 EUR
+    (assets:cash)   12 USD
+    (equity)       -12 USD
+
+2026-01-02
+    assets             =* 20 USD
+    equity
+
+2026-01-03
+    assets        0 USD = 8 USD
+    assets        0 EUR =* 10 EUR
+    assets        0 USD =* 20 USD
+    equity        0 EUR = -10 EUR
+    equity        0 USD = -20 USD
+
+$ hledger -f- check
+
+# Leaf assignments preserve other commodities
+<
+2026-01-01
+    assets:cash    10 EUR
+    assets:cash    12 USD
+    equity
+
+2026-01-02
+    assets:cash        =* 20 USD
+    assets:cash        =* 20 USD
+    equity
+
+2026-01-03
+    assets:cash   0 EUR = 10 EUR
+    assets:cash   0 USD = 20 USD
+    equity        0 EUR = -10 EUR
+    equity        0 USD = -20 USD
+
+$ hledger -f- check
+
+# Fractional amounts retain their exact quantities despite display precision
+<
+commodity EUR 1.00
+commodity USD 1.00
+
+2026-01-01
+    assets:cash    0.006 EUR
+    assets:cash    0.006 USD
+    equity
+
+2026-01-02
+    assets             =* 0.012 USD
+    equity
+
+2026-01-03
+    assets        0 EUR =* 0.006 EUR
+    assets        0 USD =* 0.012 USD
+
+$ hledger -f- check
+
+# Total inclusive zero assignments still remove other currencies
+<
+2026-01-01
+    assets             7 EUR
+    assets:cash      -10 EUR
+    assets:cash       12 USD
+    equity
+
+2026-01-02
+    assets             ==* 0 USD
+    equity
+
+2026-01-03
+    assets        0 EUR =* 0 EUR
+    assets        0 USD =* 0 USD
+    assets        0 EUR = 10 EUR
+    assets        0 USD = -12 USD
+    assets:cash   0 EUR = -10 EUR
+    assets:cash   0 USD = 12 USD
+    equity        0 EUR = 0 EUR
+    equity        0 USD = 0 USD
+
+$ hledger -f- check
+
+# Commodity aliases with a quantity are converted before other commodities are preserved
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (b:x)   10 min
+    (b:x)   10 min
+    (b:x)   10 min
+    (b:y)    5 EUR
+
+2026-01-02
+    (b)           =* 1 h
+
+2026-01-03
+    (b)     0 h   =* 1 h
+    (b)     0 EUR =* 5 EUR
+    (b)     0 h   = 0.5 h
+    (b)     0 EUR = 0 EUR
+
+$ hledger -f- check
+
+# Other commodities held in an alias by both the account and its subaccounts are preserved exactly
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (p)     10 min
+    (p:c)   10 min
+
+2026-01-02
+    (p)            =* 1 EUR
+
+$ hledger -f- print -x date:2026-01-02
+2026-01-02
+    (p)                                            1 EUR =* 1 EUR
+
+>=
+
+# Assigned amounts written in an alias are converted
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (b:x)   10 min
+    (b:x)   10 min
+    (b:x)   10 min
+    (b:y)    5 EUR
+
+2026-01-02
+    (b)           =* 30 min
+
+2026-01-03
+    (b)           =* 60 min
+
+2026-01-04
+    (b)     0 h   =* 1 h
+    (b)     0 EUR =* 5 EUR
+    (b)     0 h   = 0.5 h
+    (b)     0 EUR = 0 EUR
+
+$ hledger -f- check
+
+# Postings inferred from assignments written in an alias
+<
+commodity h 1.00  ; alias: 60 min
+
+2026-01-01
+    (b:x)   10 min
+    (b:x)   10 min
+    (b:x)   10 min
+    (b:y)    5 EUR
+
+2026-01-02
+    (b)            =* 30 min
+
+2026-01-03
+    (b)            =* 60 min
+
+$ hledger -f- print -x date:2026-01-02-
+2026-01-02
+    (b)                                            0 =* h 0.5
+
+2026-01-03
+    (b)                                          h 0.50 =* h 1
+
+>=

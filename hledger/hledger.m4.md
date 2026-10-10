@@ -2728,6 +2728,12 @@ The calculated amount depends on the account's balance in the commodity at that 
 (which depends on the previously-dated postings of the commodity to that account
 since the last balance assertion or assignment).
 
+As with balance assertions, `=` and `=*` assign only the specified commodity,
+preserving balances in other commodities. `=*` includes subaccount balances;
+`==` and `==*` also set other commodity balances to zero in their respective scopes.
+An inclusive assignment adjusts the parent account's posting amount, leaving
+existing subaccount postings unchanged.
+
 Downsides: using balance assignments makes your journal less explicit;
 to know the exact amount posted, you have to run hledger or do the
 calculations yourself, instead of just reading it.  Also balance
