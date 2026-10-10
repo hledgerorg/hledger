@@ -2288,7 +2288,8 @@ Aliases are accepted by `hledger check commodities`.
 An alias can also have a quantity, for a unit of a different size.
 This is the number of alias units equal to one unit of the commodity.
 Amounts written with the alias are divided by it, and their unit costs and market prices are multiplied by it.
-The converted amounts get the commodity's display precision (or more, if needed to show an exactly converted amount fully).
+The converted amounts get the commodity's display precision (or more, if needed to show an exactly converted amount fully),
+which is also how they count in [transaction balancing](#how-balancing-is-checked).
 Eg, here a kilobuck is 1000 dollars and an hour is 60 minutes:
 
 ```journal
@@ -5573,6 +5574,7 @@ and they can have up to 255 decimal places (and any number of digits in the inte
 Addition, subtraction and multiplication are exact (as long as the result needs no more than 255 decimal places).
 Division can produce a non-terminating decimal (like 1/3 = 0.333...); hledger rounds these to 255 decimal places.
 The error is less than 10^-250, too small to affect transaction balancing or reports at normal display precisions.
+When hledger shows such a rounded amount in full, eg in `print` output, it shows 8 decimal places.
 
 ## Where hledger divides
 
@@ -5586,7 +5588,8 @@ Here's when that happens:
 | Using a [reverse market price](#finding-market-price) | 1 / price | None |
 | Averaging lot costs, with the AVERAGE [cost basis methods](#cost-basis-methods) or in [holdings](#holdings) | total cost / total quantity | None |
 | Inferring costs from [equity conversion postings](#equity-conversion-postings) | one amount / the other | None |
-| Converting amounts written with a [commodity alias](#commodity-aliases) that has a quantity | amount / alias quantity | None in calculations: unit costs are replaced by exact total costs, and balance assertions convert the alias amounts' total (so three `10 min` amounts sum to exactly `0.5 h`). `print -x` shows converted amounts with all their decimal places (8 for a repeating decimal). |
+| Inferring a unit cost for several postings in one commodity, in an [implicit conversion](#costs) | total / quantity | None in calculations. `print -x` shows it with 8 decimal places (more if the commodities' decimal places add up to more), so text copied from it is slightly rounded. |
+| Converting amounts written with a [commodity alias](#commodity-aliases) that has a quantity | amount / alias quantity | None in calculations: unit costs are replaced by exact total costs, and balance assertions convert the alias amounts' total (so three `10 min` amounts satisfy a `= 0.5 h` assertion). `print -x` shows converted amounts with all their decimal places (8 for a repeating decimal). |
 | Calculating averages (eg `-A`) and percentages (eg `-%`) in reports | total / count, part / total | None: these are displayed rounded |
 | Converting times to hours in [timeclock](#timeclock) entries, and [timedot](#timedot) durations written in minutes or seconds (`10m`) | time / hour length | Negligible: each is rounded at the 255th decimal place, so eg three `10m` timedot entries total 0.50 hours, as displayed. But that total isn't exactly 0.5, so a balance assertion of `0.5` hours on it would fail. Reports show durations with 2 decimal places; `print` shows a repeating decimal with 8 (`0.16666667`). |
 | Calculating rates of return: [roi](#roi)'s IRR and TWR, and [holdings](#holdings)' XIRR column | various | Rates are approximate (calculated with floating point numbers; IRR and XIRR by iteration) |
