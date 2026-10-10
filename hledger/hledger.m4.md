@@ -4178,44 +4178,36 @@ atm withdrawal fee  | expenses:banking |
 transfer to savings |                  | 1
 ```
 
-Note, the delimiter character in an ifs table is unrelated to the one used in the CSV file.
-It must appear the same number of times in each line of the table,
+The delimiter must appear the same number of times in each line of the table,
 and it must not appear in the field names, matchers, or values used in the table
 (though inside `%{...}` expressions is ok). You cannot escape it with a backslash.
 
-It's hard to find a delimiter character that never clashes with anything,
-so the flexibility can be useful. Eg:
+Note, the delimiter in an ifs table is unrelated to the one used in the data file
+(consider avoiding `,` or `;`, because they look confusing).
 
-- `,` and `;` are common as field separators in data files, so using them might cause confusion
-- `|` looks good, but then you can't use it as the regular expression "or" operator in the matchers
-- `!` is also readable, but then you can't begin a line with a negated matcher, or set a `!` status mark
-- `` ` `` (backquote) might be a good choice to minimise clashing.
-
-Some examples:
+In fact, it's hard to find a delimiter character that never clashes with anything,
+so the flexibility can be useful. Some examples:
 
 ```rules
-ifs                             | account2         | comment
-%amount [0-9]{4,}               |                  | TODO: large amount, check it
-atm withdrawal fee              | expenses:banking |
-Plumbing LLC                    | expenses:home    |
-cafe                            | expenses:dining  |
-cafe && ! %amount [0-9][0-9]+\. | expenses:snack   |
+# | as delimiter; can use a leading !, can't use regex | operator
+ifs                     | account2          | comment
+! %amount [0-9][0-9]+\. | expenses:misc     |
+%desc amazon            | expenses:shopping |
+%desc amzn              | expenses:shopping |
+%amount [0-9]{4,}       |                   | TODO: large amount, check it
 ```
 
 ```rules
+# ! as delimiter; can't use leading !, can use regex |
 ifs               ! account2
 %desc amazon|amzn ! expenses:shopping
-cafe              ! expenses:dining
 ```
 
 ```rules
-ifs                             ` account2          ` comment
-%amount [0-9]{4,}               `                   ` TODO: large amount, check it
-atm withdrawal fee              ` expenses:banking  `
-Plumbing LLC                    ` expenses:home     `
-cafe                            ` expenses:dining   `
-cafe && ! %amount [0-9][0-9]+\. ` expenses:snack    `
-%desc amazon|amzn               ` expenses:shopping `
+# ` as delimiter; can use both leading ! and regex |
+ifs                     ` account2
+! %amount [0-9][0-9]+\. ` expenses:misc
+%desc amazon|amzn       ` expenses:shopping
 ```
 
 ## `end`
