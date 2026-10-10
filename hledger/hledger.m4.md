@@ -6624,6 +6624,7 @@ Note hledger 2's lot processing happens only for entries that use lot notation, 
 If you have hledger 1 journal files that you want to migrate, or use with both hledger 1 and hledger 2,
 see [hledger 1 and hledger 2](#hledger-1-and-hledger-2).
 
+For practical advice on turning on lot tracking in an existing journal, see [Start tracking lots](https://hledger.org/start-tracking-lots.html).
 For a more technical version of what's in this manual, see [SPEC-lots](/SPEC-lots.html).
 
 ## First lots example
