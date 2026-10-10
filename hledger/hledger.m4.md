@@ -3074,50 +3074,6 @@ The following kinds of rule can appear in the rules file, in any order.
 [Working with CSV](#working-with-csv) tips
 and [How CSV rules are evaluated](#how-csv-rules-are-evaluated) can be found below.
 
-## CSV fields vs hledger fields
-
-The main task of CSV rules is to convert **CSV fields** to **hledger fields**.
-It's important to know which is which, when you are creating rules:
-
-1. CSV fields
-   - are the parts of the records (lines) in your CSV data
-   - are referenced by their position or assigned name, with a `%` prefix (eg `%1` or `%date`)
-   - are read-only.
-
-2. hledger fields
-   - are the parts of a hledger journal entry (see [hledger field names](#hledger-field-names))
-     (eg `date`, `description`, `account1`, `amount1`)
-   - are assigned to by rules, to construct a journal entry
-   - can be referenced by their name, without a `%` prefix, inside a [`%{...}` expression](#functions)
-     (eg `%{description}`; see [Referencing other fields](#referencing-other-fields)).
-
-CSV rules can't make new fields; you can't define your own variables in a rules file.
-(But you could add new CSV fields to the data before running rules, with a preprocessing script.)
-
-It's ok for a CSV field and a hledger field to have the same name;
-in a [`fields`](#fields) list, this causes the CSV field's value to be assigned to the hledger field ("field name punning").
-hledger knows which kind of field is meant from the context:
-in field values and matchers, `%NAME` is a CSV field,
-and a bare `HLEDGERFIELDNAME` inside `%{...}` is a hledger field.
-Some examples:
-
-```rules
-# set the journal entry's date to the value of CSV field 1
-date %1
-```
-```rules
-# name the CSV fields, and use the first as the entry's date
-fields date, bankamt
-
-# test the value of the CSV date field
-if %date 2026
- ...
-```
-```rules
-# add a tag to the hledger comment field, keeping any comment assigned before
-comment %{join(", ", comment, "imported:")}
-```
-
 ## Finding the data
 
 You can name a CSV file on the command line, as in `hledger -f foo.csv CMD`,
@@ -3454,6 +3410,52 @@ Eg, here the overall record order is newest first, but same-day records are olde
 ```rules
 # transactions within each day are reversed with respect to the overall date order
 intra-day-reversed
+```
+
+<a name="csv-fields-vs-hledger-fields"></a>
+
+## CSV fields and hledger fields
+
+The main task of CSV rules is to convert **CSV fields** to **hledger fields**.
+It's important to know which is which, when you are creating rules:
+
+1. CSV fields
+   - are the parts of the records (lines) in your CSV data
+   - are referenced by their position or assigned name, with a `%` prefix (eg `%1` or `%date`)
+   - are read-only.
+
+2. hledger fields
+   - are the parts of a hledger journal entry (see [hledger field names](#hledger-field-names))
+     (eg `date`, `description`, `account1`, `amount1`)
+   - are assigned to by rules, to construct a journal entry
+   - can be referenced by their name, without a `%` prefix, inside a [`%{...}` expression](#functions)
+     (eg `%{description}`; see [Referencing other fields](#referencing-other-fields)).
+
+CSV rules can't make new fields; you can't define your own variables in a rules file.
+(But you could add new CSV fields to the data before running rules, with a preprocessing script.)
+
+It's ok for a CSV field and a hledger field to have the same name;
+in a [`fields`](#fields) list, this causes the CSV field's value to be assigned to the hledger field ("field name punning").
+hledger knows which kind of field is meant from the context:
+in field values and matchers, `%NAME` is a CSV field,
+and a bare `HLEDGERFIELDNAME` inside `%{...}` is a hledger field.
+Some examples:
+
+```rules
+# set the journal entry's date to the value of CSV field 1
+date %1
+```
+```rules
+# name the CSV fields, and use the first as the entry's date
+fields date, bankamt
+
+# test the value of the CSV date field
+if %date 2026
+ ...
+```
+```rules
+# add a tag to the hledger comment field, keeping any comment assigned before
+comment %{join(", ", comment, "imported:")}
 ```
 
 <a name="fields-list"></a>
@@ -4043,10 +4045,10 @@ When using these, there's two things to be aware of:
    Eg when reading an SSV record like:   `2023-01-01 ; "Acme, Inc. " ;  1,000`\
    the whole record matcher sees instead: `2023-01-01,Acme, Inc. ,1,000`
 
-2. Field matchers expect either a CSV field number, or a [CSV field name](#csv-fields-vs-hledger-fields) declared with [`fields`](#fields).
+2. Field matchers expect either a CSV field number, or a [CSV field name](#csv-fields-and-hledger-fields) declared with [`fields`](#fields).
    Anything else will cause it to match against the empty string, and probably fail silently
    (this makes it easier to reuse common rules with different CSV files).
-   Don't use a hledger field name here (see [CSV fields vs hledger fields](#csv-fields-vs-hledger-fields)).
+   Don't use a hledger field name here (see [CSV fields and hledger fields](#csv-fields-and-hledger-fields)).
 
 You can also prefix a matcher with `!` to negate it.
 Eg `! whole foods`, `! %3 whole foods`, `!%description whole foods` will match if "whole foods" is NOT present.
