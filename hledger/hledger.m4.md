@@ -2751,6 +2751,37 @@ $ hledger print --explicit
     (a)         $1 @ €2 = $1 @ €2
 ```
 
+#### Balance assignments and subaccounts
+
+[Subaccount-inclusive](#assertions-and-subaccounts) balance assignments (`=*` or `==*`) are also supported.
+The calculated amount is posted to the account named, making its balance including subaccounts equal the assigned balance;
+the subaccounts' balances are not changed.
+`=*` sets the balance in just the assigned commodity, while `==*` also clears any other commodities.
+
+```journal
+2026-01-01
+  liabilities:card    $-30
+  liabilities:loan   $-200
+  expenses
+
+2026-01-15 a windfall pays off all liabilities
+  liabilities        ==* $0
+  income:windfall
+```
+```cli
+$ hledger print --explicit date:2026-01-15
+2026-01-15 a windfall pays off all liabilities
+    liabilities                                 $230 ==* $0
+    income:windfall                            $-230
+
+$ hledger bal liabilities
+                $230  liabilities
+                $-30  liabilities:card
+               $-200  liabilities:loan
+--------------------
+                   0  
+```
+
 #### Balance assignments and multiple files
 
 Balance assignments handle multiple files [like balance assertions](#assertions-and-multiple-files).

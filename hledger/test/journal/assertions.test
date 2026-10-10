@@ -440,7 +440,29 @@ $ hledger -f- print -x
 
 >=0
 
-# ** 28. When balance assignment with a cost generates two postings in one commodity,
+# ** 28. An inclusive single-commodity balance assignment leaves other commodities alone,
+# including those in subaccounts. (#2772)
+<
+2026-01-01
+    (a)       $1
+    (a:b)     $2
+    (a:b)     2 EUR
+
+2026-01-02
+    (a)       =* $0
+
+$ hledger -f- print -x
+2026-01-01
+    (a)                                           $1
+    (a:b)                                         $2
+    (a:b)                                          2 EUR
+
+2026-01-02
+    (a)                                          $-3 =* $0
+
+>=0
+
+# ** 29. When balance assignment with a cost generates two postings in one commodity,
 # the balance assertion appears only on the last, not both. (#1965)
 <
 2022-01-01
@@ -460,7 +482,7 @@ $ hledger -f- print -x date:2022-01-02
 
 >=
 
-# ** 29. -10 A should be inferred for a.
+# ** 30. -10 A should be inferred for a.
 # And the 0 B balaance assertion should ignore costs and succeed,
 # even though the balance is 1 B @@ 10 A - 1 B. (#2150)
 <
@@ -478,7 +500,7 @@ $ hledger -f- print -x date:2022-01-02
 
 $ hledger -f - check
 
-# ** 30. -s overrides -I
+# ** 31. -s overrides -I
 <
 2024-01-01
   (a)      1 = 2
@@ -487,7 +509,7 @@ $ hledger -f - check -I -s
 >2 /Balance assertion failed/
 >=1
 
-# ** 31. hledger check assertions overrides -I
+# ** 32. hledger check assertions overrides -I
 <
 2024-01-01
   (a)      1 = 2
@@ -496,11 +518,11 @@ $ hledger -f - check assertions -I
 >2 /Balance assertion failed/
 >=1
 
-# ** 32. Assertions don't see balances from previous sibling -f files
+# ** 33. Assertions don't see balances from previous sibling -f files
 $ hledger check assertions -f assertions1.j -f assertions2.j
 >2 /assertion failed/
 >= 1
 
-# ** 33. Assertions do see balances from parents and previous siblings/children in an include hierarchy
+# ** 34. Assertions do see balances from parents and previous siblings/children in an include hierarchy
 $ hledger check assertions -f assertions11.j
 
