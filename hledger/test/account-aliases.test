@@ -420,3 +420,47 @@ $ hledger -f- --alias c=C print
     C
 
 >=
+
+# ** 29. Alias directives are applied to account names as written, before apply account's
+# parent account is added, as in Ledger. So a file's aliases keep working when it is
+# included under apply account. (#2733)
+<
+apply account Namespace
+alias Baz = Bar
+account Foo
+account Bar
+
+2026-01-01
+    Foo  -1
+    Baz   1
+$ hledger -f- check accounts
+
+# ** 30. Likewise an alias: tag under apply account; the parent account is added once.
+<
+apply account biz
+account assets:checking    ; alias: chk
+
+2026-01-01
+    chk    1
+    equity
+$ hledger -f- print
+2026-01-01
+    biz:assets:checking                            1
+    biz:equity
+
+>=
+
+# ** 31. --alias options are applied to the full account names, after the parent account is added.
+<
+apply account biz
+alias food = expenses:food
+
+2026-01-01
+    food    1
+    equity
+$ hledger -f- print --alias biz:expenses=spending
+2026-01-01
+    spending:food                                  1
+    biz:equity
+
+>=

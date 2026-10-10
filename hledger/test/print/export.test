@@ -73,7 +73,7 @@ P 2024-01-01 EUR $1.10
 
 2024-01-02 * (123) Foo  ; txn comment
     ; another txn comment line
-    top:food                                      $5  ; posting comment
+    top:expenses:food                             $5  ; posting comment
     top:assets:cash
 
 comment

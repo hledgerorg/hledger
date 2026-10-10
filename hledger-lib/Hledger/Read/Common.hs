@@ -80,6 +80,9 @@ module Hledger.Read.Common (
 
   -- ** account names
   modifiedaccountnamep,
+  aliasedaccountnamep,
+  applyParentAndOptionAliases,
+  accountNameApplyModifiers,
   accountnamep,
   accountnamenosemicolonp,
 
@@ -227,15 +230,16 @@ readerReadsOwnInput r = case rFormat r of
 -- at the given path and converts it to an unfinalised journal, with lists in reverse order
 -- as journalFinalise expects. This is for readers of non-journal formats like CSV.
 -- The megaparsec input is ignored; the file path is taken from the parse state's include file stack.
--- The account aliases in effect (from alias directives and --alias options) are applied to the result,
--- as they would be for inlined journal entries.
+-- The account aliases in effect (from alias directives, then --alias options) are applied to the result,
+-- as they would be for inlined journal entries (but not the parent account from apply account directives;
+-- see 'accountNameApplyModifiers').
 -- Any error, including an IO error, is rethrown as a final parse error showing the include file stack.
 includeFileParser :: MonadIO m => (FilePath -> ExceptT String IO ParsedJournal) -> ErroringJournalParser m ParsedJournal
 includeFileParser readfn = do
   j <- get
   f <- maybe (finalMessageFailure "includeFileParser: no include file in parse state") (pure . fst) $
        listToMaybe $ jparseincludefilestack j
-  ej <- liftIO $ tryIO $ runExceptT $ readfn f >>= liftEither . journalApplyAliases (jparsealiases j)
+  ej <- liftIO $ tryIO $ runExceptT $ readfn f >>= liftEither . journalApplyAliases (jparsealiases j ++ jparseoptaliases j)
   either (finalMessageFailure . show) (either finalMessageFailure pure) ej
 
 -- | A file path optionally prefixed by a reader name and colon (journal:, csv:, timedot:, etc.).
@@ -919,27 +923,75 @@ yearorintp = do
 --- *** account names
 
 -- | Parse an account name plus one following space if present (see accountnamep);
--- then apply any parent account prefix and/or account aliases currently in effect,
--- in that order. Ie first add the parent account prefix, then rewrite with aliases.
+-- then apply the alias directives, parent account prefix and --alias options currently in effect,
+-- in that order (see 'accountNameApplyModifiers', which explains this).
 -- This calls error if any account alias with an invalid regular expression exists.
 -- The flag says whether account names may include semicolons; currently account names
 -- in journal format may, but account names in timeclock/timedot formats may not.
 modifiedaccountnamep :: Bool -> JournalParser m AccountName
-modifiedaccountnamep allowsemicolon = do
-  parent  <- getParentAccount
-  als     <- getAccountAliases
-  -- off1    <- getOffset
-  a       <- lift $ if allowsemicolon then accountnamep else accountnamenosemicolonp
-  -- off2    <- getOffset
+modifiedaccountnamep allowsemicolon = aliasedaccountnamep allowsemicolon >>= applyParentAndOptionAliases
+
+-- | Parse an account name like modifiedaccountnamep, but apply only the alias directives,
+-- not the parent account prefix or --alias options (see 'accountNameApplyModifiers').
+aliasedaccountnamep :: Bool -> JournalParser m AccountName
+aliasedaccountnamep allowsemicolon = do
+  als <- getAccountAliases
+  a   <- lift $ if allowsemicolon then accountnamep else accountnamenosemicolonp
   -- XXX or accountNameApplyAliasesMemo ? doesn't seem to make a difference (retest that function)
-  case accountNameApplyAliases als $ joinAccountNames parent a of
-    Right a' -> return $! a'
-    -- should not happen, regexaliasp will have displayed a better error already:
-    -- (XXX why does customFailure cause error to be displayed there, but not here ?)
-    -- Left e  -> customFailure $! parseErrorAtRegion off1 off2 err
-    Left e   -> error' err  -- PARTIAL:
-      where
-        err = "problem in account alias applied to "++T.unpack a++": "++e
+  orAliasError a $ accountNameApplyAliases als a
+
+-- | Add the parent account prefix to an account name (with alias directives already applied),
+-- then apply the --alias options (see 'accountNameApplyModifiers').
+-- This calls error if an --alias option has an invalid regular expression.
+applyParentAndOptionAliases :: AccountName -> JournalParser m AccountName
+applyParentAndOptionAliases a = do
+  parent <- getParentAccount
+  optals <- jparseoptaliases <$> get
+  orAliasError a $ accountNameApplyAliases optals $ joinAccountNames parent a
+
+-- | Return an aliased account name, or call error with the alias problem.
+-- This should not happen, regexaliasp will have displayed a better error already.
+-- (XXX why does customFailure cause error to be displayed there, but not here ?)
+orAliasError :: AccountName -> Either RegexError AccountName -> JournalParser m AccountName
+orAliasError _ (Right a') = return $! a'
+orAliasError a (Left e)   = error' $ "problem in account alias applied to "++T.unpack a++": "++e  -- PARTIAL:
+
+-- | Rewrite an account name as written in a journal entry, using the given alias directives
+-- (most recent first), parent account (from apply account directives) and --alias options.
+-- Can fail with a bad replacement pattern in a regular expression alias.
+--
+-- This is the reference for how account names are modified during parsing. There are three modifiers,
+-- applied in this order:
+--
+-- 1. alias directives and account directives' alias: tags (kept in 'jparsealiases'),
+--    applied to the name as written. This is as in Ledger, and it means a file's aliases keep working
+--    when the file is included under apply account (#2733). Before hledger 2, these were applied after step 2.
+--
+-- 2. the parent account from apply account directives ('jparseparentaccounts'), prepended.
+--
+-- 3. --alias options ('jparseoptaliases'), applied to the full account name,
+--    since that is the name users see in reports. These are kept separately from 1,
+--    so that end aliases can forget alias directives without forgetting them.
+--
+-- The code is split up because of a few special cases:
+--
+-- - The parsers apply these in two parts: 'aliasedaccountnamep' does step 1, and
+--   'applyParentAndOptionAliases' does steps 2 and 3. Normally both are used ('modifiedaccountnamep').
+--   But accountdirectivep also needs the name after step 1 only: it is the target of the directive's
+--   alias: tags, which (like alias directives) are applied before step 2, so a target which already
+--   included the parent account would get it added twice.
+--
+-- - The journal reader's fast path for simple transactions (fasttransactionp) does all three steps
+--   with this function, since it works on text rather than in the parser.
+--
+-- - Entries from included CSV/rules files get steps 1 and 3, but not 2 ('includeFileParser').
+--   (Included timeclock/timedot files are parsed with 'modifiedaccountnamep', so they get all three.)
+--
+-- - When a non-journal file is read directly, 'jparseoptaliases' is empty, and its reader
+--   applies step 3 itself after parsing.
+accountNameApplyModifiers :: [AccountAlias] -> AccountName -> [AccountAlias] -> AccountName -> Either RegexError AccountName
+accountNameApplyModifiers als parent optals a =
+  accountNameApplyAliases optals . joinAccountNames parent =<< accountNameApplyAliases als a
 
 -- | Parse an account name, plus one following space if present.
 -- Account names have one or more parts separated by the account separator character,

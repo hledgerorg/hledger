@@ -707,7 +707,11 @@ data Journal = Journal {
   ,jparsedefaultcommodity   :: Maybe (CommoditySymbol,AmountStyle)    -- ^ the current default commodity and its format, specified by the most recent D directive
   ,jparsedecimalmark        :: Maybe DecimalMark                      -- ^ the character to always parse as decimal point, if set by CsvReader's decimal-mark (or a future journal directive)
   ,jparseparentaccounts     :: [AccountName]                          -- ^ the current stack of parent account names, specified by apply account directives
-  ,jparsealiases            :: [AccountAlias]                         -- ^ the current account name aliases in effect, specified by alias directives (& options ?)
+  ,jparsealiases            :: [AccountAlias]                         -- ^ the current account name aliases in effect from alias directives or alias: tags, most recent first.
+                                                                      --   These are applied to account names as written, before any parent account is added (apply account); and end aliases clears them.
+  ,jparseoptaliases         :: [AccountAlias]                         -- ^ the account name aliases from --alias options, in command line order.
+                                                                      --   These are applied to full account names, after a parent account is added; and end aliases does not clear them.
+                                                                      --   Hence they are kept separate from jparsealiases. See Hledger.Read.Common.accountNameApplyModifiers.
   -- ,jparsetransactioncount :: Integer                               -- ^ the current count of transactions parsed so far (only journal format txns, currently)
   ,jparsetimeclockentries   :: [TimeclockEntry]                       -- ^ timeclock sessions which have not been clocked out
   ,jparseincludefilestack   :: [(FilePath, FilePath)]                 -- ^ (absolute path, canonical path) of included files, most recent first

@@ -1,12 +1,13 @@
 # * account directive
 
 # ** 1. "apply account" and "alias" affect "account" directives.
+# Aliases are applied before the parent account is added.
 <
 apply account c
-alias c:a=b
+alias a=b
 account a
 $ hledger -f - accounts
-b
+c:b
 
 # ** 2. account directives can declare account type.
 # Here "asset" is a liability, despite the name. So are its subaccounts.

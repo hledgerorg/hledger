@@ -223,8 +223,7 @@ parse :: InputOpts -> FilePath -> Text -> ExceptT String IO Journal
 parse iopts f = parseAndFinaliseJournal journalp' iopts f
   where
     journalp' = do
-      -- reverse parsed aliases to ensure that they are applied in order given on commandline
-      mapM_ addAccountAlias (reverse $ aliasesFromOpts iopts)
+      modify' (\j -> j{jparseoptaliases = aliasesFromOpts iopts})
       journalp iopts
 
 --- ** parsers
@@ -315,7 +314,7 @@ directivep iopts = (do
    -- (endtagdirectivep consumes "end" before failing, so it must come after the other end directives.)
    ,recordItem JINonExportedDirective $ choice [
      aliasdirectivep
-    ,endaliasesdirectivep iopts
+    ,endaliasesdirectivep
     ,applyaccountdirectivep
     ,endapplyaccountdirectivep
     ,applyfixeddirectivep
@@ -536,6 +535,7 @@ includedirectivep iopts = do
           ,jparseparentaccounts   = jparseparentaccounts j
           ,jparsedecimalmark      = jparsedecimalmark j
           ,jparsealiases          = jparsealiases j
+          ,jparseoptaliases       = jparseoptaliases j
           ,jdeclaredcommodities           = jdeclaredcommodities j
           -- ,jparsetransactioncount = jparsetransactioncount j
           ,jparsetimeclockentries = jparsetimeclockentries j
@@ -567,9 +567,12 @@ accountdirectivep = do
   string "account"
   lift skipNonNewlineSpaces1
 
-  -- the account name, possibly modified by preceding alias or apply account directives
-  acct <- (notFollowedBy (char '(' <|> char '[') <?> "account name without brackets") >>
-          modifiedaccountnamep True
+  -- the account name, possibly modified by preceding alias or apply account directives;
+  -- also kept without the parent account, as the target of any alias: tags below
+  -- (which, like alias directives, are applied before the parent account is added; see accountNameApplyModifiers)
+  aliasedacct <- (notFollowedBy (char '(' <|> char '[') <?> "account name without brackets") >>
+                 aliasedaccountnamep True
+  acct <- applyParentAndOptionAliases aliasedacct
 
   -- maybe a comment, on this and/or following lines
   commentoff <- getOffset
@@ -589,7 +592,7 @@ accountdirectivep = do
   let acctaliases = [v | (n, v) <- tags, T.toLower n == "alias"]
   when (any T.null acctaliases) $ customFailure $ parseErrorAt commentoff
     "an alias: tag on an account directive should have an account name as its value, eg alias: checking"
-  mapM_ (addAccountAlias . (`BasicAlias` acct)) acctaliases
+  mapM_ (addAccountAlias . (`BasicAlias` aliasedacct)) acctaliases
 
   -- update the journal
   addAccountDeclaration (acct, cmt, tags, pos)
@@ -829,13 +832,12 @@ aliasdirectivep = do
   alias <- lift accountaliasp
   addAccountAlias alias
 
-endaliasesdirectivep :: InputOpts -> JournalParser m ()
-endaliasesdirectivep iopts = do
+endaliasesdirectivep :: JournalParser m ()
+endaliasesdirectivep = do
   keywordsp "end aliases" <?> "end aliases directive"
   lift restofline
-  -- forget the aliases from alias directives/tags, but keep any from --alias options
-  -- (these are at the end of the list, in command line order, so they are still applied last)
-  modify' (\j -> j{jparsealiases = aliasesFromOpts iopts})
+  -- forget the aliases from alias directives/tags (--alias options are kept separately; see accountNameApplyModifiers)
+  modify' (\j -> j{jparsealiases = []})
 
 tagdirectivep :: JournalParser m ()
 tagdirectivep = do
@@ -1219,7 +1221,7 @@ data SimpleTransaction = SimpleTransaction {
 -- | The parts of a simple posting recognised by scanSimplePosting.
 data SimplePosting = SimplePosting {
    spStatus   :: !Status
-  ,spAccount  :: !AccountName       -- ^ with the parent account and aliases applied, and brackets removed
+  ,spAccount  :: !AccountName       -- ^ with aliases and the parent account applied, and brackets removed
   ,spRealness :: !PostingRealness
   ,spAmount   :: !(Maybe Amount)
   ,spComment  :: !Text
@@ -1389,14 +1391,13 @@ scanSimpleTransaction j s0 = do
                           ,stTags=concatMap scanTransactionTags $ maybeToList msameline ++ commentlines
                           ,stPostings=sps}, n)
   where
-    parent  = concatAccountNames $ reverse $ jparseparentaccounts j
-    als     = jparsealiases j
+    modifyacct = accountNameApplyModifiers (jparsealiases j) (concatAccountNames $ reverse $ jparseparentaccounts j) (jparseoptaliases j)
     scanPostings year s !n acc = case scanSimpleLine s of
       Just (line, s', k)
         | isIndented line -> do
             -- a posting line, and any following indented comment lines (its comment's continuation)
             let !(commentlines, s'', k') = scanCommentLines s'
-            p <- scanSimplePosting j year parent als line commentlines
+            p <- scanSimplePosting j year modifyacct line commentlines
             scanPostings year s'' (n + k + k') (p : acc)
         | otherwise -> Right (reverse acc, n)
       -- the end of the text, or a line with a CR: in an indented (posting) line that declines,
@@ -1493,14 +1494,14 @@ startsWithSpace = maybe False (isNonNewlineSpace . fst) . T.uncons
 -- | A simple posting line (see fasttransactionp), scanned as postingp parses it: indentation,
 -- an optional status mark, the account name, optionally an amount with cost, and optionally a
 -- same-line comment; and given the texts of its following comment lines (see scanCommentLines).
--- Returns the status, the account name (with the parent account and aliases applied, as
--- modifiedaccountnamep does, and virtual posting brackets removed, as postingp does), the
+-- Returns the status, the account name (with aliases and the parent account applied by the
+-- given function, as modifiedaccountnamep does, and virtual posting brackets removed, as postingp does), the
 -- posting type, the amount if any, the comment text, and the comment's tags and posting dates
 -- (the transaction's year is given for partial dates in those). Declines on a bracketed date
 -- in the comment (which postingcommentp would interpret), a date tag whose value is not a
 -- simple date, a balance assertion or assignment, or anything else after the amount.
-scanSimplePosting :: Journal -> Year -> AccountName -> [AccountAlias] -> Text -> [Text] -> Either Text SimplePosting
-scanSimplePosting j year parent als line commentlines = do
+scanSimplePosting :: Journal -> Year -> (AccountName -> Either RegexError AccountName) -> Text -> [Text] -> Either Text SimplePosting
+scanSimplePosting j year modifyacct line commentlines = do
   -- an optional status mark, as statusp parses it, then spaces
   let (status, body) = case T.uncons $ T.dropWhile isNonNewlineSpace line of
         Just ('*', r) -> (Cleared, T.dropWhile isNonNewlineSpace r)
@@ -1531,7 +1532,7 @@ scanSimplePosting j year parent als line commentlines = do
   tagsanddates <- orDecline "unusual date tag value" $ mapM (scanPostingTags year) comments
   let dates = concatMap snd tagsanddates
   -- as modifiedaccountnamep and postingp do (an alias error declines, to be reported there)
-  full <- either (const $ Left "account alias error") Right $ accountNameApplyAliases als $ joinAccountNames parent name
+  full <- either (const $ Left "account alias error") Right $ modifyacct name
   Right SimplePosting{spStatus=status, spAccount=textUnbracket full, spRealness=accountNamePostingType full, spAmount=mamt
                      ,spComment=commentText msameline commentlines, spTags=concatMap fst tagsanddates
                      ,spDate=lookup "date" dates, spDate2=lookup "date2" dates}

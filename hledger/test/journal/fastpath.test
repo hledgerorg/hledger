@@ -145,9 +145,9 @@ $ HLEDGER_FASTPATH=check hledger -f- print
 
 >=
 
-# ** 3. Parent accounts and aliases are applied; a default commodity directive makes symbol-less amounts decline.
+# ** 3. Alias directives, parent accounts and --alias options are applied; a default commodity directive makes symbol-less amounts decline.
 <
-; Parent accounts and aliases are applied; a default commodity makes symbol-less amounts decline.
+; Alias directives, parent accounts and --alias options are applied; a default commodity makes symbol-less amounts decline.
 alias checking = assets:bank:checking
 apply account home
 
@@ -162,10 +162,10 @@ D 1.000,00 EUR
 2024-01-02
     a    1,5
     b
-$ HLEDGER_FASTPATH=check hledger -f- print
+$ HLEDGER_FASTPATH=check hledger -f- print --alias home:expenses=home:spending
 2024-01-01
-    home:checking                                  1
-    home:expenses:food
+    home:assets:bank:checking                      1
+    home:spending:food
 
 2024-01-02
     a                                              1,50 EUR

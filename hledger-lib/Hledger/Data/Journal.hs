@@ -229,6 +229,7 @@ journalDbg j@Journal{..} = chomp $ unlines $
   ,"jparsedecimalmark: "         <> shw jparsedecimalmark
   ,"jparseparentaccounts: "      <> shw jparseparentaccounts
   ,"jparsealiases: "             <> shw jparsealiases
+  ,"jparseoptaliases: "          <> shw jparseoptaliases
   -- ,"jparsetimeclockentries: " <> shw jparsetimeclockentries
   ,"jparseincludefilestack: "    <> shw jparseincludefilestack
   ,"jdeclaredpayees: "           <> shw jdeclaredpayees
@@ -288,6 +289,7 @@ journalConcat j1 j2 =
     ,jparsedecimalmark          = jparsedecimalmark          j2
     ,jparseparentaccounts       = jparseparentaccounts       j2
     ,jparsealiases              = jparsealiases              j2
+    ,jparseoptaliases           = jparseoptaliases           j2
     -- ,jparsetransactioncount     = jparsetransactioncount     j1 +  jparsetransactioncount     j2
     ,jparsetimeclockentries     = jparsetimeclockentries     j1 <> jparsetimeclockentries     j2
     ,jparseincludefilestack     = jparseincludefilestack j2
@@ -375,6 +377,7 @@ nulljournal = Journal {
   ,jparsedecimalmark          = Nothing
   ,jparseparentaccounts       = []
   ,jparsealiases              = []
+  ,jparseoptaliases           = []
   -- ,jparsetransactioncount     = 0
   ,jparsetimeclockentries     = []
   ,jparseincludefilestack     = []

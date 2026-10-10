@@ -2058,7 +2058,8 @@ In such cases it can be important to understand which aliases will be applied an
 For (each account name in) each journal entry, we apply:
 
 1. `alias` directives preceding the journal entry, most recently parsed first (ie, reading upward from the journal entry, bottom to top)
-2. `--alias` options, in the order they appeared on the command line (left to right).
+2. then any parent account from [`apply account`](#apply-account-directive) directives is prepended
+3. then `--alias` options, in the order they appeared on the command line (left to right).
 
 In other words, for (an account name in) a given journal entry:
 
@@ -2838,7 +2839,11 @@ is equivalent to:
 
 Account names entered via hledger add or hledger-web are not affected.
 
-Account aliases, if any, are applied after the parent account is prepended.
+Account aliases from `alias` directives are applied before the parent account is prepended (as in Ledger),
+so they match the account names as written.
+This means a file's aliases keep working when it is included under `apply account`.
+(Before hledger 2, they were applied after.)
+`--alias` options are applied after the parent account is prepended, so they match the full account names.
 
 Downsides: this can make your financial data less explicit, less portable,
 and less trustworthy in an audit.

@@ -33,6 +33,7 @@ instance Anon Journal where
                , jitems = []  -- verbatim source text, may contain anything
                , jparseparentaccounts  = map anonAccount $ jparseparentaccounts j
                , jparsealiases         = []  -- already applied
+               , jparseoptaliases      = []  -- already applied
                , jdeclaredaccounts     = map (first anon) $ jdeclaredaccounts j
                , jdeclaredaccounttags  = mapKeys anon $ jdeclaredaccounttags j
                , jdeclaredaccounttypes = (map anon) <$> jdeclaredaccounttypes j
