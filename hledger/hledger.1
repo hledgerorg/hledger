@@ -4766,7 +4766,7 @@ roi\(aqs IRR; it includes realised gains).
 .PP
 Fully disposed commodities and accounts are not shown, unless you add
 \f[CR]\-E/\-\-empty\f[R].
-(But the RGain and XIRR in the totals row always includes them.)
+(But the totals row\(aqs RGain and XIRR always include them.)
 .PP
 To see a commodity\(aqs performance, a market price should be declared
 for it (as of the report end date).
@@ -6191,8 +6191,11 @@ the year of the transaction\(aqs date.
 .PD 0
 .P
 .PD
-The \f[CR]date:\f[R] tag must have a valid simple date value if it is
-present, eg a \f[CR]date:\f[R] tag with no value is not allowed.
+A non\-empty \f[CR]date:\f[R] tag value must begin with a valid simple
+date.
+A \f[CR]date:\f[R] tag with an empty value is allowed, and sets no date.
+(To disable a date tag temporarily, without removing the date, insert a
+comma before the date.)
 .SS Status
 Transactions (or individual postings within a transaction) can have a
 status mark, which is a single character before the transaction
@@ -7904,8 +7907,11 @@ For (each account name in) each journal entry, we apply:
 \f[CR]alias\f[R] directives preceding the journal entry, most recently
 parsed first (ie, reading upward from the journal entry, bottom to top)
 .IP "2." 3
-\f[CR]\-\-alias\f[R] options, in the order they appeared on the command
-line (left to right).
+then any parent account from \f[CR]apply account\f[R] directives is
+prepended
+.IP "3." 3
+then \f[CR]\-\-alias\f[R] options, in the order they appeared on the
+command line (left to right).
 .PP
 In other words, for (an account name in) a given journal entry:
 .IP \(bu 2
@@ -8141,7 +8147,8 @@ This is the number of alias units equal to one unit of the commodity.
 Amounts written with the alias are divided by it, and their unit costs
 and market prices are multiplied by it.
 The converted amounts get the commodity\(aqs display precision (or more,
-if needed to show an exactly converted amount fully).
+if needed to show an exactly converted amount fully), which is also how
+they count in transaction balancing.
 Eg, here a kilobuck is 1000 dollars and an hour is 60 minutes:
 .IP
 .EX
@@ -8757,8 +8764,14 @@ is equivalent to:
 .PP
 Account names entered via hledger add or hledger\-web are not affected.
 .PP
-Account aliases, if any, are applied after the parent account is
-prepended.
+Account aliases from \f[CR]alias\f[R] directives are applied before the
+parent account is prepended (as in Ledger), so they match the account
+names as written.
+This means a file\(aqs aliases keep working when it is included under
+\f[CR]apply account\f[R].
+(Before hledger 2, they were applied after.)
+\f[CR]\-\-alias\f[R] options are applied after the parent account is
+prepended, so they match the full account names.
 .PP
 Downsides: this can make your financial data less explicit, less
 portable, and less trustworthy in an audit.
@@ -9086,97 +9099,37 @@ T}
 .PP
 Working with CSV tips and How CSV rules are evaluated can be found
 below.
-.SS CSV fields vs hledger fields
-The main task of CSV rules is to convert \f[B]CSV fields\f[R] to
-\f[B]hledger fields\f[R].
-It\(aqs important to know which is which, when you are creating rules:
-.IP "1." 3
-CSV fields
-.RS 4
-.IP \(bu 2
-are the parts of the records (lines) in your CSV data
-.IP \(bu 2
-are referenced by their position or assigned name, with a \f[CR]%\f[R]
-prefix (eg \f[CR]%1\f[R] or \f[CR]%date\f[R])
-.IP \(bu 2
-are read\-only.
-.RE
-.IP "2." 3
-hledger fields
-.RS 4
-.IP \(bu 2
-are the parts of a hledger journal entry (see hledger field names) (eg
-\f[CR]date\f[R], \f[CR]description\f[R], \f[CR]account1\f[R],
-\f[CR]amount1\f[R])
-.IP \(bu 2
-are assigned to by rules, to construct a journal entry
-.IP \(bu 2
-can be referenced by their name, without a \f[CR]%\f[R] prefix, inside a
-\f[CR]%{...}\f[R] expression (eg \f[CR]%{description}\f[R]; see
-Referencing other fields).
-.RE
-.PP
-CSV rules can\(aqt make new fields; you can\(aqt define your own
-variables in a rules file.
-(But you could add new CSV fields to the data before running rules, with
-a preprocessing script.)
-.PP
-It\(aqs ok for a CSV field and a hledger field to have the same name; in
-a \f[CR]fields\f[R] list, this causes the CSV field\(aqs value to be
-assigned to the hledger field (\(dqfield name punning\(dq).
-hledger knows which kind of field is meant from the context: in field
-values and matchers, \f[CR]%NAME\f[R] is a CSV field, and a bare
-\f[CR]HLEDGERFIELDNAME\f[R] inside \f[CR]%{...}\f[R] is a hledger field.
-Some examples:
-.IP
-.EX
-# set the journal entry\(aqs date to the value of CSV field 1
-date %1
-.EE
-.IP
-.EX
-# name the CSV fields, and use the first as the entry\(aqs date
-fields date, bankamt
-
-# test the value of the CSV date field
-if %date 2026
- ...
-.EE
-.IP
-.EX
-# add a tag to the hledger comment field, keeping any comment assigned before
-comment %{join(\(dq, \(dq, comment, \(dqimported:\(dq)}
-.EE
 .SS Finding the data
-You can name a CSV file on the command line, and hledger will use the
-rules file named like it.
-Or you can name the rules file, and its \f[CR]source\f[R] rule will say
-where the data is.
-The second way is more powerful and convenient for regular imports.
-.SS Reading files specified by rule
-Instead of specifying a CSV file in the command line, you can specify a
-rules file, as in \f[CR]hledger \-f foo.csv.rules CMD\f[R].
+You can name a CSV file on the command line, as in
+\f[CR]hledger \-f foo.csv CMD\f[R], and hledger will use the rules file
+named like it (\f[CR]foo.csv.rules\f[R]).
+.PP
+Or you can name the rules file, as in
+\f[CR]hledger \-f foo.csv.rules CMD\f[R].
 The rules file must then have a \f[CR]source\f[R] rule (described
 below), saying which data file to read (perhaps in your web browser\(aqs
 download directory), or which command to run to get the data.
-(A rules file can also be included by a journal file.)
 .PP
-This and other features like the archive rule below, and the default
-behaviour of the get and import commands, combine to remove the busywork
-of managing CSV downloads.
+The second way is more powerful.
+This and the archive rule below, and the default behaviour of the get
+and import commands, help remove the busywork of managing CSV downloads.
 Ideally, you can periodically
 .IP "1." 3
 Download new CSVs from your banks (perhaps by just running
 \f[CR]hledger get\f[R]).
 .IP "2." 3
-Import new transactions from them all, by just running
-\f[CR]hledger import\f[R] (from the rules files in \f[CR]rules/\f[R]).
+Import new transactions from all the CSVs specified by rules files in
+\f[CR]rules/\f[R], by just running \f[CR]hledger import\f[R].
 .PP
 Or, do both with one command: \f[CR]hledger import \-g\f[R]
 .PP
 After import, you can discard the CSV immediately, or leave it where it
 is for a while, or archive it automatically (to
 \f[CR]data/archive/\f[R]) with the archive rule.
+.PP
+It\(aqs also possible to include a CSV file or rules file in your
+journal, in which case there\(aqs no import step at all; instead, the
+whole CSV is reconverted on each run.
 .SS \f[CR]source\f[R]
 When hledger reads a rules file (\f[CR]\-f foo.csv.rules\f[R]), the
 \f[CR]source\f[R] rule says which data file to read (it is ignored if
@@ -9537,6 +9490,68 @@ are oldest first:
 intra\-day\-reversed
 .EE
 .PP
+.SS CSV fields and hledger fields
+The main task of CSV rules is to convert \f[B]CSV fields\f[R] to
+\f[B]hledger fields\f[R].
+It\(aqs important to know which is which, when you are creating rules:
+.IP "1." 3
+CSV fields
+.RS 4
+.IP \(bu 2
+are the parts of the records (lines) in your CSV data
+.IP \(bu 2
+are referenced by their position or assigned name, with a \f[CR]%\f[R]
+prefix (eg \f[CR]%1\f[R] or \f[CR]%date\f[R])
+.IP \(bu 2
+are read\-only.
+.RE
+.IP "2." 3
+hledger fields
+.RS 4
+.IP \(bu 2
+are the parts of a hledger journal entry (see hledger fields) (eg
+\f[CR]date\f[R], \f[CR]description\f[R], \f[CR]account1\f[R],
+\f[CR]amount1\f[R])
+.IP \(bu 2
+are assigned to by rules, to construct a journal entry
+.IP \(bu 2
+can be referenced by their name, without a \f[CR]%\f[R] prefix, inside a
+\f[CR]%{...}\f[R] expression (eg \f[CR]%{description}\f[R]; see
+Referencing other fields).
+.RE
+.PP
+CSV rules can\(aqt make new fields; you can\(aqt define your own
+variables in a rules file.
+(But you could add new CSV fields to the data before running rules, with
+a preprocessing script.)
+.PP
+It\(aqs ok for a CSV field and a hledger field to have the same name; in
+a \f[CR]fields\f[R] list, this causes the CSV field\(aqs value to be
+assigned to the hledger field (\(dqfield name punning\(dq).
+hledger knows which kind of field is meant from the context: in field
+values and matchers, \f[CR]%NAME\f[R] is a CSV field, and a bare
+\f[CR]HLEDGERFIELDNAME\f[R] inside \f[CR]%{...}\f[R] is a hledger field.
+Some examples:
+.IP
+.EX
+# set the journal entry\(aqs date to the value of CSV field 1
+date %1
+.EE
+.IP
+.EX
+# name the CSV fields, and use the first as the entry\(aqs date
+fields date, bankamt
+
+# test the value of the CSV date field
+if %date 2026
+ ...
+.EE
+.IP
+.EX
+# add a tag to the hledger comment field, keeping any comment assigned before
+comment %{join(\(dq, \(dq, comment, \(dqimported:\(dq)}
+.EE
+.PP
 .SS \f[CR]fields\f[R]
 .IP
 .EX
@@ -9832,7 +9847,8 @@ the field by these rules, before further processing by hledger.
 Eg \f[CR]%{amount1}\f[R] is the amount text before any sign
 simplification, and \f[CR]%{account2}\f[R] is empty if account2 isn\(aqt
 assigned (not \f[CR]expenses:unknown\f[R]).
-.SS hledger field names
+.PP
+.SS hledger fields
 Here are all the hledger fields you can assign to.
 They correspond to parts of a journal entry, or in some cases they are
 pseudo\-fields which have a special effect.
@@ -10335,7 +10351,7 @@ declared with \f[CR]fields\f[R].
 Anything else will cause it to match against the empty string, and
 probably fail silently (this makes it easier to reuse common rules with
 different CSV files).
-Don\(aqt use a hledger field name here (see CSV fields vs hledger
+Don\(aqt use a hledger field name here (see CSV fields and hledger
 fields).
 .PP
 You can also prefix a matcher with \f[CR]!\f[R] to negate it.
@@ -10507,53 +10523,39 @@ atm withdrawal fee  | expenses:banking |
 transfer to savings |                  | 1
 .EE
 .PP
-Note, the delimiter character in an ifs table is unrelated to the one
-used in the CSV file.
-It must appear the same number of times in each line of the table, and
-it must not appear in the field names, matchers, or values used in the
-table (though inside \f[CR]%{...}\f[R] expressions is ok).
+The delimiter must appear the same number of times in each line of the
+table, and it must not appear in the field names, matchers, or values
+used in the table (though inside \f[CR]%{...}\f[R] expressions is ok).
 You cannot escape it with a backslash.
 .PP
-It\(aqs hard to find a delimiter character that never clashes with
-anything, so the flexibility can be useful.
-Eg:
-.IP \(bu 2
-\f[CR],\f[R] and \f[CR];\f[R] are common as field separators in data
-files, so using them might cause confusion
-.IP \(bu 2
-\f[CR]|\f[R] looks good, but then you can\(aqt use it as the regular
-expression \(dqor\(dq operator in the matchers
-.IP \(bu 2
-\f[CR]!\f[R] is also readable, but then you can\(aqt begin a line with a
-negated matcher, or assign \f[CR]!\f[R] as a status mark
-.IP \(bu 2
-\f[CR]\(ga\f[R] (backquote) might be a good choice to minimise clashing.
+Note, the delimiter in an ifs table is unrelated to the one used in the
+data file (consider avoiding \f[CR],\f[R] or \f[CR];\f[R], because they
+look confusing).
 .PP
+In fact, it\(aqs hard to find a delimiter character that never clashes
+with anything, so the flexibility can be useful.
 Some examples:
 .IP
 .EX
-ifs                             | account2         | comment
-%amount [0\-9]{4,}               |                  | TODO: large amount, check it
-atm withdrawal fee              | expenses:banking |
-Plumbing LLC                    | expenses:home    |
-cafe                            | expenses:dining  |
-cafe && ! %amount [0\-9][0\-9]+\(rs. | expenses:snack   |
+# | as delimiter; can use a leading !, can\(aqt use regex | operator
+ifs                     | account2          | comment
+! %amount [0\-9][0\-9]+\(rs. | expenses:misc     |
+%desc amazon            | expenses:shopping |
+%desc amzn              | expenses:shopping |
+%amount [0\-9]{4,}       |                   | TODO: large amount, check it
 .EE
 .IP
 .EX
+# ! as delimiter; can\(aqt use leading !, can use regex |
 ifs               ! account2
 %desc amazon|amzn ! expenses:shopping
-cafe              ! expenses:dining
 .EE
 .IP
 .EX
-ifs                             \(ga account2          \(ga comment
-%amount [0\-9]{4,}               \(ga                   \(ga TODO: large amount, check it
-atm withdrawal fee              \(ga expenses:banking  \(ga
-Plumbing LLC                    \(ga expenses:home     \(ga
-cafe                            \(ga expenses:dining   \(ga
-cafe && ! %amount [0\-9][0\-9]+\(rs. \(ga expenses:snack    \(ga
-%desc amazon|amzn               \(ga expenses:shopping \(ga
+# \(ga as delimiter; can use both leading ! and regex |
+ifs                     \(ga account2
+! %amount [0\-9][0\-9]+\(rs. \(ga expenses:misc
+%desc amazon|amzn       \(ga expenses:shopping
 .EE
 .SS \f[CR]end\f[R]
 The word \f[CR]end\f[R], used inside an \f[CR]if\f[R] or \f[CR]ifs\f[R]
@@ -10682,18 +10684,13 @@ include categorisation.rules
 Since included rules are effectively inlined, and since for most rules
 the last declaration wins, you can override an included file\(aqs rules
 by writing rules after the \f[CR]include\f[R] line.
-.SS Well factored rules
-Some things than can help reduce duplication and complexity in rules
-files:
-.IP \(bu 2
-Extracting common rules usable with multiple CSV files into a
-\f[CR]common.rules\f[R], and adding \f[CR]include common.rules\f[R] to
-each CSV\(aqs rules file.
-.IP \(bu 2
-Splitting \f[CR]if\f[R] rules into smaller \f[CR]if\f[R] rules,
-extracting the frequently used parts.
 .SS Working with CSV
 Some tips for creating rules and importing CSV data regularly:
+.SS CSV rules examples
+For real\-world rules files for many banks, brokers, exchanges and apps,
+see the hledger CSV rules library in the hledger repo.
+These aren\(aqt necessarily maintained, and may need adapting, but they
+are a good source of ideas and examples.
 .SS Rapid feedback
 It\(aqs a good idea to get rapid feedback while creating/troubleshooting
 CSV rules.
@@ -10708,6 +10705,16 @@ interest.
 \(dqbash \-c\(dq is used to run multiple commands, so we can echo a
 separator each time the command re\-runs, making it easier to read the
 output.
+.SS Well factored rules
+Some things that can help reduce duplication and complexity in rules
+files:
+.IP \(bu 2
+Extracting common rules usable with multiple CSV files into a
+\f[CR]common.rules\f[R], and adding \f[CR]include common.rules\f[R] to
+each CSV\(aqs rules file.
+.IP \(bu 2
+Splitting \f[CR]if\f[R] rules into smaller \f[CR]if\f[R] rules,
+extracting the frequently used parts.
 .SS Deduplicating, importing
 When you download a CSV file periodically, eg to get your latest bank
 transactions, the new file may overlap with the old one, containing some
@@ -10826,11 +10833,6 @@ This is all done by the CSV reader, one of several readers hledger can
 use to read transactions from an input file.
 When all input files have been read successfully, their transactions are
 passed to whichever hledger command the user specified.
-.SS CSV rules examples
-For real\-world rules files for many banks, brokers, exchanges and apps,
-see the hledger CSV rules library in the hledger repo.
-These aren\(aqt necessarily maintained, and may need adapting, but they
-are a good source of ideas and examples.
 .PP
 .SH Timeclock
 hledger can read time logs in the timeclock time logging format of
@@ -12346,9 +12348,9 @@ file\(aqs general options:
 \-\-lang de
 .EE
 .PP
-Currently German (\f[CR]de\f[R]) and Simplified Chinese
-(\f[CR]zh\-Hans\f[R], also selected by \f[CR]zh\f[R] or
-\f[CR]zh_CN\f[R]) catalogs are built in.
+Currently German (\f[CR]de\f[R]), Spanish (\f[CR]es\f[R]) and Simplified
+Chinese (\f[CR]zh\f[R], also selected by \f[CR]zh_CN\f[R] or
+\f[CR]zh\-Hans\f[R]) catalogs are built in.
 Catalogs are gettext PO files, which the usual translation tools can
 edit.
 hledger also looks for catalogs in the \f[CR]locale\f[R] subdirectory of
@@ -12391,6 +12393,8 @@ Division can produce a non\-terminating decimal (like 1/3 = 0.333...);
 hledger rounds these to 255 decimal places.
 The error is less than 10\(ha\-250, too small to affect transaction
 balancing or reports at normal display precisions.
+When hledger shows such a rounded amount in full, eg in \f[CR]print\f[R]
+output, it shows 8 decimal places.
 .SS Where hledger divides
 Journal amounts are always written as finite decimals, so
 non\-terminating decimals can arise only where hledger divides.
@@ -12448,13 +12452,24 @@ T}@T{
 None
 T}
 T{
+Inferring a unit cost for several postings in one commodity, in an
+implicit conversion
+T}@T{
+total / quantity
+T}@T{
+None in calculations.
+\f[CR]print \-x\f[R] shows it with 8 decimal places (more if the
+commodities\(aq decimal places add up to more), so text copied from it
+is slightly rounded.
+T}
+T{
 Converting amounts written with a commodity alias that has a quantity
 T}@T{
 amount / alias quantity
 T}@T{
 None in calculations: unit costs are replaced by exact total costs, and
 balance assertions convert the alias amounts\(aq total (so three
-\f[CR]10 min\f[R] amounts sum to exactly \f[CR]0.5 h\f[R]).
+\f[CR]10 min\f[R] amounts satisfy a \f[CR]= 0.5 h\f[R] assertion).
 \f[CR]print \-x\f[R] shows converted amounts with all their decimal
 places (8 for a repeating decimal).
 T}
@@ -15001,6 +15016,12 @@ none of the commodity.
 If it is a short sale, record it in a liability account (see Short
 positions).
 .IP \(bu 2
+For more detail, \f[CR]\-\-debug=5\f[R] (eg
+\f[CR]hledger check \-\-debug=5\f[R]) traces lot processing step by
+step.
+It\(aqs verbose, and mostly useful for advanced troubleshooting or bug
+reports.
+.IP \(bu 2
 To silence lot processing while fixing other problems, use
 \f[CR]\-I\f[R] or \f[CR]\-\-ignore\-lots\f[R].
 .SH Generating data
@@ -16335,6 +16356,15 @@ similar to your bank\(aqs clearing dates.
 .IP "3." 3
 Repeat for other asset/liability accounts.
 .PP
+Tip: an institution\(aqs numbers can be rounded differently in different
+places \- its website, its CSV or other exports, its emailed and paper
+statements.
+Choose one as your reference (usually the official statement), and aim
+to reproduce its numbers: adjust hledger\(aqs display precision with
+\f[CR]\-c\f[R] or \f[CR]\-\-round\f[R] (see Display rounding), and
+record any small remaining differences with an adjustment transaction,
+eg to an \f[CR]expenses:rounding\f[R] account.
+.PP
 Tip: instead of the register command, use hledger\-ui to see a
 live\-updating register while you edit the journal:
 \f[CR]hledger\-ui \-\-register checking \-C\f[R]
@@ -16358,101 +16388,28 @@ If using version control, don\(aqt forget to \f[CR]git add\f[R] the new
 file.
 .SH hledger 1 and hledger 2
 hledger 2 (the 1.99.x previews, and 2.0 when released) reads hledger 1
-journals, with a few differences described below.
-hledger 1 (1.52.x) continues to receive security fixes, and both can be
-installed side by side (eg by renaming the hledger 1 binary to
+data, and most hledger 1 journals work unchanged.
+hledger 1 (1.52.x) continues to receive essential fixes, and both can be
+installed side by side (eg by renaming the hledger 1 executable to
 \f[CR]hledger1\f[R]).
-.SS Migrating hledger 1 data to hledger 2
-Most hledger 1 journals work unchanged.
-Run \f[CR]hledger check\f[R], and your usual reports, with hledger 2 to
-find out.
-Things that can need attention:
-.IP \(bu 2
-\f[B]Cost basis annotations\f[R] like \f[CR]{$50}\f[R], which hledger 1
-accepted but ignored (as Ledger\-style lot prices), are now processed:
-acquisitions create lots, and disposals must match existing lots.
-hledger may report lot errors, such as disposing of a lot that was never
-acquired.
-See Lots and capital gains.
-.IP \(bu 2
-\f[B]Account names ending in \f[CB]{...}\f[B]\f[R] are reserved for lot
-subaccounts, and are rejected unless the braces contain a valid lot
-name.
-Rename such accounts, or use \f[CR]\-I\f[R] or
-\f[CR]\-\-ignore\-lots\f[R].
-.IP \(bu 2
-\f[B]Explicit gain postings\f[R] in disposal entries are checked against
-the calculated gain, and a mismatch is an error.
-Also, accounts with conventional names like \f[CR]revenues:gain\f[R] are
-now given the Gain account type, and inferred gain postings will use
-them.
-See Gains.
-.IP \(bu 2
-\f[CR]\-I\f[R] or \f[CR]\-\-ignore\-lots\f[R] skips lot tracking, gain
-calculation and lot checks, giving behaviour close to hledger 1\(aqs.
-.IP \(bu 2
-Other, non\-lot\-related changes are listed under Breaking changes in
-the release notes for each 1.99.x release.
-In brief: when a CSV rules directive is declared more than once, the
-last one now wins; the \f[CR]accounts\f[R] and \f[CR]payees\f[R]
-commands respect more query terms; \f[CR]any:\f[R] and \f[CR]all:\f[R]
-queries also work in posting reports; \f[CR]\-\-verbose\-tags\f[R] is
-now a \f[CR]print\f[R]/\f[CR]rewrite\f[R] flag;
-\f[CR]commodities \-\-used\f[R] no longer includes commodities from P
-directives; the CSV \f[CR]source\f[R] and \f[CR]archive\f[R] rules use a
-journal\-adjacent \f[CR]data/\f[R] directory by default; inferred
-amounts no longer affect display precision; and hledger\-web is
-read\-only by default on a public address.
-.IP \(bu 2
-New commands: \f[CR]get\f[R], \f[CR]holdings\f[R],
-\f[CR]transactions\f[R].
-Removed: \f[CR]demo\f[R], \f[CR]commands\f[R].
-.SS Switching back to hledger 1
-Journals written for hledger 2 are mostly readable by hledger 1, with
-these caveats:
-.IP \(bu 2
-hledger 1 ignores cost basis annotations.
-An acquisition written as \f[CR]10 AAA {$50}\f[R] means
-\f[CR]10 AAA\f[R] in hledger 1.
-So you may need to write the transacted cost too:
-\f[CR]10 AAA {$50} \(at $50\f[R].
-(We recommend this anyway; see Cost basis annotations.)
-.IP \(bu 2
-hledger 1 rejects \f[CR]type: U\f[R] account declarations
-(\f[CR]type: G\f[R] is fine).
-(hledger 2 doesn\(aqt need them either.)
-.IP \(bu 2
-hledger 1 does not infer gain postings, and balances disposals at
-transacted cost, so a disposal entry with a realised gain posting
-written (\f[CR]revenues:gain  $\-50\f[R]) is unbalanced in hledger 1.
-Omit the gain posting instead (hledger 2 infers it; hledger 1 records no
-gain).
-See Recording gains.
-.IP \(bu 2
-\f[CR]print \-\-lots\f[R] output includes lot subaccount names like
-\f[CR]assets:stocks:{2026\-01\-01, $50}\f[R]; hledger 1 reads these as
-ordinary subaccounts.
-.IP \(bu 2
-The \f[CR]lots\f[R] tag on commodity and account declarations is an
-ordinary tag in hledger 1, and is ignored.
-.IP \(bu 2
-Commands and options new in hledger 2 are not available.
-.SS Keeping data usable with both
-To keep the same journal working in both hledger 1 and hledger 2:
-.IP \(bu 2
-write acquisitions with both cost basis and cost, with the same amount
-in each: \f[CR]10 AAA {$50} \(at $50\f[R]
-.IP \(bu 2
-write disposals without a gain posting (then hledger 2 infers it, and
-hledger 1 shows no gain)
-.IP \(bu 2
-don\(aqt declare \f[CR]type: U\f[R] accounts (hledger 1 rejects them,
-hledger 2 doesn\(aqt need them)
-.IP \(bu 2
-avoid account names ending in \f[CR]{...}\f[R]
-.IP \(bu 2
-after changes, check the journal with both versions, eg
-\f[CR]hledger check\f[R] and \f[CR]hledger1 check\f[R]
+.PP
+To upgrade from hledger 1:
+.IP "1." 3
+Back up your data files, or commit them to version control.
+.IP "2." 3
+Run \f[CR]hledger check\f[R] with hledger 2.
+If you import CSV, also run your usual import command with
+\f[CR]\-\-dry\-run\f[R].
+.IP "3." 3
+Compare your usual reports with hledger 1\(aqs (eg
+\f[CR]hledger1 bs\f[R] and \f[CR]hledger bs\f[R]), and investigate any
+differences.
+.PP
+Things that can need attention include cost basis annotations like
+\f[CR]{$50}\f[R], which hledger 1 ignored but hledger 2 uses to track
+lots, and a few checks that are now stricter.
+Upgrading to hledger 2 describes them all, with fixes, and how to switch
+back, or keep data usable with both versions.
 .SH BUGS
 We welcome bug reports in the hledger issue tracker
 (https://bugs.hledger.org), or on the hledger chat or mail list

@@ -4615,7 +4615,7 @@ Holdings on 2023-04-01
      like roi's IRR; it includes realised gains).
 
    Fully disposed commodities and accounts are not shown, unless you add
-'-E/--empty'.  (But the RGain and XIRR in the totals row always includes
+'-E/--empty'.  (But the totals row's RGain and XIRR always include
 them.)
 
    To see a commodity's performance, a market price should be declared
@@ -6218,8 +6218,10 @@ $ hledger -f t.j register checking
 
    DATE should be a simple date; if the year is not specified it will
 use the year of the transaction's date.
-The 'date:' tag must have a valid simple date value if it is present, eg
-a 'date:' tag with no value is not allowed.
+A non-empty 'date:' tag value must begin with a valid simple date.  A
+'date:' tag with an empty value is allowed, and sets no date.  (To
+disable a date tag temporarily, without removing the date, insert a
+comma before the date.)
 
 
 File: hledger.info,  Node: Status,  Next: Code,  Prev: Dates,  Up: Journal
@@ -7761,8 +7763,10 @@ entry, we apply:
   1. 'alias' directives preceding the journal entry, most recently
      parsed first (ie, reading upward from the journal entry, bottom to
      top)
-  2. '--alias' options, in the order they appeared on the command line
-     (left to right).
+  2. then any parent account from 'apply account' directives is
+     prepended
+  3. then '--alias' options, in the order they appeared on the command
+     line (left to right).
 
    In other words, for (an account name in) a given journal entry:
 
@@ -8022,8 +8026,9 @@ This is the number of alias units equal to one unit of the commodity.
 Amounts written with the alias are divided by it, and their unit costs
 and market prices are multiplied by it.  The converted amounts get the
 commodity's display precision (or more, if needed to show an exactly
-converted amount fully).  Eg, here a kilobuck is 1000 dollars and an
-hour is 60 minutes:
+converted amount fully), which is also how they count in transaction
+balancing.  Eg, here a kilobuck is 1000 dollars and an hour is 60
+minutes:
 
 commodity USD 1.00    ; alias: 0.001 kilobucks
 commodity h 1.00      ; alias: 60 min
@@ -8709,8 +8714,12 @@ content.
    Account names entered via hledger add or hledger-web are not
 affected.
 
-   Account aliases, if any, are applied after the parent account is
-prepended.
+   Account aliases from 'alias' directives are applied before the parent
+account is prepended (as in Ledger), so they match the account names as
+written.  This means a file's aliases keep working when it is included
+under 'apply account'.  (Before hledger 2, they were applied after.)
+'--alias' options are applied after the parent account is prepended, so
+they match the full account names.
 
    Downsides: this can make your financial data less explicit, less
 portable, and less trustworthy in an audit.
@@ -8952,12 +8961,12 @@ https://github.com/hledgerorg/hledger/tree/main/examples/csv.
 * Menu:
 
 * CSV rules cheatsheet::
-* CSV fields vs hledger fields::
 * Finding the data::
 * Reading the data::
+* CSV fields and hledger fields::
 * fields::
 * Field assignment::
-* hledger field names::
+* hledger fields::
 * balance-type::
 * if::
 * Matchers::
@@ -8967,10 +8976,9 @@ https://github.com/hledgerorg/hledger/tree/main/examples/csv.
 * include::
 * Working with CSV::
 * How CSV rules are evaluated::
-* CSV rules examples::
 
 
-File: hledger.info,  Node: CSV rules cheatsheet,  Next: CSV fields vs hledger fields,  Up: CSV
+File: hledger.info,  Node: CSV rules cheatsheet,  Next: Finding the data,  Up: CSV
 
 18.1 CSV rules cheatsheet
 =========================
@@ -9018,94 +9026,28 @@ The following kinds of rule can appear in the rules file, in any order.
 below.
 
 
-File: hledger.info,  Node: CSV fields vs hledger fields,  Next: Finding the data,  Prev: CSV rules cheatsheet,  Up: CSV
+File: hledger.info,  Node: Finding the data,  Next: Reading the data,  Prev: CSV rules cheatsheet,  Up: CSV
 
-18.2 CSV fields vs hledger fields
-=================================
-
-The main task of CSV rules is to convert *CSV fields* to *hledger
-fields*.  It's important to know which is which, when you are creating
-rules:
-
-  1. CSV fields
-        * are the parts of the records (lines) in your CSV data
-        * are referenced by their position or assigned name, with a '%'
-          prefix (eg '%1' or '%date')
-        * are read-only.
-
-  2. hledger fields
-        * are the parts of a hledger journal entry (see hledger field
-          names) (eg 'date', 'description', 'account1', 'amount1')
-        * are assigned to by rules, to construct a journal entry
-        * can be referenced by their name, without a '%' prefix, inside
-          a '%{...}' expression (eg '%{description}'; see Referencing
-          other fields).
-
-   CSV rules can't make new fields; you can't define your own variables
-in a rules file.  (But you could add new CSV fields to the data before
-running rules, with a preprocessing script.)
-
-   It's ok for a CSV field and a hledger field to have the same name; in
-a 'fields' list, this causes the CSV field's value to be assigned to the
-hledger field ("field name punning").  hledger knows which kind of field
-is meant from the context: in field values and matchers, '%NAME' is a
-CSV field, and a bare 'HLEDGERFIELDNAME' inside '%{...}' is a hledger
-field.  Some examples:
-
-# set the journal entry's date to the value of CSV field 1
-date %1
-
-# name the CSV fields, and use the first as the entry's date
-fields date, bankamt
-
-# test the value of the CSV date field
-if %date 2026
- ...
-
-# add a tag to the hledger comment field, keeping any comment assigned before
-comment %{join(", ", comment, "imported:")}
-
-
-File: hledger.info,  Node: Finding the data,  Next: Reading the data,  Prev: CSV fields vs hledger fields,  Up: CSV
-
-18.3 Finding the data
+18.2 Finding the data
 =====================
 
-You can name a CSV file on the command line, and hledger will use the
-rules file named like it.  Or you can name the rules file, and its
-'source' rule will say where the data is.  The second way is more
-powerful and convenient for regular imports.
+You can name a CSV file on the command line, as in 'hledger -f foo.csv
+CMD', and hledger will use the rules file named like it
+('foo.csv.rules').
 
-* Menu:
+   Or you can name the rules file, as in 'hledger -f foo.csv.rules CMD'.
+The rules file must then have a 'source' rule (described below), saying
+which data file to read (perhaps in your web browser's download
+directory), or which command to run to get the data.
 
-* Reading files specified by rule::
-* source::
-* archive::
-* File Extension::
-* Reading CSV from standard input::
-* Reading multiple CSV files::
-
-
-File: hledger.info,  Node: Reading files specified by rule,  Next: source,  Up: Finding the data
-
-18.3.1 Reading files specified by rule
---------------------------------------
-
-Instead of specifying a CSV file in the command line, you can specify a
-rules file, as in 'hledger -f foo.csv.rules CMD'.  The rules file must
-then have a 'source' rule (described below), saying which data file to
-read (perhaps in your web browser's download directory), or which
-command to run to get the data.  (A rules file can also be included by a
-journal file.)
-
-   This and other features like the archive rule below, and the default
-behaviour of the get and import commands, combine to remove the busywork
-of managing CSV downloads.  Ideally, you can periodically
+   The second way is more powerful.  This and the archive rule below,
+and the default behaviour of the get and import commands, help remove
+the busywork of managing CSV downloads.  Ideally, you can periodically
 
   1. Download new CSVs from your banks (perhaps by just running 'hledger
      get').
-  2. Import new transactions from them all, by just running 'hledger
-     import' (from the rules files in 'rules/').
+  2. Import new transactions from all the CSVs specified by rules files
+     in 'rules/', by just running 'hledger import'.
 
    Or, do both with one command: 'hledger import -g'
 
@@ -9113,10 +9055,22 @@ of managing CSV downloads.  Ideally, you can periodically
 it is for a while, or archive it automatically (to 'data/archive/') with
 the archive rule.
 
-
-File: hledger.info,  Node: source,  Next: archive,  Prev: Reading files specified by rule,  Up: Finding the data
+   It's also possible to include a CSV file or rules file in your
+journal, in which case there's no import step at all; instead, the whole
+CSV is reconverted on each run.
 
-18.3.2 'source'
+* Menu:
+
+* source::
+* archive::
+* File Extension::
+* Reading CSV from standard input::
+* Reading multiple CSV files::
+
+
+File: hledger.info,  Node: source,  Next: archive,  Up: Finding the data
+
+18.2.1 'source'
 ---------------
 
 When hledger reads a rules file ('-f foo.csv.rules'), the 'source' rule
@@ -9156,7 +9110,7 @@ that successive imports process the copies in order.
 
 File: hledger.info,  Node: Data cleaning / data generating commands,  Up: source
 
-18.3.2.1 Data cleaning / data generating commands
+18.2.1.1 Data cleaning / data generating commands
 .................................................
 
 After 'source''s file pattern, you can write '|' (pipe) and a data
@@ -9200,7 +9154,7 @@ was found.
 
 File: hledger.info,  Node: archive,  Next: File Extension,  Prev: source,  Up: Finding the data
 
-18.3.3 'archive'
+18.2.2 'archive'
 ----------------
 
 With 'archive' added to a rules file, the 'import' command will archive
@@ -9222,7 +9176,7 @@ variations in your bank's CSV, etc.
 
 File: hledger.info,  Node: File Extension,  Next: Reading CSV from standard input,  Prev: archive,  Up: Finding the data
 
-18.3.4 File Extension
+18.2.3 File Extension
 ---------------------
 
 To help hledger choose the CSV file reader and show the right error
@@ -9242,7 +9196,7 @@ rule if needed.
 
 File: hledger.info,  Node: Reading CSV from standard input,  Next: Reading multiple CSV files,  Prev: File Extension,  Up: Finding the data
 
-18.3.5 Reading CSV from standard input
+18.2.4 Reading CSV from standard input
 --------------------------------------
 
 You'll need the file format prefix when reading CSV from stdin also,
@@ -9253,7 +9207,7 @@ $ cat foo.dat | hledger -f ssv:- print
 
 File: hledger.info,  Node: Reading multiple CSV files,  Prev: Reading CSV from standard input,  Up: Finding the data
 
-18.3.6 Reading multiple CSV files
+18.2.5 Reading multiple CSV files
 ---------------------------------
 
 If you use multiple '-f' options to read multiple CSV files at once,
@@ -9266,9 +9220,9 @@ In this case each CSV file always uses its correspondingly-named rules
 file; '--rules' has no effect.
 
 
-File: hledger.info,  Node: Reading the data,  Next: fields,  Prev: Finding the data,  Up: CSV
+File: hledger.info,  Node: Reading the data,  Next: CSV fields and hledger fields,  Prev: Finding the data,  Up: CSV
 
-18.4 Reading the data
+18.3 Reading the data
 =====================
 
 These tips and rules help hledger read the CSV data correctly: check
@@ -9291,7 +9245,7 @@ order.
 
 File: hledger.info,  Node: Valid CSV,  Next: separator,  Up: Reading the data
 
-18.4.1 Valid CSV
+18.3.1 Valid CSV
 ----------------
 
 Note that hledger will only accept valid CSV conforming to RFC 4180, and
@@ -9312,7 +9266,7 @@ permissive CSV parser like python's csv lib.
 
 File: hledger.info,  Node: separator,  Next: encoding,  Prev: Valid CSV,  Up: Reading the data
 
-18.4.2 'separator'
+18.3.2 'separator'
 ------------------
 
 You can use the 'separator' rule to read other kinds of
@@ -9337,7 +9291,7 @@ inferred automatically, and you won't need this rule.
 
 File: hledger.info,  Node: encoding,  Next: skip,  Prev: separator,  Up: Reading the data
 
-18.4.3 'encoding'
+18.3.3 'encoding'
 -----------------
 
 encoding ENCODING
@@ -9357,7 +9311,7 @@ rules.  Eg: 'encoding iso-8859-1'.
 
 File: hledger.info,  Node: skip,  Next: date-format,  Prev: encoding,  Up: Reading the data
 
-18.4.4 'skip'
+18.3.4 'skip'
 -------------
 
 skip N
@@ -9376,7 +9330,7 @@ required to be valid CSV.
 
 File: hledger.info,  Node: date-format,  Next: timezone,  Prev: skip,  Up: Reading the data
 
-18.4.5 'date-format'
+18.3.5 'date-format'
 --------------------
 
 date-format DATEFMT
@@ -9408,7 +9362,7 @@ setting LC_TIME won't help.
 
 File: hledger.info,  Node: timezone,  Next: decimal-mark,  Prev: date-format,  Up: Reading the data
 
-18.4.6 'timezone'
+18.3.6 'timezone'
 -----------------
 
 timezone TIMEZONE
@@ -9437,7 +9391,7 @@ For others, use numeric format: +HHMM or -HHMM.
 
 File: hledger.info,  Node: decimal-mark,  Next: newest-first,  Prev: timezone,  Up: Reading the data
 
-18.4.7 'decimal-mark'
+18.3.7 'decimal-mark'
 ---------------------
 
 decimal-mark .
@@ -9458,7 +9412,7 @@ the CSV fields and to amounts written in the rules.
 
 File: hledger.info,  Node: newest-first,  Next: intra-day-reversed,  Prev: decimal-mark,  Up: Reading the data
 
-18.4.8 'newest-first'
+18.3.8 'newest-first'
 ---------------------
 
 hledger tries to ensure that the generated transactions will be ordered
@@ -9481,7 +9435,7 @@ newest-first
 
 File: hledger.info,  Node: intra-day-reversed,  Prev: newest-first,  Up: Reading the data
 
-18.4.9 'intra-day-reversed'
+18.3.9 'intra-day-reversed'
 ---------------------------
 
 If CSV records within a single day are ordered opposite to the overall
@@ -9498,7 +9452,55 @@ first, but same-day records are oldest first:
 intra-day-reversed
 
 
-File: hledger.info,  Node: fields,  Next: Field assignment,  Prev: Reading the data,  Up: CSV
+File: hledger.info,  Node: CSV fields and hledger fields,  Next: fields,  Prev: Reading the data,  Up: CSV
+
+18.4 CSV fields and hledger fields
+==================================
+
+The main task of CSV rules is to convert *CSV fields* to *hledger
+fields*.  It's important to know which is which, when you are creating
+rules:
+
+  1. CSV fields
+        * are the parts of the records (lines) in your CSV data
+        * are referenced by their position or assigned name, with a '%'
+          prefix (eg '%1' or '%date')
+        * are read-only.
+
+  2. hledger fields
+        * are the parts of a hledger journal entry (see hledger fields)
+          (eg 'date', 'description', 'account1', 'amount1')
+        * are assigned to by rules, to construct a journal entry
+        * can be referenced by their name, without a '%' prefix, inside
+          a '%{...}' expression (eg '%{description}'; see Referencing
+          other fields).
+
+   CSV rules can't make new fields; you can't define your own variables
+in a rules file.  (But you could add new CSV fields to the data before
+running rules, with a preprocessing script.)
+
+   It's ok for a CSV field and a hledger field to have the same name; in
+a 'fields' list, this causes the CSV field's value to be assigned to the
+hledger field ("field name punning").  hledger knows which kind of field
+is meant from the context: in field values and matchers, '%NAME' is a
+CSV field, and a bare 'HLEDGERFIELDNAME' inside '%{...}' is a hledger
+field.  Some examples:
+
+# set the journal entry's date to the value of CSV field 1
+date %1
+
+# name the CSV fields, and use the first as the entry's date
+fields date, bankamt
+
+# test the value of the CSV date field
+if %date 2026
+ ...
+
+# add a tag to the hledger comment field, keeping any comment assigned before
+comment %{join(", ", comment, "imported:")}
+
+
+File: hledger.info,  Node: fields,  Next: Field assignment,  Prev: CSV fields and hledger fields,  Up: CSV
 
 18.5 'fields'
 =============
@@ -9543,7 +9545,7 @@ to a hledger field with the same name.  Eg you could call the CSV's
 field (and generating a balance assertion).
 
 
-File: hledger.info,  Node: Field assignment,  Next: hledger field names,  Prev: fields,  Up: CSV
+File: hledger.info,  Node: Field assignment,  Next: hledger fields,  Prev: fields,  Up: CSV
 
 18.6 Field assignment
 =====================
@@ -9727,10 +9729,10 @@ the field by these rules, before further processing by hledger.  Eg
 'expenses:unknown').
 
 
-File: hledger.info,  Node: hledger field names,  Next: balance-type,  Prev: Field assignment,  Up: CSV
+File: hledger.info,  Node: hledger fields,  Next: balance-type,  Prev: Field assignment,  Up: CSV
 
-18.7 hledger field names
-========================
+18.7 hledger fields
+===================
 
 Here are all the hledger fields you can assign to.  They correspond to
 parts of a journal entry, or in some cases they are pseudo-fields which
@@ -9751,7 +9753,7 @@ have a special effect.  You can also interpolate their values in
 * balance field::
 
 
-File: hledger.info,  Node: date field,  Next: date2 field,  Up: hledger field names
+File: hledger.info,  Node: date field,  Next: date2 field,  Up: hledger fields
 
 18.7.1 date field
 -----------------
@@ -9761,7 +9763,7 @@ the CSV dates aren't like 'YYYY-MM-DD', see 'date-format' (and
 'timezone').
 
 
-File: hledger.info,  Node: date2 field,  Next: status field,  Prev: date field,  Up: hledger field names
+File: hledger.info,  Node: date2 field,  Next: status field,  Prev: date field,  Up: hledger fields
 
 18.7.2 date2 field
 ------------------
@@ -9769,7 +9771,7 @@ File: hledger.info,  Node: date2 field,  Next: status field,  Prev: date field, 
 'date2' sets the transaction's secondary date, if any.
 
 
-File: hledger.info,  Node: status field,  Next: code field,  Prev: date2 field,  Up: hledger field names
+File: hledger.info,  Node: status field,  Next: code field,  Prev: date2 field,  Up: hledger fields
 
 18.7.3 status field
 -------------------
@@ -9777,7 +9779,7 @@ File: hledger.info,  Node: status field,  Next: code field,  Prev: date2 field, 
 'status' sets the transaction's status, if any.
 
 
-File: hledger.info,  Node: code field,  Next: description field,  Prev: status field,  Up: hledger field names
+File: hledger.info,  Node: code field,  Next: description field,  Prev: status field,  Up: hledger fields
 
 18.7.4 code field
 -----------------
@@ -9789,7 +9791,7 @@ reparsed, it would end the code early).  So any right parentheses here
 will be replaced with ']', with a warning.
 
 
-File: hledger.info,  Node: description field,  Next: comment field,  Prev: code field,  Up: hledger field names
+File: hledger.info,  Node: description field,  Next: comment field,  Prev: code field,  Up: hledger fields
 
 18.7.5 description field
 ------------------------
@@ -9802,7 +9804,7 @@ semicolons here will be replaced with '.,' (a semicolon on its side),
 and a warning is printed.
 
 
-File: hledger.info,  Node: comment field,  Next: account field,  Prev: description field,  Up: hledger field names
+File: hledger.info,  Node: comment field,  Next: account field,  Prev: description field,  Up: hledger fields
 
 18.7.6 comment field
 --------------------
@@ -9820,7 +9822,7 @@ code.  A comment starting with '\n' will begin on a new line.
 or a year-less date, will be ignored.
 
 
-File: hledger.info,  Node: account field,  Next: amount field,  Prev: comment field,  Up: hledger field names
+File: hledger.info,  Node: account field,  Next: amount field,  Prev: comment field,  Up: hledger fields
 
 18.7.7 account field
 --------------------
@@ -9838,7 +9840,7 @@ account name will be set to 'expenses:unknown' or 'income:unknown'
 (depending on the amount's sign).
 
 
-File: hledger.info,  Node: amount field,  Next: currency field,  Prev: account field,  Up: hledger field names
+File: hledger.info,  Node: amount field,  Next: currency field,  Prev: account field,  Up: hledger fields
 
 18.7.8 amount field
 -------------------
@@ -10030,7 +10032,7 @@ commodity - let's say it's EUR - 'import' will choose:
 want, add a 'commodity' directive to specify them.
 
 
-File: hledger.info,  Node: currency field,  Next: balance field,  Prev: amount field,  Up: hledger field names
+File: hledger.info,  Node: currency field,  Next: balance field,  Prev: amount field,  Up: hledger fields
 
 18.7.9 currency field
 ---------------------
@@ -10095,7 +10097,7 @@ amount %amt %cur
 that would trigger the prepending effect, which we don't want here.
 
 
-File: hledger.info,  Node: balance field,  Prev: currency field,  Up: hledger field names
+File: hledger.info,  Node: balance field,  Prev: currency field,  Up: hledger fields
 
 18.7.10 balance field
 ---------------------
@@ -10111,7 +10113,7 @@ equivalent to 'balance1'.
 transaction amounts, see Setting amounts.
 
 
-File: hledger.info,  Node: balance-type,  Next: if,  Prev: hledger field names,  Up: CSV
+File: hledger.info,  Node: balance-type,  Next: if,  Prev: hledger fields,  Up: CSV
 
 18.8 'balance-type'
 ===================
@@ -10226,7 +10228,7 @@ There are two kinds of matcher:
      name declared with 'fields'.  Anything else will cause it to match
      against the empty string, and probably fail silently (this makes it
      easier to reuse common rules with different CSV files).  Don't use
-     a hledger field name here (see CSV fields vs hledger fields).
+     a hledger field name here (see CSV fields and hledger fields).
 
    You can also prefix a matcher with '!' to negate it.  Eg '! whole
 foods', '! %3 whole foods', '!%description whole foods' will match if
@@ -10383,43 +10385,33 @@ ifs                 | account2         | skip
 atm withdrawal fee  | expenses:banking |
 transfer to savings |                  | 1
 
-   Note, the delimiter character in an ifs table is unrelated to the one
-used in the CSV file.  It must appear the same number of times in each
-line of the table, and it must not appear in the field names, matchers,
-or values used in the table (though inside '%{...}' expressions is ok).
+   The delimiter must appear the same number of times in each line of
+the table, and it must not appear in the field names, matchers, or
+values used in the table (though inside '%{...}' expressions is ok).
 You cannot escape it with a backslash.
 
-   It's hard to find a delimiter character that never clashes with
-anything, so the flexibility can be useful.  Eg:
+   Note, the delimiter in an ifs table is unrelated to the one used in
+the data file (consider avoiding ',' or ';', because they look
+confusing).
 
-   * ',' and ';' are common as field separators in data files, so using
-     them might cause confusion
-   * '|' looks good, but then you can't use it as the regular expression
-     "or" operator in the matchers
-   * '!' is also readable, but then you can't begin a line with a
-     negated matcher, or assign '!' as a status mark
-   * '`' (backquote) might be a good choice to minimise clashing.
+   In fact, it's hard to find a delimiter character that never clashes
+with anything, so the flexibility can be useful.  Some examples:
 
-   Some examples:
+# | as delimiter; can use a leading !, can't use regex | operator
+ifs                     | account2          | comment
+! %amount [0-9][0-9]+\. | expenses:misc     |
+%desc amazon            | expenses:shopping |
+%desc amzn              | expenses:shopping |
+%amount [0-9]{4,}       |                   | TODO: large amount, check it
 
-ifs                             | account2         | comment
-%amount [0-9]{4,}               |                  | TODO: large amount, check it
-atm withdrawal fee              | expenses:banking |
-Plumbing LLC                    | expenses:home    |
-cafe                            | expenses:dining  |
-cafe && ! %amount [0-9][0-9]+\. | expenses:snack   |
-
+# ! as delimiter; can't use leading !, can use regex |
 ifs               ! account2
 %desc amazon|amzn ! expenses:shopping
-cafe              ! expenses:dining
 
-ifs                             ` account2          ` comment
-%amount [0-9]{4,}               `                   ` TODO: large amount, check it
-atm withdrawal fee              ` expenses:banking  `
-Plumbing LLC                    ` expenses:home     `
-cafe                            ` expenses:dining   `
-cafe && ! %amount [0-9][0-9]+\. ` expenses:snack    `
-%desc amazon|amzn               ` expenses:shopping `
+# ` as delimiter; can use both leading ! and regex |
+ifs                     ` account2
+! %amount [0-9][0-9]+\. ` expenses:misc
+%desc amazon|amzn       ` expenses:shopping
 
 
 File: hledger.info,  Node: end,  Next: merge,  Prev: ifs,  Up: CSV
@@ -10537,26 +10529,6 @@ include categorisation.rules
 rules the last declaration wins, you can override an included file's
 rules by writing rules after the 'include' line.
 
-* Menu:
-
-* Well factored rules::
-
-
-File: hledger.info,  Node: Well factored rules,  Up: include
-
-18.14.1 Well factored rules
----------------------------
-
-Some things than can help reduce duplication and complexity in rules
-files:
-
-   * Extracting common rules usable with multiple CSV files into a
-     'common.rules', and adding 'include common.rules' to each CSV's
-     rules file.
-
-   * Splitting 'if' rules into smaller 'if' rules, extracting the
-     frequently used parts.
-
 
 File: hledger.info,  Node: Working with CSV,  Next: How CSV rules are evaluated,  Prev: include,  Up: CSV
 
@@ -10567,14 +10539,27 @@ Some tips for creating rules and importing CSV data regularly:
 
 * Menu:
 
+* CSV rules examples::
 * Rapid feedback::
+* Well factored rules::
 * Deduplicating importing::
 * Valid transactions::
 
 
-File: hledger.info,  Node: Rapid feedback,  Next: Deduplicating importing,  Up: Working with CSV
+File: hledger.info,  Node: CSV rules examples,  Next: Rapid feedback,  Up: Working with CSV
 
-18.15.1 Rapid feedback
+18.15.1 CSV rules examples
+--------------------------
+
+For real-world rules files for many banks, brokers, exchanges and apps,
+see the hledger CSV rules library in the hledger repo.  These aren't
+necessarily maintained, and may need adapting, but they are a good
+source of ideas and examples.
+
+
+File: hledger.info,  Node: Rapid feedback,  Next: Well factored rules,  Prev: CSV rules examples,  Up: Working with CSV
+
+18.15.2 Rapid feedback
 ----------------------
 
 It's a good idea to get rapid feedback while creating/troubleshooting
@@ -10588,9 +10573,25 @@ a separator each time the command re-runs, making it easier to read the
 output.
 
 
-File: hledger.info,  Node: Deduplicating importing,  Next: Valid transactions,  Prev: Rapid feedback,  Up: Working with CSV
+File: hledger.info,  Node: Well factored rules,  Next: Deduplicating importing,  Prev: Rapid feedback,  Up: Working with CSV
 
-18.15.2 Deduplicating, importing
+18.15.3 Well factored rules
+---------------------------
+
+Some things that can help reduce duplication and complexity in rules
+files:
+
+   * Extracting common rules usable with multiple CSV files into a
+     'common.rules', and adding 'include common.rules' to each CSV's
+     rules file.
+
+   * Splitting 'if' rules into smaller 'if' rules, extracting the
+     frequently used parts.
+
+
+File: hledger.info,  Node: Deduplicating importing,  Next: Valid transactions,  Prev: Well factored rules,  Up: Working with CSV
+
+18.15.4 Deduplicating, importing
 --------------------------------
 
 When you download a CSV file periodically, eg to get your latest bank
@@ -10620,7 +10621,7 @@ CSV data.  See:
 
 File: hledger.info,  Node: Valid transactions,  Prev: Deduplicating importing,  Up: Working with CSV
 
-18.15.3 Valid transactions
+18.15.5 Valid transactions
 --------------------------
 
 After reading a CSV file, hledger post-processes and validates the
@@ -10637,7 +10638,7 @@ assertions generated from CSV right away, pipe into another hledger:
 $ hledger -f file.csv print | hledger -f- print
 
 
-File: hledger.info,  Node: How CSV rules are evaluated,  Next: CSV rules examples,  Prev: Working with CSV,  Up: CSV
+File: hledger.info,  Node: How CSV rules are evaluated,  Prev: Working with CSV,  Up: CSV
 
 18.16 How CSV rules are evaluated
 =================================
@@ -10703,17 +10704,6 @@ understand which of these steps is failing:
 can use to read transactions from an input file.  When all input files
 have been read successfully, their transactions are passed to whichever
 hledger command the user specified.
-
-
-File: hledger.info,  Node: CSV rules examples,  Prev: How CSV rules are evaluated,  Up: CSV
-
-18.17 CSV rules examples
-========================
-
-For real-world rules files for many banks, brokers, exchanges and apps,
-see the hledger CSV rules library in the hledger repo.  These aren't
-necessarily maintained, and may need adapting, but they are a good
-source of ideas and examples.
 
 
 File: hledger.info,  Node: Timeclock,  Next: Timedot,  Prev: CSV,  Up: Top
@@ -12086,11 +12076,11 @@ file's general options:
 # ~/.config/hledger/hledger.conf
 --lang de
 
-   Currently German ('de') and Simplified Chinese ('zh-Hans', also
-selected by 'zh' or 'zh_CN') catalogs are built in.  Catalogs are
-gettext PO files, which the usual translation tools can edit.  hledger
-also looks for catalogs in the 'locale' subdirectory of its config
-directory ('~/.config/hledger/locale/LANG.po' on unix,
+   Currently German ('de'), Spanish ('es') and Simplified Chinese ('zh',
+also selected by 'zh_CN' or 'zh-Hans') catalogs are built in.  Catalogs
+are gettext PO files, which the usual translation tools can edit.
+hledger also looks for catalogs in the 'locale' subdirectory of its
+config directory ('~/.config/hledger/locale/LANG.po' on unix,
 '%APPDATA%\hledger\locale\LANG.po' on windows), and merges a catalog
 found there over the built-in catalog for the same language, if any.  So
 a translator can work on a new language with a released hledger, and a
@@ -12127,7 +12117,9 @@ subtraction and multiplication are exact (as long as the result needs no
 more than 255 decimal places).  Division can produce a non-terminating
 decimal (like 1/3 = 0.333...); hledger rounds these to 255 decimal
 places.  The error is less than 10^-250, too small to affect transaction
-balancing or reports at normal display precisions.
+balancing or reports at normal display precisions.  When hledger shows
+such a rounded amount in full, eg in 'print' output, it shows 8 decimal
+places.
 
 * Menu:
 
@@ -12166,16 +12158,23 @@ methods or in holdings      quantity
 Inferring costs from        one amount    None
 equity conversion           / the other
 postings
+Inferring a unit cost for   total /       None in calculations.  'print
+several postings in one     quantity      -x' shows it with 8 decimal
+commodity, in an implicit                 places (more if the
+conversion                                commodities' decimal places
+                                          add up to more), so text
+                                          copied from it is slightly
+                                          rounded.
 Converting amounts          amount /      None in calculations: unit
 written with a commodity    alias         costs are replaced by exact
 alias that has a quantity   quantity      total costs, and balance
                                           assertions convert the alias
                                           amounts' total (so three '10
-                                          min' amounts sum to exactly
-                                          '0.5 h').  'print -x' shows
-                                          converted amounts with all
-                                          their decimal places (8 for a
-                                          repeating decimal).
+                                          min' amounts satisfy a '= 0.5
+                                          h' assertion).  'print -x'
+                                          shows converted amounts with
+                                          all their decimal places (8
+                                          for a repeating decimal).
 Calculating averages (eg    total /       None: these are displayed
 '-A') and percentages (eg   count, part   rounded
 '-%') in reports            / total
@@ -14518,6 +14517,9 @@ wrong:
    * "no ...  lots available for disposal" means a sale from an account
      holding none of the commodity.  If it is a short sale, record it in
      a liability account (see Short positions).
+   * For more detail, '--debug=5' (eg 'hledger check --debug=5') traces
+     lot processing step by step.  It's verbose, and mostly useful for
+     advanced troubleshooting or bug reports.
    * To silence lot processing while fixing other problems, use '-I' or
      '--ignore-lots'.
 
@@ -15718,6 +15720,14 @@ discrepancies.
 
   3. Repeat for other asset/liability accounts.
 
+   Tip: an institution's numbers can be rounded differently in different
+places - its website, its CSV or other exports, its emailed and paper
+statements.  Choose one as your reference (usually the official
+statement), and aim to reproduce its numbers: adjust hledger's display
+precision with '-c' or '--round' (see Display rounding), and record any
+small remaining differences with an adjustment transaction, eg to an
+'expenses:rounding' account.
+
    Tip: instead of the register command, use hledger-ui to see a
 live-updating register while you edit the journal: 'hledger-ui
 --register checking -C'
@@ -15750,98 +15760,23 @@ File: hledger.info,  Node: hledger 1 and hledger 2,  Next: BUGS,  Prev: Closing 
 **************************
 
 hledger 2 (the 1.99.x previews, and 2.0 when released) reads hledger 1
-journals, with a few differences described below.  hledger 1 (1.52.x)
-continues to receive security fixes, and both can be installed side by
-side (eg by renaming the hledger 1 binary to 'hledger1').
+data, and most hledger 1 journals work unchanged.  hledger 1 (1.52.x)
+continues to receive essential fixes, and both can be installed side by
+side (eg by renaming the hledger 1 executable to 'hledger1').
 
-* Menu:
+   To upgrade from hledger 1:
 
-* Migrating hledger 1 data to hledger 2::
-* Switching back to hledger 1::
-* Keeping data usable with both::
+  1. Back up your data files, or commit them to version control.
+  2. Run 'hledger check' with hledger 2.  If you import CSV, also run
+     your usual import command with '--dry-run'.
+  3. Compare your usual reports with hledger 1's (eg 'hledger1 bs' and
+     'hledger bs'), and investigate any differences.
 
-
-File: hledger.info,  Node: Migrating hledger 1 data to hledger 2,  Next: Switching back to hledger 1,  Up: hledger 1 and hledger 2
-
-45.1 Migrating hledger 1 data to hledger 2
-==========================================
-
-Most hledger 1 journals work unchanged.  Run 'hledger check', and your
-usual reports, with hledger 2 to find out.  Things that can need
-attention:
-
-   * *Cost basis annotations* like '{$50}', which hledger 1 accepted but
-     ignored (as Ledger-style lot prices), are now processed:
-     acquisitions create lots, and disposals must match existing lots.
-     hledger may report lot errors, such as disposing of a lot that was
-     never acquired.  See Lots and capital gains.
-   * *Account names ending in '{...}'* are reserved for lot subaccounts,
-     and are rejected unless the braces contain a valid lot name.
-     Rename such accounts, or use '-I' or '--ignore-lots'.
-   * *Explicit gain postings* in disposal entries are checked against
-     the calculated gain, and a mismatch is an error.  Also, accounts
-     with conventional names like 'revenues:gain' are now given the Gain
-     account type, and inferred gain postings will use them.  See Gains.
-   * '-I' or '--ignore-lots' skips lot tracking, gain calculation and
-     lot checks, giving behaviour close to hledger 1's.
-   * Other, non-lot-related changes are listed under Breaking changes in
-     the release notes for each 1.99.x release.  In brief: when a CSV
-     rules directive is declared more than once, the last one now wins;
-     the 'accounts' and 'payees' commands respect more query terms;
-     'any:' and 'all:' queries also work in posting reports;
-     '--verbose-tags' is now a 'print'/'rewrite' flag; 'commodities
-     --used' no longer includes commodities from P directives; the CSV
-     'source' and 'archive' rules use a journal-adjacent 'data/'
-     directory by default; inferred amounts no longer affect display
-     precision; and hledger-web is read-only by default on a public
-     address.
-   * New commands: 'get', 'holdings', 'transactions'.  Removed: 'demo',
-     'commands'.
-
-
-File: hledger.info,  Node: Switching back to hledger 1,  Next: Keeping data usable with both,  Prev: Migrating hledger 1 data to hledger 2,  Up: hledger 1 and hledger 2
-
-45.2 Switching back to hledger 1
-================================
-
-Journals written for hledger 2 are mostly readable by hledger 1, with
-these caveats:
-
-   * hledger 1 ignores cost basis annotations.  An acquisition written
-     as '10 AAA {$50}' means '10 AAA' in hledger 1.  So you may need to
-     write the transacted cost too: '10 AAA {$50} @ $50'.  (We recommend
-     this anyway; see Cost basis annotations.)
-   * hledger 1 rejects 'type: U' account declarations ('type: G' is
-     fine).  (hledger 2 doesn't need them either.)
-   * hledger 1 does not infer gain postings, and balances disposals at
-     transacted cost, so a disposal entry with a realised gain posting
-     written ('revenues:gain $-50') is unbalanced in hledger 1.  Omit
-     the gain posting instead (hledger 2 infers it; hledger 1 records no
-     gain).  See Recording gains.
-   * 'print --lots' output includes lot subaccount names like
-     'assets:stocks:{2026-01-01, $50}'; hledger 1 reads these as
-     ordinary subaccounts.
-   * The 'lots' tag on commodity and account declarations is an ordinary
-     tag in hledger 1, and is ignored.
-   * Commands and options new in hledger 2 are not available.
-
-
-File: hledger.info,  Node: Keeping data usable with both,  Prev: Switching back to hledger 1,  Up: hledger 1 and hledger 2
-
-45.3 Keeping data usable with both
-==================================
-
-To keep the same journal working in both hledger 1 and hledger 2:
-
-   * write acquisitions with both cost basis and cost, with the same
-     amount in each: '10 AAA {$50} @ $50'
-   * write disposals without a gain posting (then hledger 2 infers it,
-     and hledger 1 shows no gain)
-   * don't declare 'type: U' accounts (hledger 1 rejects them, hledger 2
-     doesn't need them)
-   * avoid account names ending in '{...}'
-   * after changes, check the journal with both versions, eg 'hledger
-     check' and 'hledger1 check'
+   Things that can need attention include cost basis annotations like
+'{$50}', which hledger 1 ignored but hledger 2 uses to track lots, and a
+few checks that are now stricter.  Upgrading to hledger 2 describes them
+all, with fixes, and how to switch back, or keep data usable with both
+versions.
 
 
 File: hledger.info,  Node: BUGS,  Prev: hledger 1 and hledger 2,  Up: Top
@@ -16030,362 +15965,358 @@ Node: Tidy layout182688
 Node: Balance report output184236
 Node: Some useful balance reports185530
 Node: holdings186924
-Node: roi194189
-Node: Spaces and special characters in --inv and --pnl196692
-Node: Semantics of --inv and --pnl197426
-Node: Using roi with lots199512
-Node: IRR and TWR explained199967
-Node: Chart commands203586
-Node: activity203767
-Node: Data generation commands204264
-Node: close204478
-Node: close --clopen207775
-Node: close --close209671
-Node: close --open210195
-Node: close --assert210445
-Node: close --assign210772
-Node: close --retain211451
-Node: close customisation212308
-Node: close and balance assertions214647
-Node: close examples216367
-Node: Retain earnings216604
-Node: Migrate balances to a new file217107
-Node: More detailed close examples218469
-Node: get218691
-Node: Phase 1 transactions data219402
-Node: Phase 2 prices219805
-Node: Merging new prices220809
-Node: get's helper scripts221675
-Node: getdata221966
-Node: getprices222564
-Node: rewrite223517
-Node: Re-write rules in a file226509
-Node: Diff output format227810
-Node: rewrite vs print --auto230467
-Node: Maintenance commands231181
-Node: check231400
-Node: Default checks232491
-Node: Strict checks234198
-Node: Other checks235416
-Node: Custom checks237219
-Node: diff237658
-Node: setup238865
-Node: test240855
-Node: PART 3 DATA FORMATS241787
-Node: Journal241941
-Node: Journal cheatsheet244362
-Node: Comments250615
-Node: Transactions251736
-Node: Dates252875
-Node: Simple dates253029
-Node: Posting dates253622
-Node: Status254797
-Node: Code256565
-Node: Description257179
-Node: Payee and note257868
-Node: Transaction comments258882
-Node: Postings259400
-Node: Debits and credits260718
-Node: Account names261279
-Node: Two space delimiter262238
-Node: Account hierarchy263567
-Node: Other account name features264452
-Node: Amounts264872
-Node: Decimal marks265880
-Node: Digit group marks266944
-Node: Commodity267647
-Node: Costs268752
-Node: Cost basis271078
-Node: Balance assertions272454
-Node: Assertions and ordering273747
-Node: Assertions and multiple files274468
-Node: Assertions and costs275391
-Node: Assertions and commodities276040
-Node: Assertions and subaccounts277701
-Node: Assertions and lot subaccounts278372
-Node: Assertions and status279445
-Node: Assertions and virtual postings279871
-Node: Assertions and auto postings280238
-Node: Assertions and precision281115
-Node: Assertions and hledger add281603
-Node: Posting comments281961
-Node: Tags282486
-Node: Tag propagation284018
-Node: Displaying tags285519
-Node: When to use tags ?285914
-Node: Tag names286580
-Node: Tag values289211
-Node: Directives289529
-Node: Directive scopes289981
-Node: Directives summary291856
-Node: account directive295404
-Node: Account comments296852
-Node: Account tags297441
-Node: Account aliases297912
-Node: Account error checking299722
-Node: Account display order301500
-Node: Account types302700
-Node: alias directive307306
-Node: Basic aliases308604
-Node: Regex aliases309516
-Node: --alias option310562
-Node: Combining aliases311482
-Node: Aliases and multiple files312936
-Node: end aliases directive313997
-Node: Aliases can generate bad account names314401
-Node: Aliases and account types315236
-Node: comment directive316130
-Node: end comment directive316453
-Node: commodity directive316682
-Node: Commodity directive syntax317708
-Node: Commodity tags319165
-Node: Commodity aliases319699
-Node: Commodity error checking322733
-Node: decimal-mark directive323201
-Node: include directive324709
-Node: P directive327798
-Node: payee directive328834
-Node: tag directive329451
-Node: Periodic transactions330057
-Node: Periodic rule syntax331527
-Node: Periodic rules and relative dates332353
-Node: Two spaces between period expression and description!333132
-Node: Auto postings334095
-Node: Auto postings and multiple files337383
-Node: Auto postings and dates337790
-Node: Auto postings and transaction balancing / inferred amounts / balance assertions338233
-Node: Auto posting tags339024
-Node: Auto postings on forecast transactions only339921
-Node: Other syntax340393
-Node: Balance assignments341185
-Node: Balance assignments and costs342715
-Node: Balance assignments and multiple files343139
-Node: Bracketed posting dates343564
-Node: D directive344264
-Node: apply account directive346109
-Node: Y directive346978
-Node: Secondary dates347971
-Node: Star comments349458
-Node: Valuation expressions349862
-Node: Virtual postings350163
-Node: Other Ledger directives351789
-Node: Ledger virtual costs352549
-Node: Ledger cost basis352893
-Node: CSV353434
-Node: CSV rules cheatsheet355801
-Node: CSV fields vs hledger fields358215
-Node: Finding the data360063
-Node: Reading files specified by rule360631
-Node: source361805
-Node: Data cleaning / data generating commands363196
-Node: archive365230
-Node: File Extension366210
-Node: Reading CSV from standard input366943
-Node: Reading multiple CSV files367329
-Node: Reading the data367941
-Node: Valid CSV368447
-Node: separator369295
-Node: encoding369972
-Node: skip370739
-Node: date-format371410
-Node: timezone372374
-Node: decimal-mark373519
-Node: newest-first374254
-Node: intra-day-reversed374990
-Node: fields375588
-Node: Field assignment377395
-Node: Functions379000
-Node: Referencing other fields382666
-Node: hledger field names384728
-Node: date field385344
-Node: date2 field385615
-Node: status field385818
-Node: code field386016
-Node: description field386397
-Node: comment field386861
-Node: account field387426
-Node: amount field388153
-Node: Setting amounts391122
-Node: Amount signs393592
-Node: Amount decimal places394651
-Node: currency field395859
-Node: Setting currency/commodity396316
-Node: balance field397641
-Node: balance-type398164
-Node: if398997
-Node: Matchers400805
-Node: Multiple matchers402812
-Node: Match groups403562
-Node: Regular expressions in CSV rules404468
-Node: ifs405919
-Node: end409607
-Node: merge409978
-Node: include412808
-Node: Well factored rules413593
-Node: Working with CSV414040
-Node: Rapid feedback414340
-Node: Deduplicating importing414939
-Node: Valid transactions416164
-Node: How CSV rules are evaluated416951
-Node: CSV rules examples420117
-Node: Timeclock420502
-Node: Timedot424573
-Node: Timedot examples428582
-Node: PART 4 CONCEPTS430662
-Node: Time periods430796
-Node: Report start & end date431041
-Node: Smart dates432517
-Node: Report intervals434888
-Node: Date adjustments435462
-Node: Start date adjustment435685
-Node: End date adjustment436549
-Node: Period expressions437298
-Node: Period expressions with a report interval439433
-Node: More complex report intervals439881
-Node: Multiple weekday intervals441997
-Node: Queries443008
-Node: Query types445841
-Node: acct query446449
-Node: amt query446760
-Node: code query447457
-Node: cur query447652
-Node: desc query448392
-Node: date query448575
-Node: date2 query449189
-Node: depth query449530
-Node: find query449866
-Node: note query450977
-Node: payee query451244
-Node: real query451525
-Node: status query451730
-Node: type query451970
-Node: tag query452572
-Node: Negative queries453408
-Node: not query453590
-Node: Space-separated queries453877
-Node: Boolean queries454565
-Node: expr query455506
-Node: any query456235
-Node: all query457250
-Node: Queries and command options457977
-Node: Queries and account aliases458425
-Node: Queries and valuation458849
-Node: Depth459177
-Node: Combining depth options460145
-Node: Pivoting461095
-Node: Report titles463398
-Node: Languages464763
-Node: Amount arithmetic467072
-Node: Where hledger divides468207
-Node: Transaction balancing471579
-Node: How balancing is checked472322
-Node: Where imbalances come from473747
-Node: Accumulated imbalances474499
-Node: Showing imbalances475623
-Node: Avoiding imbalances478211
-Node: Transaction balancing before 150478906
-Node: Amount formatting480064
-Node: Commodity display style480357
-Node: Commodity style override482230
-Node: Display rounding483327
-Node: Trailing decimal marks483981
-Node: Amount parseability484852
-Node: Cost reporting486461
-Node: Recording costs487253
-Node: Reporting at cost489010
-Node: Equity conversion postings490380
-Node: Inferring equity conversion postings493159
-Node: Combining costs and equity conversion postings495441
-Node: Requirements for detecting equity conversion postings496782
-Node: Value reporting498441
-Node: -X Value in specified commodity499406
-Node: -V Value in default commoditys500532
-Node: Valuation date501269
-Node: Finding market price502101
-Node: --infer-market-prices market prices from transactions503481
-Node: Valuation commodity506505
-Node: --value Flexible valuation507938
-Node: Valuation examples510333
-Node: Interaction of valuation and queries512477
-Node: Effect of valuation on reports513194
-Node: Lots and capital gains520965
-Node: First lots example522864
-Node: Writing lot entries526888
-Node: Cost basis annotations527688
-Node: Lotful commodities528903
-Node: Lot subaccounts529671
-Node: Several ways to write lot entries530939
-Node: Disabling lot tracking532536
-Node: Lot movements533904
-Node: Acquire534476
-Node: Transfer537269
-Node: Transfer fees538475
-Node: Capitalising fees539729
-Node: Dispose540428
-Node: Short positions541852
-Node: Other lot events544376
-Node: Cost basis methods544857
-Node: Changing the cost basis method548511
-Node: Gains550057
-Node: Gain accounts551935
-Node: Recording gains553308
-Node: Lot reports555552
-Node: Realised gains556331
-Node: Unrealised gains557561
-Node: Lot details559737
-Node: Lot labels560017
-Node: Cost basis precision560973
-Node: Lot postings and balance assertions562016
-Node: Troubleshooting lots563051
-Node: Generating data564910
-Node: Forecasting566745
-Node: --forecast567401
-Node: Inspecting forecast transactions568502
-Node: Forecast reports569835
-Node: Forecast tags570944
-Node: Forecast period in detail571564
-Node: Forecast troubleshooting572652
-Node: Budgeting573723
-Node: Posting types574278
-Node: PART 5 MORE ABOUT THE COMMAND LINE577071
-Node: Output577262
-Node: Output destination577467
-Node: Output format578027
-Node: Text output579957
-Node: Box-drawing characters581153
-Node: Colour581655
-Node: Paging582386
-Node: HTML output583929
-Node: CSV / TSV output584577
-Node: FODS output584833
-Node: Ledger output585767
-Node: Beancount output586319
-Node: SQL output591044
-Node: JSON output591785
-Node: Debug output592492
-Node: Command line tips593610
-Node: Special characters593979
-Node: Escaping shell special characters594981
-Node: Escaping regular expression special characters596342
-Node: Escaping in other situations597859
-Node: Unicode characters599159
-Node: Regular expressions600592
-Node: hledger's regular expressions603784
-Node: Argument files605457
-Node: Shell completions606371
-Node: PART 6 COMMON TASKS606880
-Node: Setting LEDGER_FILE607328
-Node: Set LEDGER_FILE on unix607844
-Node: Set LEDGER_FILE on mac608359
-Node: Set LEDGER_FILE on Windows608913
-Node: Reconciling610552
-Node: Closing a journal file612887
-Node: hledger 1 and hledger 2613354
-Node: Migrating hledger 1 data to hledger 2613906
-Node: Switching back to hledger 1616002
-Node: Keeping data usable with both617357
-Node: BUGS618081
-Node: Troubleshooting619733
+Node: roi194183
+Node: Spaces and special characters in --inv and --pnl196686
+Node: Semantics of --inv and --pnl197420
+Node: Using roi with lots199506
+Node: IRR and TWR explained199961
+Node: Chart commands203580
+Node: activity203761
+Node: Data generation commands204258
+Node: close204472
+Node: close --clopen207769
+Node: close --close209665
+Node: close --open210189
+Node: close --assert210439
+Node: close --assign210766
+Node: close --retain211445
+Node: close customisation212302
+Node: close and balance assertions214641
+Node: close examples216361
+Node: Retain earnings216598
+Node: Migrate balances to a new file217101
+Node: More detailed close examples218463
+Node: get218685
+Node: Phase 1 transactions data219396
+Node: Phase 2 prices219799
+Node: Merging new prices220803
+Node: get's helper scripts221669
+Node: getdata221960
+Node: getprices222558
+Node: rewrite223511
+Node: Re-write rules in a file226503
+Node: Diff output format227804
+Node: rewrite vs print --auto230461
+Node: Maintenance commands231175
+Node: check231394
+Node: Default checks232485
+Node: Strict checks234192
+Node: Other checks235410
+Node: Custom checks237213
+Node: diff237652
+Node: setup238859
+Node: test240849
+Node: PART 3 DATA FORMATS241781
+Node: Journal241935
+Node: Journal cheatsheet244356
+Node: Comments250609
+Node: Transactions251730
+Node: Dates252869
+Node: Simple dates253023
+Node: Posting dates253616
+Node: Status254903
+Node: Code256671
+Node: Description257285
+Node: Payee and note257974
+Node: Transaction comments258988
+Node: Postings259506
+Node: Debits and credits260824
+Node: Account names261385
+Node: Two space delimiter262344
+Node: Account hierarchy263673
+Node: Other account name features264558
+Node: Amounts264978
+Node: Decimal marks265986
+Node: Digit group marks267050
+Node: Commodity267753
+Node: Costs268858
+Node: Cost basis271184
+Node: Balance assertions272560
+Node: Assertions and ordering273853
+Node: Assertions and multiple files274574
+Node: Assertions and costs275497
+Node: Assertions and commodities276146
+Node: Assertions and subaccounts277807
+Node: Assertions and lot subaccounts278478
+Node: Assertions and status279551
+Node: Assertions and virtual postings279977
+Node: Assertions and auto postings280344
+Node: Assertions and precision281221
+Node: Assertions and hledger add281709
+Node: Posting comments282067
+Node: Tags282592
+Node: Tag propagation284124
+Node: Displaying tags285625
+Node: When to use tags ?286020
+Node: Tag names286686
+Node: Tag values289317
+Node: Directives289635
+Node: Directive scopes290087
+Node: Directives summary291962
+Node: account directive295510
+Node: Account comments296958
+Node: Account tags297547
+Node: Account aliases298018
+Node: Account error checking299828
+Node: Account display order301606
+Node: Account types302806
+Node: alias directive307412
+Node: Basic aliases308710
+Node: Regex aliases309622
+Node: --alias option310668
+Node: Combining aliases311588
+Node: Aliases and multiple files313126
+Node: end aliases directive314187
+Node: Aliases can generate bad account names314591
+Node: Aliases and account types315426
+Node: comment directive316320
+Node: end comment directive316643
+Node: commodity directive316872
+Node: Commodity directive syntax317898
+Node: Commodity tags319355
+Node: Commodity aliases319889
+Node: Commodity error checking322978
+Node: decimal-mark directive323446
+Node: include directive324954
+Node: P directive328043
+Node: payee directive329079
+Node: tag directive329696
+Node: Periodic transactions330302
+Node: Periodic rule syntax331772
+Node: Periodic rules and relative dates332598
+Node: Two spaces between period expression and description!333377
+Node: Auto postings334340
+Node: Auto postings and multiple files337628
+Node: Auto postings and dates338035
+Node: Auto postings and transaction balancing / inferred amounts / balance assertions338478
+Node: Auto posting tags339269
+Node: Auto postings on forecast transactions only340166
+Node: Other syntax340638
+Node: Balance assignments341430
+Node: Balance assignments and costs342960
+Node: Balance assignments and multiple files343384
+Node: Bracketed posting dates343809
+Node: D directive344509
+Node: apply account directive346354
+Node: Y directive347536
+Node: Secondary dates348529
+Node: Star comments350016
+Node: Valuation expressions350420
+Node: Virtual postings350721
+Node: Other Ledger directives352347
+Node: Ledger virtual costs353107
+Node: Ledger cost basis353451
+Node: CSV353992
+Node: CSV rules cheatsheet356332
+Node: Finding the data358734
+Node: source360231
+Node: Data cleaning / data generating commands361582
+Node: archive363616
+Node: File Extension364596
+Node: Reading CSV from standard input365329
+Node: Reading multiple CSV files365715
+Node: Reading the data366327
+Node: Valid CSV366856
+Node: separator367704
+Node: encoding368381
+Node: skip369148
+Node: date-format369819
+Node: timezone370783
+Node: decimal-mark371928
+Node: newest-first372663
+Node: intra-day-reversed373399
+Node: CSV fields and hledger fields373997
+Node: fields375829
+Node: Field assignment377649
+Node: Functions379249
+Node: Referencing other fields382915
+Node: hledger fields384977
+Node: date field385578
+Node: date2 field385844
+Node: status field386042
+Node: code field386235
+Node: description field386611
+Node: comment field387070
+Node: account field387630
+Node: amount field388352
+Node: Setting amounts391316
+Node: Amount signs393786
+Node: Amount decimal places394845
+Node: currency field396053
+Node: Setting currency/commodity396505
+Node: balance field397830
+Node: balance-type398348
+Node: if399176
+Node: Matchers400984
+Node: Multiple matchers402992
+Node: Match groups403742
+Node: Regular expressions in CSV rules404648
+Node: ifs406099
+Node: end409209
+Node: merge409580
+Node: include412410
+Node: Working with CSV413161
+Node: CSV rules examples413508
+Node: Rapid feedback413897
+Node: Well factored rules414519
+Node: Deduplicating importing415030
+Node: Valid transactions416260
+Node: How CSV rules are evaluated417047
+Node: Timeclock420186
+Node: Timedot424257
+Node: Timedot examples428266
+Node: PART 4 CONCEPTS430346
+Node: Time periods430480
+Node: Report start & end date430725
+Node: Smart dates432201
+Node: Report intervals434572
+Node: Date adjustments435146
+Node: Start date adjustment435369
+Node: End date adjustment436233
+Node: Period expressions436982
+Node: Period expressions with a report interval439117
+Node: More complex report intervals439565
+Node: Multiple weekday intervals441681
+Node: Queries442692
+Node: Query types445525
+Node: acct query446133
+Node: amt query446444
+Node: code query447141
+Node: cur query447336
+Node: desc query448076
+Node: date query448259
+Node: date2 query448873
+Node: depth query449214
+Node: find query449550
+Node: note query450661
+Node: payee query450928
+Node: real query451209
+Node: status query451414
+Node: type query451654
+Node: tag query452256
+Node: Negative queries453092
+Node: not query453274
+Node: Space-separated queries453561
+Node: Boolean queries454249
+Node: expr query455190
+Node: any query455919
+Node: all query456934
+Node: Queries and command options457661
+Node: Queries and account aliases458109
+Node: Queries and valuation458533
+Node: Depth458861
+Node: Combining depth options459829
+Node: Pivoting460779
+Node: Report titles463082
+Node: Languages464447
+Node: Amount arithmetic466771
+Node: Where hledger divides468006
+Node: Transaction balancing471846
+Node: How balancing is checked472589
+Node: Where imbalances come from474014
+Node: Accumulated imbalances474766
+Node: Showing imbalances475890
+Node: Avoiding imbalances478478
+Node: Transaction balancing before 150479173
+Node: Amount formatting480331
+Node: Commodity display style480624
+Node: Commodity style override482497
+Node: Display rounding483594
+Node: Trailing decimal marks484248
+Node: Amount parseability485119
+Node: Cost reporting486728
+Node: Recording costs487520
+Node: Reporting at cost489277
+Node: Equity conversion postings490647
+Node: Inferring equity conversion postings493426
+Node: Combining costs and equity conversion postings495708
+Node: Requirements for detecting equity conversion postings497049
+Node: Value reporting498708
+Node: -X Value in specified commodity499673
+Node: -V Value in default commoditys500799
+Node: Valuation date501536
+Node: Finding market price502368
+Node: --infer-market-prices market prices from transactions503748
+Node: Valuation commodity506772
+Node: --value Flexible valuation508205
+Node: Valuation examples510600
+Node: Interaction of valuation and queries512744
+Node: Effect of valuation on reports513461
+Node: Lots and capital gains521232
+Node: First lots example523131
+Node: Writing lot entries527155
+Node: Cost basis annotations527955
+Node: Lotful commodities529170
+Node: Lot subaccounts529938
+Node: Several ways to write lot entries531206
+Node: Disabling lot tracking532803
+Node: Lot movements534171
+Node: Acquire534743
+Node: Transfer537536
+Node: Transfer fees538742
+Node: Capitalising fees539996
+Node: Dispose540695
+Node: Short positions542119
+Node: Other lot events544643
+Node: Cost basis methods545124
+Node: Changing the cost basis method548778
+Node: Gains550324
+Node: Gain accounts552202
+Node: Recording gains553575
+Node: Lot reports555819
+Node: Realised gains556598
+Node: Unrealised gains557828
+Node: Lot details560004
+Node: Lot labels560284
+Node: Cost basis precision561240
+Node: Lot postings and balance assertions562283
+Node: Troubleshooting lots563318
+Node: Generating data565366
+Node: Forecasting567201
+Node: --forecast567857
+Node: Inspecting forecast transactions568958
+Node: Forecast reports570291
+Node: Forecast tags571400
+Node: Forecast period in detail572020
+Node: Forecast troubleshooting573108
+Node: Budgeting574179
+Node: Posting types574734
+Node: PART 5 MORE ABOUT THE COMMAND LINE577527
+Node: Output577718
+Node: Output destination577923
+Node: Output format578483
+Node: Text output580413
+Node: Box-drawing characters581609
+Node: Colour582111
+Node: Paging582842
+Node: HTML output584385
+Node: CSV / TSV output585033
+Node: FODS output585289
+Node: Ledger output586223
+Node: Beancount output586775
+Node: SQL output591500
+Node: JSON output592241
+Node: Debug output592948
+Node: Command line tips594066
+Node: Special characters594435
+Node: Escaping shell special characters595437
+Node: Escaping regular expression special characters596798
+Node: Escaping in other situations598315
+Node: Unicode characters599615
+Node: Regular expressions601048
+Node: hledger's regular expressions604240
+Node: Argument files605913
+Node: Shell completions606827
+Node: PART 6 COMMON TASKS607336
+Node: Setting LEDGER_FILE607784
+Node: Set LEDGER_FILE on unix608300
+Node: Set LEDGER_FILE on mac608815
+Node: Set LEDGER_FILE on Windows609369
+Node: Reconciling611008
+Node: Closing a journal file613792
+Node: hledger 1 and hledger 2614259
+Node: BUGS615336
+Node: Troubleshooting616988
 
 End Tag Table
 
