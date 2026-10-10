@@ -61,11 +61,52 @@ would want `KW23`. Interval words precede a report title ("Monatliche
 Bilanz") and are inflected for the feminine, which all four report titles
 happen to share.
 
+## Spanish
+
+Machine-made (by Claude Opus 5.5) and not yet reviewed by a native
+speaker; corrections are welcome. It aims at neutral Spanish, readable in
+Spain and Latin America, so regional tags like `es-MX` or `es_ES` select
+it too. Viewers are addressed formally (usted).
+
+The statement names are the IFRS-style ones used across Latin America
+and in Spanish IFRS texts. Spain's PGC names differ (Balance de
+situación, Cuenta de pérdidas y ganancias); anyone who prefers them can
+override those entries in `~/.config/hledger/locale/es.po`. The account
+words match `examples/i18n/es.journal`.
+
+| English | Spanish |
+|---|---|
+| Balance Sheet / With Equity | Balance general / Balance general con patrimonio |
+| Income Statement | Estado de resultados |
+| Cashflow Statement | Estado de flujos de efectivo |
+| Assets / Liabilities / Equity | Activos / Pasivos / Patrimonio |
+| Revenues / Expenses | Ingresos / Gastos |
+| Net: | Neto: |
+| Total / Average | Total / Promedio |
+| Commodity | Unidad |
+| Account / Amount | Cuenta / Importe |
+| transaction / posting / journal entry | transacción / movimiento / asiento |
+| Journal (hledger-web's view) | Libro diario |
+| Balance changes / Ending balances | Cambios de saldo / Saldos finales |
+| Budget performance | Ejecución del presupuesto |
+
+Notes on the choices:
+
+- Spanish adjectives agree with their noun, so text that is appended to
+  titles of any gender and number is phrased to need no agreement:
+  ", con valoración al cierre de cada período" rather than ", valorado
+  ...", and "{title}, con filtro" rather than "..., filtrado".
+- All four statement names are masculine, so the interval words are too
+  ("Balance general mensual"). Where an interval word could be read as
+  describing the last noun, it moves: "Balance general anual con
+  patrimonio", "Estado mensual de flujos de efectivo".
+- hledger-web's Journal view is "Libro diario" everywhere, since "Diario"
+  alone is also its Daily interval link.
+- Month names are capitalized, as column headings, though Spanish writes
+  them in lower case in running text.
+
 ## Simplified Chinese
 
 Contributed by Chunhui Ouyang, as `zh_CN.po`; renamed to `zh-Hans.po`,
-the tag that `zh`, `zh_CN` and `zh-CN` all resolve to. It was made from
-an older template, so after merging the current one some newer
-hledger-web strings are untranslated, and some are fuzzy (a suggested
-translation, not used until a translator confirms it). These show in
-English for now.
+the tag that `zh`, `zh_CN` and `zh-CN` all resolve to. It was later
+brought up to date with the current template by its contributor.

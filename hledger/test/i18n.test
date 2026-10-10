@@ -124,5 +124,19 @@ $ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang zh-Hans | hea
 2008-12-31 资产负债表
 
 $ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang xx
->2 /available: de, en, zh-Hans\)/
+>2 /available: [^)]*zh-Hans/
 >= 1
+
+# ** 13. Spanish is built in, and regional tags fall back to it.
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang es | head -1
+Balance general 2008-12-31
+
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang es_MX | head -1
+Balance general 2008-12-31
+
+# The interval word is placed where Spanish needs it, not always last.
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bse -Y --lang es | head -1
+Balance general anual con patrimonio 2008-12-31
+
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal cf -M --lang es | head -1
+Estado mensual de flujos de efectivo 2008

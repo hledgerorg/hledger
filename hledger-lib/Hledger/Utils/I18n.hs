@@ -247,6 +247,7 @@ msgKey mctx s = maybe s (\c -> c <> "\x04" <> s) mctx
 builtinCatalogSources :: [(Text, ByteString)]
 builtinCatalogSources =
   [ ("de",      $(embedFileRelativeBytes "locale/de.po"))
+  , ("es",      $(embedFileRelativeBytes "locale/es.po"))
   , ("zh-Hans", $(embedFileRelativeBytes "locale/zh-Hans.po"))
   ]
 
