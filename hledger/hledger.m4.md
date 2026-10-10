@@ -7455,6 +7455,8 @@ When it reports a lot-related error, or a report looks wrong:
   Write just one of them. If the basis really differs from what was paid, adjust your entry (see [Acquire](#acquire)).
 - "no ... lots available for disposal" means a sale from an account holding none of the commodity.
   If it is a short sale, record it in a liability account (see [Short positions](#short-positions)).
+- For more detail, `--debug=5` (eg `hledger check --debug=5`) traces lot processing step by step.
+  It's verbose, and mostly useful for advanced troubleshooting or bug reports.
 - To silence lot processing while fixing other problems, use `-I` or `--ignore-lots`.
 
 
