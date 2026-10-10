@@ -3425,7 +3425,7 @@ It's important to know which is which, when you are creating rules:
    - are read-only.
 
 2. hledger fields
-   - are the parts of a hledger journal entry (see [hledger field names](#hledger-field-names))
+   - are the parts of a hledger journal entry (see [hledger fields](#hledger-fields))
      (eg `date`, `description`, `account1`, `amount1`)
    - are assigned to by rules, to construct a journal entry
    - can be referenced by their name, without a `%` prefix, inside a [`%{...}` expression](#functions)
@@ -3472,7 +3472,7 @@ It does two things:
    This can be convenient if you are referencing them in other rules,
    so you can say `%SomeField` instead of remembering `%13`.
 
-2. Whenever you use one of the special [hledger field names](#hledger-field-names) (described below),
+2. Whenever you use one of the special [hledger field names](#hledger-fields) (described below),
    it assigns the CSV value in this position to that hledger field.
    This is the quickest way to populate hledger's fields and build a transaction.
 
@@ -3506,7 +3506,7 @@ HLEDGERFIELD FIELDVALUE
 Field assignments are the more flexible way to assign CSV values to hledger fields.
 They can be used instead of or in addition to a [`fields`](#fields) list (see above).
 
-To assign a value to a hledger field, write the [field name](#hledger-field-names)
+To assign a value to a hledger field, write the [field name](#hledger-fields)
 (any of the standard hledger field/pseudo-field names, defined below),
 a space, followed by a text value on the same line.
 This text value may interpolate CSV fields,
@@ -3665,7 +3665,9 @@ before further processing by hledger.
 Eg `%{amount1}` is the amount text before any sign simplification,
 and `%{account2}` is empty if account2 isn't assigned (not `expenses:unknown`).
 
-## hledger field names
+<a name="hledger-field-names"></a>
+
+## hledger fields
 
 Here are all the hledger fields you can assign to.
 They correspond to parts of a journal entry,
@@ -4128,7 +4130,7 @@ Here are some examples:
 
 An "ifs table" is a more compact way to write many [if rules](#if).
 
-- The first line begins with `ifs`, then one or more [hledger field names](#hledger-field-names),
+- The first line begins with `ifs`, then one or more [hledger field names](#hledger-fields),
   all separated by a delimiter character (any punctuation character, your choice) plus optional whitespace.
   (An older form is also supported for backward compatibility: `if` followed by the delimiter with no space between them.)
 - The following lines begin with a [matcher](#matchers), then values to assign to each of those hledger fields.
@@ -4330,6 +4332,13 @@ rules after the `include` line.
 
 Some tips for creating rules and importing CSV data regularly:
 
+### CSV rules examples
+
+For real-world rules files for many banks, brokers, exchanges and apps,
+see the [hledger CSV rules library](https://github.com/hledgerorg/hledger/tree/main/examples/csv)
+in the hledger repo. These aren't necessarily maintained, and may need adapting,
+but they are a good source of ideas and examples.
+
 ### Rapid feedback
 
 It's a good idea to get rapid feedback while creating/troubleshooting CSV rules.
@@ -4447,13 +4456,6 @@ If you get a confusing error while reading a CSV file, it may help to try to und
 This is all done by the CSV reader, one of several readers hledger can use to read transactions from an input file.
 When all input files have been read successfully,
 their transactions are passed to whichever hledger command the user specified.
-
-## CSV rules examples
-
-For real-world rules files for many banks, brokers, exchanges and apps,
-see the [hledger CSV rules library](https://github.com/hledgerorg/hledger/tree/main/examples/csv)
-in the hledger repo. These aren't necessarily maintained, and may need adapting,
-but they are a good source of ideas and examples.
 
 <a name="timeclock-format"></a>
 
