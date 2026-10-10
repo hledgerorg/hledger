@@ -842,8 +842,9 @@ $ hledger -f t.j register checking
 
 DATE should be a [simple date](#simple-dates); if the year is not
 specified it will use the year of the transaction's date.  
-The `date:` tag must have a valid simple date value if it is present,
-eg a `date:` tag with no value is not allowed.
+A non-empty `date:` tag value must begin with a valid simple date.
+A `date:` tag with an empty value is allowed, and sets no date.
+(To disable a date tag temporarily, without removing the date, insert a comma before the date.)
 
 ## Status
 

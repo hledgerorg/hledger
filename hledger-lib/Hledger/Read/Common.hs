@@ -2012,6 +2012,10 @@ transactioncommentp = followingcommentpWith commentlinetagsp
 -- >>> rtp (postingcommentp (Just 2000)) "; date:3/4=5/6"
 -- Right ("date:3/4=5/6\n",[("date","3/4=5/6")],Just 2000-03-04,Nothing)
 --
+-- Example: date tags with empty values set no date
+-- >>> rtp (postingcommentp (Just 2000)) "; date:, date2: , a:b"
+-- Right ("date:, date2: , a:b\n",[("date",""),("date2",""),("a","b")],Nothing,Nothing)
+--
 postingcommentp
   :: Maybe Year -> TextParser m (Text, [Tag], Maybe Day, Maybe Day)
 postingcommentp mYear = do
@@ -2057,8 +2061,10 @@ commenttagsanddatesp mYear = do
       _ <- optional $ char ','
       bimap (tags++) (dateTags++) <$> commenttagsanddatesp mYear
 
+    -- An empty value (allowed for compatibility with Ledger, where date: is ordinary metadata)
+    -- makes an ordinary tag, setting no date.
     dateValue :: Text -> TextParser m ([Tag], [DateTag])
-    dateValue name = do
+    dateValue name = (lookAhead (void (satisfy (\c -> c == ',' || c == '\n')) <|> eof) *> tagValue name) <|> do
       (txt, (date, dateTags)) <- match' $ do
         date <- datep' mYear
         dateTags <- readUpTo ','

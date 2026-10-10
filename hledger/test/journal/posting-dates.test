@@ -70,3 +70,11 @@ $ hledger -f- print
 This transaction is unbalanced.
 /
 >= 1
+
+# ** 6. A date: or date2: tag with an empty value is allowed (as in Ledger), and sets no date.
+<
+2000/1/2
+   a  0   ; date:
+   b  0   ; date2: , c:d
+$ hledger -f- register --date2 tag:date2
+2000-01-02                      b                                0             0

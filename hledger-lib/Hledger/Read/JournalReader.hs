@@ -1179,7 +1179,7 @@ scanTransactionTags t =
 -- | The tags, and the posting dates from date: and date2: tags, in a posting comment line's
 -- text, as commenttagsanddatesp parses them, given the transaction's year for partial dates.
 -- Like scanTransactionTags, except that after a colon with no tag name, spaces and a comma are
--- skipped, and a date tag's value must begin with a date, which is returned as well.
+-- skipped, and a non-empty date tag value must begin with a date, which is returned as well.
 -- Returns Nothing if a date tag's value does not begin with a date scanSimpleDate handles (the
 -- general parser accepts a few more forms, and reports invalid ones). The text must not contain
 -- a bracketed date (callers decline those).
@@ -1195,7 +1195,7 @@ scanPostingTags year t =
           val = T.strip valtext
       (tags, dates, rest3) <-
         if T.null name then Just ([], [], r)
-        else if name == "date" || name == "date2" then do
+        else if (name == "date" || name == "date2") && not (T.null val) then do
           (date, _) <- scanSimpleDate (Just year) r
           Just ([(name, val)], [(name, date)], rest2)
         else Just ([(name, val)], [], rest2)
