@@ -59,7 +59,6 @@ import System.Environment (lookupEnv, setEnv, unsetEnv)
 import System.FilePath ((</>))
 import Test.Hspec (describe, expectationFailure, hspec, it, shouldBe)
 import Text.Printf (printf)
-import Web.Cookie (defaultSetCookie, setCookieName, setCookieValue)
 import Yesod.Default.Config
 import Yesod.Test
 
@@ -545,6 +544,54 @@ hledgerWebTest = do
       bodyContains "href=\"register?q=inacct:assets+depth:1\""
       bodyNotContains "href=\"register?q=inacct:assets:bank:checking"
 
+    yit "links to each depth above the deepest account's, replacing the search's depth term and keeping its others" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "q" "assets depth:1"
+      statusIs 200
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balance?q=assets\" title=\"Show accounts at every depth\">All</a>")
+      bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/balance?q=assets%20depth%3A1\"")
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balance?q=assets%20depth%3A2\"")
+      -- assets:bank:checking is at depth 3, the same as All
+      bodyNotContains "depth%3A3"
+
+    yit "serves a tree-mode report at full depth, marked for folding to the search's depth" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "list" "tree"
+        addGetParam "q" "depth:1"
+      statusIs 200
+      bodyContains "data-depth-fold=\"1\""
+      bodyContains "class=\"account depth-0\""
+      -- the rows below the fold are served too, for the page to unfold
+      bodyContains "class=\"account depth-2\""
+      bodyContains "href=\"register?q=inacct:assets:bank:checking+depth:1\""
+
+    yit "offers the depth links on the journal page, where they clip the sidebar" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "q" "depth:1"
+      statusIs 200
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/journal?q=depth%3A2\"")
+      -- the sidebar is clipped to the depth; the entries are not
+      bodyNotContains "\"q=inacct%3Aassets%3Abank\""
+      bodyContains "lunch</td>"
+
+    yit "in tree mode with a depth limit, serves the whole sidebar, marked for folding to it" $ do
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "list" "tree"
+        addGetParam "q" "depth:1"
+      statusIs 200
+      -- the journal page has no report table, so this is the sidebar's
+      bodyContains "data-depth-fold=\"1\""
+      -- the accounts below the limit are served too, for the carets to open
+      bodyContains "q=inacct%3Aassets%3Abank%3Achecking"
+
     yit "reports a period expression it cannot parse" $ do
       request $ do
         setMethod "GET"
@@ -751,10 +798,10 @@ hledgerWebTest = do
         setUrl RegisterR
         addGetParam "q" "inacct:assets:bank:checking date:2025"
       statusIs 200
-      bodyContains ("<a href=\"" ++ base ++ "/journal?q=date%3A2025\" title=\"Show general journal entries, most recent first\">")
+      bodyContains ("<a id=\"sidebar-journal-link\" href=\"" ++ base ++ "/journal?q=date%3A2025\" title=\"Show general journal entries, most recent first\">")
       get JournalR
       statusIs 200
-      bodyContains ("<a class=\"inacct\" href=\"" ++ base ++ "/journal\" title=\"Show general journal entries, most recent first\">")
+      bodyContains ("<a class=\"inacct\" id=\"sidebar-journal-link\" href=\"" ++ base ++ "/journal\" title=\"Show general journal entries, most recent first\">")
 
     yit "links the sidebar's total to the register of the search" $ do
       request $ do
@@ -912,7 +959,8 @@ hledgerWebTest = do
       bodyContains ">Expenses</th>"
       bodyContains "href=\"register?q=inacct:income:salary+date:2025-01-01..2025-02-07+type:R\" title=\"Show the transactions that make up this amount, which the register shows with the opposite sign\">"
       bodyContains "href=\"register?q=type:RX+date:2025-01-01..2025-02-07\" title=\"Show the transactions that make up this total, which the register shows with the opposite sign\">"
-      bodyNotContains "accum="
+      -- the page's own mode is never a parameter; the Show row's other modes are
+      bodyNotContains "accum=change"
 
     yit "shows the income statement's ending balances when asked, and says so" $ do
       request $ do
@@ -946,9 +994,9 @@ hledgerWebTest = do
         addGetParam "q" "inacct:assets:bank:checking expenses"
       statusIs 200
       -- the links keep the period and the search minus its account term
-      bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/incomestatement?period=quarterly&amp;q=expenses\" title=\"Show revenues and expenses\"")
-      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?period=quarterly&amp;q=expenses\" title=\"Show assets, liabilities, and net worth\"")
-      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balance?period=quarterly&amp;q=expenses\" title=\"Show the balance report: any accounts, by period\"")
+      bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/incomestatement?q=expenses&amp;period=quarterly\" title=\"Show revenues and expenses\"")
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?q=expenses&amp;period=quarterly\" title=\"Show assets, liabilities, and net worth\"")
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balance?q=expenses&amp;period=quarterly\" title=\"Show the balance report: any accounts, by period\"")
 
     yit "links the balance report to the statements too" $ do
       get BalanceR
@@ -1002,6 +1050,127 @@ hledgerWebTest = do
         addGetParam "q" "<img src=x onerror=alert(1)>"
       statusIs 200
       bodyNotContains "<img src=x onerror"
+
+  -- Amounts as recorded, at cost, or at market value: a stock bought in
+  -- three months at three prices, and priced at each month's start.
+  vj <- fmap (either error' id) . runExceptT . journalFinalise biopts "valued.journal" "" =<<
+          readJournal'' (T.pack $ unlines  -- PARTIAL: readJournal'' should not fail
+            ["commodity $1,000.00"
+            ,"P 2024-12-01 AAPL $80"
+            ,"P 2025-01-01 AAPL $100"
+            ,"P 2025-02-01 AAPL $120"
+            ,"2024-12-05 buy"
+            ,"    assets:broker   1 AAPL @ $80"
+            ,"    assets:bank"
+            ,"2025-01-05 buy"
+            ,"    assets:broker  10 AAPL @ $90"
+            ,"    assets:bank"
+            ,"2025-02-10 buy"
+            ,"    assets:broker   5 AAPL @ $110"
+            ,"    assets:bank"])
+  runTests "hledger-web amount conversion" [] vj $ do
+
+    yit "shows market values with value=end, asking the figures' registers for the same" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "2025-01"
+        addGetParam "value" "end"
+      statusIs 200
+      -- 10 AAPL at January's end
+      bodyContains "$1,000.00"
+      bodyContains "href=\"register?q=inacct:assets:broker+date:2025-01&amp;value=end\""
+      bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/balance?period=2025-01&amp;value=end\"")
+      -- the other reports, and the search form, keep it
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?period=2025-01&amp;value=end\"")
+      bodyContains "<input type=\"hidden\" name=\"value\" value=\"end\">"
+
+    yit "shows costs with value=cost" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "2025-01"
+        addGetParam "value" "cost"
+      statusIs 200
+      bodyContains "$900.00"
+      bodyContains "href=\"register?q=inacct:assets:broker+date:2025-01&amp;value=cost\""
+
+    yit "reports an amount conversion it does not know" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "value" "bogus"
+      statusIs 200
+      bodyContains "Unknown amount conversion"
+
+    yit "rejects gains over amounts as recorded, as the command line does" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "calc" "gain"
+        addGetParam "value" "none"
+      statusIs 200
+      bodyContains "figured from period-end market values"
+
+    yit "converts the register's amounts as the value parameter says, and its links keep its modes" $ do
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:broker"
+        addGetParam "accum" "historical"
+        addGetParam "value" "end"
+      statusIs 200
+      -- 16 AAPL at the journal's end
+      bodyContains "$1,920.00"
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/register?q=date%3A2025%20inacct%3Aassets%3Abroker&amp;accum=historical&amp;value=end\"")
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?value=end\"")
+
+    yit "offers the depth and amount links on the statements too, keeping an accumulation override" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalancesheetR
+        addGetParam "accum" "change"
+      statusIs 200
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?q=depth%3A1&amp;accum=change\"")
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?accum=change&amp;value=end\"")
+
+    yit "shows the sidebar's amounts the way the page's value parameter asks, naming its net row by the mode" $ do
+      get JournalR
+      statusIs 200
+      bodyContains "Net flows:"
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "value" "cost"
+      statusIs 200
+      -- 1 AAPL at $80, 10 at $90, 5 at $110, summed at cost
+      bodyContains "$1,530.00"
+      bodyContains "Net, at cost:"
+      request $ do
+        setMethod "GET"
+        setUrl JournalR
+        addGetParam "value" "end"
+      statusIs 200
+      bodyContains "Unbooked gains:"
+
+  runTests "hledger-web amount conversion with -V" [("V","")] vj $ do
+
+    yit "shows market values by default, and amounts as recorded with value=none, asking the figures' registers for those" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "2025-01"
+      statusIs 200
+      bodyContains "$1,000.00"
+      bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/balance?period=2025-01\"")
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "period" "2025-01"
+        addGetParam "value" "none"
+      statusIs 200
+      bodyContains "10 AAPL"
+      bodyContains "href=\"register?q=inacct:assets:broker+date:2025-01&amp;value=none\""
 
   -- A journal whose accounts have no recognizable types has empty statements.
   uj <- fmap (either error' id) . runExceptT . journalFinalise biopts "untyped.journal" "" =<<
@@ -1083,21 +1252,36 @@ hledgerWebTest = do
       -- a zero sidebar amount has an empty register, and no link
       bodyNotContains "inacct%3Aassets%3Azeroed\" title=\"Show the transactions that make up this balance\""
       bodyContains "inacct%3Aassets%3Akept\" title=\"Show the transactions that make up this balance\""
+      -- and says so in the row of links; hiding them is the empty parameter
+      bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/balance\" title=\"Show accounts whose balances are zero\"")
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balance?empty=0\" title=\"Hide accounts whose balances are zero\"")
 
-    yit "hides them when the sidebar does (the e key's cookie)" $ do
-      testSetCookie defaultSetCookie{setCookieName = "hideemptyaccts", setCookieValue = "1"}
-      get BalanceR
+    yit "hides them everywhere with empty=0, which links and the search form keep" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "empty" "0"
       statusIs 200
-      bodyContains "href=\"register?q=inacct:assets:kept\""
-      bodyNotContains "href=\"register?q=inacct:assets:zeroed\""
+      -- the figures' registers keep the state too
+      bodyContains "href=\"register?q=inacct:assets:kept&amp;empty=0\""
+      bodyNotContains "href=\"register?q=inacct:assets:zeroed"
+      bodyContains "<input type=\"hidden\" name=\"empty\" value=\"0\">"
+      bodyContains "empty=0\" title=\"Show assets, liabilities, and net worth\""
 
   runTests "hledger-web with -E" [("empty","")] ej $ do
 
-    yit "hides zero items, the opposite of the command line" $ do
+    yit "hides zero items by default, the opposite of the command line, and empty=1 shows them" $ do
       get BalanceR
       statusIs 200
       bodyContains "href=\"register?q=inacct:assets:kept\""
-      bodyNotContains "href=\"register?q=inacct:assets:zeroed\""
+      bodyNotContains "href=\"register?q=inacct:assets:zeroed"
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balance?empty=1\" title=\"Show accounts whose balances are zero\"")
+      request $ do
+        setMethod "GET"
+        setUrl BalanceR
+        addGetParam "empty" "1"
+      statusIs 200
+      bodyContains "href=\"register?q=inacct:assets:zeroed&amp;empty=1\""
 
   runTests "hledger-web with --monthly" [("monthly","")] bj $ do
 
@@ -1543,6 +1727,16 @@ hledgerWebTest = do
       statusIs 200
       bodyNotContains "Showing "
       bodyContains ("<a class=\"current\" href=\"" ++ base ++ "/register?q=date%3A2024%20inacct%3Aassets%3Acash\"")
+
+    yit "keeps the register's mode in its page and year links" $ do
+      request $ do
+        setMethod "GET"
+        setUrl RegisterR
+        addGetParam "q" "inacct:assets:cash"
+        addGetParam "accum" "historical"
+      statusIs 200
+      bodyContains "/register?q=inacct%3Aassets%3Acash&amp;accum=historical&amp;page=2\" title=\"Show the older transactions\""
+      bodyContains "/register?q=date%3A2024%20inacct%3Aassets%3Acash&amp;accum=historical\" title=\"Show only 2024\">2024</a>"
 
   -- A startup depth limit does not apply to the register, nor to its years.
   runTests "hledger-web paging with --depth" [("depth","1")] pagingj $ do

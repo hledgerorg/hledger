@@ -1,11 +1,22 @@
 <h2>
   #{header}
 
-^{yearsRow trs RegisterR qparam years}
-^{pagingLinks trs RegisterR qparam page}
+^{yearsRow trs RegisterR qparam modeParams years}
+
+^{statusRow}
+^{realRow}
+^{typeRow}
+$if deepest > 1
+  ^{depthRow}
+^{listRow}
+^{amountsRow}
+^{costsRow}
+^{zeroRow}
+
+^{pagingLinks trs RegisterR qparam modeParams page}
 
 <div>
-  ^{registerChartHtml qparam accumParams transactionFrag (T.unpack balancelabel) $ accountTransactionsReportByCommodity items}
+  ^{registerChartHtml qparam modeParams transactionFrag (T.unpack balancelabel) $ accountTransactionsReportByCommodity items}
 
 <div.table-responsive>
   <table .table.table-condensed>
@@ -35,9 +46,9 @@
                 #{summName}</a>#{comma}
           <td .amount>
             $if not split || not (mixedAmountLooksZero amt)
-              ^{mixedAmountAsHtml amt}
+              ^{mixedAmountAsHtmlWith amtfmt amt}
           <td .amount>
-            ^{mixedAmountAsHtml bal}
+            ^{mixedAmountAsHtml (mixedAmountStripCosts bal)}
       $if historical && lastpage
         $maybe start <- mstart
           <tr .broughtforward>
@@ -54,7 +65,7 @@
                 <a href=@?{broughtForwardLink start} title=_{HMsg "Show the transactions before this period"}>
                   ^{mixedAmountAsHtml startbal}
 
-^{pagingLinks trs RegisterR qparam page}
+^{pagingLinks trs RegisterR qparam modeParams page}
 
 $if elem AddPermission perms
   ^{addModal AddR j today}

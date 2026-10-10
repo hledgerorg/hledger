@@ -8,9 +8,63 @@
   <h1>#{takeFileName (journalFilePath j)}
 
 $if elem ViewPermission perms
-  <div#sidebar-menu .sidebar-offcanvas.#{sideShowmd}.#{sideShowsm}>
+  <div#sidebar-menu .sidebar-offcanvas.#{sideShowmd}.#{sideShowsm} :sidebarFold:data-fold="1" :not (T.null sidebarFoldDepth):data-depth-fold=#{sidebarFoldDepth}>
     <table .main-menu .table>
       ^{accounts}
+  $# Fold the sidebar's account tree as soon as its markup is parsed, ie
+  $# right here, inline (hledger.js loads at the end of the body), for the
+  $# same reason as the scroll restore below: folding at DOMContentLoaded
+  $# paints the tree in full first and then collapses it, a visible jump.
+  $# Folding first also gives the scroll restore the folded height.
+  $# In the page's tree mode (data-fold) the rows, which carry their depth
+  $# and account name, get fold carets, and the folded accounts are
+  $# remembered in this browser, so the sidebar stays as you left it from
+  $# page to page. With a depth limit (data-depth-fold) the sidebar opens
+  $# to it instead, like the report tables, and folds are not remembered.
+  $# In list mode the sidebar is the same tree, shown in full, no carets.
+  <script nonce=#{nonce}>
+    (function () {
+      var menu = document.getElementById('sidebar-menu');
+      if (!menu.hasAttribute('data-fold')) { return; }
+      var fold = parseInt(menu.getAttribute('data-depth-fold') || '', 10);
+      var rows = [];
+      menu.querySelectorAll('tr[data-depth]').forEach(function (tr) {
+        rows.push({tr: tr, depth: +tr.getAttribute('data-depth'),
+                   acct: tr.getAttribute('data-acct'), expanded: true, parent: false});
+      });
+      if (!rows.length) { return; }
+      var folded = {};
+      try { JSON.parse(localStorage.getItem('sidebarFolded') || '[]').forEach(function (a) { folded[a] = true; }); } catch (e) {}
+      function apply() {
+        var stack = [];
+        rows.forEach(function (r) {
+          while (stack.length > r.depth) { stack.pop(); }
+          r.tr.classList.toggle('tree-fold-hide', !stack.every(function (open) { return open; }));
+          r.caret.textContent = r.parent ? (r.expanded ? '▾' : '▸') : '';
+          stack.push(r.expanded);
+        });
+      }
+      function save() {
+        if (!isNaN(fold)) { return; }
+        try {
+          localStorage.setItem('sidebarFolded', JSON.stringify(
+            rows.filter(function (r) { return r.parent && !r.expanded; }).map(function (r) { return r.acct; })));
+        } catch (e) {}
+      }
+      rows.forEach(function (r, i) {
+        r.parent = i + 1 < rows.length && rows[i + 1].depth > r.depth;
+        if (!isNaN(fold)) { r.expanded = r.depth < fold - 1; }
+        else if (r.parent && folded[r.acct]) { r.expanded = false; }
+        r.caret = document.createElement('span');
+        r.caret.className = 'tree-caret';
+        var name = r.tr.querySelector('.ff-wrapper a.acct-name');
+        if (name) { name.parentNode.insertBefore(r.caret, name); }
+        if (r.parent) {
+          r.caret.addEventListener('click', function () { r.expanded = !r.expanded; apply(); save(); });
+        }
+      });
+      apply();
+    })();
   $# Restore the sidebar's scroll position (saved per-tab in sessionStorage)
   $# as soon as its markup is parsed, ie right here, inline. Waiting for eg
   $# DOMContentLoaded would be too late: on pages with a long journal/register
