@@ -124,7 +124,7 @@ $ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang zh-Hans | hea
 2008-12-31 资产负债表
 
 $ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang xx
->2 /available: [^)]*zh-Hans/
+>2 /available: [^)]*zh[,)]/
 >= 1
 
 # ** 13. Spanish is built in, and regional tags fall back to it.

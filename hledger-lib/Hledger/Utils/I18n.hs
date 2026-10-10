@@ -212,7 +212,7 @@ translationsForLangOption (Just s)
       case resolveLang available [T.pack s] of
         Just lang -> loadTranslations lang
         Nothing -> usageError $ "--lang: no translations are available for " ++ show s
-                     ++ " (available: " ++ T.unpack (T.intercalate ", " available) ++ ")"
+                     ++ " (available: " ++ T.unpack (T.intercalate ", " $ map shortLangTag available) ++ ")"
 
 -- | Split a template into its literal text and its @{name}@ placeholders.
 scanPlaceholders :: Text -> [Either Text Text]
@@ -674,6 +674,14 @@ normalizeLangTag raw
 langTagCandidates :: Text -> [Text]
 langTagCandidates t = map (T.intercalate "-") $ reverse $ drop 1 $ inits $ T.splitOn "-" t
 
+-- | The shortest spelling of a language tag that selects it, for showing to
+-- users: the tag with subtags dropped from the right, as far as the result
+-- still normalizes to the tag. Eg zh-Hans is shown as zh, since zh means
+-- zh-Hans; but pt-BR stays pt-BR, since pt is a different language tag.
+shortLangTag :: Text -> Text
+shortLangTag t = fromMaybe t $ listToMaybe
+  [ c | c <- reverse (langTagCandidates t), normalizeLangTag c == Just t ]
+
 -- | Given the available language tags and a list of preferred tags in
 -- order of preference (raw, as from the environment or a browser),
 -- choose the first available one. Each preference is tried with its
@@ -800,6 +808,10 @@ tests_I18n = testGroup "I18n" [
 
   ,testCase "langTagCandidates" $
      langTagCandidates "zh-Hant-TW" @?= ["zh-Hant-TW", "zh-Hant", "zh"]
+
+  ,testCase "shortLangTag" $
+     map shortLangTag ["de", "zh-Hans", "zh-Hant", "pt-BR", "nb", "sr-Latn-RS"]
+       @?= ["de", "zh", "zh-Hant", "pt-BR", "nb", "sr-Latn-RS"]
 
   ,testCase "resolveLang" $ do
      resolveLang ["en", "de"] ["de-CH", "en", "de"] @?= Just "de"
