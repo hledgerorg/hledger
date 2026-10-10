@@ -147,7 +147,12 @@ compoundBalanceReportWith rspec' j priceoracle subreportspecs = cbr
             -- XXX in non-thorough way, consider updateReportSpec ?
             rspecsub = rspec{_rsReportOpts=ropts, _rsQuery=And [cbcsubreportquery, _rsQuery rspec]}
             -- Match and postings for the subreport
-            subreportps = filter (matchesPostingExtra (journalAccountType j) cbcsubreportquery) ps
+            subreportps = countSign $ filter (matchesPostingExtra (journalAccountType j) cbcsubreportquery) ps
+            -- With --count, a normally negative subreport counts each posting as -1,
+            -- so that its display negation shows positive counts.
+            countSign
+              | counting && normalbalance_ ropts == Just NormallyNegative = map postingNegateMainAmount
+              | otherwise = id
             -- Account representing this subreport
             acct = generateMultiBalanceAccount rspecsub j priceoracle colspans subreportps
 
@@ -155,12 +160,15 @@ compoundBalanceReportWith rspec' j priceoracle subreportspecs = cbr
     -- - no subreports
     -- - empty subreports, having no subtotals (#588)
     -- - subreports with a shorter subtotals row than the others
+    -- With --count, the subreports' counts are all added.
     overalltotals = case subreports of
         []     -> PeriodicReportRow () [] nullmixedamt nullmixedamt
         (r:rs) -> sconcat $ fmap subreportTotal (r:|rs)
       where
         subreportTotal (_, sr, increasestotal) =
-            (if increasestotal then id else fmap maNegate) $ prTotals sr
+            (if increasestotal || counting then id else fmap maNegate) $ prTotals sr
+
+    counting = balancecalc_ (_rsReportOpts rspec) == CalcPostingsCount
 
     cbr = CompoundPeriodicReport "" (maybeDayPartitionToDateSpans colspans) subreports overalltotals
 

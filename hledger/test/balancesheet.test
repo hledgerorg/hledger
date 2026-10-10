@@ -451,3 +451,32 @@ $ hledger -f - bs -M -O html --base-url ''
 $ hledger -f - bs -M -O html --base-url ''
 > /<th><a href="register\?q=date:2025-01" title="Show the transactions in this period">2025-01-31</
 >= 0
+
+# ** 20. --count shows positive counts in every section, and their sum as the net.
+<
+2025-01-01
+  assets:bank   10
+  liabilities:card
+
+2025-01-02
+  liabilities:card  2
+  assets:bank
+
+$ hledger -f - bs --count
+Balance Sheet 2025-01-02
+
+                  || 2025-01-02 
+==================++============
+ Assets           ||            
+------------------++------------
+ assets:bank      ||          2 
+------------------++------------
+                  ||          2 
+==================++============
+ Liabilities      ||            
+------------------++------------
+ liabilities:card ||          2 
+------------------++------------
+                  ||          2 
+==================++============
+ Net:             ||          4 
