@@ -76,7 +76,7 @@ The columns show:
 - and the annualised rate of return, as of the report end date (XIRR, calculated from the holding's dated cashflows and current value, like roi's IRR; it includes realised gains).
 
 Fully disposed commodities and accounts are not shown, unless you add `-E/--empty`.
-(But the RGain and XIRR in the totals row always includes them.)
+(But the totals row's RGain and XIRR always include them.)
 
 To see a commodity's performance, a market price should be declared for it (as of the report end date).
 Market prices come from [P directives](#p-directive) or (with `--infer-market-prices`) from transacted prices, as usual. 

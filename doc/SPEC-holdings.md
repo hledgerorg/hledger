@@ -99,14 +99,16 @@ Notes:
   (for a sale, the proceeds minus the basis of the units sold; for a short
   cover, the short-sale basis minus the buying cost), for the row's
   commodity's lots in the row's own scope
-  (see below). Fully disposed lots and commodities have no row of their own
-  by default (`-E` shows zero-units rows for disposed commodities), but
-  their realised gains are included in the totals row, which computes
-  RGain and XIRR from the displayed rows' base accounts - consistent
-  across display modes. Fully disposed accounts don't appear in the
-  report by default, and neither do their realised gains (the totals
-  correspond to the displayed rows); `-E` shows them, and the totals
-  then include them.
+  (see below). Fully disposed lots, commodities and accounts have no row
+  of their own by default (`-E` shows them as zero-units rows), but
+  their realised gains and cashflows are always included in the totals
+  row, whose RGain and XIRR cover all lots within the query and end date,
+  whatever rows are displayed - so the totals are the same in list or
+  tree mode, with or without `--lots` or `-E` (#2769). (Until 2026-10,
+  the totals covered only the displayed rows' base accounts, so a fully
+  disposed account's gains were included only with `-E`, or in tree mode
+  when a parent row covered it.) The totals row's RGain can therefore
+  exceed the sum of the RGain cells shown.
 - XIRR solves for the annualised rate of return implied by the holding's
   dated cashflows (acquisitions at transacted or basis cost, disposals at
   proceeds) plus its current value, like roi's IRR (using ridders,

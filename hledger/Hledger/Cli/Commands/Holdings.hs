@@ -291,10 +291,6 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
       , maybe True (== c) mc
       ]
 
-    -- The cashflows of the lots at or under an account, optionally of one held commodity.
-    flowsUnder :: AccountName -> Maybe CommoditySymbol -> [(Day, Amount)]
-    flowsUnder acct mc = concat $ underIn flowmap acct mc
-
     -- The cashflows of the lots in a row account's own scope.
     flowsOf :: AccountName -> Maybe CommoditySymbol -> [(Day, Amount)]
     flowsOf acct mc = concat $ scopedIn flowmap (rowScope acct) mc
@@ -439,15 +435,6 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
     mportvaluecomm = case mportfoliovalue of
       Just [v] -> Just $ acommodity v
       _        -> Nothing
-
-    -- The distinct base accounts of the displayed rows (excluding any
-    -- contained in another). Account-level totals (RGain, XIRR) are
-    -- computed from these, so that they include fully disposed lots,
-    -- which have no displayed row of their own (eg with --lots).
-    -- (Fully disposed accounts are included only when -E displays them.)
-    topbases :: [AccountName]
-    topbases = [ b | b <- bases, not $ any (`isAccountNamePrefixOf` b) bases ]
-      where bases = nubSort $ map (lotBaseAccount . prrFullName) toprows
 
     -- A value's percentage of the portfolio's total value, when both are
     -- single amounts in the same commodity.
@@ -776,8 +763,12 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
       : map holdingCsv holdingrecords
 
     -- Grand totals row (as cell parts, like rowCellParts): the Units,
-    -- Avg cost, Cost, Value and gain columns, summed over the topmost
-    -- displayed rows (which include everything below them).
+    -- Avg cost, Cost, Value and UGain columns, summed over the topmost
+    -- displayed rows (which include everything below them); and RGain and
+    -- XIRR, over all the lots within the query and end date, including
+    -- fully disposed lots, commodities and accounts, which have no row
+    -- unless -E is used. So the totals are the same in list or tree mode,
+    -- with or without --lots or -E (#2769).
     -- Units, and the average cost per unit, are shown only when the
     -- holdings are all in one commodity (a multi-commodity total would
     -- widen the column for everyone, and a multi-commodity average is
@@ -806,13 +797,13 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
                            , maybe [] (map showamtz) mtotgains
                            , maybe "" showpct $ gainPct (fromMaybe [] mtotgains) totcosts)
             where mtotgains = gainAmounts totvalue totcosts
-        rgainparts = case map (costValuerTo mportvaluecomm) $ concatMap (\b -> rgainsUnder b Nothing) topbases of
+        rgainparts = case map (costValuerTo mportvaluecomm) $ M.elems rgainmap of
           [] -> []
           rs -> map showamt $ amounts $ mixed rs
         xirrcell = fromMaybe "" $ do
           totvalue <- mportfoliovalue
           [tv] <- Just totvalue
-          showxirr <$> xirrOf (concatMap (\b -> flowsUnder b Nothing) topbases) tv
+          showxirr <$> xirrOf (concat $ M.elems flowmap) tv
         showamt = T.pack . showAmountWith noCostFmt
         showamtz = T.pack . showAmountWith noCostFmt{displayZeroCommodity=True}
 

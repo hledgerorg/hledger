@@ -562,9 +562,9 @@ $ hledger -f- holdings -e 2026-07-01 -O csv -E
 "assets:broker1","GHI","2020-01-01","2372","1","$10","$40","$10","$40","47.1","$30","300.0","","23.8"
 "assets:broker1","DEF","","","0","","$30","0","0","0.0","","","$20","1209.5"
 
-# ** 33. A fully disposed account is hidden by default, and its realised
-# gain is then also excluded from the totals row, which corresponds to the
-# displayed rows. #2693
+# ** 33. A fully disposed account is hidden by default, but its realised
+# gain and cashflows are still included in the totals row's RGain and XIRR,
+# which cover all lots within the query. #2693, #2769
 <
 commodity ABC ; lots:
 commodity DEF ; lots:
@@ -586,11 +586,11 @@ P 2020-05-05 DEF $30
 $ hledger -f- holdings -e 2026-07-01
 Holdings on 2026-06-30
 
-                ||       Date   Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain  XIRR 
-================++============================================================================================================
- assets:broker1 || 2020-01-01  6.5y  1 ABC       $10         $15         $10          $15  100.0%     $5   50.0%         6.4% 
-----------------++------------------------------------------------------------------------------------------------------------
-                ||                   1 ABC       $10                     $10          $15  100.0%     $5   50.0%         6.4% 
+                ||       Date   Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain    XIRR 
+================++==============================================================================================================
+ assets:broker1 || 2020-01-01  6.5y  1 ABC       $10         $15         $10          $15  100.0%     $5   50.0%           6.4% 
+----------------++--------------------------------------------------------------------------------------------------------------
+                ||                   1 ABC       $10                     $10          $15  100.0%     $5   50.0%    $20  159.3% 
 
 # ** 34. -E shows the fully disposed account as a zero-units row, and the
 # totals then include its realised gain and cashflows. #2693
@@ -908,3 +908,42 @@ Holdings on 2026-03-31
  assets:a || 2026-01-15  75d  10 AAPL       $60                    $600                                                  
 ----------++-------------------------------------------------------------------------------------------------------------
           ||                  10 AAPL       $60                    $600                                                  
+
+# ** 50. The totals row's RGain is the same in list mode, where the fully
+# disposed account has no row, and in tree mode, where a parent row covers
+# it. #2769
+<
+commodity 1.NVDA  ; lots:
+commodity 1.AAPL  ; lots:
+
+2026-09-01 Buy Apple
+  assets   -10e
+  stocks:aapl   2AAPL {}
+
+2026-09-02 Buy Nvidia
+  assets   -20e
+  stocks:nvda   2NVDA {}
+
+2026-09-04 Sell Apple
+  assets   40e
+  stocks:aapl   -2AAPL {}
+
+$ hledger -f- holdings -e 2026-10-07
+Holdings on 2026-10-06
+
+             ||       Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain  XIRR 
+=============++===========================================================================================================
+ stocks:nvda || 2026-09-02  34d  2NVDA       10e                     20e                                                  
+-------------++-----------------------------------------------------------------------------------------------------------
+             ||                  2NVDA       10e                     20e                                        30e       
+
+# ** 51. Likewise in tree mode.
+$ hledger -f- holdings -e 2026-10-07 -t
+Holdings on 2026-10-06
+
+        ||       Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain  XIRR 
+========++===========================================================================================================
+ stocks || 2026-09-02  34d  2NVDA       10e                     20e                                                  
+   nvda || 2026-09-02  34d  2NVDA       10e                     20e                                                  
+--------++-----------------------------------------------------------------------------------------------------------
+        ||                  2NVDA       10e                     20e                                        30e       
