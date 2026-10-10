@@ -4188,7 +4188,7 @@ so the flexibility can be useful. Eg:
 
 - `,` and `;` are common as field separators in data files, so using them might cause confusion
 - `|` looks good, but then you can't use it as the regular expression "or" operator in the matchers
-- `!` is also readable, but then you can't begin a line with a negated matcher, or assign `!` as a status mark
+- `!` is also readable, but then you can't begin a line with a negated matcher, or set a `!` status mark
 - `` ` `` (backquote) might be a good choice to minimise clashing.
 
 Some examples:
@@ -4334,14 +4334,6 @@ Since included rules are effectively inlined, and since for most rules the
 last declaration wins, you can override an included file's rules by writing
 rules after the `include` line.
 
-### Well factored rules
-
-Some things than can help reduce duplication and complexity in rules files:
-
-- Extracting common rules usable with multiple CSV files into a `common.rules`, and adding `include common.rules` to each CSV's rules file.
-
-- Splitting `if` rules into smaller `if` rules, extracting the frequently used parts.
-
 ## Working with CSV
 
 Some tips for creating rules and importing CSV data regularly:
@@ -4356,6 +4348,14 @@ $ ls foo.csv* | entr bash -c 'echo ----; hledger -f foo.csv print desc:SOMEDESC'
 A desc: query (eg) is used to select just one, or a few, transactions of interest.
 "bash -c" is used to run multiple commands, so we can echo a separator each time
 the command re-runs, making it easier to read the output.
+
+### Well factored rules
+
+Some things that can help reduce duplication and complexity in rules files:
+
+- Extracting common rules usable with multiple CSV files into a `common.rules`, and adding [`include common.rules`](#include) to each CSV's rules file.
+
+- Splitting `if` rules into smaller `if` rules, extracting the frequently used parts.
 
 ### Deduplicating, importing
 
