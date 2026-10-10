@@ -3133,20 +3133,19 @@ saying which data file to read (perhaps in your web browser's download directory
 or which command to run to get the data.
 (A rules file can also be [included](#include-directive) by a journal file.)
 
-This feature helps remove some of the busywork of managing CSV downloads.
-Most of your financial institutions's default CSV filenames are
-different and can be recognised by a glob pattern.  So you can put a
-rule like `source Checking1*.csv` in foo-checking.csv.rules, and then
-periodically follow a workflow like:
+This and other features like the archive rule below,
+and the default behaviour of the get and import commands,
+combine to remove the busywork of managing CSV downloads.
+Ideally, you can periodically
 
-1. Download CSV from Foo's website, using your browser's defaults
-2. Run `hledger import foo-checking.csv.rules` to import any new transactions
+1. Download new CSVs from your banks (perhaps by just running `hledger get`).
+2. Import new transactions from them all, by just running `hledger import` (from the rules files in `rules/`).
 
-After import, you can: discard the CSV, or leave it where it is for a
-while, or move it into your archives, as you prefer. If you do nothing,
-next time your browser will save something like Checking1-2.csv, 
-and hledger will use that because of the `*` wild card and because
-it is the most recent.
+Or, do both with one command: `hledger import -g`
+
+After import, you can discard the CSV immediately,
+or leave it where it is for a while,
+or archive it automatically (to `data/archive/`) with the archive rule.
 
 ### `source`
 
@@ -3175,30 +3174,9 @@ You can use a glob pattern, to avoid specifying the file name exactly:
 source Checking1*.csv
 ```
 
-This has another benefit: if the pattern matches multiple files, hledger will read the newest (most recently modified) one.
-This avoids problems if you have downloaded a file multiple times without cleaning up.
-
-All this enables a convenient workflow where can you just download CSV files, then run `hledger import rules/*`.
-
-<!--
-The source rule supports ~ for home directory and absolute paths: `source ~/Downloads/foo.csv`, `source /abs/foo.csv`.
-
-Bare filenames and relative paths are looked for in a `data/` directory next to the main journal file first, then in `~/Downloads`: `source foo.csv`, `source sub/foo.csv`.
-
-Paths beginning with `./` or `../` are anchored relative to the rules file's directory (no `data/` re-anchoring, no `~/Downloads` fallback): `source ./foo.csv`.
-
-The source rule can specify a glob pattern: `source foo*.csv`.
-
-If the glob pattern matches multiple files, the newest (last modified) file is used (with one exception, described below).
-
-The source rule can specify a data-cleaning command, after a `|` separator: `source foo*.csv | sed -e 's/USD/$/g'`.
-This command is executed by the user's default shell, receives the data file's content on stdin,
-and should output CSV data suitable for the conversion rules.
-A # character can be used to comment out the data-cleaning command: `source foo*.csv  # | ...`.
-
-Or the source rule can specify a data-generating command, with no file pattern: `source | foo-csv.sh`.
-In this case the command receives no input; it should output CSV data suitable for the conversion rules.
--->
+A glob pattern has another benefit: if it matches multiple files, hledger reads just one of them:
+the newest, so stale copies are ignored;
+or when importing with `archive`, the oldest, which is then archived, so that successive imports process the copies in order.
 
 #### Data cleaning / data generating commands
 
