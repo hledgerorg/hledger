@@ -8362,6 +8362,14 @@ A typical workflow:
 
 3. Repeat for other asset/liability accounts.
 
+Tip: an institution's numbers can be rounded differently in different places -
+its website, its CSV or other exports, its emailed and paper statements.
+Choose one as your reference (usually the official statement),
+and aim to reproduce its numbers:
+adjust hledger's display precision with `-c` or `--round` (see [Display rounding](#display-rounding)),
+and record any small remaining differences with an adjustment transaction,
+eg to an `expenses:rounding` account.
+
 Tip: instead of the register command, use hledger-ui to see a
 live-updating register while you edit the journal:
 `hledger-ui --register checking -C`
