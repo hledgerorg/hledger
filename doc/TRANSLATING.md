@@ -245,6 +245,12 @@ with `--allow=edit`) each have their own strings. hledger-web reads the
 catalogs when it starts, so restart it after editing your file; hledger
 itself reads the file on every run.
 
+If you have hledger's source code, `just i18n-web fr` shows all of
+hledger-web's pages in one go, as text: it starts hledger-web, requests
+each page as a French-preferring browser would (including the file pages
+and the add form's validation messages), and prints the text and
+tooltips of each, using your file.
+
 If hledger prints a warning that it is ignoring your catalog, the file
 has a syntax problem, usually an unclosed quote or a stray line; the
 warning names the line. Poedit will not save an invalid file, so this
@@ -341,10 +347,16 @@ translatable:
   catalog has stale entries, or if a catalog file is not built in, and
   counts untranslated entries; `just i18n-merge` runs msgmerge on the
   catalogs; `just i18n-pseudo` writes a catalog that brackets every
-  string, so `hledger ... --lang xx` shows any output that is still
-  hard-coded.
+  string, so `hledger ... --lang xx` (and `just i18n-web xx`, for
+  hledger-web's pages) shows any output that is still hard-coded;
+  `just i18n-web LANG` prints hledger-web's pages as a browser preferring
+  LANG sees them.
+- AI assistants (Claude Code and similar) can follow
+  `.claude/skills/translations/SKILL.md`, which covers checking the AI
+  policy, creating and updating catalogs, a translation checklist, and
+  checking the CLI, hledger-ui and hledger-web.
 - The unit tests parse every built-in catalog and check that its tag is
   in hledger's normalized form and that translations keep their
   placeholders; `hledger/test/i18n.test`, the yesod tests and
   `hledger-web/test/browser/i18n.spec.js` cover the German output end to
-  end, and `i18n.test` checks that Chinese is selectable.
+  end, and `i18n.test` checks that Chinese and Spanish are selectable.

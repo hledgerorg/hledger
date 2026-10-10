@@ -403,6 +403,10 @@ STACKTEST := STACK + ' test --fast'
 @i18n-pseudo:
     mkdir -p ~/.config/hledger/locale && tools/i18n-extract.py --pseudo -o ~/.config/hledger/locale/xx.po && echo "wrote ~/.config/hledger/locale/xx.po"
 
+# show the text of hledger-web's pages as a browser preferring LANG sees them, eg `just i18n-web es` (your catalogs in ~/.config/hledger/locale apply)
+@i18n-web LANG *ARGS:
+    tools/i18n-web.py {{ LANG }} {{ ARGS }}
+
 # # stack build --dry-run all hledger packages ensuring an install plan with default snapshot)
 # buildplantest:
 #     buildplantest-stack.yaml
