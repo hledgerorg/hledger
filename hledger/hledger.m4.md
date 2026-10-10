@@ -3120,32 +3120,30 @@ comment %{join(", ", comment, "imported:")}
 
 ## Finding the data
 
-You can name a CSV file on the command line, and hledger will use the rules file named like it.
-Or you can name the rules file, and its `source` rule will say where the data is.
-The second way is more powerful and convenient for regular imports.
+You can name a CSV file on the command line, as in `hledger -f foo.csv CMD`,
+and hledger will use the rules file named like it (`foo.csv.rules`).
 
-### Reading files specified by rule
-
-Instead of specifying a CSV file in the command line, you can specify
-a rules file, as in `hledger -f foo.csv.rules CMD`.
+Or you can name the rules file, as in `hledger -f foo.csv.rules CMD`.
 The rules file must then have a [`source`](#source) rule (described below),
 saying which data file to read (perhaps in your web browser's download directory),
 or which command to run to get the data.
-(A rules file can also be [included](#include-directive) by a journal file.)
 
-This and other features like the archive rule below,
+The second way is more powerful. This and the archive rule below,
 and the default behaviour of the get and import commands,
-combine to remove the busywork of managing CSV downloads.
+help remove the busywork of managing CSV downloads.
 Ideally, you can periodically
 
 1. Download new CSVs from your banks (perhaps by just running `hledger get`).
-2. Import new transactions from them all, by just running `hledger import` (from the rules files in `rules/`).
+2. Import new transactions from all the CSVs specified by rules files in `rules/`, by just running `hledger import`.
 
 Or, do both with one command: `hledger import -g`
 
 After import, you can discard the CSV immediately,
 or leave it where it is for a while,
 or archive it automatically (to `data/archive/`) with the archive rule.
+
+It's also possible to [include](#include-directive) a CSV file or rules file in your journal,
+in which case there's no import step at all; instead, the whole CSV is reconverted on each run.
 
 ### `source`
 
