@@ -17,7 +17,7 @@ import Hledger.Utils.I18n (tr, trf)
 import Hledger.Web.Import
 import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
-import Hledger.Web.Widget.Common (accumulationLinks, intervalLinks, removeDates, removeInacct, reportLinks)
+import Hledger.Web.Widget.Common (accumulationLinks, intervalLinks, removeInacct, reportLinks)
 
 
 -- | The balance or multi-period balance view, with sidebar.
@@ -26,8 +26,7 @@ getBalanceR = do
   checkServerSideUiEnabled
   VD{j, q, qopts, qparam, opts, today, trs} <- getViewData
   require ViewPermission
-  mperiod <- lookupGetParam "period"
-  maccum <- lookupGetParam "accum"
+  params <- reqGetParams <$> getRequest
   hideEmpty <- hideEmptyAccounts
   urlrender <- getUrlRenderParams
   let withFilter t = if q /= Any then trf trs "{title}, filtered" [("title", t)] else t
@@ -37,7 +36,7 @@ getBalanceR = do
   defaultLayout $ do
     -- TRANSLATORS: the browser tab title of this page.
     setTitleI (HMsg "balance - hledger-web")
-    case reportParams today rspecOrig qparam q qopts hideEmpty mperiod maccum of
+    case reportParams today rspecOrig qparam q qopts hideEmpty params of
       Left err -> Yesod.toWidget $ do
         H.h2 $ H.toHtml $ withFilter $ reportTitle roptsOrig $ tr trs "Balance report"
         paramError trs err
@@ -57,13 +56,7 @@ getBalanceR = do
             -- links to the other reports keep the search, minus any account
             -- term, which the reports ignore, and the period as given
             menuParams = periodParams ++ [("q", qt) | let qt = T.unwords $ removeInacct qparam, not (T.null qt)]
-            -- A column heading opens this report for that column's period,
-            -- in place of any date terms in the search, which the column
-            -- narrows anyway.
-            headinglink spn = urlrender BalanceR $
-              ("period", showDateSpanForQuery spn) :
-              [("q", qt) | let qt = T.unwords $ removeDates qparam, not (T.null qt)] ++
-              accumParams
+            headinglink = urlrender BalanceR . headingParams qparam params
             -- The heading, and the report's rows in three parts, for the
             -- table's thead, tbody, and tfoot.
             (title, header, body, totals) = case rpInterval of

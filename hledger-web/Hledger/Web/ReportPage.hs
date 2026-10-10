@@ -15,6 +15,7 @@ module Hledger.Web.ReportPage (
   reportParams,
   paramError,
   columnHeading,
+  headingParams,
   relinkDateHeaders,
   reportTable,
 ) where
@@ -25,6 +26,7 @@ import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time.Calendar (Day)
+import Data.Set qualified as Set
 import Text.Blaze.Html5 ((!))
 import Text.Blaze.Html5 qualified as H
 import Text.Blaze.Html5.Attributes qualified as A
@@ -33,6 +35,7 @@ import Text.Megaparsec.Error (errorBundlePretty)
 import Hledger.Utils.I18n (Translations, tr)
 import Hledger
 import Hledger.Cli.Anchor (dateTerm, renderPeriodHeading)
+import Hledger.Web.Widget.Common (removeDates)
 import Hledger.Query qualified as Query
 import Hledger.Write.Html (Html, formatCell, nl)
 import Hledger.Write.Spreadsheet (Cell(..), NumLines)
@@ -72,15 +75,15 @@ data ReportParamError = BadPeriod String | BadAccum Text
 -- the report like a date: search term would, and the report's links
 -- carry it, so that a row's register is restricted the same way.
 reportParams ::
-  Day -> ReportSpec -> Text -> Query -> [QueryOpt] -> Bool -> Maybe Text -> Maybe Text ->
+  Day -> ReportSpec -> Text -> Query -> [QueryOpt] -> Bool -> [(Text, Text)] ->
   Either ReportParamError ReportParams
-reportParams today rspecOrig qparam q qopts hideEmpty mperiod maccum = do
+reportParams today rspecOrig qparam q qopts hideEmpty params = do
   let roptsOrig = _rsReportOpts rspecOrig
-      rpPeriod = mfilter (not . T.null) mperiod
+      rpPeriod = mfilter (not . T.null) $ lookup "period" params
   (ivl, rpSpan) <- case rpPeriod of
     Nothing -> Right (interval_ roptsOrig, nulldatespan)
     Just p  -> either (Left . BadPeriod . errorBundlePretty) Right $ parsePeriodExpr today p
-  rpAccum <- parseAccum maccum
+  rpAccum <- parseAccum $ lookup "accum" params
   let rpInterval = fromMaybe ivl $ intervalFromQueryOpts qopts
       rpRopts =
         roptsOrig {
@@ -135,6 +138,20 @@ columnHeading ropts colspans spn =
   case balanceaccum_ ropts of
     Historical -> reportPeriodName ropts{balanceaccum_ = Historical} colspans spn
     _          -> renderPeriodHeading (period_titles_ ropts) spn
+
+-- A column heading opens this report for that column's period,
+-- in place of any date terms in the search, which the column narrows anyway.
+headingParams :: Text -> [(Text, Text)] -> DateSpan -> [(Text, Text)]
+headingParams qparam params spn =
+  [("q", T.unwords qt) |
+      let qt = dateTerm False spn ++ removeDates qparam,
+      not (null qt)] ++
+  removeAttributes ["q", "period"] params
+
+removeAttributes :: [Text] -> [(Text, Text)] -> [(Text, Text)]
+removeAttributes attrs =
+  let attrSet = Set.fromList attrs
+  in filter (flip Set.notMember attrSet . fst)
 
 -- | Give a report's heading row this page's column headings and links:
 -- the cells that link (the columns' periods) get the given heading text
