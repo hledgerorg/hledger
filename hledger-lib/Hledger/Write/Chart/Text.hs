@@ -22,7 +22,6 @@ module Hledger.Write.Chart.Text (
   tests_Hledger_Write_Chart_Text,
 ) where
 
-import Control.Monad (join)
 import Data.List (find)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
@@ -103,7 +102,8 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
     mtotal = find ((== SeriesTotal) . seRole) pnSeries
     single = length drawn == 1
     styled = zipWith seriesStyle [0 ..] drawn
-    seriesStyle i s = (if seRole s == SeriesOther then StyleOther else StyleSeries i, fillChar i, s)
+    seriesStyle i s = (if seRole s == SeriesOther then StyleOther else StyleSeries i, fillChar i, seriesValues s)
+    mtotalvals = seriesValues <$> mtotal
     fillChar i
       | tcUnicode = if single then '█' else cyclicAt '█' "█▓▒░" i
       | otherwise = if single then '#' else cyclicAt '#' "#=+:" i
@@ -112,29 +112,28 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
       XCategories ls -> [T.replicate (2 * lbIndent l) " " <> lbShort l | l <- ls]
       XPeriods ps    -> map snd ps
       XDates ds      -> map showDate ds
-    valueAt s j = join $ seValues s `atMay` j
-    segmentsAt j sers = [(st, c, q) | (st, c, s) <- sers, Just q <- [valueAt s j], q /= 0]
+    segmentsAt j sers = [(st, c, q) | (st, c, vals) <- sers, Just q <- [valueAt vals j], q /= 0]
 
     rows = case (pnBarLayout, drawn) of
       (Grouped, _:_:_) ->  -- several grouped series: a row for each series, with the x label on the first
         concat
-          [ [ Row (if k == 0 then lbl else "") (valueAt s j) (segmentsAt j [ser])
-            | (k, ser@(_, _, s)) <- zip [0 :: Int ..] styled ]
+          [ [ Row (if k == 0 then lbl else "") (valueAt vals j) (segmentsAt j [ser])
+            | (k, ser@(_, _, vals)) <- zip [0 :: Int ..] styled ]
           | (j, lbl) <- zip [0 ..] xlabels ]
       _ ->
         [ Row lbl rowval (segmentsAt j styled)
         | (j, lbl) <- zip [0 ..] xlabels
-        , let rowval = case (mtotal, drawn) of
-                (Just t, _) -> valueAt t j
-                (_, [s])    -> valueAt s j
-                _           -> Nothing
+        , let rowval = case (mtotalvals, styled) of
+                (Just tvals, _)     -> valueAt tvals j
+                (_, [(_, _, vals)]) -> valueAt vals j
+                _                   -> Nothing
         -- categories with no values at all (eg accounts without this commodity) are left out
-        , not (isCategories && all (isNothing . flip valueAt j) drawn)
+        , not (isCategories && all (\(_, _, vals) -> isNothing $ valueAt vals j) styled)
         ]
     isCategories = case xaxis of XCategories _ -> True; _ -> False
 
     legend
-      | length drawn > 1 = wrapLegend [ [(st, T.singleton c), (StylePlain, " " <> lbFull (seLabel s))] | (st, c, s) <- styled ] ++ [[]]
+      | length drawn > 1 = wrapLegend [ [(st, T.singleton c), (StylePlain, " " <> lbFull (seLabel s))] | ((st, c, _), s) <- zip styled drawn ] ++ [[]]
       | otherwise = []
     -- Lay out legend items left to right, two spaces apart, starting a new line when the next item won't fit.
     wrapLegend = reverse . foldl' addItem []

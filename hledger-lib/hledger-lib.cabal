@@ -116,6 +116,7 @@ library
       Hledger.Utils.Text
       Hledger.Write.Beancount
       Hledger.Write.Chart
+      Hledger.Write.Chart.Svg
       Hledger.Write.Chart.Text
       Hledger.Write.Csv
       Hledger.Write.Html
@@ -144,6 +145,7 @@ library
     , base >=4.18 && <4.23
     , blaze-html
     , blaze-markup >=0.5.1
+    , blaze-svg >=0.3.7
     , bytestring
     , call-stack
     , cassava
@@ -205,6 +207,7 @@ test-suite doctest
     , base >=4.18 && <4.23
     , blaze-html
     , blaze-markup >=0.5.1
+    , blaze-svg >=0.3.7
     , bytestring
     , call-stack
     , cassava
@@ -267,6 +270,7 @@ test-suite unittest
     , base >=4.18 && <4.23
     , blaze-html
     , blaze-markup >=0.5.1
+    , blaze-svg >=0.3.7
     , bytestring
     , call-stack
     , cassava

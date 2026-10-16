@@ -310,6 +310,7 @@ import Hledger.Cli.Anchor (linkParams, composeAnchorWith, dateTerm, removeInacct
 import Hledger.Cli.Commands.Balance.Internal
 import Hledger.Cli.Chart (chartFlag, chartWidthFlag, chartRequested, chartAsTextForOpts, multiBalanceReportAsChart, balanceReportAsChart)
 import Hledger.Write.Chart (chartAsCsv)
+import Hledger.Write.Chart.Svg (chartAsSvg)
 import Hledger.Write.Csv (CSV, printCSV, printTSV)
 import Hledger.Write.Ods (printFods)
 import Hledger.Write.Html (Html, titledTableHtml, htmlAsLazyText, toHtml)
@@ -377,7 +378,7 @@ balancemode = hledgerCommandMode
      ,flagReq  ["base-url"] (\s opts -> Right $ setopt "base-url" s opts) "URLPREFIX" "in html output, generate links to hledger-web, with this prefix. (Usually the base url shown by hledger-web; can also be relative.)"
 
     -- output:
-    ,outputFormatFlag ["txt","html","csv","tsv","json","fods"]
+    ,outputFormatFlag ["txt","html","csv","tsv","json","fods","svg"]
     ,outputFileFlag
     ,chartFlag
     ,chartWidthFlag
@@ -461,7 +462,8 @@ balanceChart opts@CliOpts{reportspec_=rspec} j = do
     "csv"  -> return $ return . printCSV . chartAsCsv
     "tsv"  -> return $ return . printTSV . chartAsCsv
     "json" -> return $ return . (<>"\n") . toJsonText
-    _      -> error' $ "--chart does not yet support " ++ fmt ++ " output; try txt, csv, tsv or json"  -- PARTIAL:
+    "svg"  -> return $ return . chartAsSvg
+    _      -> error' $ "--chart does not yet support " ++ fmt ++ " output; try txt, svg, csv, tsv or json"  -- PARTIAL:
   chart <- case balancecalc_ ropts of
     CalcBudget -> error' "--chart does not yet support --budget"  -- PARTIAL:
     _ | interval_ ropts /= NoInterval -> do

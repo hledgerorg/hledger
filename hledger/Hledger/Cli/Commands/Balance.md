@@ -145,7 +145,7 @@ Many of these work with the other balance-like commands as well (`bs`, `cf`, `is
 This command supports the
 [output destination](#output-destination) and
 [output format](#output-format) options,
-with output formats `txt`, `csv`, `tsv`, `json`, `html`, and `fods`.
+with output formats `txt`, `csv`, `tsv`, `json`, `html`, `fods`, and `svg`.
 In `txt` output in a colour-supporting terminal, negative amounts are shown in red.
 
 ### Simple balance report
@@ -1037,8 +1037,10 @@ In tree mode, each account's own amounts are stacked, excluding its subaccounts'
 At most 8 accounts are shown per panel; the smallest are combined into an "other" series.
 The total is omitted with `-N` or `--percent`.
 
+With [SVG output](#svg-output) (`-o FILE.svg` or `-O svg`), `balance` always shows a chart, as a graphical image;
+time runs along the x axis, and end balances are drawn as lines.
+
 With `-O csv`, `-O tsv` or `-O json`, `--chart` shows the chart's data, eg to inspect it or chart it with other tools.
-(Graphical chart output is under construction.)
 The chart data has one record per value, with fields:
 commodity, series (usually an account name), role (`item`, `other` or `total`), mark (`bar`, `line` or `marker`),
 x (a period heading, period end date, or account name), and value. Eg:

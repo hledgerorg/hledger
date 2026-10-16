@@ -35,7 +35,7 @@ import System.Console.CmdArgs.Explicit (Flag, flagOpt, flagReq)
 import Text.Printf (printf)
 
 import Hledger
-import Hledger.Cli.CliOptions (CliOpts(..))
+import Hledger.Cli.CliOptions (CliOpts(..), outputFormatFromOpts)
 import Hledger.Utils.I18n qualified as I18n
 import Hledger.Write.Chart
 import Hledger.Write.Chart.Text
@@ -48,15 +48,15 @@ chartKinds = ["auto"]
 -- | The --chart[=KIND] option, for commands that can show a chart.
 chartFlag :: Flag RawOpts
 chartFlag = flagOpt "auto" ["chart"] setchart "KIND"
-  "show a chart instead of the report table (with txt output), or the chart's data (with csv, tsv or json output). KIND can be: auto (the default)."
+  "show a chart instead of the report table (with txt output), or the chart's data (with csv, tsv or json output). svg output always shows a chart. KIND can be: auto (the default)."
   where
     setchart s opts
       | s `elem` chartKinds = Right $ setopt "chart" s opts
       | otherwise = Left $ "--chart's KIND should be one of: " ++ intercalate ", " chartKinds
 
--- | Was a chart requested, with --chart ?
+-- | Was a chart requested, with --chart or an output format that can only show charts (svg) ?
 chartRequested :: CliOpts -> Bool
-chartRequested = isJust . maybestringopt "chart" . rawopts_
+chartRequested opts = isJust (maybestringopt "chart" $ rawopts_ opts) || outputFormatFromOpts opts == "svg"
 
 -- | The --width option, for commands that can show a chart.
 chartWidthFlag :: Flag RawOpts

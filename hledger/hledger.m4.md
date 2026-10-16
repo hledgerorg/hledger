@@ -7751,17 +7751,17 @@ $ hledger print -o -        # write to stdout (the default)
 Some commands offer other kinds of output, not just text on the terminal.
 Here are those commands and the formats currently supported:
 
-|  command           | txt | html | csv/tsv | fods | ledger | beancount | sql | json |
-|--------------------|-----|------|---------|------|--------|-----------|-----|------|
-| aregister          | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| balance            | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| balancesheet       | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| balancesheetequity | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| cashflow           | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| holdings           | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| incomestatement    | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| print              | Y   | Y    | Y       | Y    | Y      | Y         | Y   | Y    |
-| register           | Y   | Y    | Y       | Y    |        |           |     | Y    |
+|  command           | txt | html | csv/tsv | fods | ledger | beancount | sql | json | svg |
+|--------------------|-----|------|---------|------|--------|-----------|-----|------|-----|
+| aregister          | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
+| balance            | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
+| balancesheet       | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
+| balancesheetequity | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
+| cashflow           | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
+| holdings           | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
+| incomestatement    | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
+| print              | Y   | Y    | Y       | Y    | Y      | Y         | Y   | Y    |     |
+| register           | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
 
 <!--
 | accounts              |     |     |      |      |     |
@@ -8034,6 +8034,18 @@ This is too many digits for most JSON consumers,
 so in JSON output we round numbers to at most 10 decimal places.
 (We don't limit the number of integer digits.)
 Related: [#1195](https://github.com/hledgerorg/hledger/issues/1195)
+
+### SVG output
+
+SVG output shows a chart of the report, rather than the report's table
+(as the `--chart` flag does with text output; see [Balance charts](#balance-charts)).
+It is a self-contained image file, viewable in web browsers and many image viewers.
+It has a light and a dark colour scheme, chosen by the viewer's preference,
+and tooltips showing each bar's or point's values.
+Currently only the `balance` command can produce it. Eg:
+```cli
+$ hledger bal -M expenses -o expenses.svg
+```
 
 ## Debug output
 

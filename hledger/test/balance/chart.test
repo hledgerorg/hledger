@@ -1,4 +1,4 @@
-# * balance command --chart flag, showing chart data with -O csv/tsv
+# * balance command --chart flag and svg output: charts, and chart data with -O csv/tsv
 
 <
 2024-01-01
@@ -195,4 +195,13 @@ Feb  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 # ** 15. --width must be a positive number.
 $ hledger -f - bal --chart -w 0
 >2 /--width should be a positive whole number/
+>= 1
+
+# ** 16. svg output always shows a chart (here, of a single-period report: one horizontal bar per account).
+# The expected output is in chart.svg.
+$ hledger -f - bal expenses -O svg | diff - chart.svg
+
+# ** 17. --chart with an output format that can't show charts gives an error.
+$ hledger -f - bal --chart -O html
+>2 /--chart does not yet support html output/
 >= 1

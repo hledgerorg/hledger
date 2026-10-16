@@ -1,6 +1,6 @@
 # Charts from reports - design notes and plan
 
-Status: 2026-10-16. Interface and architecture agreed (see Decisions). Phase 1 done (chart model; bal adapters and chart data output; text renderer); phase 1b (SVG) next.
+Status: 2026-10-16. Interface and architecture agreed (see Decisions). Phases 1 and 1b done (chart model; bal adapters and chart data output; text and SVG renderers); phase 2 (more reports, html) next.
 
 ## Goal
 
@@ -304,6 +304,19 @@ Phases, each a separately useful, committable step:
 - Fill characters cycle after four series (█▓▒░); colour distinguishes more. A limitation without colour.
 - ASCII fallback is chosen from GHC's locale encoding; on macOS this reports UTF-8 even with LANG=C, so it is exercised only by a unit test.
 - The many-panels warning (more than 8) is issued for text output only.
+
+2026-10-16, SVG renderer (phase 1b):
+
+- blaze-svg (0.3.7, in all our stackage snapshots) builds the markup; coordinates are formatted by us (one decimal), and each element is put on its own line, for readable diffs and golden tests.
+- Palette and chrome colours are the dataviz skill's validated reference palette (8 categorical slots, light and dark). "other" is muted grey; totals are ink-coloured.
+- Colours are written literally in CSS rules, not as custom properties: librsvg (rsvg-convert, many Linux image viewers) rendered everything black with `var()`.
+  The dark variant is a `prefers-color-scheme` media query; not yet checked in a browser.
+- Marks: bars at most 24px thick, 4px rounded far end, 2px gaps between stacked segments (none for segments under 4px, which the gap would hide);
+  2px lines; total as ringed dots over bars (only where there are bars), or an ink line with lines. Tooltips are SVG titles (each mark is wrapped in a `<g>`, since blaze-svg's leaf elements can't have children).
+- Ticks use d3's 1-2-5 step rule; tick labels use the commodity's style with just enough decimals.
+- `XDates` are still evenly spaced, like periods; a real time scale is needed for register charts (phase 2).
+- The website's charts.md (in the separate site repo) should get a "Built-in charts" lead paragraph when a release includes charts.
+- Golden SVG test output is kept in a file (hledger/test/balance/chart.svg) compared with diff, since shelltest treats lines starting with `<` as input delimiters.
 
 ## Open questions
 

@@ -57,6 +57,7 @@ dependencies:
 - array
 - blaze-markup >=0.5.1
 - blaze-html
+- blaze-svg >=0.3.7
 - bytestring
 - call-stack
 - cmdargs >=0.10

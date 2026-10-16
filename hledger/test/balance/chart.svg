@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="hledger-chart" width="760" height="126" viewBox="0 0 760 126" role="img">
+<style>.hledger-chart{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px}
+.hledger-chart .title{font-size:14px;font-weight:600}
+.hledger-chart .heading{font-size:13px;font-weight:600}
+.hledger-chart .value,.hledger-chart .tick{font-variant-numeric:tabular-nums}
+.hledger-chart .grid,.hledger-chart .axis{stroke-width:1}
+.hledger-chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.hledger-chart .dot.total{stroke-width:2}
+.hledger-chart .hit{fill:transparent}
+.hledger-chart .bg{fill:#fcfcfb}
+.hledger-chart .title{fill:#0b0b0b}
+.hledger-chart .heading{fill:#0b0b0b}
+.hledger-chart .label{fill:#52514e}
+.hledger-chart .value{fill:#52514e}
+.hledger-chart .tick{fill:#898781}
+.hledger-chart .grid{stroke:#e1e0d9}
+.hledger-chart .axis{stroke:#c3c2b7}
+.hledger-chart .fill.other{fill:#898781}
+.hledger-chart .line.other{stroke:#898781}
+.hledger-chart .line.total{stroke:#0b0b0b}
+.hledger-chart .dot.total{fill:#0b0b0b}
+.hledger-chart .dot.total{stroke:#fcfcfb}
+.hledger-chart .fill.s0{fill:#2a78d6}
+.hledger-chart .line.s0{stroke:#2a78d6}
+.hledger-chart .fill.s1{fill:#eb6834}
+.hledger-chart .line.s1{stroke:#eb6834}
+.hledger-chart .fill.s2{fill:#1baf7a}
+.hledger-chart .line.s2{stroke:#1baf7a}
+.hledger-chart .fill.s3{fill:#eda100}
+.hledger-chart .line.s3{stroke:#eda100}
+.hledger-chart .fill.s4{fill:#e87ba4}
+.hledger-chart .line.s4{stroke:#e87ba4}
+.hledger-chart .fill.s5{fill:#008300}
+.hledger-chart .line.s5{stroke:#008300}
+.hledger-chart .fill.s6{fill:#4a3aa7}
+.hledger-chart .line.s6{stroke:#4a3aa7}
+.hledger-chart .fill.s7{fill:#e34948}
+.hledger-chart .line.s7{stroke:#e34948}
+@media (prefers-color-scheme:dark){
+.hledger-chart .bg{fill:#1a1a19}
+.hledger-chart .title{fill:#ffffff}
+.hledger-chart .heading{fill:#ffffff}
+.hledger-chart .label{fill:#c3c2b7}
+.hledger-chart .value{fill:#c3c2b7}
+.hledger-chart .tick{fill:#898781}
+.hledger-chart .grid{stroke:#2c2c2a}
+.hledger-chart .axis{stroke:#383835}
+.hledger-chart .fill.other{fill:#898781}
+.hledger-chart .line.other{stroke:#898781}
+.hledger-chart .line.total{stroke:#ffffff}
+.hledger-chart .dot.total{fill:#ffffff}
+.hledger-chart .dot.total{stroke:#1a1a19}
+.hledger-chart .fill.s0{fill:#3987e5}
+.hledger-chart .line.s0{stroke:#3987e5}
+.hledger-chart .fill.s1{fill:#d95926}
+.hledger-chart .line.s1{stroke:#d95926}
+.hledger-chart .fill.s2{fill:#199e70}
+.hledger-chart .line.s2{stroke:#199e70}
+.hledger-chart .fill.s3{fill:#c98500}
+.hledger-chart .line.s3{stroke:#c98500}
+.hledger-chart .fill.s4{fill:#d55181}
+.hledger-chart .line.s4{stroke:#d55181}
+.hledger-chart .fill.s5{fill:#008300}
+.hledger-chart .line.s5{stroke:#008300}
+.hledger-chart .fill.s6{fill:#9085e9}
+.hledger-chart .line.s6{stroke:#9085e9}
+.hledger-chart .fill.s7{fill:#e66767}
+.hledger-chart .line.s7{stroke:#e66767}
+}
+</style>
+<rect class="bg" width="100%" height="100%" />
+<line class="axis" x1="168" x2="168" y1="20" y2="86" />
+<text class="tick" x="168" y="104" text-anchor="middle">0</text>
+<line class="grid" x1="275.8" x2="275.8" y1="20" y2="86" />
+<text class="tick" x="275.8" y="104" text-anchor="middle">20</text>
+<line class="grid" x1="383.6" x2="383.6" y1="20" y2="86" />
+<text class="tick" x="383.6" y="104" text-anchor="middle">40</text>
+<line class="grid" x1="491.4" x2="491.4" y1="20" y2="86" />
+<text class="tick" x="491.4" y="104" text-anchor="middle">60</text>
+<line class="grid" x1="599.2" x2="599.2" y1="20" y2="86" />
+<text class="tick" x="599.2" y="104" text-anchor="middle">80</text>
+<line class="grid" x1="707" x2="707" y1="20" y2="86" />
+<text class="tick" x="707" y="104" text-anchor="middle">100</text>
+<text class="label" x="16" y="35">expenses:food</text>
+<text class="value" x="744" y="35" text-anchor="end">10</text>
+<g>
+<title>expenses:food · Balance · 10</title>
+<path class="fill s0" d="M 168 25 H 217.9 Q 221.9 25 221.9 29 V 33 Q 221.9 37 217.9 37 H 168 Z" />
+</g>
+<text class="label" x="16" y="57">expenses:food:dining</text>
+<text class="value" x="744" y="57" text-anchor="end">5</text>
+<g>
+<title>expenses:food:dining · Balance · 5</title>
+<path class="fill s0" d="M 168 47 H 191 Q 195 47 195 51 V 55 Q 195 59 191 59 H 168 Z" />
+</g>
+<text class="label" x="16" y="79">expenses:rent</text>
+<text class="value" x="744" y="79" text-anchor="end">100</text>
+<g>
+<title>expenses:rent · Balance · 100</title>
+<path class="fill s0" d="M 168 69 H 703 Q 707 69 707 73 V 77 Q 707 81 703 81 H 168 Z" />
+</g>
+</svg>

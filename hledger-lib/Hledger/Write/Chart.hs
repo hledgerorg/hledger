@@ -26,8 +26,13 @@ module Hledger.Write.Chart (
   Series(..),
   SeriesRole(..),
   Mark(..),
+  SeriesValues,
+  seriesValues,
+  valueAt,
   chartAsCsv,
 ) where
+
+import Data.Array (Array, bounds, inRange, listArray, (!))
 
 import Data.Aeson (ToJSON)
 import Data.Text (Text)
@@ -106,6 +111,16 @@ data Mark
   | MarkLine    -- ^ a line joining the values (in text charts, drawn as bars)
   | MarkMarker  -- ^ a marker at the value, not joined, eg a net total over stacked bars, or a budget goal
   deriving (Show, Eq, Generic, ToJSON)
+
+-- | A series' values, indexed by x position, for fast lookup by renderers.
+type SeriesValues = Array Int (Maybe Quantity)
+
+seriesValues :: Series -> SeriesValues
+seriesValues Series{seValues} = listArray (0, length seValues - 1) seValues
+
+-- | The value at this x position, if there is one.
+valueAt :: SeriesValues -> Int -> Maybe Quantity
+valueAt a j = if inRange (bounds a) j then a ! j else Nothing
 
 -- | Render a chart's data as CSV (or TSV) records, in long ("tidy") form: one record per value,
 -- with a header record. This shows exactly what the chart shows, after any combining of series,
