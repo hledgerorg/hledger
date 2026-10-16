@@ -168,3 +168,18 @@ Mar  Revenues  1000      │████████████▋
 Apr  Revenues  1000      │████████████▋
      Expenses  1700  ▓▓▓▓│▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
      Net       2700      │                                 ┃
+
+# ** 11. With depth 0, each section's single bar is labelled with the section's name.
+$ hledger -f - is -M -0 --chart -O csv
+"commodity","series","role","mark","x","value"
+"","Revenues","item","bar","Mar","1000"
+"","Revenues","item","bar","Apr","1000"
+"","Expenses","item","bar","Mar","-300"
+"","Expenses","item","bar","Apr","1700"
+"","Net","total","marker","Mar","700"
+"","Net","total","marker","Apr","2700"
+
+# ** 12. Accounts with no type of their own (like "..." at depth 0) get their section's account type, for colouring.
+$ hledger -f - is -M -0 --chart -O json | grep -o '"lbType": *"[A-Za-z]*"'
+"lbType": "Revenue"
+"lbType": "Expense"

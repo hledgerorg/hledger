@@ -550,8 +550,8 @@ stylesheet dark = T.unlines $
   , ".hledger-chart .value,.hledger-chart .tick{font-variant-numeric:tabular-nums}"
   , ".hledger-chart .grid,.hledger-chart .axis{stroke-width:1}"
   , ".hledger-chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}"
-  , ".hledger-chart .mark{stroke-width:3;stroke-linecap:round}"
-  , ".hledger-chart .markring{stroke-width:7;stroke-linecap:round}"
+  , ".hledger-chart .mark{stroke-width:2;stroke-linecap:round}"
+  , ".hledger-chart .markring{stroke-width:6;stroke-linecap:round}"
   , ".hledger-chart .hit{fill:transparent}"
   ]
   ++ colourRules False lightcolours

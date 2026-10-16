@@ -373,6 +373,8 @@ Signed contributions: compound charts show each section's amounts as contributio
 like expenses and liabilities, are negated, per the subreport's "increases total" flag). So up always adds to the net and down reduces it;
 a refund (negative expense) rises within the expenses column, and the net is visibly the sum. Prompted by a refund that looked like it
 should make the net negative. The chart values (text value column, tooltips, CSV) are these signed contributions, unlike the tables.
+Compound sections also get an account type from their query (eg `Type [Revenue]`), which accounts without a type inherit;
+"..." accounts (depth 0) are labelled with the section title. Net marks in SVG are 2px (ring 6px).
 
 ## Open questions
 

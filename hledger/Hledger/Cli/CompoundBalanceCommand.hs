@@ -149,7 +149,7 @@ compoundBalanceCommand :: CompoundBalanceCommandSpec -> (CliOpts -> Journal -> I
 compoundBalanceCommand spec@CompoundBalanceCommandSpec{..} opts@CliOpts{reportspec_=rspec, rawopts_=rawopts} j = do
     warnIfLargeMultiPeriodReport rspec j
     if chartRequested opts
-    then writeChart opts (Just $ render $ styleAmounts styles cbr) $ compoundBalanceReportAsChart (journalAccountType j) ropts' $ styleAmounts styles cbr
+    then writeChart opts (Just $ render $ styleAmounts styles cbr) $ compoundBalanceReportAsChart (journalAccountType j) sectiontypes ropts' $ styleAmounts styles cbr
     else writeOutputLazyText opts $ render $ styleAmounts styles cbr
   where
     styles = journalCommodityStylesWith HardRounding j
@@ -168,6 +168,9 @@ compoundBalanceCommand spec@CompoundBalanceCommandSpec{..} opts@CliOpts{reportsp
     cbr  = applySubreportTitles ropts' $
            cbr'{cbrTitle = effectiveTitle ropts' $ compoundBalanceReportTitle spec ropts mbalanceAccumulationOverride cbr'
                ,cbrSubreports = [ (tr t, r, b) | (t, r, b) <- cbrSubreports cbr' ]}
+
+    -- each section's account type, from its query, if that is a simple type query (for colouring charts)
+    sectiontypes = [case cbcsubreportquery q of Type (t:_) -> Just t; _ -> Nothing | q <- cbcqueries]
 
     -- render appropriately
     render = case outputFormatFromOpts opts of

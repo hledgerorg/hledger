@@ -30,6 +30,7 @@ import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Ord (Down(..))
 import Data.Set qualified as S
+import Control.Applicative ((<|>))
 import Control.Monad (when)
 import Data.Char (toUpper)
 import Data.Text (Text)
@@ -193,8 +194,11 @@ balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
 -- There is one panel per commodity, most-used commodity first. Each section has at most 'maxSectionSeries' series,
 -- the smallest accounts being combined into an "other" series. In tree mode, each account's own amounts are charted.
 -- The net total is omitted with -N, with --percent, and when there is only one section.
-compoundBalanceReportAsChart :: (AccountName -> Maybe AccountType) -> ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount -> Chart
-compoundBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlistmode_, no_total_, percent_, translations_}
+--
+-- The second argument gives each section's account type, if known (eg from the report's query for it); accounts with no
+-- type of their own get their section's, for colouring. An account shown as "..." (eg with depth 0) is labelled with its section's title.
+compoundBalanceReportAsChart :: (AccountName -> Maybe AccountType) -> [Maybe AccountType] -> ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount -> Chart
+compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum_, accountlistmode_, no_total_, percent_, translations_}
   (CompoundPeriodicReport title spans subreports totals) =
   Chart
     { chTitle  = title
@@ -205,13 +209,18 @@ compoundBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlis
     flow = balanceaccum_ == PerPeriod
     -- each section's sign (1 if it adds to the net total, -1 if it subtracts from it), and its account rows
     -- (in tree mode, with only their own amounts, so that nothing is counted twice)
-    sections = [ (if increasestotal then 1 else -1, if accountlistmode_ == ALTree then ownAmountRows (prRows r) else prRows r)
-               | (_, r, increasestotal) <- subreports ]
+    sections = [ ((t, sectype), if increasestotal then 1 else -1, if accountlistmode_ == ALTree then ownAmountRows (prRows r) else prRows r)
+               | ((t, r, increasestotal), sectype) <- zip subreports (sectiontypes ++ repeat Nothing) ]
+    -- an account's label, with its section's type if it has none, or its section's title if it's "..."
+    sectionAccountLabel (t, sectype) r
+      | lbFull l == "..." = ChartLabel t t 0 sectype
+      | otherwise         = l{lbType = lbType l <|> sectype}
+      where l = accountLabel accttype $ prrName r
     nettotals = prrAmounts totals
     showtotal = length subreports > 1 && not no_total_ && not percent_
     -- the table's "Net:" label, without the colon
     netlabel = T.dropWhileEnd (`elem` [':', '\xff1a']) $ I18n.tr translations_ "Net:"
-    cells = concatMap (concatMap prrAmounts . snd) sections ++ nettotals
+    cells = concat [concatMap prrAmounts rows | (_, _, rows) <- sections] ++ nettotals
     allamts = concatMap amountsRaw cells
     panel c
       | null series = Nothing
@@ -225,8 +234,8 @@ compoundBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlis
       where
         series = concat
           [ [ s{seStack = k} | s <- limitSeries maxSectionSeries translations_ MarkBar accts ]
-          | (k, (sign, rows)) <- zip [0 ..] sections
-          , let accts = [ (accountLabel accttype $ prrName r, qs) | r <- rows, let qs = map ((* sign) . quantityIn c) (prrAmounts r), any (/= 0) qs ]
+          | (k, (section, sign, rows)) <- zip [0 ..] sections
+          , let accts = [ (sectionAccountLabel section r, qs) | r <- rows, let qs = map ((* sign) . quantityIn c) (prrAmounts r), any (/= 0) qs ]
           ]
 
 -- | Chart an account register (aregister): the balance after each transaction
