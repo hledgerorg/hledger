@@ -115,6 +115,7 @@ library
       Hledger.Utils.Test
       Hledger.Utils.Text
       Hledger.Write.Beancount
+      Hledger.Write.Chart
       Hledger.Write.Csv
       Hledger.Write.Html
       Hledger.Write.Html.Attribute
