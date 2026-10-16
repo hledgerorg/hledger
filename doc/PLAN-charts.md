@@ -380,6 +380,9 @@ Register without interval: a line per account (their running totals, from `posti
 to the historical total), at most 8 with "other", plus the overall running total in ink; one account or --average: just the total.
 SVG lines are thinned to at most 4 points per pixel column (first, lowest, highest, last): a 100k-posting register SVG went from
 286s/hundreds of MB to 44s/4.7MB. Text legends omit series with no visible segment.
+Text chart colours: with COLORTERM=truecolor, exact 24-bit colours from the shared `Hledger.Write.Chart.Palette`
+(the same as SVG's; dark variants when the terminal background is known dark, via terminalIsLight); otherwise basic ANSI colours,
+whose shades depend on the terminal theme (eg a Ghostty theme's olive "green"). Negative values stay ANSI red, like hledger's other output.
 Compound sections also get an account type from their query (eg `Type [Revenue]`), which accounts without a type inherit;
 "..." accounts (depth 0) are labelled with the section title. Net marks in SVG are 1.5px (ring 4.5px).
 

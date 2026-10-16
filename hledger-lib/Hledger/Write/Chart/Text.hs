@@ -17,6 +17,7 @@ The output is a list of styled lines, so that different frontends can apply the 
 module Hledger.Write.Chart.Text (
   TextChartOpts(..),
   Style(..),
+  ColourMode(..),
   StyledLine,
   chartAsStyledLines,
   styledLinesAsText,
@@ -32,7 +33,8 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Safe (atMay, maximumDef)
-import System.Console.ANSI (Color(..), ColorIntensity(..))
+import Data.Colour.SRGB (sRGB24read)
+import System.Console.ANSI (Color(..), ColorIntensity(..), ConsoleLayer(..), SGR(..), setSGRCode)
 import Text.DocLayout (realLength)
 
 import Hledger.Data.Amount (nullamt, oneLineNoCostFmt, showAmountWith)
@@ -42,6 +44,7 @@ import Hledger.Utils.IO (color, faint')
 import Hledger.Utils.Test
 import Hledger.Utils.Text (fitText)
 import Hledger.Write.Chart
+import Hledger.Write.Chart.Palette (colourHex)
 
 
 -- | Options for drawing a text chart.
@@ -62,18 +65,34 @@ data Style
 -- | A line of text made of styled pieces.
 type StyledLine = [(Style, Text)]
 
+-- | How to colour a text chart.
+data ColourMode
+  = NoColour
+  | BasicColour     -- ^ with the terminal's basic ANSI colours (whose exact shades depend on its colour theme)
+  | RgbColour Bool  -- ^ with exact 24-bit colours, the same as SVG charts'; their variants for a dark background if true
+  deriving (Show, Eq)
+
 -- | Render styled lines as text, with ANSI colours or without.
-styledLinesAsText :: Bool -> [StyledLine] -> TL.Text
-styledLinesAsText usecolour = TL.fromChunks . concatMap (\l -> map piece l ++ ["\n"])
+styledLinesAsText :: ColourMode -> [StyledLine] -> TL.Text
+styledLinesAsText mode = TL.fromChunks . concatMap (\l -> map piece l ++ ["\n"])
   where
-    piece (st, t)
-      | usecolour = case st of
-          StylePlain    -> t
-          StyleSeries n -> T.pack $ uncurry color (cyclicAt (Dull, Blue) indexColours n) $ T.unpack t
-          StyleType at n -> T.pack $ color (if even n then Dull else Vivid) (typeColour at) $ T.unpack t
-          StyleOther    -> T.pack $ faint' $ T.unpack t
-          StyleNegative -> T.pack $ color Dull Red $ T.unpack t
-      | otherwise = t
+    piece (st, t) = case mode of
+      NoColour -> t
+      BasicColour -> case st of
+        StylePlain    -> t
+        StyleSeries n -> T.pack $ uncurry color (cyclicAt (Dull, Blue) indexColours n) $ T.unpack t
+        StyleType at n -> T.pack $ color (if even n then Dull else Vivid) (typeColour at) $ T.unpack t
+        StyleOther    -> T.pack $ faint' $ T.unpack t
+        StyleNegative -> negative t
+      RgbColour dark -> case st of
+        StylePlain    -> t
+        StyleSeries n -> rgb (colourHex dark $ IndexColour n) t
+        StyleType at n -> rgb (colourHex dark $ TypeColour at n) t
+        StyleOther    -> rgb (colourHex dark OtherColour) t
+        StyleNegative -> negative t
+    -- negative values are red, as elsewhere in hledger's output
+    negative t = T.pack $ color Dull Red $ T.unpack t
+    rgb hex t = T.pack (setSGRCode [SetRGBColor Foreground $ sRGB24read $ T.unpack hex]) <> t <> T.pack (setSGRCode [])
     -- Conventional colours for the main account types, in the terminal's palette.
     typeColour at = case at of
       Asset     -> Blue

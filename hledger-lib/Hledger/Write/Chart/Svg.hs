@@ -45,7 +45,6 @@ import Text.Blaze.Svg11 ((!), Svg)
 import Text.Blaze.Svg11 qualified as S
 import Text.Blaze.Svg11.Attributes qualified as A
 import Text.DocLayout (realLength)
-import Numeric (readHex)
 import Text.Printf (printf)
 
 import Hledger.Data.Amount (oneLineNoCostFmt, showAmountWith)
@@ -53,6 +52,7 @@ import Hledger.Data.Dates (showDate)
 import Hledger.Data.Types (AccountType(..), Amount(..), AmountPrecision(..), AmountStyle(..), Quantity)
 import Hledger.Utils.Test
 import Hledger.Write.Chart
+import Hledger.Write.Chart.Palette (colourHex)
 
 
 -- | Render a chart as a complete SVG document, with a dark variant for viewers preferring a dark colour scheme.
@@ -519,7 +519,7 @@ runs ms = case dropWhile isNothing ms of
 -- | The CSS class for a colour. (The rules are in 'stylesheet'.)
 colourClass :: Colour -> Text
 colourClass c = case c of
-  TypeColour at k -> "t" <> typeCode at <> T.pack (show (k `mod` maxTints))
+  TypeColour at k -> "t" <> typeCode (mainAccountType at) <> T.pack (show (k `mod` maxTints))
   IndexColour k   -> "s" <> T.pack (show (k `mod` 8))
   NeutralColour   -> "neutral"
   OtherColour     -> "other"
@@ -534,33 +534,6 @@ typeCode at = case at of
   Revenue   -> "r"
   Expense   -> "x"
   _         -> "e"
-
--- | Conventional colours for the main account types (light, dark),
--- validated (by the dataviz skill's validator) on the pairs that appear together (A-L-E, R-X).
-typeColours :: [(Text, (Text, Text))]
-typeColours =
-  [ ("a", ("#2a78d6", "#3987e5"))  -- assets: blue
-  , ("l", ("#eda100", "#c98500"))  -- liabilities: amber
-  , ("e", ("#4a3aa7", "#9085e9"))  -- equity: violet
-  , ("r", ("#008300", "#008300"))  -- revenues: green
-  , ("x", ("#e34948", "#e66767"))  -- expenses: red
-  ]
-
--- | The tints that distinguish several accounts of one type ('maxTints' of them): the type's colour, then lighter, darker,
--- and lighter still (fraction to mix with white (positive) or black (negative)).
-tints :: [Double]
-tints = take maxTints [0, 0.4, -0.3, 0.65]
-
--- | Mix a #rrggbb colour with white (by a positive fraction) or black (by a negative fraction).
-tint :: Double -> Text -> Text
-tint f hex = case mapM channel [T.take 2 $ T.drop i digits | i <- [0, 2, 4]] of
-    Just cs | T.length digits == 6 -> "#" <> T.concat (map (T.pack . printf "%02x" . mix) cs)
-    _ -> hex
-  where
-    digits = T.drop 1 hex
-    channel t = case readHex (T.unpack t) of [(n, "")] -> Just (n :: Int); _ -> Nothing
-    mix :: Int -> Int
-    mix c = round $ if f >= 0 then fromIntegral c + (255 - fromIntegral c) * f else fromIntegral c * (1 + f)
 
 -- | The chart's styles: a colour-blind-safe categorical palette (8 slots) and chart chrome colours,
 -- with a dark variant used when the viewer prefers a dark colour scheme.
@@ -581,29 +554,26 @@ stylesheet dark = T.unlines $
   ++ colourRules False lightcolours
   ++ (if dark then ["@media (prefers-color-scheme:dark){"] ++ colourRules True darkcolours ++ ["}"] else [])
   where
+    -- the chart chrome's colours, and the series' colours (from "Hledger.Write.Chart.Palette")
     colourRules isdark cs =
       [ ".hledger-chart " <> sel <> "{" <> prop <> ":" <> colour <> "}"
       | (sel, prop, role) <- rules, Just colour <- [lookup role cs] ]
-      ++ concat [ [ ".hledger-chart .fill." <> cls <> "{fill:" <> colour <> "}", ".hledger-chart .line." <> cls <> "{stroke:" <> colour <> "}" ]
-                | (code, (light, darkc)) <- typeColours, (k, f) <- zip [0 :: Int ..] tints
-                , let cls = "t" <> code <> T.pack (show k)
-                , let colour = tint f (if isdark then darkc else light) ]
+      ++ concat [ [ ".hledger-chart .fill." <> cls <> "{fill:" <> hex <> "}", ".hledger-chart .line." <> cls <> "{stroke:" <> hex <> "}" ]
+                | c <- seriescolours, let cls = colourClass c, let hex = colourHex isdark c ]
+    seriescolours =
+      [TypeColour at k | at <- [Asset, Liability, Equity, Revenue, Expense], k <- [0 .. maxTints - 1]]
+      ++ map IndexColour [0 .. 7] ++ [OtherColour, NeutralColour]
     rules =
       [ (".bg", "fill", "surface"), (".title", "fill", "ink"), (".heading", "fill", "ink")
       , (".label", "fill", "ink2"), (".value", "fill", "ink2"), (".tick", "fill", "muted")
       , (".grid", "stroke", "grid"), (".axis", "stroke", "axis")
-      , (".fill.other", "fill", "muted"), (".line.other", "stroke", "muted"), (".line.total", "stroke", "ink")
-      , (".fill.neutral", "fill", "ink2"), (".line.neutral", "stroke", "ink2")
-      , (".mark.total", "stroke", "ink"), (".markring", "stroke", "surface")
+      , (".line.total", "stroke", "ink"), (".mark.total", "stroke", "ink"), (".markring", "stroke", "surface")
       ]
-      ++ concat [ [(".fill." <> c, "fill", c), (".line." <> c, "stroke", c)] | c <- map (("s" <>) . T.pack . show) [0 :: Int .. 7] ]
     lightcolours :: [(Text, Text)]
     lightcolours =
-      [ ("surface", "#fcfcfb"), ("ink", "#0b0b0b"), ("ink2", "#52514e"), ("muted", "#898781"), ("grid", "#e1e0d9"), ("axis", "#c3c2b7")
-      , ("s0", "#2a78d6"), ("s1", "#eb6834"), ("s2", "#1baf7a"), ("s3", "#eda100"), ("s4", "#e87ba4"), ("s5", "#008300"), ("s6", "#4a3aa7"), ("s7", "#e34948") ]
+      [ ("surface", "#fcfcfb"), ("ink", "#0b0b0b"), ("ink2", "#52514e"), ("muted", "#898781"), ("grid", "#e1e0d9"), ("axis", "#c3c2b7") ]
     darkcolours =
-      [ ("surface", "#1a1a19"), ("ink", "#ffffff"), ("ink2", "#c3c2b7"), ("muted", "#898781"), ("grid", "#2c2c2a"), ("axis", "#383835")
-      , ("s0", "#3987e5"), ("s1", "#d95926"), ("s2", "#199e70"), ("s3", "#c98500"), ("s4", "#d55181"), ("s5", "#008300"), ("s6", "#9085e9"), ("s7", "#e66767") ]
+      [ ("surface", "#1a1a19"), ("ink", "#ffffff"), ("ink2", "#c3c2b7"), ("muted", "#898781"), ("grid", "#2c2c2a"), ("axis", "#383835") ]
 
 tests_Hledger_Write_Chart_Svg :: TestTree
 tests_Hledger_Write_Chart_Svg = testGroup "Write.Chart.Svg" [

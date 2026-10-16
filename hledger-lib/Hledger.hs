@@ -32,6 +32,7 @@ import           Hledger.Reports as X
 import           Hledger.Query   as X
 import           Hledger.Utils   as X
 import           Hledger.Write.Chart (tests_Hledger_Write_Chart)
+import           Hledger.Write.Chart.Palette (tests_Hledger_Write_Chart_Palette)
 import           Hledger.Write.Chart.Svg (tests_Hledger_Write_Chart_Svg)
 import           Hledger.Write.Chart.Text (tests_Hledger_Write_Chart_Text)
 import           Hledger.Write.Html (tests_Hledger_Write_Html)
@@ -43,6 +44,7 @@ tests_Hledger = testGroup "Hledger" [
   ,tests_Reports
   ,tests_Utils
   ,tests_Hledger_Write_Chart
+  ,tests_Hledger_Write_Chart_Palette
   ,tests_Hledger_Write_Chart_Svg
   ,tests_Hledger_Write_Chart_Text
   ,tests_Hledger_Write_Html

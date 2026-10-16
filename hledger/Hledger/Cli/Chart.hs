@@ -79,7 +79,8 @@ chartWidthFlag = flagReq ["width","w"] setwidth "N"
       _              -> Left "--width should be a positive whole number"
 
 -- | Draw a chart as text, as the command line options say:
--- --width characters wide or the terminal width, with ANSI colour if enabled,
+-- --width characters wide or the terminal width, with colour if enabled
+-- (exact 24-bit colours, like SVG charts', if the terminal advertises support for them, otherwise the terminal's basic colours),
 -- and with unicode block characters if the system's text encoding is UTF-8 (otherwise ASCII).
 -- Also warns if the chart has many panels (one per commodity).
 chartAsTextForOpts :: CliOpts -> Chart -> IO TL.Text
@@ -90,7 +91,12 @@ chartAsTextForOpts CliOpts{width_, available_width_, reportspec_} chart = do
     ("this chart has %d panels, one per commodity. To show fewer, convert to one commodity (eg -X USD)\n"
     <> "or select some (eg cur:USD).")
     npanels
-  return $ styledLinesAsText (color_ $ _rsReportOpts reportspec_) $ chartAsStyledLines (TextChartOpts width unicode) chart
+  truecolour <- supportsTrueColor
+  let colourmode
+        | not $ color_ $ _rsReportOpts reportspec_ = NoColour
+        | truecolour = RgbColour (terminalIsLight == Just False)  -- light variants unless the background is known to be dark
+        | otherwise  = BasicColour
+  return $ styledLinesAsText colourmode $ chartAsStyledLines (TextChartOpts width unicode) chart
   where
     width = fromMaybe available_width_ (width_ >>= readMay)
     maxPanels = 8 :: Int

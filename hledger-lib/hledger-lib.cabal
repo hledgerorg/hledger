@@ -116,6 +116,7 @@ library
       Hledger.Utils.Text
       Hledger.Write.Beancount
       Hledger.Write.Chart
+      Hledger.Write.Chart.Palette
       Hledger.Write.Chart.Svg
       Hledger.Write.Chart.Text
       Hledger.Write.Csv
