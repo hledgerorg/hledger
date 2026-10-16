@@ -183,8 +183,11 @@ balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
 
 -- | Chart a compound balance report (balancesheet, incomestatement, cashflow..): its sections' accounts, and the net total.
 --
--- At each period, each section's accounts are stacked (positive amounts above zero, negative ones, like contra accounts, below),
--- and the sections are side by side (they are never stacked together; eg assets and liabilities, both shown as positive, are opposites).
+-- Amounts are shown as their contribution to the net total: positive for sections that add to it (eg revenues, assets),
+-- negative for sections that subtract from it (eg expenses, liabilities). (The report's tables show both as positive.)
+-- So bars above zero increase the net and bars below zero reduce it; eg a refund, which is a negative expense, is drawn above zero.
+-- At each period, each section's accounts are stacked (positive amounts above zero, negative ones below),
+-- and the sections are side by side (never stacked together).
 -- The net total is a mark across them, or a line for end balances (eg balancesheet).
 -- A single-period report is drawn the same way, with one period. With -1 (depth 1), each section is a single bar.
 -- There is one panel per commodity, most-used commodity first. Each section has at most 'maxSectionSeries' series,
@@ -200,13 +203,15 @@ compoundBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlis
     }
   where
     flow = balanceaccum_ == PerPeriod
-    -- each section's account rows (in tree mode, with only their own amounts, so that nothing is counted twice)
-    sections = [ if accountlistmode_ == ALTree then ownAmountRows (prRows r) else prRows r | (_, r, _) <- subreports ]
+    -- each section's sign (1 if it adds to the net total, -1 if it subtracts from it), and its account rows
+    -- (in tree mode, with only their own amounts, so that nothing is counted twice)
+    sections = [ (if increasestotal then 1 else -1, if accountlistmode_ == ALTree then ownAmountRows (prRows r) else prRows r)
+               | (_, r, increasestotal) <- subreports ]
     nettotals = prrAmounts totals
     showtotal = length subreports > 1 && not no_total_ && not percent_
     -- the table's "Net:" label, without the colon
     netlabel = T.dropWhileEnd (`elem` [':', '\xff1a']) $ I18n.tr translations_ "Net:"
-    cells = concatMap (concatMap prrAmounts) sections ++ nettotals
+    cells = concatMap (concatMap prrAmounts . snd) sections ++ nettotals
     allamts = concatMap amountsRaw cells
     panel c
       | null series = Nothing
@@ -220,8 +225,8 @@ compoundBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlis
       where
         series = concat
           [ [ s{seStack = k} | s <- limitSeries maxSectionSeries translations_ MarkBar accts ]
-          | (k, rows) <- zip [0 ..] sections
-          , let accts = [ (accountLabel accttype $ prrName r, qs) | r <- rows, let qs = map (quantityIn c) (prrAmounts r), any (/= 0) qs ]
+          | (k, (sign, rows)) <- zip [0 ..] sections
+          , let accts = [ (accountLabel accttype $ prrName r, qs) | r <- rows, let qs = map ((* sign) . quantityIn c) (prrAmounts r), any (/= 0) qs ]
           ]
 
 -- | Chart an account register (aregister): the balance after each transaction

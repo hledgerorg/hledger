@@ -1052,9 +1052,11 @@ With `-O csv`, `-O tsv` or `-O json`, `--chart` shows the chart's data, eg to in
 
 The compound balance commands ([`balancesheet`](#balancesheet), [`balancesheetequity`](#balancesheetequity),
 [`cashflow`](#cashflow), [`incomestatement`](#incomestatement)) can show charts in the same ways.
-They chart their sections' accounts: at each period, each section's accounts are stacked, and the sections
-(eg revenues and expenses, or assets and liabilities) are side by side - never stacked together, since they are opposites.
-Accounts with the opposite sign to the rest of their section (contra accounts, like accumulated depreciation) grow the other way from zero.
+They chart their sections' accounts, showing each amount as its contribution to the net total:
+sections that add to it (eg revenues, assets) above zero, and sections that subtract from it (eg expenses, liabilities) below zero.
+(Unlike the tables, where both are shown as positive.) So bars above zero increase the net and bars below zero reduce it;
+eg a refund recorded as a negative expense is drawn above zero, and a contra account like accumulated depreciation below.
+At each period, each section's accounts are stacked, and the sections are side by side - never stacked together.
 The net total is shown as a line mark across the bars (or as a line, with end balances).
 In text charts, each period has a row for each section, named and showing the section's total, and a row marking the net total.
 Each section shows at most five accounts, combining the smallest into "other"; use a depth limit (eg `-1` or `-2`) for less detail.

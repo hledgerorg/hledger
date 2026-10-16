@@ -369,6 +369,11 @@ don't fit; values are shown above (or below, if negative) the bars when they fit
 Stack names: panels have `pnStackLabels` (eg a compound report's section titles); text charts with several stacks show them
 as a second label column, with the net row labelled too, so each number is identified (like a balance report's rows).
 
+Signed contributions: compound charts show each section's amounts as contributions to the net total (sections that subtract from it,
+like expenses and liabilities, are negated, per the subreport's "increases total" flag). So up always adds to the net and down reduces it;
+a refund (negative expense) rises within the expenses column, and the net is visibly the sum. Prompted by a refund that looked like it
+should make the net negative. The chart values (text value column, tooltips, CSV) are these signed contributions, unlike the tables.
+
 ## Open questions
 
 - Chart variant names for `--chart=KIND`, when needed.
