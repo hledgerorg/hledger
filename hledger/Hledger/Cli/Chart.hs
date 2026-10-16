@@ -52,15 +52,17 @@ import Hledger.Write.Chart.Text
 import Hledger.Write.Csv (printCSV, printTSV)
 
 
--- | The chart kinds that --chart accepts. Only "auto" (choose the best chart for the report) so far.
+-- | The chart kinds that --chart accepts: auto (choose the best chart for the report),
+-- or grouped or diverging (the bar layout for reports with several groups of accounts, ie compound reports' sections;
+-- auto lets the report choose). A kind that doesn't apply to a report is ignored.
 chartKinds :: [String]
-chartKinds = ["auto"]
+chartKinds = ["auto", "diverging", "grouped"]
 
 -- | The --chart[=KIND,SCALE] option, for commands that can show a chart.
 chartFlag :: Flag RawOpts
 chartFlag = flagOpt "auto" ["chart"] setchart "KIND,SCALE"
   ("show a chart instead of the report table (with txt output), a chart above the table (with html output), or the chart's data (with csv, tsv or json output). svg output always shows a chart. "
-  ++ "KIND can be: auto (the default). SCALE fixes the chart's scale, so that charts can be compared: it is the amount that fills the chart (eg 1000, or 1000 USD to set it for one commodity's chart; several can be given). Larger amounts are clipped.")
+  ++ "KIND can be: auto (the default), or for compound reports grouped (sections side by side; the default for changes) or diverging (sections in one bar, above and below zero; the default for end balances). SCALE fixes the chart's scale, so that charts can be compared: it is the amount that fills the chart (eg 1000, or 1000 USD to set it for one commodity's chart; several can be given). Larger amounts are clipped.")
   where
     setchart s opts = either Left (const $ Right $ setopt "chart" s opts) $ parseChartArg s
 
@@ -78,9 +80,9 @@ parseChartArg s = case filter (not . null) $ map trim $ splitOn "," s of
       | otherwise = Left $ "--chart's value should be a chart KIND (" ++ intercalate ", " chartKinds
           ++ "), and/or non-zero SCALE amounts after it, separated by commas (and written without digit group marks), but this part was not: " ++ p
 
--- | The scale amounts given with --chart, if any.
-chartScales :: CliOpts -> [Amount]
-chartScales = either (const []) snd . parseChartArg . fromMaybe "" . maybestringopt "chart" . rawopts_
+-- | The chart kind and scale amounts given with --chart, if any.
+chartArg :: CliOpts -> (String, [Amount])
+chartArg = either (const ("auto", [])) id . parseChartArg . fromMaybe "" . maybestringopt "chart" . rawopts_
 
 -- | Was a chart requested, with --chart or an output format that can only show charts (svg) ?
 chartRequested :: CliOpts -> Bool
@@ -135,9 +137,14 @@ writeChart opts mreporthtml chart = do
     "json" -> return $ return . (<>"\n") . toJsonText
     _ | fmt `elem` outputFormats -> error' $ "--chart does not yet support " ++ fmt ++ " output; try txt, svg, html, csv, tsv or json"  -- PARTIAL:
       | otherwise -> error' $ unsupportedOutputFormatError fmt  -- PARTIAL:
-  render (setChartScales (chartScales opts) chart) >>= writeOutputLazyText opts
+  render (setChartLayout barlayout $ setChartScales scales chart) >>= writeOutputLazyText opts
   where
     fmt = outputFormatFromOpts opts
+    (kind, scales) = chartArg opts
+    barlayout = case kind of
+      "grouped"   -> Just Grouped
+      "diverging" -> Just Diverging
+      _           -> Nothing
 
 -- | The most series to show in each section of a compound report chart: as many as can have distinct tints of a type's colour, and "other".
 maxSectionSeries :: Int
@@ -173,15 +180,16 @@ multiBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlistmo
       | otherwise = Just Panel
           { pnUnit      = unitAmount c allamts
           , pnSeries    = series ++ total
-          , pnSideNames = ("", "")
+          , pnGroupNames = []
           , pnScale = Nothing
+          , pnLayout = Diverging
           }
       where
         series = limitSeries maxSeries translations_ mark
           [ (accountLabel accttype $ prrName r, qs) | r <- rows', let qs = map (quantityIn c) (prrAmounts r), any (/= 0) qs ]
         total =
           [ Series (plainLabel $ I18n.tr translations_ "Total") SeriesTotal (if flow then MarkMarker else MarkLine)
-              (map (Just . quantityIn c) $ prrAmounts totals) 0
+              (map (Just . quantityIn c) $ prrAmounts totals) 0 0
           | length series > 1, not no_total_, not percent_ ]
 
 -- | Chart a single-period balance report, as one bar per account (horizontal, since the accounts are categories).
@@ -202,9 +210,10 @@ balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
       { pnUnit      = unitAmount c allamts
       , pnSeries    = [Series (plainLabel $ I18n.tr translations_ "Balance") SeriesItem MarkBar
                         [ if any ((== c) . acommodity) (amountsRaw ma) then Just (quantityIn c ma) else Nothing
-                        | (_, _, _, ma) <- items ] 0]
-      , pnSideNames = ("", "")
+                        | (_, _, _, ma) <- items ] 0 0]
+      , pnGroupNames = []
       , pnScale = Nothing
+      , pnLayout = Diverging
       }
 
 -- | Chart a compound balance report (balancesheet, incomestatement, cashflow..): its sections' accounts, and the net total.
@@ -212,8 +221,10 @@ balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
 -- Amounts are shown as their contribution to the net total: positive for sections that add to it (eg revenues, assets),
 -- negative for sections that subtract from it (eg expenses, liabilities). (The report's tables show both as positive.)
 -- So bars above zero increase the net and bars below zero reduce it; eg a refund, which is a negative expense, is drawn above zero.
--- At each period, all sections' accounts are stacked in one diverging bar: positive amounts above zero, negative ones below.
--- Each series has its section's usual sign, so that renderers can show contra amounts (eg a refund) distinctly.
+-- At each period, each section's accounts are stacked in a bar of their own, side by side (the grouped layout, preferred for changes),
+-- or all sections' accounts are stacked in one diverging bar, positive amounts above zero and negative ones below
+-- (the diverging layout, preferred for end balances). See 'setChartLayout', which also re-signs the data for the grouped layout.
+-- Each series has its section (as its group) and the section's usual sign, so that renderers can show contra amounts (eg a refund) distinctly.
 -- The net total is a mark across the bar, or a line for end balances (eg balancesheet).
 -- A single-period report is drawn the same way, with one period. With -1 (depth 1), each section is a single bar.
 -- There is one panel per commodity, most-used commodity first. Each section has at most 'maxSectionSeries' series,
@@ -241,8 +252,6 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
       | lbFull l == "..." = ChartLabel t t 0 sectype
       | otherwise         = l{lbType = lbType l <|> sectype}
       where l = accountLabel accttype $ prrName r
-    -- the titles of the sections with this sign
-    sectionNames sign = T.intercalate ", " [t | ((t, _), sgn, _) <- sections, sgn == sign]
     nettotals = prrAmounts totals
     showtotal = length subreports > 1 && not no_total_ && not percent_
     -- the table's "Net:" label, without the colon
@@ -254,15 +263,16 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
       | otherwise = Just Panel
           { pnUnit   = unitAmount c allamts
           , pnSeries = series ++
-              [ Series (plainLabel netlabel) SeriesTotal (if flow then MarkMarker else MarkLine) (map (Just . quantityIn c) nettotals) 0
+              [ Series (plainLabel netlabel) SeriesTotal (if flow then MarkMarker else MarkLine) (map (Just . quantityIn c) nettotals) 0 0
               | showtotal ]
-          , pnSideNames = (sectionNames 1, sectionNames (-1))
+          , pnGroupNames = [t | (t, _, _) <- subreports]
           , pnScale = Nothing
+          , pnLayout = if flow then Grouped else Diverging
           }
       where
         series = concat
-          [ [ s{seSign = round sign} | s <- limitSeries maxSectionSeries translations_ MarkBar accts ]
-          | (section, sign, rows) <- sections
+          [ [ s{seGroup = k, seSign = round sign} | s <- limitSeries maxSectionSeries translations_ MarkBar accts ]
+          | (k, (section, sign, rows)) <- zip [0 ..] sections
           , let accts = [ (sectionAccountLabel section r, qs) | r <- rows, let qs = map ((* sign) . quantityIn c) (prrAmounts r), any (/= 0) qs ]
           ]
 
@@ -282,9 +292,10 @@ accountTransactionsReportAsChart accttype title acct txndate items =
     allamts = concatMap amountsRaw bals
     panel c = Panel
       { pnUnit      = unitAmount c allamts
-      , pnSeries    = [Series (ChartLabel acct acct 0 (accttype acct)) SeriesItem MarkLine (map (Just . quantityIn c) bals) 0]
-      , pnSideNames = ("", "")
+      , pnSeries    = [Series (ChartLabel acct acct 0 (accttype acct)) SeriesItem MarkLine (map (Just . quantityIn c) bals) 0 0]
+      , pnGroupNames = []
       , pnScale = Nothing
+      , pnLayout = Diverging
       }
 
 -- | Chart a postings report (register).
@@ -302,11 +313,11 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
   | null periods =
       let totals = [t | (_, _, _, _, t) <- items]
           totalamts = concatMap amountsRaw totals
-          totalseries c role = Series ((plainLabel $ I18n.tr translations_ "Total"){lbType = commontype}) role MarkLine (map (Just . quantityIn c) totals) 0
+          totalseries c role = Series ((plainLabel $ I18n.tr translations_ "Total"){lbType = commontype}) role MarkLine (map (Just . quantityIn c) totals) 0 0
           -- with postings to several accounts (and not --average), each account's running total as a line, and the overall running total
           linespanel c
-            | average_ || length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] ("", "") Nothing
-            | otherwise = Panel (unitAmount c totalamts) (accountRunningTotals c ++ [totalseries c SeriesTotal]) ("", "") Nothing
+            | average_ || length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] [] Nothing Diverging
+            | otherwise = Panel (unitAmount c totalamts) (accountRunningTotals c ++ [totalseries c SeriesTotal]) [] Nothing Diverging
       in Chart
         { chTitle  = title
         , chXAxis  = XDates [postingDateOrDate2 (whichDate ropts) p | p <- postings]
@@ -325,9 +336,9 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
     -- (Only these are computed, since there can be many accounts and postings.)
     -- Each account starts from its balance before the report period, if any.
     accountRunningTotals c =
-      [ Series (ChartLabel a a 0 (accttype a)) SeriesItem MarkLine (runningTotal (== a)) 0 | a <- kept ]
+      [ Series (ChartLabel a a 0 (accttype a)) SeriesItem MarkLine (runningTotal (== a)) 0 0 | a <- kept ]
       ++ [ Series (plainLabel $ I18n.trn translations_ n "other ({n} account)" "other ({n} accounts)") SeriesOther MarkLine
-             (runningTotal (`S.notMember` keptset)) 0
+             (runningTotal (`S.notMember` keptset)) 0 0
          | let n = length accts - length kept, n > 0 ]
       where
         sizes = accountSizes c
@@ -358,13 +369,13 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
     allamts = concatMap amountsRaw cells
     panel c
       | null series = Nothing
-      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total, pnSideNames = ("", ""), pnScale = Nothing}
+      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total, pnGroupNames = [], pnScale = Nothing, pnLayout = Diverging}
       where
         series = limitSeries maxSeries translations_ MarkBar
           [ (ChartLabel a a 0 (accttype a), qs) | (a, amts) <- rows, let qs = map (quantityIn c) amts, any (/= 0) qs ]
         total =
           [ Series (plainLabel $ I18n.tr translations_ "Total") SeriesTotal MarkMarker
-              (map (Just . sum) $ transpose [map (quantityIn c) amts | (_, amts) <- rows]) 0
+              (map (Just . sum) $ transpose [map (quantityIn c) amts | (_, amts) <- rows]) 0 0
           | length series > 1 ]
 
 -- Helpers
@@ -376,7 +387,7 @@ limitSeries maxn t mark items
   | length items <= maxn = map item items
   | otherwise = map (item . snd) kept ++ [other]
   where
-    item (l, qs) = Series l SeriesItem mark (map Just qs) 0
+    item (l, qs) = Series l SeriesItem mark (map Just qs) 0 0
     numbered = zip [0 :: Int ..] items
     largest = S.fromList $ take (maxn - 1) $ map fst $ sortOn (Down . sum . map abs . snd . snd) numbered
     (kept, rest) = partition ((`S.member` largest) . fst) numbered
@@ -385,7 +396,7 @@ limitSeries maxn t mark items
       (plainLabel $ I18n.trn t n "other ({n} account)" "other ({n} accounts)")
       SeriesOther mark
       (map (Just . sum) $ transpose $ map (snd . snd) rest)
-      0
+      0 0
 
 -- | In tree mode, a parent account's row includes the amounts of its displayed subaccounts' rows.
 -- Subtract those, leaving each row with only its own amounts.

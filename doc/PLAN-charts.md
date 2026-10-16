@@ -400,7 +400,15 @@ side (`pnSideNames`), and the net as a `┃` over the bar. The side figures are 
 contra amounts included, eg expenses -1700 in a refund month), not the bar extents, so every number matches the table;
 (b) each series has its section's usual sign (`seSign`); contra amounts (`isContra`) are drawn nearest the axis (so a refund
 continues its section's run across zero), with `╱` (`/`) in text and a surface-coloured hatch over their colour in SVG,
-with a legend entry. The side-by-side stack support (`seStack`, `pnStackLabels`, text stack and mark rows) was removed.
+with a legend entry. The side-by-side stack support was removed, then restored as an option, `--chart=grouped` (and `diverging`,
+the default): series have a group (`seGroup`, the section) and panels group names (`pnGroupNames`) and a `pnLayout` (`BarLayout`),
+set from --chart's KIND by `setChartLayout`; kinds that don't apply (eg grouped for bal) are ignored. In the grouped text layout,
+section rows show section totals as the tables do, like the diverging end figures; the net row is a row with only a mark.
+Grouped charts show sections normal-signed (setChartLayout re-signs the data, so csv/json match), so that bars side by side
+can be compared by height (the first grouped version kept contributions' signs, putting expenses below zero beside revenues above).
+Default layout: `auto` lets the adapter choose (`pnLayout`): grouped for changes (is: the familiar income-vs-expenses comparison,
+matching the tables' signs), diverging for end balances (bs: the familiar net worth chart, assets above and liabilities below).
+setChartLayout takes a Maybe (an explicit KIND), is applied by writeChart before rendering or showing data, and is idempotent.
 Contra marking was considered for `bal` (from account types' normal signs) but not done: bal shows raw amounts, in its table too.
 Dropped automatic date grouping (2026-10-16): text charts of registers no longer switch to a row per day/week/month/.. beyond 50 rows,
 since that heuristic was hard to predict and understand; they always have a row per posting (or transaction). Use a report interval

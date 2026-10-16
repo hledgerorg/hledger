@@ -22,6 +22,7 @@ module Hledger.Write.Chart (
   XAxis(..),
   ChartLabel(..),
   Panel(..),
+  BarLayout(..),
   Series(..),
   SeriesRole(..),
   Mark(..),
@@ -34,6 +35,7 @@ module Hledger.Write.Chart (
   seriesValues,
   valueAt,
   setChartScales,
+  setChartLayout,
   scaleSpans,
   chartAsCsv,
   tests_Hledger_Write_Chart,
@@ -97,12 +99,20 @@ data Panel = Panel
                               --   its commodity symbol and display style are used to show values and axis ticks.
                               --   Eg a currency, @%@ (as produced by --percent), or no commodity with precision 0 for counts.
   , pnSeries    :: [Series]   -- ^ the series, in display order (legend order)
-  , pnSideNames :: (Text, Text)  -- ^ names for the positive and negative sides of the chart, if they have names (otherwise empty);
-                              --   eg the titles of a compound report's sections on each side. Text charts show them.
+  , pnGroupNames :: [Text]    -- ^ names for the groups of series, by group number (see 'seGroup'), if they have names;
+                              --   eg a compound report's section titles. Text charts show them.
   , pnScale     :: Maybe Quantity  -- ^ a fixed scale, if one was requested: the amount spanned by the chart (see 'scaleSpans'),
                               --   so that charts with the same scale are drawn at the same size per amount.
                               --   Otherwise the chart is scaled to fit its values.
+  , pnLayout    :: BarLayout  -- ^ how to draw bars of several groups
   } deriving (Show, Eq, Generic, ToJSON)
+
+-- | How to draw the bars of a panel whose series are in several groups (eg a compound report's sections).
+data BarLayout
+  = Diverging  -- ^ all groups stacked in one bar at each x position, positive values above (or right of) zero and negative ones below
+  | Grouped    -- ^ each group stacked in its own bar, the groups' bars side by side (in text, a row per group), with the total marked separately;
+               --   values are shown with their usual sign as positive (see 'setChartLayout')
+  deriving (Show, Eq, Generic, ToJSON)
 
 -- | A named sequence of values, one per x position.
 data Series = Series
@@ -111,6 +121,8 @@ data Series = Series
   , seMark   :: Mark
   , seValues :: [Maybe Quantity]  -- ^ one value per x position; Nothing means no value there (a gap, not zero).
                                   --   At each x position, bar series' values are stacked: positive values above zero, negative values below.
+  , seGroup  :: Int               -- ^ which group this series belongs to (eg its section, in a compound report chart; otherwise 0).
+                                  --   Groups are stacked together, or drawn side by side, as the panel's 'pnLayout' says.
   , seSign   :: Int               -- ^ the usual sign of this series' values, if it has one (1 or -1; otherwise 0).
                                   --   Values of the opposite sign are contra amounts, which renderers may show distinctly;
                                   --   eg a refund (negative expense) in a compound report chart.
@@ -191,6 +203,18 @@ setChartScales scales chart = chart{chPanels = map setscale $ chPanels chart}
     setscale p = p{pnScale = lookup (acommodity $ pnUnit p) byc <|> lookup "" byc <|> pnScale p}
     byc = reverse [(acommodity a, abs $ aquantity a) | a <- scales]
 
+-- | Set the bar layout of every panel to this one, if given (otherwise keeping each panel's own), and prepare the panels for it.
+-- This should be applied before drawing a chart, or showing its data.
+-- The grouped layout is for comparing the groups' sizes, so its series are shown with their usual sign as positive
+-- (eg expenses as well as revenues upward, like a compound report's tables), and their contra amounts as negative.
+-- (Applying this again does nothing more, since those series' usual sign is then positive.)
+setChartLayout :: Maybe BarLayout -> Chart -> Chart
+setChartLayout ml chart = chart{chPanels = map setlayout $ chPanels chart}
+  where
+    setlayout p = let l = fromMaybe (pnLayout p) ml in p{pnLayout = l, pnSeries = map (resign l) (pnSeries p)}
+    resign Grouped s | seSign s /= 0 = s{seValues = map (fmap (* fromIntegral (seSign s))) (seValues s), seSign = 1}
+    resign _ s = s
+
 -- | With a fixed scale (the amount that a chart spans), and the largest positive and (absolute) negative extents of the values,
 -- how much of the scale is given to each direction: (above or right of zero, below or left of zero).
 -- Negative values get the room they need and positive values the rest (all of it if there are no negative values;
@@ -241,7 +265,7 @@ tests_Hledger_Write_Chart = testGroup "Write.Chart" [
      scaleSpans 100 150 50 @?= (75, 25)
      scaleSpans 100 0 0 @?= (100, 0)
   ,testCase "seriesColours" $ do
-     let ser t = Series (ChartLabel "" "" 0 t) SeriesItem MarkBar [] 0
+     let ser t = Series (ChartLabel "" "" 0 t) SeriesItem MarkBar [] 0 0
      seriesColours [ser (Just Expense), ser (Just Cash), ser Nothing, ser (Just Expense), ser Nothing]
        @?= [TypeColour Expense 0, TypeColour Asset 0, IndexColour 0, TypeColour Expense 1, IndexColour 1]
      -- more series of one type than tints: all get categorical colours

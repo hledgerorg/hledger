@@ -56,7 +56,7 @@ $ hledger -f - bal -M expenses -N --chart -O csv
 
 # ** 5. Only chart kinds that exist are accepted.
 $ hledger -f - bal --chart=nosuchkind
->2 /--chart's value should be a chart KIND \(auto\)/
+>2 /--chart's value should be a chart KIND \(auto, diverging, grouped\)/
 >= 1
 
 <

@@ -114,7 +114,7 @@ data DrawSeries = DrawSeries
 
 -- | Draw one panel with its top at the given y; return its height and markup.
 panelSvg :: XAxis -> Bool -> Double -> Panel -> (Double, Svg)
-panelSvg xaxis showheading top Panel{pnUnit, pnSeries, pnScale} =
+panelSvg xaxis showheading top Panel{pnUnit, pnSeries, pnScale, pnLayout} =
   (headingh + legendh + bodyh, do
     when (headingh > 0) $
       S.text_ ! A.class_ "heading" ! A.x (toValue $ num pad) ! A.y (toValue $ num (top + 14)) $ S.toMarkup (acommodity pnUnit)
@@ -131,8 +131,8 @@ panelSvg xaxis showheading top Panel{pnUnit, pnSeries, pnScale} =
     hascontra = or [isContra s q | s <- items, seMark s == MarkBar, Just q <- seValues s]
     (bodyh, bodym) = case xaxis of
       XCategories ls -> categoriesSvg (top + headingh + legendh) pnScale pnUnit drawn mtotal ls
-      XPeriods ps    -> timeSvg (top + headingh + legendh) pnScale pnUnit drawn mtotal (EvenScale $ map snd ps)
-      XDates ds      -> timeSvg (top + headingh + legendh) pnScale pnUnit drawn mtotal (DateScale ds)
+      XPeriods ps    -> timeSvg (top + headingh + legendh) pnScale pnLayout pnUnit drawn mtotal (EvenScale $ map snd ps)
+      XDates ds      -> timeSvg (top + headingh + legendh) pnScale pnLayout pnUnit drawn mtotal (DateScale ds)
 
 -- | A legend: a swatch and label for each series, flowing left to right, when there are several series.
 -- If there are contra amounts, a hatched swatch is shown for them too.
@@ -172,9 +172,9 @@ legendSvg top entries mtotal hascontra
 data XScale = EvenScale [Text] | DateScale [Day]
 
 -- | Draw series over time, along the given x scale:
--- vertical stacked bars, lines, and total marks or lines.
-timeSvg :: Double -> Maybe Quantity -> Amount -> [DrawSeries] -> Maybe Series -> XScale -> (Double, Svg)
-timeSvg top mscale unit drawn mtotal xscale = (plotHeight + 28, do
+-- vertical stacked bars (with the grouped layout, a stack per group, side by side), lines, and total marks or lines.
+timeSvg :: Double -> Maybe Quantity -> BarLayout -> Amount -> [DrawSeries] -> Maybe Series -> XScale -> (Double, Svg)
+timeSvg top mscale layout unit drawn mtotal xscale = (plotHeight + 28, do
     -- gridlines and y tick labels
     forM_ ticks $ \t -> do
       S.line ! A.class_ (if t == 0 then "axis" else "grid")
@@ -185,11 +185,12 @@ timeSvg top mscale unit drawn mtotal xscale = (plotHeight + 28, do
       EvenScale _ -> forM_ (zip [0 :: Int ..] xlabels) $ \(j, lbl) ->
         when (j `mod` labelevery == 0) $ xlabel (xcenter j) lbl
       DateScale _ -> forM_ (dateTicks d0 d1) $ \(d, lbl) -> xlabel (xofday d) lbl
-    -- bars: positive segments stacked upward and negative ones downward
-    forM_ (zip [0 ..] xlabels) $ \(j, lbl) -> do
-      let x = xcenter j - barwidth / 2
-      stack lbl x (contraFirst [(d, q) | d <- bars, Just q <- [valueAt (dsValues d) j], q > 0]) 1
-      stack lbl x (contraFirst [(d, q) | d <- bars, Just q <- [valueAt (dsValues d) j], q < 0]) (-1)
+    -- bars: the stacks side by side (2px apart), each with its positive segments stacked upward and negative ones downward
+    forM_ (zip [0 ..] xlabels) $ \(j, lbl) ->
+      forM_ (zip [0 :: Int ..] stacks) $ \(k, stk) -> do
+        let x = xcenter j - groupwidth / 2 + fromIntegral k * (barwidth + 2)
+        stack lbl x (contraFirst [(d, q) | d <- stk, Just q <- [valueAt (dsValues d) j], q > 0]) 1
+        stack lbl x (contraFirst [(d, q) | d <- stk, Just q <- [valueAt (dsValues d) j], q < 0]) (-1)
     -- a hatching pattern, for contra amounts
     when hascontra $ S.defs $ S.pattern ! A.id_ (toValue hatchId) ! A.width "5" ! A.height "5" ! A.patternunits "userSpaceOnUse" ! A.patterntransform "rotate(45)" $
       S.line ! A.class_ "hatch" ! A.x1 "0" ! A.y1 "0" ! A.x2 "0" ! A.y2 "5"
@@ -205,7 +206,7 @@ timeSvg top mscale unit drawn mtotal xscale = (plotHeight + 28, do
       else let tvals = seriesValues t in
         forM_ (zip [0 ..] xlabels) $ \(j, lbl) -> forM_ (valueAt tvals j) $ \q -> when (hasbars j) $ withTooltip (tooltip lbl t q) $ do
           let y = toValue $ num (yof $ toD q)
-              halfw = barwidth / 2 + 4
+              halfw = groupwidth / 2 + 4
               x1 = toValue $ num (xcenter j - halfw)
               x2 = toValue $ num (xcenter j + halfw)
           S.line ! A.class_ "mark total" ! A.x1 x1 ! A.x2 x2 ! A.y1 y ! A.y2 y
@@ -230,8 +231,12 @@ timeSvg top mscale unit drawn mtotal xscale = (plotHeight + 28, do
     xofday d = plotleft + 8 + (plotright - plotleft - 16) * fromIntegral (diffDays d d0) / fromIntegral (max 1 (diffDays d1 d0))
     bars   = [d | d <- drawn, seMark (dsSeries d) == MarkBar]
     lines_ = [d | d <- drawn, seMark (dsSeries d) == MarkLine]
-    -- the extent of the bars in each direction, at each x position
-    stackedsums sign = [ sum [toD q | d <- bars, Just q <- [valueAt (dsValues d) j], signum q == sign] | j <- [0 .. n - 1] ]
+    -- the bar series in stacks: one, or with the grouped layout, one per group (see 'seGroup')
+    stacks = case layout of
+      Grouped   -> [ [d | d <- bars, seGroup (dsSeries d) == k] | k <- nub $ map (seGroup . dsSeries) bars ]
+      Diverging -> [bars]
+    -- the extent of the bars in each direction: each stack's sum, at each x position
+    stackedsums sign = [ sum [toD q | d <- stk, Just q <- [valueAt (dsValues d) j], signum q == sign] | j <- [0 .. n - 1], stk <- stacks ]
     hasbars j = any (\d -> maybe False (/= 0) $ valueAt (dsValues d) j) bars
     hascontra = or [isContra (dsSeries d) q | d <- bars, Just q <- seValues (dsSeries d)]
     -- contra amounts are drawn nearest the axis
@@ -254,9 +259,12 @@ timeSvg top mscale unit drawn mtotal xscale = (plotHeight + 28, do
     xcenter j = case datearray of
       Just a | Arr.inRange (Arr.bounds a) j -> xofday (a Arr.! j)
       _ -> plotleft + band * (fromIntegral j + 0.5)
+    nbars = max 1 $ length stacks
+    -- each bar's width, and the width of a group of side-by-side bars (2px apart)
     barwidth
-      | band < 4  = max 1 (band * 0.9)
-      | otherwise = max 1 $ min 24 (band * 0.8)
+      | band < 4  = max 1 (band * 0.9 / fromIntegral nbars)
+      | otherwise = max 1 $ min 24 ((band * 0.8 - 2 * fromIntegral (nbars - 1)) / fromIntegral nbars)
+    groupwidth = fromIntegral nbars * barwidth + 2 * fromIntegral (nbars - 1)
     labelevery = max 1 $ ceiling ((maximumDef 0 (map textWidth xlabels) + 12) / band) :: Int
     stack :: Text -> Double -> [(DrawSeries, Quantity)] -> Double -> Svg
     stack lbl x segs = vstack (lo, hi) yof x barwidth [(d, q, tooltip lbl (dsSeries d) q) | (d, q) <- segs]

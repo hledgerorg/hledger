@@ -117,14 +117,15 @@ chartAsStyledLines opts Chart{chTitle, chXAxis, chPanels} =
 -- | A row of a text chart: a label, an optional value, and the bar segments (style, fill character, quantity).
 data Row = Row
   { rowLabel    :: Text
+  , rowSubLabel :: Text            -- ^ a second label, eg the name of the group this row shows (empty for none)
   , rowValue    :: Maybe Quantity
   , rowSegments :: [(Style, Char, Quantity)]
-  , rowMark     :: Maybe Quantity  -- ^ a value to mark with a vertical line over the bar segments (eg a net total in a diverging bar)
+  , rowMark     :: Maybe Quantity  -- ^ a value to mark with a vertical line, over the bar segments if any (eg a net total)
   , rowSides    :: (Maybe Quantity, Maybe Quantity)  -- ^ in a diverging chart, the totals of the series usually right and left of the axis
   }
 
 panelLines :: TextChartOpts -> XAxis -> Bool -> Panel -> [StyledLine]
-panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries, pnSideNames, pnScale} =
+panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries, pnGroupNames, pnScale, pnLayout} =
   [[(StylePlain, acommodity pnUnit)] | showheading, not $ T.null $ acommodity pnUnit]
   ++ legend
   ++ [trimEnd headerline | diverging, not $ all T.null [posname, negname, netname]]
@@ -136,12 +137,19 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     single = length drawn == 1
     styled = zipWith3 seriesStyle [0 ..] (seriesColours drawn) drawn
     styledseries = zip styled drawn
-    -- A diverging chart (eg of a compound report) has series with usual signs (see 'seSign'), and a total.
-    -- Each row shows the sums of its negative and positive segments at the ends of the bar (with the sides' names in a header line),
+    -- The groups of series (see 'seGroup'), in order, and each group's name and usual sign (if its series have one; otherwise 1).
+    groups = nub $ map seGroup drawn
+    groupName k = fromMaybe "" $ pnGroupNames `atMay` k
+    groupSign k = fromMaybe 1 $ find (/= 0) [seSign s | s <- drawn, seGroup s == k]
+    -- With the grouped layout and several groups, each x position has a row for each group (named, showing its total),
+    -- and the total is marked on a row of its own, after them.
+    grouped = pnLayout == Grouped && length groups > 1
+    -- Otherwise, a chart with series with usual signs (see 'seSign'), and a total (eg of a compound report), is diverging:
+    -- each row shows the totals of each side's groups at that end of the bar (with their names in a header line),
     -- and the total as a mark over the bar.
     -- In any chart, contra amounts (of the opposite sign to their series' usual sign) are drawn nearest the axis, with a hatched fill character.
-    diverging = isJust mtotal && any ((/= 0) . seSign) drawn
-    marktotal = if diverging then mtotal else Nothing
+    diverging = not grouped && isJust mtotal && any ((/= 0) . seSign) drawn
+    marktotal = if diverging || grouped then mtotal else Nothing
     seriesStyle i colour s = (colourStyle colour, fillChar i, seriesValues s)
     colourStyle colour = case colour of
       TypeColour at k -> StyleType at k
@@ -167,8 +175,15 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
       | ((st, c, vals), s) <- sers, Just q <- [valueAt vals j], q /= 0, let contra = isContra s q ]
     contrachar = if tcUnicode then '╱' else '/'
 
-    rows =
-      [ Row lbl rowval (segmentsAt j styledseries) (if isJust marktotal then rowval else Nothing) (sideTotal j 1, sideTotal j (-1))
+    rows
+      | grouped =
+        concat
+          [ [ Row (if i == 0 then lbl else "") (groupName k) (groupTotal j k) (segmentsAt j [ss | ss@(_, s) <- styledseries, seGroup s == k]) Nothing (Nothing, Nothing)
+            | (i, k) <- zip [0 :: Int ..] groups ]
+            ++ [ Row "" (lbShort $ seLabel t) (valueAt tvals j) [] (valueAt tvals j) (Nothing, Nothing) | Just t <- [marktotal], let tvals = seriesValues t ]
+          | (j, lbl) <- zip [0 ..] xlabels ]
+      | otherwise =
+      [ Row lbl "" rowval (segmentsAt j styledseries) (if isJust marktotal then rowval else Nothing) (sideTotal j 1, sideTotal j (-1))
       | (j, lbl) <- zip [0 ..] xlabels
       , let rowval = case (mtotalvals, styled) of
               (Just tvals, _)     -> valueAt tvals j
@@ -203,12 +218,16 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     -- Column widths and scale.
     showValue q = T.pack $ showAmountWith oneLineNoCostFmt pnUnit{aquantity = q}
     labelw = min (tcWidth `div` 3) $ maximumDef 0 $ map (realLength . rowLabel) rows
+    sublabelw = min (tcWidth `div` 4) $ maximumDef 0 $ map (realLength . rowSubLabel) rows
     valuew = maximumDef 0 [realLength (showValue q) | Row{rowValue = Just q} <- rows]
     hasvalues = any (isJust . rowValue) rows
     -- In a diverging chart, the totals of each side's series (eg a compound report's sections), shown at that end of the bar.
     -- They are shown with their usual sign as positive, like the report's tables (eg expenses as positive),
     -- and include contra amounts (eg a refund counts in expenses, though it is drawn on the other side).
-    sideTotal j sign = case [q | s <- drawn, seSign s == sign, Just q <- [valueAt (seriesValues s) j]] of
+    sideTotal j sign = signedTotal sign j [s | s <- drawn, seSign s == sign]
+    -- the same for a group's series (shown in the grouped layout)
+    groupTotal j k = signedTotal (groupSign k) j [s | s <- drawn, seGroup s == k]
+    signedTotal sign j sers = case [q | s <- sers, Just q <- [valueAt (seriesValues s) j]] of
       [] -> Nothing
       qs -> Just $ fromIntegral sign * sum qs
     posSum = fst . rowSides
@@ -216,7 +235,8 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     negsumw = if diverging then maximumDef 0 (realLength negname : [realLength (showValue q) | Just q <- map negSum rows]) else 0
     possumw = if diverging then maximumDef 0 (realLength posname : [realLength (showValue q) | Just q <- map posSum rows]) else 0
     -- In a diverging chart, a header line names the total and the side totals' columns (eg the sections on each side).
-    (posname, negname) = pnSideNames
+    sideName sign = T.intercalate ", " $ filter (not . T.null) [groupName k | k <- groups, groupSign k == sign]
+    (posname, negname) = (sideName 1, sideName (-1))
     netname = if hasvalues then maybe "" (lbShort . seLabel) mtotal else ""
     headerline = drop 1 $
       (if labelw > 0 then [(StylePlain, "  "), (StylePlain, T.replicate labelw " ")] else [])
@@ -224,10 +244,10 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
       ++ [(StylePlain, "  ")]
       ++ (if negsumw > 0 then [(StylePlain, fitText (Just negsumw) Nothing False False negname), (StylePlain, " ")] else [])
       ++ (if possumw > 0 then [(StylePlain, T.replicate barw " "), (StylePlain, " "), (StylePlain, posname)] else [])
-    barw = max 10 $ tcWidth - (if labelw > 0 then labelw + 2 else 0) - (if hasvalues then valuew + 2 else 0)
+    barw = max 10 $ tcWidth - (if labelw > 0 then labelw + 2 else 0) - (if sublabelw > 0 then sublabelw + 2 else 0) - (if hasvalues then valuew + 2 else 0)
                   - (if negsumw > 0 then negsumw + 1 else 0) - (if possumw > 0 then possumw + 1 else 0)
-    posTotal r = sum [q | (_, _, q) <- rowSegments r, q > 0]
-    negTotal r = sum [abs q | (_, _, q) <- rowSegments r, q < 0]
+    posTotal r = sum [q | (_, _, q) <- rowSegments r, q > 0] `max` maybe 0 (max 0) (rowMark r)
+    negTotal r = sum [abs q | (_, _, q) <- rowSegments r, q < 0] `max` maybe 0 (abs . min 0) (rowMark r)
     maxpos = maximumDef 0 $ map posTotal rows
     maxneg = maximumDef 0 $ map negTotal rows
     hasaxis = maxneg > 0
@@ -252,9 +272,10 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     clipleft  = if tcUnicode then "◂" else "<"
 
     -- the label column, value column and bars, separated by two spaces (columns with nothing in them are left out)
-    rowLine r@Row{rowLabel, rowValue} =
+    rowLine r@Row{rowLabel, rowSubLabel, rowValue} =
       drop 1 $
       (if labelw > 0 then [(StylePlain, "  "), (StylePlain, fitText (Just labelw) (Just labelw) True True rowLabel)] else [])
+      ++ (if sublabelw > 0 then [(StylePlain, "  "), (StylePlain, fitText (Just sublabelw) (Just sublabelw) True True rowSubLabel)] else [])
       ++ (if hasvalues
           then [(StylePlain, "  "), (maybe StylePlain valueStyle rowValue, fitText (Just valuew) Nothing False False $ maybe "" showValue rowValue)]
           else [])
@@ -332,13 +353,13 @@ tests_Hledger_Write_Chart_Text = testGroup "Write.Chart.Text" [
   ,testCase "single series, scaled to the width" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0] ("", "") Nothing]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0 0] [] Nothing Diverging]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 20 True) chart)
        @?= ["a  1  ███████", "b  2  ██████████████"]
   ,testCase "mixed signs grow from an axis" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0] ("", "") Nothing]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0 0] [] Nothing Diverging]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 21 False) chart)
        @?= ["a  -1  ####|", "b   2      |#########"]
   ]

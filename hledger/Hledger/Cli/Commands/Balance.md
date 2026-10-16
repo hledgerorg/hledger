@@ -1066,17 +1066,25 @@ With `-O csv`, `-O tsv` or `-O json`, `--chart` shows the chart's data, eg to in
 
 The compound balance commands ([`balancesheet`](#balancesheet), [`balancesheetequity`](#balancesheetequity),
 [`cashflow`](#cashflow), [`incomestatement`](#incomestatement)) can show charts in the same ways.
-They chart their sections' accounts, showing each amount as its contribution to the net total:
-sections that add to it (eg revenues, assets) above zero, and sections that subtract from it (eg expenses, liabilities) below zero.
-(Unlike the tables, where both are shown as positive.) So bars above zero increase the net and bars below zero reduce it.
-(This is also why `is` draws expenses below zero while `bal` draws them above, as their raw amounts are positive;
-`bal --invert` gives the same signs as `is`.)
-At each period, all accounts are stacked in one bar, diverging from zero, with the net total as a mark across it
-(or as a line, with end balances).
+They chart their sections' accounts, with the net total as a mark (or as a line, with end balances), in one of two layouts:
+
+- **grouped** (the default for changes, eg `incomestatement`'s, or with `--chart=grouped`): at each period, each section's accounts
+  are stacked in a bar of their own, side by side, so that the sections' sizes can be compared.
+  Amounts are shown as the tables show them, eg expenses as well as revenues are positive.
+  In text charts, each period has a row for each section, showing its total, and a row marking the net total.
+
+- **diverging** (the default for end balances, eg `balancesheet`'s, or with `--chart=diverging`): at each period, all accounts
+  are stacked in one bar, showing each amount as its contribution to the net total: sections that add to it (eg assets, revenues)
+  above zero, and sections that subtract from it (eg liabilities, expenses) below zero.
+  (This is also why a diverging `is` chart draws expenses below zero while `bal` draws them above, as their raw amounts are positive;
+  `bal --invert` gives the same signs.)
+  In text charts, each period is a row showing the net total, the totals of the sections on each side at the ends of the bar
+  (as the report's table shows them; headed by the sections' names), and a mark at the net total's position.
+
 Contra amounts - those with the opposite sign to their section's usual sign, like a refund recorded as a negative expense,
-or a contra account like accumulated depreciation - are drawn next to the zero line, hatched in their account's colour.
-In text charts, each period is a row showing the net total, the totals of the sections on each side at the ends of the bar
-(as the report's table shows them, including any contra amounts; headed by the sections' names), and a mark at the net total's position.
+or a contra account like accumulated depreciation - are drawn next to the zero line, hatched in their account's colour
+(below zero in the grouped layout, and on the other side from their section in the diverging layout).
+They are included in their section's totals.
 Each section shows at most five accounts, combining the smallest into "other"; use a depth limit (eg `-1` or `-2`) for less detail.
 A single-period report is charted the same way, with one period.
 The chart data has one record per value, with fields:
