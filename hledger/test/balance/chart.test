@@ -126,3 +126,73 @@ commodity	series	role	mark	x	value
 	Balance	item	bar	x	
 EUR	Balance	item	bar	a	
 EUR	Balance	item	bar	x	8
+
+# ** 9. A text chart has a panel per commodity, with a heading for those with a commodity symbol.
+$ hledger -f - bal x a --chart -w 30
+a  1  ████████████████████████
+
+EUR
+x  8 EUR  ████████████████████
+
+<
+2024-01-01
+    expenses:food            10
+    assets:cash
+
+2024-01-15
+    expenses:food:dining      5
+    assets:cash
+
+2024-02-01
+    expenses:rent           100
+    assets:cash
+
+# ** 10. A single series is drawn with eighth-block characters, with its values before the bars.
+$ hledger -f - bal -M expenses:rent --chart -w 40
+Balance changes in 2024-01-01..2024-02-29:
+
+Jan    0
+Feb  100  ██████████████████████████████
+
+# ** 11. Several series are stacked, with a legend, and the net total as the value.
+$ hledger -f - bal -M expenses --chart -w 50
+Balance changes in 2024-01-01..2024-02-29:
+
+█ expenses:food  ▓ expenses:food:dining
+▒ expenses:rent
+
+Jan   15  ████▓▓
+Feb  100  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
+# ** 12. Negative values grow left from an axis.
+$ hledger -f - bal -M --chart -w 50
+Balance changes in 2024-01-01..2024-02-29:
+
+█ assets:cash  ▓ expenses:food
+▒ expenses:food:dining  ░ expenses:rent
+
+Jan  0                   ███│▓▓▒
+Feb  0  ████████████████████│░░░░░░░░░░░░░░░░░░░░
+
+# ** 13. A single-period chart has a bar per account, indented in tree mode.
+$ hledger -f - bal --tree --chart -w 40
+assets:cash  -115  ██████████│
+expenses      115            │██████████
+  food         15            │█▎
+    dining      5            │▍
+  rent        100            │████████▊
+
+# ** 14. With -N there is no total, and several series, so no value column.
+$ hledger -f - bal -M expenses -N --chart -w 50
+Balance changes in 2024-01-01..2024-02-29:
+
+█ expenses:food  ▓ expenses:food:dining
+▒ expenses:rent
+
+Jan  ████▓▓▓
+Feb  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
+# ** 15. --width must be a positive number.
+$ hledger -f - bal --chart -w 0
+>2 /--width should be a positive whole number/
+>= 1

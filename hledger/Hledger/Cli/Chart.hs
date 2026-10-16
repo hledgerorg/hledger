@@ -10,26 +10,35 @@ so that charts just work without configuration (see doc/PLAN-charts.md, "Smart d
 
 module Hledger.Cli.Chart (
   chartFlag,
+  chartWidthFlag,
   chartRequested,
+  chartAsTextForOpts,
   multiBalanceReportAsChart,
   balanceReportAsChart,
 ) where
 
-import Data.List (find, intercalate, partition, sortOn, transpose)
+import Data.List (find, intercalate, isPrefixOf, partition, sortOn, transpose)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
 #endif
 import Data.Map qualified as M
-import Data.Maybe (isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Ord (Down(..))
 import Data.Set qualified as S
+import Control.Monad (when)
+import Data.Char (toUpper)
 import Data.Text (Text)
-import System.Console.CmdArgs.Explicit (Flag, flagOpt)
+import Data.Text.Lazy qualified as TL
+import GHC.IO.Encoding (getLocaleEncoding, textEncodingName)
+import Safe (readMay)
+import System.Console.CmdArgs.Explicit (Flag, flagOpt, flagReq)
+import Text.Printf (printf)
 
 import Hledger
 import Hledger.Cli.CliOptions (CliOpts(..))
 import Hledger.Utils.I18n qualified as I18n
 import Hledger.Write.Chart
+import Hledger.Write.Chart.Text
 
 
 -- | The chart kinds that --chart accepts. Only "auto" (choose the best chart for the report) so far.
@@ -48,6 +57,32 @@ chartFlag = flagOpt "auto" ["chart"] setchart "KIND"
 -- | Was a chart requested, with --chart ?
 chartRequested :: CliOpts -> Bool
 chartRequested = isJust . maybestringopt "chart" . rawopts_
+
+-- | The --width option, for commands that can show a chart.
+chartWidthFlag :: Flag RawOpts
+chartWidthFlag = flagReq ["width","w"] setwidth "N"
+  "with --chart: draw the chart N characters wide (default: the terminal width)"
+  where
+    setwidth s opts = case readMay s :: Maybe Int of
+      Just n | n > 0 -> Right $ setopt "width" s opts
+      _              -> Left "--width should be a positive whole number"
+
+-- | Draw a chart as text, as the command line options say:
+-- --width characters wide or the terminal width, with ANSI colour if enabled,
+-- and with unicode block characters if the system's text encoding is UTF-8 (otherwise ASCII).
+-- Also warns if the chart has many panels (one per commodity).
+chartAsTextForOpts :: CliOpts -> Chart -> IO TL.Text
+chartAsTextForOpts CliOpts{width_, available_width_, reportspec_} chart = do
+  unicode <- ("UTF-8" `isPrefixOf`) . map toUpper . textEncodingName <$> getLocaleEncoding
+  let npanels = length $ chPanels chart
+  when (npanels > maxPanels) $ warnIO $ printf
+    ("this chart has %d panels, one per commodity. To show fewer, convert to one commodity (eg -X USD)\n"
+    <> "or select some (eg cur:USD).")
+    npanels
+  return $ styledLinesAsText (color_ $ _rsReportOpts reportspec_) $ chartAsStyledLines (TextChartOpts width unicode) chart
+  where
+    width = fromMaybe available_width_ (width_ >>= readMay)
+    maxPanels = 8 :: Int
 
 -- | The most series to show in one panel. Beyond this, the smallest series are combined into one "other" series.
 maxSeries :: Int

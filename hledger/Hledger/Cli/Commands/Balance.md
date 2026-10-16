@@ -140,6 +140,7 @@ Many of these work with the other balance-like commands as well (`bs`, `cf`, `is
 - another field used as account name ([`--pivot`](#multi-period-balance-report))
 - custom-formatted line items (single-period reports only) ([`--format`](#balance-report-line-format))
 - commodities displayed on the same line or multiple lines ([`--layout`](#balance-report-layout))
+- a chart instead of a table ([`--chart`](#balance-charts))
 
 This command supports the
 [output destination](#output-destination) and
@@ -1007,19 +1008,37 @@ You can also produce relative links, like `--base-url="some/path"` or `--base-ur
 
 ### Balance charts
 
-With `--chart`, `balance` makes a chart of the report instead of a table, choosing a useful kind of chart automatically.
-(Chart drawing is under construction; currently `--chart` works only with `-O csv`, `-O tsv` or `-O json`,
-which show the chart's data.)
+With `--chart`, `balance` shows a chart of the report instead of a table, choosing a useful kind of chart automatically.
+In the terminal, this is a bar chart drawn with text characters:
 
-- A multi-period report of balance changes is charted as stacked bars per period, with the net total as a marker.
-- A multi-period report of end balances (`--cumulative`, `-H`) is charted as lines, with the total as a line.
+```cli
+$ hledger -f examples/bcexample.journal bal -M expenses:food -b 2013 -e 2013-04 cur:USD --chart -w 70
+Balance changes in 2013Q1:
+
+█ Expenses:Food:Groceries  ▓ Expenses:Food:Restaurant
+
+Jan  396.46 USD  █████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+Feb  481.48 USD  ████████████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+Mar  603.32 USD  ██████████████████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+```
+
+- A multi-period report of balance changes is charted as stacked bars per period, showing the net total as the value.
+- A multi-period report of end balances (`--cumulative`, `-H`) is charted the same way in text (and as lines in graphical charts).
 - A single-period report is charted as one bar per account.
 
-There is one chart panel per commodity. You can reduce this by converting to one commodity (eg `-X USD`) or selecting some (eg `cur:USD`).
-In tree mode, each account's own amounts are charted, excluding its subaccounts', so that nothing is counted twice.
+Negative amounts grow left from an axis, positive amounts right.
+Each account has its own colour (when colour is enabled) and fill character; fill characters repeat after four accounts.
+The chart fills the terminal width, or the width set by `-w`/`--width`.
+It is drawn with unicode block characters, or with ASCII characters if the system's text encoding is not UTF-8.
+
+There is one chart panel per commodity. You can reduce this by converting to one commodity (eg `-X USD`) or selecting some (eg `cur:USD`);
+hledger suggests this when there are more than 8 panels.
+In tree mode, each account's own amounts are stacked, excluding its subaccounts', so that nothing is counted twice.
 At most 8 accounts are shown per panel; the smallest are combined into an "other" series.
 The total is omitted with `-N` or `--percent`.
 
+With `-O csv`, `-O tsv` or `-O json`, `--chart` shows the chart's data, eg to inspect it or chart it with other tools.
+(Graphical chart output is under construction.)
 The chart data has one record per value, with fields:
 commodity, series (usually an account name), role (`item`, `other` or `total`), mark (`bar`, `line` or `marker`),
 x (a period heading, period end date, or account name), and value. Eg:

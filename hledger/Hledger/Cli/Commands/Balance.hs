@@ -308,7 +308,7 @@ import Hledger.Cli.Utils
 import Hledger.Cli.Anchor (linkParams, composeAnchorWith, dateTerm, removeInacct,
   withLink, setAccountAnchor, setAccountAnchorWith, renderPeriodHeading, amountPhrase)
 import Hledger.Cli.Commands.Balance.Internal
-import Hledger.Cli.Chart (chartFlag, chartRequested, multiBalanceReportAsChart, balanceReportAsChart)
+import Hledger.Cli.Chart (chartFlag, chartWidthFlag, chartRequested, chartAsTextForOpts, multiBalanceReportAsChart, balanceReportAsChart)
 import Hledger.Write.Chart (chartAsCsv)
 import Hledger.Write.Csv (CSV, printCSV, printTSV)
 import Hledger.Write.Ods (printFods)
@@ -380,6 +380,7 @@ balancemode = hledgerCommandMode
     ,outputFormatFlag ["txt","html","csv","tsv","json","fods"]
     ,outputFileFlag
     ,chartFlag
+    ,chartWidthFlag
 
     ]
   )
@@ -456,10 +457,11 @@ balance opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
 balanceChart :: CliOpts -> Journal -> IO ()
 balanceChart opts@CliOpts{reportspec_=rspec} j = do
   render <- case fmt of
-    "csv"  -> return $ printCSV . chartAsCsv
-    "tsv"  -> return $ printTSV . chartAsCsv
-    "json" -> return $ (<>"\n") . toJsonText
-    _      -> error' $ "--chart does not yet support " ++ fmt ++ " output; try -O csv, -O tsv or -O json"  -- PARTIAL:
+    "txt"  -> return $ chartAsTextForOpts opts
+    "csv"  -> return $ return . printCSV . chartAsCsv
+    "tsv"  -> return $ return . printTSV . chartAsCsv
+    "json" -> return $ return . (<>"\n") . toJsonText
+    _      -> error' $ "--chart does not yet support " ++ fmt ++ " output; try txt, csv, tsv or json"  -- PARTIAL:
   chart <- case balancecalc_ ropts of
     CalcBudget -> error' "--chart does not yet support --budget"  -- PARTIAL:
     _ | interval_ ropts /= NoInterval -> do
@@ -467,7 +469,7 @@ balanceChart opts@CliOpts{reportspec_=rspec} j = do
       let report = styleAmounts styles $ multiBalanceReport rspec j
       return $ multiBalanceReportAsChart ropts (multiBalanceReportTitle ropts report) report
     _ -> return $ balanceReportAsChart ropts (effectiveTitle ropts "") $ styleAmounts styles $ balanceReport rspec j
-  writeOutputLazyText opts $ render chart
+  render chart >>= writeOutputLazyText opts
   where
     ropts  = _rsReportOpts rspec
     styles = journalCommodityStylesWith HardRounding j

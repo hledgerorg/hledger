@@ -1,6 +1,6 @@
 # Charts from reports - design notes and plan
 
-Status: 2026-10-16. Interface and architecture agreed (see Decisions). Phase 1 steps 1-2 done (chart model; bal adapters and chart data output); step 3 (text renderer) next.
+Status: 2026-10-16. Interface and architecture agreed (see Decisions). Phase 1 done (chart model; bal adapters and chart data output; text renderer); phase 1b (SVG) next.
 
 ## Goal
 
@@ -297,6 +297,13 @@ Phases, each a separately useful, committable step:
 - No cap on the number of panels; instead, visual outputs (text, SVG) warn on stderr above a threshold, suggesting `-X` or `cur:`. To do in step 3.
 - Chart data CSV is long ("tidy") form: commodity, series, role, mark, x, value.
 - The net-total marker is kept even when all series have one sign.
+
+2026-10-16, text renderer (step 3), after confirming mockups:
+
+- Value column before the bars; stacked segments for several series (stocks too, in text); legend wrapped left to right; heading per commodity panel (omitted for no commodity).
+- Fill characters cycle after four series (█▓▒░); colour distinguishes more. A limitation without colour.
+- ASCII fallback is chosen from GHC's locale encoding; on macOS this reports UTF-8 even with LANG=C, so it is exercised only by a unit test.
+- The many-panels warning (more than 8) is issued for text output only.
 
 ## Open questions
 
