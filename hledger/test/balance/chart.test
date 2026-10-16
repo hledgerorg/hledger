@@ -56,7 +56,7 @@ $ hledger -f - bal -M expenses -N --chart -O csv
 
 # ** 5. Only chart kinds that exist are accepted.
 $ hledger -f - bal --chart=nosuchkind
->2 /--chart's KIND should be one of: auto/
+>2 /--chart's value should be a chart KIND \(auto\)/
 >= 1
 
 <
@@ -229,3 +229,57 @@ Balance changes in 2024-01:
 ▓ b
 
 Jan  1001  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+
+<
+2024-01-01
+    expenses:food     10
+    expenses:rent    100
+    assets:cash
+
+2024-02-01
+    expenses:food     20
+    assets:cash
+
+2024-02-02
+    assets:euro       30 EUR
+    equity
+
+# ** 21. --chart=SCALE draws the chart at a fixed scale, where SCALE fills the chart, so that charts can be compared.
+# Bars that don't fit are clipped, with a mark at the edge.
+$ hledger -f - bal -M expenses --chart=50 -w 40
+Balance changes in 2024-01-01..2024-02-29:
+
+█ expenses:food  ▓ expenses:rent
+
+Jan  110  ██████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▸
+Feb   20  ████████████
+
+# ** 22. KIND and SCALE can be given together, KIND first.
+$ hledger -f - bal -M expenses --chart=auto,200 -w 40
+Balance changes in 2024-01-01..2024-02-29:
+
+█ expenses:food  ▓ expenses:rent
+
+Jan  110  ██▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+Feb   20  ███
+
+# ** 23. A SCALE with a commodity symbol applies to that commodity's chart; one without, to the others.
+$ hledger -f - bal cash euro --chart='100,10 EUR' -w 30
+assets:c..  -130  ◂██████████│
+
+EUR
+assets:e..  30 EUR  █████████▸
+
+# ** 24. In SVG charts, SCALE fixes the axis, and clipped bars are marked with a triangle.
+$ hledger -f - bal -M expenses --chart=50 -O svg | grep -c '<polygon class="clip"'
+1
+
+# ** 25. SCALE must be a non-zero amount, written without digit group marks.
+$ hledger -f - bal --chart=1,000
+>2 /but this part was not: 000/
+>= 1
+
+# ** 26. KIND must come before SCALE.
+$ hledger -f - bal --chart=200,auto
+>2 /--chart's KIND \(auto\) should come before any SCALE amounts/
+>= 1

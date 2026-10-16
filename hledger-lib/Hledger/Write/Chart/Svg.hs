@@ -114,7 +114,7 @@ data DrawSeries = DrawSeries
 
 -- | Draw one panel with its top at the given y; return its height and markup.
 panelSvg :: XAxis -> Bool -> Double -> Panel -> (Double, Svg)
-panelSvg xaxis showheading top Panel{pnUnit, pnSeries} =
+panelSvg xaxis showheading top Panel{pnUnit, pnSeries, pnScale} =
   (headingh + legendh + bodyh, do
     when (headingh > 0) $
       S.text_ ! A.class_ "heading" ! A.x (toValue $ num pad) ! A.y (toValue $ num (top + 14)) $ S.toMarkup (acommodity pnUnit)
@@ -129,9 +129,9 @@ panelSvg xaxis showheading top Panel{pnUnit, pnSeries} =
     (legendh, legendm) = legendSvg (top + headingh) [(dsClass d, seMark (dsSeries d), lbFull $ seLabel $ dsSeries d) | d <- drawn]
                            (if length items > 1 then mtotal else Nothing)
     (bodyh, bodym) = case xaxis of
-      XCategories ls -> categoriesSvg (top + headingh + legendh) pnUnit drawn mtotal ls
-      XPeriods ps    -> timeSvg (top + headingh + legendh) pnUnit drawn mtotal (EvenScale $ map snd ps)
-      XDates ds      -> timeSvg (top + headingh + legendh) pnUnit drawn mtotal (DateScale ds)
+      XCategories ls -> categoriesSvg (top + headingh + legendh) pnScale pnUnit drawn mtotal ls
+      XPeriods ps    -> timeSvg (top + headingh + legendh) pnScale pnUnit drawn mtotal (EvenScale $ map snd ps)
+      XDates ds      -> timeSvg (top + headingh + legendh) pnScale pnUnit drawn mtotal (DateScale ds)
 
 -- | A legend: a swatch and label for each series, flowing left to right, when there are several series.
 legendSvg :: Double -> [(Text, Mark, Text)] -> Maybe Series -> (Double, Svg)
@@ -166,8 +166,8 @@ data XScale = EvenScale [Text] | DateScale [Day]
 
 -- | Draw series over time, along the given x scale:
 -- vertical bars (in stacks, side by side), lines, and total marks or lines.
-timeSvg :: Double -> Amount -> [DrawSeries] -> Maybe Series -> XScale -> (Double, Svg)
-timeSvg top unit drawn mtotal xscale = (plotHeight + 28, do
+timeSvg :: Double -> Maybe Quantity -> Amount -> [DrawSeries] -> Maybe Series -> XScale -> (Double, Svg)
+timeSvg top mscale unit drawn mtotal xscale = (plotHeight + 28, do
     -- gridlines and y tick labels
     forM_ ticks $ \t -> do
       S.line ! A.class_ (if t == 0 then "axis" else "grid")
@@ -184,11 +184,15 @@ timeSvg top unit drawn mtotal xscale = (plotHeight + 28, do
         let x = xcenter j - groupwidth / 2 + fromIntegral k * (barwidth + 2)
         stack lbl x [(d, q) | d <- stk, Just q <- [valueAt (dsValues d) j], q > 0] 1
         stack lbl x [(d, q) | d <- stk, Just q <- [valueAt (dsValues d) j], q < 0] (-1)
+    -- with a fixed scale, lines are clipped at the plot's edges
+    when (isJust mscale) $ S.defs $ S.clippath ! A.id_ (toValue clipid) $
+      S.rect ! A.x (toValue $ num plotleft) ! A.y (toValue $ num plottop) ! A.width (toValue $ num (plotright - plotleft)) ! A.height (toValue $ num plotHeight)
+    let clipLines = if isJust mscale then S.g ! A.clipPath (toValue $ "url(#" <> clipid <> ")") else id
     -- lines
-    forM_ lines_ $ \d -> lineSvg (dsClass d) (dsSeries d)
+    clipLines $ forM_ lines_ $ \d -> lineSvg (dsClass d) (dsSeries d)
     -- the total: as a line, or as a mark (a thin horizontal line) across each period's bars
     forM_ mtotal $ \t ->
-      if seMark t == MarkLine || null bars then lineSvg "total" t
+      if seMark t == MarkLine || null bars then clipLines $ lineSvg "total" t
       else let tvals = seriesValues t in
         forM_ (zip [0 ..] xlabels) $ \(j, lbl) -> forM_ (valueAt tvals j) $ \q -> when (hasbars j) $ withTooltip (tooltip lbl t q) $ do
           let y = toValue $ num (yof $ toD q)
@@ -225,13 +229,17 @@ timeSvg top unit drawn mtotal xscale = (plotHeight + 28, do
     pointvalues = [toD q | s <- map dsSeries lines_ ++ maybe [] pure mtotal, Just q <- seValues s]
     datamax = maximumDef 0 (stackedsums 1 ++ pointvalues)
     datamin = minimumDef 0 (stackedsums (-1) ++ pointvalues)
-    (lo, hi, ticks, tickdecimals) = niceScale (min 0 datamin) (max 0 datamax)
+    (lo, hi, ticks, tickdecimals) = panelScale mscale (min 0 datamin) (max 0 datamax)
     ticklabel t = showValue (withPrecision tickdecimals unit) (tickQuantity tickdecimals t)
     plotleft = pad + maximumDef 0 (map (textWidth . ticklabel) ticks) + 12
     plotright = chartWidth - pad
     plottop = top + 6
     plotbottom = plottop + plotHeight
-    yof v = plottop + plotHeight * (hi - v) / (hi - lo)
+    -- a value's y position, within the plot (for bars and marks), or anywhere (for lines, which are clipped)
+    yof = clamp plottop plotbottom . yofline
+    yofline v = plottop + plotHeight * (hi - v) / (hi - lo)
+    -- an id for the plot's clipping path, unique within the chart
+    clipid = "hledger-chart-clip-" <> num top
     band = (plotright - plotleft) / fromIntegral (max 1 n)
     xcenter j = case datearray of
       Just a | Arr.inRange (Arr.bounds a) j -> xofday (a Arr.! j)
@@ -244,11 +252,11 @@ timeSvg top unit drawn mtotal xscale = (plotHeight + 28, do
     groupwidth = fromIntegral nbars * barwidth + 2 * fromIntegral (nbars - 1)
     labelevery = max 1 $ ceiling ((maximumDef 0 (map textWidth xlabels) + 12) / band) :: Int
     stack :: Text -> Double -> [(DrawSeries, Quantity)] -> Double -> Svg
-    stack lbl x segs = vstack yof x barwidth [(d, q, tooltip lbl (dsSeries d) q) | (d, q) <- segs]
+    stack lbl x segs = vstack (lo, hi) yof x barwidth [(d, q, tooltip lbl (dsSeries d) q) | (d, q) <- segs]
     lineSvg :: Text -> Series -> Svg
     lineSvg cls s = do
       -- runs of consecutive values, so that gaps break the line
-      let pts = [ fmap (\q -> (j, xcenter j, yof (toD q), q)) (valueAt vals j) | let vals = seriesValues s, j <- [0 .. n - 1] ]
+      let pts = [ fmap (\q -> (j, xcenter j, yofline (toD q), q)) (valueAt vals j) | let vals = seriesValues s, j <- [0 .. n - 1] ]
       forM_ (runs pts) $ \run ->
         S.polyline ! A.class_ ("line " <> toValue cls)
           ! A.points (toValue $ T.unwords [num x <> "," <> num y | (x, y) <- thinPoints $ (if isJust datearray then steps else id) [(x, y) | (_, x, y, _) <- run]])
@@ -262,10 +270,10 @@ timeSvg top unit drawn mtotal xscale = (plotHeight + 28, do
 -- | Draw series of categories (eg accounts): as vertical bars, or as horizontal bars when there are more than 'maxColumns' categories.
 -- Categories with no values at all (eg accounts without this commodity) are left out.
 -- With a single series, each category's bar has its own account type's colour, if known.
-categoriesSvg :: Double -> Amount -> [DrawSeries] -> Maybe Series -> [ChartLabel] -> (Double, Svg)
-categoriesSvg top unit drawn mtotal labels
-  | length rows <= maxColumns = columnsSvg top unit rows rowValue
-  | otherwise                 = barsSvg top unit rows rowValue
+categoriesSvg :: Double -> Maybe Quantity -> Amount -> [DrawSeries] -> Maybe Series -> [ChartLabel] -> (Double, Svg)
+categoriesSvg top mscale unit drawn mtotal labels
+  | length rows <= maxColumns = columnsSvg top mscale unit rows rowValue
+  | otherwise                 = barsSvg top mscale unit rows rowValue
   where
     rows = [ (l, j, [(categoryColoured l d, q) | d <- drawn, Just q <- [valueAt (dsValues d) j]])
            | (j, l) <- zip [0 ..] labels, not $ all (isNothing . flip valueAt j . dsValues) drawn ]
@@ -285,8 +293,8 @@ maxColumns = 30
 
 -- | Draw categories as vertical bars (stacked if several series), with their names below (angled if they don't fit),
 -- and their values above the bars (when they fit).
-columnsSvg :: Double -> Amount -> [(ChartLabel, Int, [(DrawSeries, Quantity)])] -> (Int -> Maybe Quantity) -> (Double, Svg)
-columnsSvg top unit rows rowValue = (plotHeight + 22 + negroom + labelheight, do
+columnsSvg :: Double -> Maybe Quantity -> Amount -> [(ChartLabel, Int, [(DrawSeries, Quantity)])] -> (Int -> Maybe Quantity) -> (Double, Svg)
+columnsSvg top mscale unit rows rowValue = (plotHeight + 22 + negroom + labelheight, do
     -- gridlines and y tick labels
     forM_ ticks $ \t -> do
       S.line ! A.class_ (if t == 0 then "axis" else "grid")
@@ -304,27 +312,28 @@ columnsSvg top unit rows rowValue = (plotHeight + 22 + negroom + labelheight, do
       -- the bar
       let tip d q = T.intercalate " · " $ nub [lbFull lbl, lbFull (seLabel $ dsSeries d), showValue unit q]
           bx = x - barwidth / 2
-      vstack yof bx barwidth [(d, q, tip d q) | (d, q) <- segs, q > 0] 1
-      vstack yof bx barwidth [(d, q, tip d q) | (d, q) <- segs, q < 0] (-1)
+      vstack (lo, hi) yof bx barwidth [(d, q, tip d q) | (d, q) <- segs, q > 0] 1
+      vstack (lo, hi) yof bx barwidth [(d, q, tip d q) | (d, q) <- segs, q < 0] (-1)
       -- the value, above the bar (or below, if negative), if it fits
       forM_ (rowValue j) $ \q -> do
         let v = showValue unit q
             pos = sum [toD a | (_, a) <- segs, a > 0]
             neg = sum [toD a | (_, a) <- segs, a < 0]
-            vy = if q >= 0 then yof pos - 6 else yof neg + 14
+            cliproom = if pos > hi || neg < lo then 6 else 0  -- room for a clip mark
+            vy = if q >= 0 then yof pos - 6 - cliproom else yof neg + 14 + cliproom
         when (textWidth v <= band - 2) $
           S.text_ ! A.class_ "value" ! A.x (toValue $ num x) ! A.y (toValue $ num vy) ! A.textAnchor "middle" $ S.toMarkup v
   )
   where
     n = length rows
     stackedsums sign = [sum [toD q | (_, q) <- segs, signum q == sign] | (_, _, segs) <- rows]
-    (lo, hi, ticks, tickdecimals) = niceScale (minimumDef 0 $ stackedsums (-1)) (maximumDef 0 $ stackedsums 1)
+    (lo, hi, ticks, tickdecimals) = panelScale mscale (minimumDef 0 $ stackedsums (-1)) (maximumDef 0 $ stackedsums 1)
     ticklabel t = showValue (withPrecision tickdecimals unit) (tickQuantity tickdecimals t)
     plotleft = pad + maximumDef 0 (map (textWidth . ticklabel) ticks) + 12
     plotright = chartWidth - pad
     plottop = top + 20  -- leaving room for values above the bars
     plotbottom = plottop + plotHeight
-    yof v = plottop + plotHeight * (hi - v) / (hi - lo)
+    yof v = plottop + plotHeight * (hi - clamp lo hi v) / (hi - lo)
     band = (plotright - plotleft) / fromIntegral (max 1 n)
     xcenter i = plotleft + band * (fromIntegral i + 0.5)
     barwidth = max 1 $ min 24 (band * 0.7)
@@ -334,12 +343,12 @@ columnsSvg top unit rows rowValue = (plotHeight + 22 + negroom + labelheight, do
     angled = namewidth > band - 4
     labelheight = if angled then namewidth * 0.71 + 16 else 24
     -- room below the plot for the values of negative bars, which may reach its bottom
-    negroom = if any (any ((< 0) . snd) . (\(_, _, segs) -> segs)) rows then 16 else 0
+    negroom = if any (any ((< 0) . snd) . (\(_, _, segs) -> segs)) rows then (if isJust mscale then 22 else 16) else 0
 
 -- | Draw categories as horizontal bars (rows; stacked if several series), with their names on the left (indented as in the report)
 -- and an aligned value column on the right.
-barsSvg :: Double -> Amount -> [(ChartLabel, Int, [(DrawSeries, Quantity)])] -> (Int -> Maybe Quantity) -> (Double, Svg)
-barsSvg top unit rows rowValue = (fromIntegral (length rows) * rowHeight + 28, do
+barsSvg :: Double -> Maybe Quantity -> Amount -> [(ChartLabel, Int, [(DrawSeries, Quantity)])] -> (Int -> Maybe Quantity) -> (Double, Svg)
+barsSvg top mscale unit rows rowValue = (fromIntegral (length rows) * rowHeight + 28, do
     -- gridlines and x tick labels (labels thinned to avoid overlap, always including zero)
     forM_ ticks $ \t -> do
       S.line ! A.class_ (if t == 0 then "axis" else "grid")
@@ -358,7 +367,7 @@ barsSvg top unit rows rowValue = (fromIntegral (length rows) * rowHeight + 28, d
   )
   where
     stackedsums sign = [sum [toD q | (_, q) <- segs, signum q == sign] | (_, _, segs) <- rows]
-    (lo, hi, ticks, tickdecimals) = niceScale (minimumDef 0 $ stackedsums (-1)) (maximumDef 0 $ stackedsums 1)
+    (lo, hi, ticks, tickdecimals) = panelScale mscale (minimumDef 0 $ stackedsums (-1)) (maximumDef 0 $ stackedsums 1)
     ticklabel t = showValue (withPrecision tickdecimals unit) (tickQuantity tickdecimals t)
     labelwidth = min (chartWidth * 0.4) $ maximumDef 0 [12 * fromIntegral (lbIndent l) + textWidth (lbShort l) | (l, _, _) <- rows]
     valuewidth = maximumDef 0 [textWidth (showValue unit q) | (_, j, _) <- rows, Just q <- [rowValue j]]
@@ -368,7 +377,7 @@ barsSvg top unit rows rowValue = (fromIntegral (length rows) * rowHeight + 28, d
     plotright = chartWidth - pad - max valuewidth edge - 16
     plottop = top + 4
     plotbottom = plottop + rowHeight * fromIntegral (length rows)
-    xof v = plotleft + (plotright - plotleft) * (v - lo) / (hi - lo)
+    xof v = plotleft + (plotright - plotleft) * (clamp lo hi v - lo) / (hi - lo)
     tickstep = case ticks of t1:t2:_ -> t2 - t1; _ -> 1
     labelevery = max 1 $ ceiling ((maximumDef 0 (map (textWidth . ticklabel) ticks) + 12) / max 1 (xof tickstep - xof 0)) :: Integer
     thickness = 12
@@ -377,29 +386,49 @@ barsSvg top unit rows rowValue = (fromIntegral (length rows) * rowHeight + 28, d
       let cums = scanl1 (+) (map (toD . snd) segs)
           starts = 0 : cums
           lastk = length segs - 1
+          clipped = any (\c -> c > hi || c < lo) (lastMay cums)
       forM_ (zip3 [0 :: Int ..] segs (zip starts cums)) $ \(k, (d, q), (c0, c1)) -> do
         let gap = if k > 0 && abs (xof c1 - xof c0) >= 4 then 2 else 0  -- no gap for tiny segments, which it would hide
             xbase = xof c0 + sign * gap   -- the end nearer the axis, after the gap (the sums are negative for negative segments)
             len = (xof c1 - xbase) * sign
         when (len > 0.5) $ withTooltip (T.intercalate " · " [lbFull lbl, lbFull (seLabel $ dsSeries d), showValue unit q]) $
           S.path ! A.class_ ("fill " <> toValue (dsClass d))
-            ! A.d (toValue $ barPath False xbase (ymid - thickness / 2) thickness (sign * len) (k == lastk))
+            ! A.d (toValue $ barPath False xbase (ymid - thickness / 2) thickness (sign * len) (k == lastk && not clipped))
+      -- a bar clipped by a fixed scale has a small triangle beyond its end
+      when clipped $ clipMark False (xof $ if sign > 0 then hi else lo) ymid thickness sign
 
 -- | One direction of a vertical stacked bar, with its left edge at x and the given width, on a y scale:
 -- segments (each with its series, value and tooltip) from zero outward (up if sign is 1, down if -1),
 -- 2px apart (except tiny ones, which a gap would hide), the outermost with a rounded end.
-vstack :: (Double -> Double) -> Double -> Double -> [(DrawSeries, Quantity, Text)] -> Double -> Svg
-vstack yof x width segs sign = do
+-- If the bar extends beyond the y scale's range (lo, hi), it is clipped, with a small triangle beyond its end instead.
+vstack :: (Double, Double) -> (Double -> Double) -> Double -> Double -> [(DrawSeries, Quantity, Text)] -> Double -> Svg
+vstack (lo, hi) yof x width segs sign = do
   let cums = scanl1 (+) [toD q | (_, q, _) <- segs]
       starts = 0 : cums
       lastk = length segs - 1
+      clipped = any (\c -> c > hi || c < lo) (lastMay cums)
   forM_ (zip3 [0 :: Int ..] segs (zip starts cums)) $ \(k, (d, _, tip), (c0, c1)) -> do
     let gap = if k > 0 && abs (yof c1 - yof c0) >= 4 then 2 else 0
         ybase = yof c0 - sign * gap   -- the end nearer zero, after the gap
         len = (ybase - yof c1) * sign  -- positive when there is something to draw
     when (len > 0.5) $ withTooltip tip $
       S.path ! A.class_ ("fill " <> toValue (dsClass d))
-        ! A.d (toValue $ barPath True x ybase width (-sign * len) (k == lastk))
+        ! A.d (toValue $ barPath True x ybase width (-sign * len) (k == lastk && not clipped))
+  when clipped $ clipMark True (yof $ if sign > 0 then hi else lo) (x + width / 2) width sign
+
+-- | A small triangle pointing outward from the edge of a plot, marking a bar that was clipped there:
+-- for a vertical bar (at y position edge, centred on x position mid) or a horizontal one (at x position edge, centred on y position mid).
+-- sign is the direction in which the bar grows (1: up or right, -1: down or left).
+clipMark :: Bool -> Double -> Double -> Double -> Double -> Svg
+clipMark vertical edge mid barsize sign =
+  S.polygon ! A.class_ "clip" ! A.points (toValue $ T.unwords [num a <> "," <> num b | (a, b) <- map orient pts])
+  where
+    w = max 6 $ min 10 barsize
+    -- the points as (position across the bar, distance outward from the edge)
+    pts = [(mid - w / 2, 0), (mid + w / 2, 0), (mid, w / 2)]
+    orient (across, out)
+      | vertical  = (across, edge - sign * out)
+      | otherwise = (edge + sign * out, across)
 
 -- | The points of a step line through these points: each value holds until the next point's x position.
 steps :: [(Double, Double)] -> [(Double, Double)]
@@ -464,6 +493,22 @@ barPath vertical a b size len rounded
   where
     sgn = if len < 0 then -1 else 1
     r = if rounded then minimum [4, size / 2, abs len] else 0
+
+-- | The scale for a panel's values, given their range (which should include 0): a nice scale covering it ('niceScale'),
+-- or with a fixed scale, exactly the range it spans ('scaleSpans'), with the nice scale's ticks that are within it.
+panelScale :: Maybe Quantity -> Double -> Double -> (Double, Double, [Double], Int)
+panelScale mscale datamin datamax = case mscale of
+  Just s | s > 0 ->
+    let (hi, neg) = scaleSpans (toD s) (max 0 datamax) (abs $ min 0 datamin)
+        lo = negate neg
+        (_, _, ticks, decimals) = niceScale lo hi
+        eps = (hi - lo) * 1e-9
+    in (lo, hi, filter (\t -> t >= lo - eps && t <= hi + eps) ticks, decimals)
+  _ -> niceScale datamin datamax
+
+-- | Limit a value to a range.
+clamp :: Double -> Double -> Double -> Double
+clamp lo hi = max lo . min hi
 
 -- | A "nice" linear scale covering the given range (which should include 0):
 -- its low and high ends, its ticks (about 5, at multiples of 1, 2 or 5 times a power of ten),
@@ -565,7 +610,7 @@ stylesheet dark = T.unlines $
       [ (".bg", "fill", "surface"), (".title", "fill", "ink"), (".heading", "fill", "ink")
       , (".label", "fill", "ink2"), (".value", "fill", "ink2"), (".tick", "fill", "muted")
       , (".grid", "stroke", "grid"), (".axis", "stroke", "axis")
-      , (".line.total", "stroke", "ink"), (".mark.total", "stroke", "ink")
+      , (".line.total", "stroke", "ink"), (".mark.total", "stroke", "ink"), (".clip", "fill", "ink")
       ]
     lightcolours :: [(Text, Text)]
     lightcolours =

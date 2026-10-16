@@ -130,7 +130,7 @@ data Row = Row
   }
 
 panelLines :: TextChartOpts -> XAxis -> Bool -> Panel -> [StyledLine]
-panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries, pnStackLabels} =
+panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries, pnStackLabels, pnScale} =
   [[(StylePlain, acommodity pnUnit)] | showheading, not $ T.null $ acommodity pnUnit]
   ++ legend
   ++ map trimEnd rowlines
@@ -221,16 +221,25 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     maxpos = maximumDef 0 $ map posTotal rows
     maxneg = maximumDef 0 $ map negTotal rows
     hasaxis = maxneg > 0
+    -- the amounts that fill each side: the largest there, or the parts of a fixed scale
+    (posspan, negspan) = case pnScale of
+      Just s | s > 0 -> scaleSpans s maxpos maxneg
+      _              -> (maxpos, maxneg)
     area = if hasaxis then barw - 1 else barw
     -- cells per unit of value, shared by both sides
     scale :: Double
-    scale = if maxpos + maxneg == 0 then 0 else fromIntegral area / realToFrac (maxpos + maxneg)
+    scale = if posspan + negspan == 0 then 0 else fromIntegral area / realToFrac (posspan + negspan)
     leftw
       | not hasaxis = 0
-      | otherwise   = round (fromIntegral area * realToFrac maxneg / realToFrac (maxpos + maxneg) :: Double)
+      | otherwise   = round (fromIntegral area * realToFrac negspan / realToFrac (posspan + negspan) :: Double)
     rightw = area - leftw
     axischar = if tcUnicode then "│" else "|"
     markchar = if tcUnicode then "┃" else "!"
+    -- marks for bars clipped at the right or left edge (beyond a fixed scale's span on that side)
+    clippedRight q = isJust pnScale && q > posspan
+    clippedLeft q  = isJust pnScale && q > negspan
+    clipright = if tcUnicode then "▸" else ">"
+    clipleft  = if tcUnicode then "◂" else "<"
 
     -- the label column, value column and bars, separated by two spaces (columns with nothing in them are left out)
     rowLine r@Row{rowLabel, rowSubLabel, rowValue} =
@@ -246,32 +255,38 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
            Nothing -> (if hasaxis then negativeBar r ++ [(StylePlain, axischar)] else []) ++ positiveBar r
     valueStyle q = if q < 0 then StyleNegative else StylePlain
 
-    -- A mark at a value's position: right of the axis if positive, left of it if negative.
+    -- A mark at a value's position: right of the axis if positive, left of it if negative (or a clipped mark at the edge, if beyond it).
     markLine q
       | q >= 0 =
           let p = max 1 $ min rightw $ cells 1 q
-          in [(StylePlain, T.replicate leftw " "), (StylePlain, if hasaxis then axischar else ""), (StylePlain, T.replicate (p - 1) " "), (StylePlain, markchar)]
+          in [(StylePlain, T.replicate leftw " "), (StylePlain, if hasaxis then axischar else ""), (StylePlain, T.replicate (p - 1) " "), (StylePlain, if clippedRight q then clipright else markchar)]
       | otherwise =
           let p = max 1 $ min leftw $ cells 1 (abs q)
-          in [(StylePlain, T.replicate (leftw - p) " "), (StylePlain, markchar), (StylePlain, T.replicate (p - 1) " "), (StylePlain, axischar)]
+          in [(StylePlain, T.replicate (leftw - p) " "), (StylePlain, if clippedLeft (abs q) then clipleft else markchar), (StylePlain, T.replicate (p - 1) " "), (StylePlain, axischar)]
 
     -- The positive segments, growing right from the axis.
     -- A single segment uses eighth-block characters for finer resolution (in unicode mode); several use whole cells.
     positiveBar Row{rowSegments} = case [(st, c, q) | (st, c, q) <- rowSegments, q > 0] of
       [(st, c, q)] | tcUnicode && c == '█' && length rowSegments == 1 ->
-        let eighths = min (rightw * 8) $ cells 8 q
-        in [(st, T.replicate (eighths `div` 8) "█" <> partialBlock (eighths `mod` 8))]
-      segs -> segmentPieces rightw segs
+        let eighths = cells 8 q
+        in if clippedRight q
+           then [(st, T.replicate (rightw - 1) "█" <> clipright)]
+           else let e = min (rightw * 8) eighths in [(st, T.replicate (e `div` 8) "█" <> partialBlock (e `mod` 8))]
+      segs -> segmentPieces rightw clippedRight (\t -> T.dropEnd 1 t <> clipright) segs
     -- The negative segments, growing left from the axis, first series nearest the axis.
     negativeBar Row{rowSegments} =
-      let pieces = segmentPieces leftw [(st, c, abs q) | (st, c, q) <- rowSegments, q < 0]
+      let pieces = segmentPieces leftw clippedLeft (\t -> clipleft <> T.drop 1 t) [(st, c, abs q) | (st, c, q) <- rowSegments, q < 0]
           used = sum $ map (realLength . snd) pieces
       in (StylePlain, T.replicate (leftw - used) " ") : reverse pieces
     -- Segments as whole cells, rounding the cumulative boundaries so the total length is preserved, within a maximum width.
-    segmentPieces maxw segs =
+    -- If their total is clipped (by the given test), the outermost cell is replaced by a clip mark (with the given function).
+    segmentPieces maxw clipped clip segs =
       let bounds = map (min maxw . cells 1) $ scanl1 (+) [q | (_, _, q) <- segs]
           widths = zipWith (-) bounds (0 : bounds)
-      in [(st, T.replicate w (T.singleton c)) | ((st, c, _), w) <- zip segs widths, w > 0]
+          pieces = [(st, T.replicate w (T.singleton c)) | ((st, c, _), w) <- zip segs widths, w > 0]
+      in case (reverse pieces, clipped $ sum [q | (_, _, q) <- segs]) of
+           ((st, t) : rest, True) -> reverse ((st, clip t) : rest)
+           _ -> pieces
     cells :: Int -> Quantity -> Int
     cells perunit q = round (realToFrac q * scale * fromIntegral perunit)
     partialBlock n = fromMaybe "" $ ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"] `atMay` n
@@ -297,13 +312,13 @@ tests_Hledger_Write_Chart_Text = testGroup "Write.Chart.Text" [
   ,testCase "single series, scaled to the width" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0] []]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0] [] Nothing]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 20 True) chart)
        @?= ["a  1  ███████", "b  2  ██████████████"]
   ,testCase "mixed signs grow from an axis" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0] []]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0] [] Nothing]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 21 False) chart)
        @?= ["a  -1  ####|", "b   2      |#########"]
   ]

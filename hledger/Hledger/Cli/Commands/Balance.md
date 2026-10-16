@@ -1045,6 +1045,16 @@ In tree mode, each account's own amounts are stacked, excluding its subaccounts'
 At most 8 accounts are shown per panel; the smallest are combined into an "other" series.
 The total is omitted with `-N` or `--percent`.
 
+Each chart is scaled to fit its values. To draw charts at a fixed scale instead,
+so that you can compare them (eg this month's chart with last month's), add a SCALE amount: `--chart=SCALE`.
+This is the amount that the chart spans; eg with `--chart=5000`, a bar of 5000 fills the chart.
+If the chart also has negative values, they take the room they need and positive values get the rest.
+Bars that don't fit are clipped, with a mark at the edge (`▸` or `◂` in text, a small triangle in SVG); lines go off the edge.
+A SCALE with a commodity symbol (eg `--chart='5000 USD'`) applies to that commodity's panel, and one without, to the others.
+SCALE can follow KIND, and several SCALEs can be given, separated by commas (eg `--chart='auto,5000 USD,4000 EUR'`);
+so write SCALE without digit group marks.
+For the same scale in text charts, use the same width too (`-w`).
+
 With [SVG output](#svg-output) (`-o FILE.svg` or `-O svg`), `balance` always shows a chart, as a graphical image.
 Time runs along the x axis, and end balances are drawn as lines.
 A single-period report is drawn as vertical bars, one per account, with the account names below (angled if needed)

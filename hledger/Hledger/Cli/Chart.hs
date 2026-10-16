@@ -22,7 +22,7 @@ module Hledger.Cli.Chart (
 ) where
 
 import Data.List (find, intercalate, isPrefixOf, partition, sort, sortOn, transpose)
-import Data.List.Extra (nubSort)
+import Data.List.Extra (nubSort, splitOn, trim)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
 #endif
@@ -56,14 +56,31 @@ import Hledger.Write.Csv (printCSV, printTSV)
 chartKinds :: [String]
 chartKinds = ["auto"]
 
--- | The --chart[=KIND] option, for commands that can show a chart.
+-- | The --chart[=KIND,SCALE] option, for commands that can show a chart.
 chartFlag :: Flag RawOpts
-chartFlag = flagOpt "auto" ["chart"] setchart "KIND"
-  "show a chart instead of the report table (with txt output), a chart above the table (with html output), or the chart's data (with csv, tsv or json output). svg output always shows a chart. KIND can be: auto (the default)."
+chartFlag = flagOpt "auto" ["chart"] setchart "KIND,SCALE"
+  ("show a chart instead of the report table (with txt output), a chart above the table (with html output), or the chart's data (with csv, tsv or json output). svg output always shows a chart. "
+  ++ "KIND can be: auto (the default). SCALE fixes the chart's scale, so that charts can be compared: it is the amount that fills the chart (eg 1000, or 1000 USD to set it for one commodity's chart; several can be given). Larger amounts are clipped.")
   where
-    setchart s opts
-      | s `elem` chartKinds = Right $ setopt "chart" s opts
-      | otherwise = Left $ "--chart's KIND should be one of: " ++ intercalate ", " chartKinds
+    setchart s opts = either Left (const $ Right $ setopt "chart" s opts) $ parseChartArg s
+
+-- | Parse the value of --chart: comma-separated parts, which are an optional chart kind (default auto),
+-- followed by optional scale amounts (see 'setChartScales').
+-- Amounts must be written without digit group marks, since commas separate the parts.
+parseChartArg :: String -> Either String (String, [Amount])
+parseChartArg s = case filter (not . null) $ map trim $ splitOn "," s of
+  k : rest | k `elem` chartKinds -> (k,) <$> mapM scale rest
+  parts                          -> ("auto",) <$> mapM scale parts
+  where
+    scale p
+      | p `elem` chartKinds = Left $ "--chart's KIND (" ++ p ++ ") should come before any SCALE amounts"
+      | Right a <- parseamount p, aquantity a /= 0 = Right a
+      | otherwise = Left $ "--chart's value should be a chart KIND (" ++ intercalate ", " chartKinds
+          ++ "), and/or non-zero SCALE amounts after it, separated by commas (and written without digit group marks), but this part was not: " ++ p
+
+-- | The scale amounts given with --chart, if any.
+chartScales :: CliOpts -> [Amount]
+chartScales = either (const []) snd . parseChartArg . fromMaybe "" . maybestringopt "chart" . rawopts_
 
 -- | Was a chart requested, with --chart or an output format that can only show charts (svg) ?
 chartRequested :: CliOpts -> Bool
@@ -118,7 +135,7 @@ writeChart opts mreporthtml chart = do
     "json" -> return $ return . (<>"\n") . toJsonText
     _ | fmt `elem` outputFormats -> error' $ "--chart does not yet support " ++ fmt ++ " output; try txt, svg, html, csv, tsv or json"  -- PARTIAL:
       | otherwise -> error' $ unsupportedOutputFormatError fmt  -- PARTIAL:
-  render chart >>= writeOutputLazyText opts
+  render (setChartScales (chartScales opts) chart) >>= writeOutputLazyText opts
   where
     fmt = outputFormatFromOpts opts
 
@@ -157,6 +174,7 @@ multiBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlistmo
           { pnUnit      = unitAmount c allamts
           , pnSeries    = series ++ total
           , pnStackLabels = []
+          , pnScale = Nothing
           }
       where
         series = limitSeries maxSeries translations_ mark
@@ -186,6 +204,7 @@ balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
                         [ if any ((== c) . acommodity) (amountsRaw ma) then Just (quantityIn c ma) else Nothing
                         | (_, _, _, ma) <- items ] 0]
       , pnStackLabels = []
+      , pnScale = Nothing
       }
 
 -- | Chart a compound balance report (balancesheet, incomestatement, cashflow..): its sections' accounts, and the net total.
@@ -236,6 +255,7 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
               [ Series (plainLabel netlabel) SeriesTotal (if flow then MarkMarker else MarkLine) (map (Just . quantityIn c) nettotals) 0
               | showtotal ]
           , pnStackLabels = [t | (t, _, _) <- subreports]
+          , pnScale = Nothing
           }
       where
         series = concat
@@ -262,6 +282,7 @@ accountTransactionsReportAsChart accttype title acct txndate items =
       { pnUnit      = unitAmount c allamts
       , pnSeries    = [Series (ChartLabel acct acct 0 (accttype acct)) SeriesItem MarkLine (map (Just . quantityIn c) bals) 0]
       , pnStackLabels = []
+      , pnScale = Nothing
       }
 
 -- | Chart a postings report (register).
@@ -282,8 +303,8 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
           totalseries c role = Series ((plainLabel $ I18n.tr translations_ "Total"){lbType = commontype}) role MarkLine (map (Just . quantityIn c) totals) 0
           -- with postings to several accounts (and not --average), each account's running total as a line, and the overall running total
           linespanel c
-            | average_ || length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] []
-            | otherwise = Panel (unitAmount c totalamts) (accountRunningTotals c ++ [totalseries c SeriesTotal]) []
+            | average_ || length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] [] Nothing
+            | otherwise = Panel (unitAmount c totalamts) (accountRunningTotals c ++ [totalseries c SeriesTotal]) [] Nothing
       in Chart
         { chTitle  = title
         , chXAxis  = XDates [postingDateOrDate2 (whichDate ropts) p | p <- postings]
@@ -335,7 +356,7 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
     allamts = concatMap amountsRaw cells
     panel c
       | null series = Nothing
-      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total, pnStackLabels = []}
+      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total, pnStackLabels = [], pnScale = Nothing}
       where
         series = limitSeries maxSeries translations_ MarkBar
           [ (ChartLabel a a 0 (accttype a), qs) | (a, amts) <- rows, let qs = map (quantityIn c) amts, any (/= 0) qs ]

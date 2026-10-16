@@ -385,6 +385,13 @@ Text chart colours: with COLORTERM=truecolor, exact 24-bit colours from the shar
 whose shades depend on the terminal theme (eg a Ghostty theme's olive "green"). Negative values stay ANSI red, like hledger's other output.
 Compound sections also get an account type from their query (eg `Type [Revenue]`), which accounts without a type inherit;
 "..." accounts (depth 0) are labelled with the section title. Net marks in SVG are 1.5px ink lines, with no surface ring (2026-10-16).
+Fixed scale (2026-10-16): `--chart=[KIND][,SCALE...]`, comma-separated parts (an optional kind first, then amounts;
+so no digit group marks), so successive charts can be compared. SCALE is the amount the chart spans (`pnScale`, set by
+`setChartScales`, per commodity, with a bare number for the rest), shared between directions by `scaleSpans`: negatives get what
+they need, positives the rest, both shrunk proportionally if they don't fit. A per-direction maximum was tried first, but one small
+negative value then halved the resolution and changed the scale between otherwise similar charts. Text bars beyond it end with
+`▸`/`◂` (`>`/`<`); SVG bars are clamped with a small ink triangle beyond the edge (and an unrounded end), lines are clipped
+with a clipPath (only emitted with a fixed scale), ticks are the nice ticks within the exact range.
 
 ## Open questions
 

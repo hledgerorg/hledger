@@ -33,10 +33,13 @@ module Hledger.Write.Chart (
   seriesValues,
   valueAt,
   groupDates,
+  setChartScales,
+  scaleSpans,
   chartAsCsv,
   tests_Hledger_Write_Chart,
 ) where
 
+import Control.Applicative ((<|>))
 import Data.Function (on)
 import Data.Map qualified as M
 import Data.List (find, groupBy)
@@ -99,6 +102,9 @@ data Panel = Panel
   , pnSeries    :: [Series]   -- ^ the series, in display order (legend order)
   , pnStackLabels :: [Text]   -- ^ names for the stacks, by stack number (see 'seStack'), if they have names;
                               --   eg a compound report's section titles. Text charts show them.
+  , pnScale     :: Maybe Quantity  -- ^ a fixed scale, if one was requested: the amount spanned by the chart (see 'scaleSpans'),
+                              --   so that charts with the same scale are drawn at the same size per amount.
+                              --   Otherwise the chart is scaled to fit its values.
   } deriving (Show, Eq, Generic, ToJSON)
 
 -- | A named sequence of values, one per x position.
@@ -210,6 +216,26 @@ groupDates maxn chart@Chart{chXAxis = XDates ds, chPanels}
     byyear d = let (y, _, _) = toGregorian d in (fromGregorian y 1 1, fromGregorian (y + 1) 1 1)
 groupDates _ chart = chart
 
+-- | Give each panel a fixed scale (see 'pnScale'): the absolute quantity of the scale amount in the panel's commodity,
+-- or else of the one with no commodity symbol. When several are in the same commodity, the last one is used.
+setChartScales :: [Amount] -> Chart -> Chart
+setChartScales scales chart = chart{chPanels = map setscale $ chPanels chart}
+  where
+    setscale p = p{pnScale = lookup (acommodity $ pnUnit p) byc <|> lookup "" byc <|> pnScale p}
+    byc = reverse [(acommodity a, abs $ aquantity a) | a <- scales]
+
+-- | With a fixed scale (the amount that a chart spans), and the largest positive and (absolute) negative extents of the values,
+-- how much of the scale is given to each direction: (above or right of zero, below or left of zero).
+-- Negative values get the room they need and positive values the rest (all of it if there are no negative values;
+-- if there are only negative values, they get all of it).
+-- If the values don't fit, both directions are shrunk in proportion, and the values beyond them will be clipped.
+scaleSpans :: (Ord a, Fractional a) => a -> a -> a -> (a, a)
+scaleSpans scale maxpos maxneg
+  | maxpos <= 0 && maxneg > 0  = (0, scale)
+  | maxpos + maxneg <= scale   = (scale - maxneg, maxneg)
+  | otherwise                  = (scale - neg, neg)
+  where neg = maxneg * scale / (maxpos + maxneg)
+
 -- | Render a chart's data as CSV (or TSV) records, in long ("tidy") form: one record per value,
 -- with a header record. This shows exactly what the chart shows, after any combining of series,
 -- and can be charted with other tools.
@@ -246,13 +272,19 @@ tests_Hledger_Write_Chart = testGroup "Write.Chart" [
          chart = Chart "" (XDates [fromGregorian 2024 1 5, fromGregorian 2024 1 20, fromGregorian 2024 2 3])
                    [Panel nullamt
                      [ Series (lbl "balance") SeriesItem MarkLine [Just 1, Just 2, Just 3] 0
-                     , Series (lbl "change") SeriesItem MarkBar [Just 1, Just 1, Nothing] 0 ] []]
+                     , Series (lbl "change") SeriesItem MarkBar [Just 1, Just 1, Nothing] 0 ] [] Nothing]
          Chart{chXAxis, chPanels} = groupDates 2 chart
      case chXAxis of
        XPeriods ps -> map snd ps @?= ["2024-01", "2024-02"]
        _           -> assertFailure "expected periods"
      map seValues (concatMap pnSeries chPanels) @?= [[Just 2, Just 3], [Just 2, Nothing]]
      groupDates 3 chart @?= chart
+  ,testCase "scaleSpans" $ do
+     scaleSpans 100 80 0 @?= (100 :: Quantity, 0)
+     scaleSpans 100 0 30 @?= (0, 100)
+     scaleSpans 100 50 30 @?= (70, 30)
+     scaleSpans 100 150 50 @?= (75, 25)
+     scaleSpans 100 0 0 @?= (100, 0)
   ,testCase "seriesColours" $ do
      let ser t = Series (ChartLabel "" "" 0 t) SeriesItem MarkBar [] 0
      seriesColours [ser (Just Expense), ser (Just Cash), ser Nothing, ser (Just Expense), ser Nothing]
