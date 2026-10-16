@@ -328,7 +328,7 @@ Phases, each a separately useful, committable step:
 2026-10-16, phase 2 step 2, aregister:
 
 - Charts the balance (or running total/average) after each transaction, as a line, dated as the register shows (transactionRegisterDate).
-- Text: one row per transaction up to 50; beyond that, `groupDates` groups them into the shortest of days/weeks/months/quarters/years giving at most 50 rows, labelled with showDateSpan, showing each period's last balance. (This settles open question 6: both, by size.)
+- Text (superseded: see below, grouping was dropped): one row per transaction up to 50; beyond that, `groupDates` groups them into the shortest of days/weeks/months/quarters/years giving at most 50 rows, labelled with showDateSpan, showing each period's last balance. (This settles open question 6: both, by size.)
 - SVG: dates on a real time scale (`DateScale`), lines as steps, x ticks at calendar boundaries (`dateTicks`); x labels are kept within the chart.
 - aregister's existing -w/--width sets the text chart width (its `N,M` form falls back to the terminal width).
 
@@ -392,6 +392,9 @@ they need, positives the rest, both shrunk proportionally if they don't fit. A p
 negative value then halved the resolution and changed the scale between otherwise similar charts. Text bars beyond it end with
 `▸`/`◂` (`>`/`<`); SVG bars are clamped with a small ink triangle beyond the edge (and an unrounded end), lines are clipped
 with a clipPath (only emitted with a fixed scale), ticks are the nice ticks within the exact range.
+Dropped automatic date grouping (2026-10-16): text charts of registers no longer switch to a row per day/week/month/.. beyond 50 rows,
+since that heuristic was hard to predict and understand; they always have a row per posting (or transaction). Use a report interval
+(register -M, or balance -M -H for an account's balance) for a row per period.
 
 ## Open questions
 

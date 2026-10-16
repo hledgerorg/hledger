@@ -118,8 +118,7 @@ The output formats supported are `txt`, `csv`, `tsv`, `html`, `fods` and `json`.
 
 With `--chart`, or with `svg` output (`-o FILE.svg`), it shows a chart of the account's balance
 (or running total or average) over time instead.
-A text chart has a row per transaction, or when there are more than 50, a row per period
-(day, week, month, quarter or year), showing the balance at the period's end.
+A text chart has a row per transaction (for a row per period instead, use a balance report with a [report interval](#report-intervals) and `-H`).
 An SVG chart draws the balance as a line on a time scale.
 With `--chart -O csv` (or tsv or json) it shows the chart's data.
 See also [Balance charts](#balance-charts).

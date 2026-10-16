@@ -25,7 +25,7 @@ $ hledger -f - areg bank --chart -O csv
 "","assets:bank","item","line","2024-02-01","170"
 "","assets:bank","item","line","2024-02-10","90"
 
-# ** 2. A text chart has a row per transaction (or per period, when there are many transactions).
+# ** 2. A text chart has a row per transaction.
 $ hledger -f - areg bank --chart -w 40
 Transactions in assets:bank and subaccounts:
 

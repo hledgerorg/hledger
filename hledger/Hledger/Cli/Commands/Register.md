@@ -190,7 +190,7 @@ With `--chart`, or with `svg` output (`-o FILE.svg`), it shows a chart instead.
 Without a report interval, this is the running total (or average) after each posting, as a line over time;
 with postings to several accounts, each account's own running total is shown too, in its account type's colour
 (starting from its balance before the report period, with `-H`), at most eight of them, the smallest combined into "other".
-A text chart has a row per posting (or when there are more than 50, a row per period), with the accounts' running totals stacked.
+A text chart has a row per posting, with the accounts' running totals stacked.
 With a report interval, it is each account's amount in each period, as stacked bars, with the period's total.
 With `--chart -O csv` (or tsv or json) it shows the chart's data.
 See also [Balance charts](#balance-charts).

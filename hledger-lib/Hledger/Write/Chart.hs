@@ -32,7 +32,6 @@ module Hledger.Write.Chart (
   SeriesValues,
   seriesValues,
   valueAt,
-  groupDates,
   setChartScales,
   scaleSpans,
   chartAsCsv,
@@ -40,12 +39,9 @@ module Hledger.Write.Chart (
 ) where
 
 import Control.Applicative ((<|>))
-import Data.Function (on)
 import Data.Map qualified as M
-import Data.List (find, groupBy)
-import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
-import Data.Time (addDays, addGregorianMonthsClip, fromGregorian, toGregorian)
-import Data.Time.Calendar.WeekDate (toWeekDate)
+import Data.List (find)
+import Data.Maybe (fromMaybe)
 
 import Data.Array (Array, bounds, inRange, listArray, (!))
 
@@ -55,11 +51,11 @@ import Data.Text qualified as T
 import Data.Time (Day)
 import GHC.Generics (Generic)
 
-import Hledger.Data.Amount (AmountFormat(..), machineFmt, nullamt, showAmountWith)
-import Hledger.Data.Dates (showDate, showDateSpan)
+import Hledger.Data.Amount (AmountFormat(..), machineFmt, showAmountWith)
+import Hledger.Data.Dates (showDate)
 import Hledger.Data.Json ()
 import Hledger.Data.AccountType (isAccountSubtypeOf)
-import Hledger.Data.Types (AccountType(..), Amount(..), DateSpan(..), EFDay(..), Quantity)
+import Hledger.Data.Types (AccountType(..), Amount(..), DateSpan(..), Quantity)
 import Hledger.Utils.Test
 import Hledger.Write.Csv (CSV)
 
@@ -182,40 +178,6 @@ seriesValues Series{seValues} = listArray (0, length seValues - 1) seValues
 valueAt :: SeriesValues -> Int -> Maybe Quantity
 valueAt a j = if inRange (bounds a) j then a ! j else Nothing
 
--- | If a chart's x axis has more than this many dates, group them into periods:
--- days, weeks, months, quarters or years, the shortest giving at most this many periods
--- (or years, if none does), labelled with hledger's usual period names. Each period shows a line's last value in it (eg an end balance),
--- or the sum of a bar's or marker's values. Other charts are returned unchanged.
--- Useful for drawing a long register as text, one row per period.
-groupDates :: Int -> Chart -> Chart
-groupDates maxn chart@Chart{chXAxis = XDates ds, chPanels}
-  | length ds > maxn =
-      let grouping = fromMaybe lastgrouping $ find ((<= maxn) . length . groupsBy) groupings
-          groups = groupsBy grouping
-      in chart
-        { chXAxis  = XPeriods [ (spn, showDateSpan spn)
-                              | g <- groups, (_, d) <- take 1 g, let (start, end) = grouping d, let spn = DateSpan (Just $ Exact start) (Just $ Exact end) ]
-        , chPanels = [ p{pnSeries = map (regroup groups) (pnSeries p)} | p <- chPanels ]
-        }
-  where
-    indexed = zip [0 :: Int ..] ds
-    groupsBy grouping = groupBy ((==) `on` (fst . grouping . snd)) indexed
-    regroup groups s@Series{seMark} =
-      let vals = seriesValues s
-          combine = case seMark of
-            MarkLine -> listToMaybe . reverse
-            _        -> \qs -> if null qs then Nothing else Just (sum qs)
-      in s{seValues = [ combine $ mapMaybe (valueAt vals . fst) g | g <- groups ]}
-    -- each grouping gives a date's period: its start date and end date (exclusive)
-    groupings = [byday, byweek, bymonth, byquarter, byyear]
-    lastgrouping = byyear
-    byday d = (d, addDays 1 d)
-    byweek d = let (_, _, wd) = toWeekDate d; s = addDays (fromIntegral $ 1 - wd) d in (s, addDays 7 s)
-    bymonth d = let (y, m, _) = toGregorian d in (fromGregorian y m 1, addGregorianMonthsClip 1 $ fromGregorian y m 1)
-    byquarter d = let (y, m, _) = toGregorian d; s = fromGregorian y (3 * ((m - 1) `div` 3) + 1) 1 in (s, addGregorianMonthsClip 3 s)
-    byyear d = let (y, _, _) = toGregorian d in (fromGregorian y 1 1, fromGregorian (y + 1) 1 1)
-groupDates _ chart = chart
-
 -- | Give each panel a fixed scale (see 'pnScale'): the absolute quantity of the scale amount in the panel's commodity,
 -- or else of the one with no commodity symbol. When several are in the same commodity, the last one is used.
 setChartScales :: [Amount] -> Chart -> Chart
@@ -267,19 +229,7 @@ chartAsCsv Chart{chXAxis, chPanels} =
 
 tests_Hledger_Write_Chart :: TestTree
 tests_Hledger_Write_Chart = testGroup "Write.Chart" [
-   testCase "groupDates" $ do
-     let lbl t = ChartLabel t t 0 Nothing
-         chart = Chart "" (XDates [fromGregorian 2024 1 5, fromGregorian 2024 1 20, fromGregorian 2024 2 3])
-                   [Panel nullamt
-                     [ Series (lbl "balance") SeriesItem MarkLine [Just 1, Just 2, Just 3] 0
-                     , Series (lbl "change") SeriesItem MarkBar [Just 1, Just 1, Nothing] 0 ] [] Nothing]
-         Chart{chXAxis, chPanels} = groupDates 2 chart
-     case chXAxis of
-       XPeriods ps -> map snd ps @?= ["2024-01", "2024-02"]
-       _           -> assertFailure "expected periods"
-     map seValues (concatMap pnSeries chPanels) @?= [[Just 2, Just 3], [Just 2, Nothing]]
-     groupDates 3 chart @?= chart
-  ,testCase "scaleSpans" $ do
+   testCase "scaleSpans" $ do
      scaleSpans 100 80 0 @?= (100 :: Quantity, 0)
      scaleSpans 100 0 30 @?= (0, 100)
      scaleSpans 100 50 30 @?= (70, 30)

@@ -108,17 +108,12 @@ styledLinesAsText mode = TL.fromChunks . concatMap (\l -> map piece l ++ ["\n"])
 -- | Draw a chart as styled lines of text: the title (if any), then each panel,
 -- with a heading naming its commodity when there are several (and it has a commodity symbol),
 -- and a legend when it has several series (listing those that are visible: a series too small to fill a character cell is not).
--- A chart with many dates (more than 'maxDateRows', eg a long register) is drawn with one row per period instead (see 'groupDates').
+-- A chart of dates (eg a register) has a row per date, however many there are.
 chartAsStyledLines :: TextChartOpts -> Chart -> [StyledLine]
-chartAsStyledLines opts chart =
+chartAsStyledLines opts Chart{chTitle, chXAxis, chPanels} =
   titlelines ++ concatMap (\(i, p) -> [[] | i > 0] ++ panelLines opts chXAxis (length chPanels > 1) p) (zip [0 :: Int ..] chPanels)
   where
-    Chart{chTitle, chXAxis, chPanels} = groupDates maxDateRows chart
     titlelines = if T.null chTitle then [] else [[(StylePlain, chTitle)], []]
-
--- | The most dates a text chart shows one row each for; beyond this, they are grouped into periods.
-maxDateRows :: Int
-maxDateRows = 50
 
 -- | A row of a text chart: a label, an optional value, and the bar segments (style, fill character, quantity).
 data Row = Row
