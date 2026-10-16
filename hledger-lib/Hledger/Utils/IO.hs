@@ -1134,16 +1134,18 @@ terminalColor = unsafePerformIO . getLayerColor'
 
 -- A version of ansi-terminal's getLayerColor that is less likely to leak escape sequences to output,
 -- and that returns a RGB of Floats (0..1) that is more compatible with the colour package.
--- This does nothing in a non-interactive context (eg when piping stdout to another command),
+-- This does nothing in a non-interactive context (eg when piping stdout to another command,
+-- or when stdin, where the terminal's answer is read, is not the terminal, eg with -f -),
 -- inside emacs (comint shell buffers show the query's escape sequence instead of answering it,
 -- and vterm doesn't answer the query at all), or in a non-colour-supporting terminal.
+-- If the query fails for some other reason, the colour is unknown.
 getLayerColor' :: ConsoleLayer -> IO (Maybe (RGB Float))
 getLayerColor' l = do
   inemacs       <- not . null <$> lookupEnv "INSIDE_EMACS"
-  interactive   <- hIsTerminalDevice stdout
+  interactive   <- (&&) <$> hIsTerminalDevice stdout <*> hIsTerminalDevice stdin
   supportscolor <- hSupportsANSIColor stdout
   if inemacs || not interactive || not supportscolor then return Nothing
-  else fmap fractionalRGB <$> getLayerColor l
+  else (fmap fractionalRGB <$> getLayerColor l) `catch` \(_ :: IOException) -> return Nothing
   where
     fractionalRGB :: (Fractional a) => RGB Word16 -> RGB a
     fractionalRGB (RGB r g b) = RGB (fromIntegral r / 65535) (fromIntegral g / 65535) (fromIntegral b / 65535)  -- chatgpt

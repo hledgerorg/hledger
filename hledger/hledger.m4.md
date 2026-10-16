@@ -8527,6 +8527,14 @@ On Microsoft Windows, depending what kind of terminal window you use,
 non-ascii characters, ANSI text formatting, and/or the add command's TAB key, may not be fully supported.
 (For best results, try a powershell window.)
 
+When showing colour, hledger sometimes asks the terminal for its background colour,
+to choose colours that suit it (for headings, and for charts in terminals advertising 24-bit colour).
+Occasionally this can misbehave: a terminal that doesn't answer (eg some tmux setups) can delay the output by up to half a second;
+over a slow connection, a late answer may appear as stray characters at your shell prompt;
+on macOS, hledger can hang if its input is explicitly redirected from `/dev/tty`;
+and hledger may be stopped if it is run in the background.
+`--color=no` avoids these.
+
 When processing large data files, hledger uses more memory than Ledger.
 You can cap its memory use with GHC runtime system options, eg `hledger +RTS -M2G -RTS ...`
 (if it needs more, it will stop with an error),
