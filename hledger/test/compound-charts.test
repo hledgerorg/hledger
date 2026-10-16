@@ -73,12 +73,13 @@ $ hledger -f - bs -M --chart -O csv
 "","Net","total","line","2024-01-31","70"
 "","Net","total","line","2024-02-29","90"
 
-# ** 6. With one section there is no net total.
-$ hledger -f - cf -M --chart -w 40
-Monthly Cashflow Statement 2024-01-01..2024-02-29
-
-Jan   70  █████████████████████
-Feb  100  ██████████████████████████████
+# ** 6. With one section (cf), the net total is charted too, as in the table.
+$ hledger -f - cf -M --chart -O csv
+"commodity","series","role","mark","x","value"
+"","assets:bank","item","bar","Jan","70"
+"","assets:bank","item","bar","Feb","100"
+"","Net","total","marker","Jan","70"
+"","Net","total","marker","Feb","100"
 
 # ** 7. -N omits the net total.
 $ hledger -f - is -M -N --chart -O csv

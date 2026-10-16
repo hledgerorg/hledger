@@ -143,9 +143,9 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     groups = nub $ map seGroup drawn
     groupName k = fromMaybe "" $ pnGroupNames `atMay` k
     groupSign k = fromMaybe 1 $ find (/= 0) [seSign s | s <- drawn, seGroup s == k]
-    -- With the grouped layout and several groups or a total, each x position has a row for each group (named, showing its total),
+    -- With the grouped layout and several groups (even if only one has series drawn here), each x position has a row for each group (named, showing its total),
     -- and the total is marked on a row of its own, after them.
-    grouped = pnLayout == Grouped && (length groups > 1 || isJust mtotal)
+    grouped = pnLayout == Grouped && length pnGroupNames > 1
     -- Otherwise, a chart with series with usual signs (see 'seSign'), and a total (eg of a compound report), is diverging:
     -- each row shows the totals of each side's groups at that end of the bar (with their names in a header line),
     -- and the total as a mark over the bar.

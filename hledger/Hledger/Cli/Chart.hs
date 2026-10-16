@@ -231,7 +231,7 @@ balanceReportAsChart accttype ReportOpts{balancecalc_, translations_} title (ite
 -- A single-period report is drawn the same way, with one period. With -1 (depth 1), each section is a single bar.
 -- There is one panel per commodity, most-used commodity first. Each section has at most 'maxSectionSeries' series,
 -- the smallest accounts being combined into an "other" series. In tree mode, each account's own amounts are charted.
--- The net total is omitted with -N, with --percent, and when there is only one section.
+-- The net total is omitted with -N and with --percent.
 --
 -- The second argument gives each section's account type, if known (eg from the report's query for it); accounts with no
 -- type of their own get their section's, for colouring. An account shown as "..." (eg with depth 0) is labelled with its section's title.
@@ -257,7 +257,7 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
     -- a section's usual sign, for showing contra amounts; cash (cf's section) has none, since it flows both ways as usual
     usualSign (_, sectype) sign = if sectype == Just Cash then 0 else round sign
     nettotals = prrAmounts totals
-    showtotal = length subreports > 1 && not no_total_ && not percent_
+    showtotal = not no_total_ && not percent_
     -- the table's "Net:" label, without the colon
     netlabel = T.dropWhileEnd (`elem` [':', '\xff1a']) $ I18n.tr translations_ "Net:"
     cells = concat [concatMap prrAmounts rows | (_, _, rows) <- sections] ++ nettotals
