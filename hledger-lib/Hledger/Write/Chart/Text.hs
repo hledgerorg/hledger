@@ -88,7 +88,7 @@ styledLinesAsText usecolour = TL.fromChunks . concatMap (\l -> map piece l ++ ["
 
 -- | Draw a chart as styled lines of text: the title (if any), then each panel,
 -- with a heading naming its commodity when there are several (and it has a commodity symbol),
--- and a legend when it has several series.
+-- and a legend when it has several series (listing those that are visible: a series too small to fill a character cell is not).
 -- A chart with many dates (more than 'maxDateRows', eg a long register) is drawn with one row per period instead (see 'groupDates').
 chartAsStyledLines :: TextChartOpts -> Chart -> [StyledLine]
 chartAsStyledLines opts chart =
@@ -114,7 +114,7 @@ panelLines :: TextChartOpts -> XAxis -> Bool -> Panel -> [StyledLine]
 panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries, pnStackLabels} =
   [[(StylePlain, acommodity pnUnit)] | showheading, not $ T.null $ acommodity pnUnit]
   ++ legend
-  ++ map (trimEnd . rowLine) rows
+  ++ map trimEnd rowlines
   where
     -- The series drawn as bars: all but totals (shown as the value) and markers (not drawn in text).
     drawn = [s | s <- pnSeries, seRole s /= SeriesTotal, seMark s /= MarkMarker]
@@ -131,6 +131,7 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     colourStyle colour = case colour of
       TypeColour at k -> StyleType at k
       IndexColour k   -> StyleSeries k
+      NeutralColour   -> StylePlain
       OtherColour     -> StyleOther
       TotalColour     -> StylePlain
     -- in a chart of categories (eg accounts) with a single series, each category's bar has its own account type's colour, if known
@@ -170,9 +171,13 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
       [] -> Nothing
       qs -> Just $ sum qs
 
+    rowlines = map rowLine rows
+    -- the styles of the bar segments actually drawn (a series too small to show at this scale has none)
+    drawnstyles = nub [st | l <- rowlines, (st, t) <- l, st /= StylePlain, not $ T.null $ T.strip t]
+    -- a legend for the series, omitting any not drawn
     legend
       | length drawn > 1 = wrapLegend (
-          [ [(st, T.singleton c), (StylePlain, " " <> lbFull (seLabel s))] | ((st, c, _), s) <- zip styled drawn ]
+          [ [(st, T.singleton c), (StylePlain, " " <> lbFull (seLabel s))] | ((st, c, _), s) <- zip styled drawn, st `elem` drawnstyles ]
           ++ [ [(StylePlain, markchar), (StylePlain, " " <> lbFull (seLabel t))] | Just t <- [marktotal] ]
           ) ++ [[]]
       | otherwise = []

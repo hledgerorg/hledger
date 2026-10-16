@@ -373,6 +373,13 @@ Signed contributions: compound charts show each section's amounts as contributio
 like expenses and liabilities, are negated, per the subreport's "increases total" flag). So up always adds to the net and down reduces it;
 a refund (negative expense) rises within the expenses column, and the net is visibly the sum. Prompted by a refund that looked like it
 should make the net negative. The chart values (text value column, tooltips, CSV) are these signed contributions, unlike the tables.
+Colour rule, revised: fall back to categorical colours only when all of a panel's typed accounts are of one type
+(so the type colour tells nothing) and there are more than `maxTints`; mixed-type panels keep type hues, tints repeating.
+A panel's only series, with no type, gets `NeutralColour` (secondary ink / uncoloured), eg a register's mixed-type running total.
+Register without interval: a line per account (their running totals, from `postingsReportStartBalances` with -H, so they add up
+to the historical total), at most 8 with "other", plus the overall running total in ink; one account or --average: just the total.
+SVG lines are thinned to at most 4 points per pixel column (first, lowest, highest, last): a 100k-posting register SVG went from
+286s/hundreds of MB to 44s/4.7MB. Text legends omit series with no visible segment.
 Compound sections also get an account type from their query (eg `Type [Revenue]`), which accounts without a type inherit;
 "..." accounts (depth 0) are labelled with the section title. Net marks in SVG are 1.5px (ring 4.5px).
 

@@ -20,6 +20,8 @@
 .hledger-chart .fill.other{fill:#898781}
 .hledger-chart .line.other{stroke:#898781}
 .hledger-chart .line.total{stroke:#0b0b0b}
+.hledger-chart .fill.neutral{fill:#52514e}
+.hledger-chart .line.neutral{stroke:#52514e}
 .hledger-chart .mark.total{stroke:#0b0b0b}
 .hledger-chart .markring{stroke:#fcfcfb}
 .hledger-chart .fill.s0{fill:#2a78d6}
@@ -90,6 +92,8 @@
 .hledger-chart .fill.other{fill:#898781}
 .hledger-chart .line.other{stroke:#898781}
 .hledger-chart .line.total{stroke:#ffffff}
+.hledger-chart .fill.neutral{fill:#c3c2b7}
+.hledger-chart .line.neutral{stroke:#c3c2b7}
 .hledger-chart .mark.total{stroke:#ffffff}
 .hledger-chart .markring{stroke:#1a1a19}
 .hledger-chart .fill.s0{fill:#3987e5}

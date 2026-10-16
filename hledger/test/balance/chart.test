@@ -215,3 +215,17 @@ $ hledger -f - bal --chart -O a.svg
 $ hledger -f - bal --chart -O html | grep -o -e '<svg' -e '<table' -e 'prefers-color-scheme' | tr -d '<'
 svg
 table
+
+<
+2024-01-01
+    a      1
+    b   1000
+    c
+
+# ** 20. A text chart's legend leaves out series too small to see (here, a).
+$ hledger -f - bal -M a b --chart -w 40
+Balance changes in 2024-01:
+
+▓ b
+
+Jan  1001  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓

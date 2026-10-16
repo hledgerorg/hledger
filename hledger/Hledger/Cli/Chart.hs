@@ -21,7 +21,7 @@ module Hledger.Cli.Chart (
   postingsReportAsChart,
 ) where
 
-import Data.List (find, intercalate, isPrefixOf, partition, sortOn, transpose)
+import Data.List (find, intercalate, isPrefixOf, partition, sort, sortOn, transpose)
 import Data.List.Extra (nubSort)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
@@ -261,20 +261,27 @@ accountTransactionsReportAsChart accttype title acct txndate items =
 -- | Chart a postings report (register).
 -- With a report interval, each account's amount in each period is drawn as stacked bars, with the period's total as a marker
 -- (like a multi-period balance report; at most 'maxSeries' series, the smallest combined into "other").
--- Otherwise, the running total (or average) after each posting is drawn as a line over time.
+-- Otherwise, the running total (or average) after each posting is drawn as a line over time;
+-- and with postings to several accounts (and not --average), each account's own running total (from the report start) is drawn too,
+-- in its account type's colour, with the overall running total in ink.
 -- There is one panel per commodity, most-used commodity first.
-postingsReportAsChart :: (AccountName -> Maybe AccountType) -> ReportOpts -> Text -> PostingsReport -> Chart
-postingsReportAsChart accttype ropts@ReportOpts{translations_} title items
+--
+-- The second argument gives the accounts' balances before the report period, if the running total includes them
+-- (with --historical; see 'postingsReportStartBalances'), so that each account's running total starts from its balance.
+postingsReportAsChart :: (AccountName -> Maybe AccountType) -> M.Map AccountName MixedAmount -> ReportOpts -> Text -> PostingsReport -> Chart
+postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations_} title items
   | null periods =
       let totals = [t | (_, _, _, _, t) <- items]
           totalamts = concatMap amountsRaw totals
+          totalseries c role = Series ((plainLabel $ I18n.tr translations_ "Total"){lbType = commontype}) role MarkLine (map (Just . quantityIn c) totals) 0
+          -- with postings to several accounts (and not --average), each account's running total as a line, and the overall running total
+          linespanel c
+            | average_ || length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] []
+            | otherwise = Panel (unitAmount c totalamts) (accountRunningTotals c ++ [totalseries c SeriesTotal]) []
       in Chart
         { chTitle  = title
-        , chXAxis  = XDates [postingDateOrDate2 (whichDate ropts) p | (_, _, _, p, _) <- items]
-        , chPanels =
-            [ Panel (unitAmount c totalamts)
-                [Series (plainLabel $ I18n.tr translations_ "Total") SeriesItem MarkLine (map (Just . quantityIn c) totals) 0] []
-            | c <- commoditiesByUse totals ]
+        , chXAxis  = XDates [postingDateOrDate2 (whichDate ropts) p | p <- postings]
+        , chPanels = map linespanel $ commoditiesByUse totals
         }
   | otherwise =
       Chart
@@ -283,6 +290,35 @@ postingsReportAsChart accttype ropts@ReportOpts{translations_} title items
         , chPanels = mapMaybe panel $ commoditiesByUse cells
         }
   where
+    postings = [p | (_, _, _, p, _) <- items]
+    -- Running totals (from the report start) of the postings' accounts in one commodity, as lines:
+    -- for at most 'maxSeries' accounts, the largest by total absolute posting amount (in name order), and the rest combined as "other".
+    -- (Only these are computed, since there can be many accounts and postings.)
+    -- Each account starts from its balance before the report period, if any.
+    accountRunningTotals c =
+      [ Series (ChartLabel a a 0 (accttype a)) SeriesItem MarkLine (runningTotal (== a)) 0 | a <- kept ]
+      ++ [ Series (plainLabel $ I18n.trn translations_ n "other ({n} account)" "other ({n} accounts)") SeriesOther MarkLine
+             (runningTotal (`S.notMember` keptset)) 0
+         | let n = length accts - length kept, n > 0 ]
+      where
+        sizes = accountSizes c
+        accts = M.keys sizes
+        kept | length accts <= maxSeries = accts
+             | otherwise = sort $ take (maxSeries - 1) $ map fst $ sortOn (Down . snd) $ M.toList sizes
+        keptset = S.fromList kept
+        runningTotal match =
+          map Just $ drop 1 $ scanl (+) (sum [startIn c a | a <- M.keys startbals, match a])
+            [if match (paccount p) then quantityIn c (pamount p) else 0 | p <- postings]
+    -- the accounts with postings, or a starting balance, in this commodity, with their total absolute amount (for ranking)
+    accountSizes c = M.unionWith (+)
+      (M.fromListWith (+) [(paccount p, abs $ quantityIn c $ pamount p) | p <- postings])
+      (M.fromList [(a, abs q) | a <- M.keys startbals, let q = startIn c a, q /= 0])
+    runningTotalAccounts c = M.keys $ accountSizes c
+    startIn c a = maybe 0 (quantityIn c) $ M.lookup a startbals
+    -- the main account type of all the postings' accounts, if they have one
+    commontype = case nubSort [mainAccountType t | (_, _, _, p, _) <- items, Just t <- [accttype $ paccount p]] of
+      [t] | all (isJust . accttype . paccount) [p | (_, _, _, p, _) <- items] -> Just t
+      _ -> Nothing
     periods = nubSort [prd | (_, Just prd, _, _, _) <- items]
     spans = map periodAsDateSpan periods
     -- each account's amount in each period

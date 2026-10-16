@@ -14,6 +14,7 @@ The SVG includes its own styles, with a colour-blind-safe palette and a dark-mod
 Coordinates are rounded to one decimal place, so the output is deterministic.
 -}
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Hledger.Write.Chart.Svg (
@@ -24,7 +25,12 @@ module Hledger.Write.Chart.Svg (
 ) where
 
 import Control.Monad (forM_, unless, when)
-import Data.List (find, nub)
+import Data.Function (on)
+import Data.List (find, groupBy, nub)
+#if !MIN_VERSION_base(4,20,0)
+import Data.List (foldl')
+#endif
+import Data.Map qualified as M
 import Data.Array qualified as Arr
 import Data.Decimal (realFracToDecimal)
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
@@ -32,7 +38,7 @@ import Data.Time (Day, addDays, diffDays, fromGregorian, toGregorian)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
-import Safe (atMay, maximumDef, minimumDef)
+import Safe (atMay, headMay, lastMay, maximumDef, minimumDef)
 import Text.Blaze ((!?), customAttribute, toValue)
 import Text.Blaze.Svg.Renderer.Text (renderSvg)
 import Text.Blaze.Svg11 ((!), Svg)
@@ -246,7 +252,7 @@ timeSvg top unit drawn mtotal xscale = (plotHeight + 28, do
       let pts = [ fmap (\q -> (j, xcenter j, yof (toD q), q)) (valueAt vals j) | let vals = seriesValues s, j <- [0 .. n - 1] ]
       forM_ (runs pts) $ \run ->
         S.polyline ! A.class_ ("line " <> toValue cls)
-          ! A.points (toValue $ T.unwords [num x <> "," <> num y | (x, y) <- (if isJust datearray then steps else id) [(x, y) | (_, x, y, _) <- run]])
+          ! A.points (toValue $ T.unwords [num x <> "," <> num y | (x, y) <- thinPoints $ (if isJust datearray then steps else id) [(x, y) | (_, x, y, _) <- run]])
       -- invisible larger targets, for tooltips (only when there are not too many points)
       when (n <= 400) $ forM_ (catMaybes pts) $ \(j, x, y, q) -> withTooltip (tooltip (fromMaybe "" $ xlabels `atMay` j) s q) $
         S.circle ! A.class_ "hit" ! A.cx (toValue $ num x) ! A.cy (toValue $ num y) ! A.r "6"
@@ -400,6 +406,23 @@ vstack yof x width segs sign = do
 steps :: [(Double, Double)] -> [(Double, Double)]
 steps ps = take 1 ps ++ concat (zipWith (\(_, py) (x, y) -> [(x, py), (x, y)]) ps (drop 1 ps))
 
+-- | Reduce a line's points to at most four per pixel column (the first, lowest, highest and last, in their original order),
+-- which draws the same line, but keeps the SVG small when there are many more points than pixels (eg a long register).
+thinPoints :: [(Double, Double)] -> [(Double, Double)]
+thinPoints = concatMap thin . groupBy ((==) `on` (column . fst))
+  where
+    column :: Double -> Integer
+    column = round
+    thin ps
+      | length ps <= 4 = ps
+      | otherwise = M.elems $ M.fromList $ catMaybes [headMay indexed, extreme (<), extreme (>), lastMay indexed]
+      where
+        indexed = zip [0 :: Int ..] ps
+        -- the first point whose y is better than all others' by this comparison
+        extreme better = foldl' (\acc p -> case acc of
+                                   Just (_, (_, y')) | not (snd (snd p) `better` y') -> acc
+                                   _ -> Just p) Nothing indexed
+
 -- | Up to 8 ticks for a date axis from the first to the last date, at calendar boundaries
 -- (every 1, 2, 7 or 14 days, every 1, 2, 3 or 6 months, or every 1, 2, 5, 10.. years), with labels.
 dateTicks :: Day -> Day -> [(Day, Text)]
@@ -498,6 +521,7 @@ colourClass :: Colour -> Text
 colourClass c = case c of
   TypeColour at k -> "t" <> typeCode at <> T.pack (show (k `mod` maxTints))
   IndexColour k   -> "s" <> T.pack (show (k `mod` 8))
+  NeutralColour   -> "neutral"
   OtherColour     -> "other"
   TotalColour     -> "total"
 
@@ -569,6 +593,7 @@ stylesheet dark = T.unlines $
       , (".label", "fill", "ink2"), (".value", "fill", "ink2"), (".tick", "fill", "muted")
       , (".grid", "stroke", "grid"), (".axis", "stroke", "axis")
       , (".fill.other", "fill", "muted"), (".line.other", "stroke", "muted"), (".line.total", "stroke", "ink")
+      , (".fill.neutral", "fill", "ink2"), (".line.neutral", "stroke", "ink2")
       , (".mark.total", "stroke", "ink"), (".markring", "stroke", "surface")
       ]
       ++ concat [ [(".fill." <> c, "fill", c), (".line." <> c, "stroke", c)] | c <- map (("s" <>) . T.pack . show) [0 :: Int .. 7] ]

@@ -135,6 +135,7 @@ mainAccountType t = fromMaybe t $ find (t `isAccountSubtypeOf`) [Asset, Liabilit
 data Colour
   = TypeColour AccountType Int  -- ^ the conventional hue of this main account type, in its Nth tint (to distinguish several of that type)
   | IndexColour Int             -- ^ the Nth categorical colour, for series with no account type
+  | NeutralColour               -- ^ a neutral colour, for a chart's only series when it has no account type
   | OtherColour                 -- ^ a muted colour, for a series combining several items
   | TotalColour                 -- ^ the ink (text) colour, for a total
   deriving (Show, Eq)
@@ -144,22 +145,26 @@ maxTints :: Int
 maxTints = 4
 
 -- | Colours for a panel's series, in order: accounts of a known type get their main type's hue,
--- tinted differently for each of that type in the panel; other ordinary series get categorical colours in order.
--- If some type has more series than there are tints, they would not all be distinguishable,
--- so all series get categorical colours instead.
+-- tinted differently for each of that type in the panel (the tints repeat after 'maxTints');
+-- other ordinary series get categorical colours in order, or a neutral colour if there's only one series.
+-- If all the accounts are of one type (so the type's colour tells nothing) and there are more of them than tints
+-- (so they would not all be distinguishable), they get categorical colours instead.
 seriesColours :: [Series] -> [Colour]
 seriesColours series
-  | any (> maxTints) $ M.elems typecounts = go M.empty 0 [s{seLabel = (seLabel s){lbType = Nothing}} | s <- series]
+  | M.size typecounts == 1 && any (> maxTints) (M.elems typecounts) = go M.empty 0 [s{seLabel = (seLabel s){lbType = Nothing}} | s <- series]
   | otherwise = go M.empty 0 series
   where
     typecounts = M.fromListWith (+) [(t, 1 :: Int) | s <- series, seRole s == SeriesItem, Just t <- [mainAccountType <$> lbType (seLabel s)]]
+    onlyone = length [s | s <- series, seRole s /= SeriesTotal] == 1
     go :: M.Map AccountType Int -> Int -> [Series] -> [Colour]
     go _ _ [] = []
     go tints n (s:ss) = case (seRole s, mainAccountType <$> lbType (seLabel s)) of
       (SeriesTotal, _) -> TotalColour : go tints n ss
       (SeriesOther, _) -> OtherColour : go tints n ss
       (_, Just t)      -> let k = M.findWithDefault 0 t tints in TypeColour t k : go (M.insert t (k + 1) tints) n ss
-      (_, Nothing)     -> IndexColour n : go tints (n + 1) ss
+      (_, Nothing)
+        | onlyone      -> NeutralColour : go tints n ss
+        | otherwise    -> IndexColour n : go tints (n + 1) ss
 
 -- | A series' values, indexed by x position, for fast lookup by renderers.
 type SeriesValues = Array Int (Maybe Quantity)
@@ -255,4 +260,9 @@ tests_Hledger_Write_Chart = testGroup "Write.Chart" [
      -- more series of one type than tints: all get categorical colours
      seriesColours (replicate (maxTints + 1) (ser (Just Revenue)))
        @?= map IndexColour [0 .. maxTints]
+     -- but with several types, the type colours are kept, and the tints repeat
+     seriesColours (ser (Just Asset) : replicate (maxTints + 1) (ser (Just Revenue)))
+       @?= TypeColour Asset 0 : [TypeColour Revenue k | k <- [0 .. maxTints]]
+     -- a single series with no type gets a neutral colour
+     seriesColours [ser Nothing] @?= [NeutralColour]
   ]
