@@ -97,6 +97,8 @@ data Panel = Panel
                               --   its commodity symbol and display style are used to show values and axis ticks.
                               --   Eg a currency, @%@ (as produced by --percent), or no commodity with precision 0 for counts.
   , pnSeries    :: [Series]   -- ^ the series, in display order (legend order)
+  , pnStackLabels :: [Text]   -- ^ names for the stacks, by stack number (see 'seStack'), if they have names;
+                              --   eg a compound report's section titles. Text charts show them.
   } deriving (Show, Eq, Generic, ToJSON)
 
 -- | A named sequence of values, one per x position.
@@ -239,7 +241,7 @@ tests_Hledger_Write_Chart = testGroup "Write.Chart" [
          chart = Chart "" (XDates [fromGregorian 2024 1 5, fromGregorian 2024 1 20, fromGregorian 2024 2 3])
                    [Panel nullamt
                      [ Series (lbl "balance") SeriesItem MarkLine [Just 1, Just 2, Just 3] 0
-                     , Series (lbl "change") SeriesItem MarkBar [Just 1, Just 1, Nothing] 0 ]]
+                     , Series (lbl "change") SeriesItem MarkBar [Just 1, Just 1, Nothing] 0 ] []]
          Chart{chXAxis, chPanels} = groupDates 2 chart
      case chXAxis of
        XPeriods ps -> map snd ps @?= ["2024-01", "2024-02"]

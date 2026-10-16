@@ -149,6 +149,7 @@ multiBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlistmo
       | otherwise = Just Panel
           { pnUnit      = unitAmount c allamts
           , pnSeries    = series ++ total
+          , pnStackLabels = []
           }
       where
         series = limitSeries maxSeries translations_ mark
@@ -177,6 +178,7 @@ balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
       , pnSeries    = [Series (plainLabel $ I18n.tr translations_ "Balance") SeriesItem MarkBar
                         [ if any ((== c) . acommodity) (amountsRaw ma) then Just (quantityIn c ma) else Nothing
                         | (_, _, _, ma) <- items ] 0]
+      , pnStackLabels = []
       }
 
 -- | Chart a compound balance report (balancesheet, incomestatement, cashflow..): its sections' accounts, and the net total.
@@ -213,6 +215,7 @@ compoundBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlis
           , pnSeries = series ++
               [ Series (plainLabel netlabel) SeriesTotal (if flow then MarkMarker else MarkLine) (map (Just . quantityIn c) nettotals) 0
               | showtotal ]
+          , pnStackLabels = [t | (t, _, _) <- subreports]
           }
       where
         series = concat
@@ -238,6 +241,7 @@ accountTransactionsReportAsChart accttype title acct txndate items =
     panel c = Panel
       { pnUnit      = unitAmount c allamts
       , pnSeries    = [Series (ChartLabel acct acct 0 (accttype acct)) SeriesItem MarkLine (map (Just . quantityIn c) bals) 0]
+      , pnStackLabels = []
       }
 
 -- | Chart a postings report (register).
@@ -255,7 +259,7 @@ postingsReportAsChart accttype ropts@ReportOpts{translations_} title items
         , chXAxis  = XDates [postingDateOrDate2 (whichDate ropts) p | (_, _, _, p, _) <- items]
         , chPanels =
             [ Panel (unitAmount c totalamts)
-                [Series (plainLabel $ I18n.tr translations_ "Total") SeriesItem MarkLine (map (Just . quantityIn c) totals) 0]
+                [Series (plainLabel $ I18n.tr translations_ "Total") SeriesItem MarkLine (map (Just . quantityIn c) totals) 0] []
             | c <- commoditiesByUse totals ]
         }
   | otherwise =
@@ -275,7 +279,7 @@ postingsReportAsChart accttype ropts@ReportOpts{translations_} title items
     allamts = concatMap amountsRaw cells
     panel c
       | null series = Nothing
-      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total}
+      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total, pnStackLabels = []}
       where
         series = limitSeries maxSeries translations_ MarkBar
           [ (ChartLabel a a 0 (accttype a), qs) | (a, amts) <- rows, let qs = map (quantityIn c) amts, any (/= 0) qs ]

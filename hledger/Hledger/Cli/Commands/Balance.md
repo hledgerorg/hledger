@@ -1055,7 +1055,8 @@ The compound balance commands ([`balancesheet`](#balancesheet), [`balancesheeteq
 They chart their sections' accounts: at each period, each section's accounts are stacked, and the sections
 (eg revenues and expenses, or assets and liabilities) are side by side - never stacked together, since they are opposites.
 Accounts with the opposite sign to the rest of their section (contra accounts, like accumulated depreciation) grow the other way from zero.
-The net total is shown as a line mark across the bars (or as a line, with end balances; in text charts, as a mark on a row of its own).
+The net total is shown as a line mark across the bars (or as a line, with end balances).
+In text charts, each period has a row for each section, named and showing the section's total, and a row marking the net total.
 Each section shows at most five accounts, combining the smallest into "other"; use a depth limit (eg `-1` or `-2`) for less detail.
 A single-period report is charted the same way, with one period.
 The chart data has one record per value, with fields:

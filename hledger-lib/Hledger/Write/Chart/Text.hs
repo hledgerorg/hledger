@@ -104,13 +104,14 @@ maxDateRows = 50
 -- | A row of a text chart: a label, an optional value, and the bar segments (style, fill character, quantity).
 data Row = Row
   { rowLabel    :: Text
+  , rowSubLabel :: Text            -- ^ a second label, eg the name of the stack this row shows (empty for none)
   , rowValue    :: Maybe Quantity
   , rowSegments :: [(Style, Char, Quantity)]
   , rowMark     :: Maybe Quantity  -- ^ a value to mark with a vertical line (eg a net total), instead of bar segments
   }
 
 panelLines :: TextChartOpts -> XAxis -> Bool -> Panel -> [StyledLine]
-panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries} =
+panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries, pnStackLabels} =
   [[(StylePlain, acommodity pnUnit)] | showheading, not $ T.null $ acommodity pnUnit]
   ++ legend
   ++ map (trimEnd . rowLine) rows
@@ -122,7 +123,8 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     styled = zipWith3 seriesStyle [0 ..] (seriesColours drawn) drawn
     -- The stacks, in order (see 'seStack'). With several, each x position has a row for each stack,
     -- and the total is drawn as a mark on a row of its own, after them.
-    stacks = [ [st | (st, s) <- zip styled drawn, seStack s == k] | k <- nub $ map seStack drawn ]
+    -- each stack's name (if it has one) and series
+    stacks = [ (fromMaybe "" $ pnStackLabels `atMay` k, [st | (st, s) <- zip styled drawn, seStack s == k]) | k <- nub $ map seStack drawn ]
     severalstacks = length stacks > 1
     marktotal = if severalstacks then mtotal else Nothing
     seriesStyle i colour s = (colourStyle colour, fillChar i, seriesValues s)
@@ -149,12 +151,12 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     rows
       | severalstacks =  -- a row for each stack, showing its sum, with the x label on the first; then the total's mark
         concat
-          [ [ Row (if k == 0 then lbl else "") (stackSum j stk) (segmentsAt j stk) Nothing
-            | (k, stk) <- zip [0 :: Int ..] stacks ]
-            ++ [ Row "" (valueAt tvals j) [] (valueAt tvals j) | Just t <- [marktotal], let tvals = seriesValues t ]
+          [ [ Row (if k == 0 then lbl else "") name (stackSum j stk) (segmentsAt j stk) Nothing
+            | (k, (name, stk)) <- zip [0 :: Int ..] stacks ]
+            ++ [ Row "" (lbShort $ seLabel t) (valueAt tvals j) [] (valueAt tvals j) | Just t <- [marktotal], let tvals = seriesValues t ]
           | (j, lbl) <- zip [0 ..] xlabels ]
       | otherwise =
-        [ Row lbl rowval (segmentsAt j styled) Nothing
+        [ Row lbl "" rowval (segmentsAt j styled) Nothing
         | (j, lbl) <- zip [0 ..] xlabels
         , let rowval = case (mtotalvals, styled) of
                 (Just tvals, _)     -> valueAt tvals j
@@ -186,9 +188,10 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     -- Column widths and scale.
     showValue q = T.pack $ showAmountWith oneLineNoCostFmt pnUnit{aquantity = q}
     labelw = min (tcWidth `div` 3) $ maximumDef 0 $ map (realLength . rowLabel) rows
+    sublabelw = min (tcWidth `div` 4) $ maximumDef 0 $ map (realLength . rowSubLabel) rows
     valuew = maximumDef 0 [realLength (showValue q) | Row{rowValue = Just q} <- rows]
     hasvalues = any (isJust . rowValue) rows
-    barw = max 10 $ tcWidth - (if labelw > 0 then labelw + 2 else 0) - (if hasvalues then valuew + 2 else 0)
+    barw = max 10 $ tcWidth - (if labelw > 0 then labelw + 2 else 0) - (if sublabelw > 0 then sublabelw + 2 else 0) - (if hasvalues then valuew + 2 else 0)
     posTotal r = sum [q | (_, _, q) <- rowSegments r, q > 0] `max` maybe 0 (max 0) (rowMark r)
     negTotal r = sum [abs q | (_, _, q) <- rowSegments r, q < 0] `max` maybe 0 (abs . min 0) (rowMark r)
     maxpos = maximumDef 0 $ map posTotal rows
@@ -206,9 +209,10 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     markchar = if tcUnicode then "┃" else "!"
 
     -- the label column, value column and bars, separated by two spaces (columns with nothing in them are left out)
-    rowLine r@Row{rowLabel, rowValue} =
+    rowLine r@Row{rowLabel, rowSubLabel, rowValue} =
       drop 1 $
       (if labelw > 0 then [(StylePlain, "  "), (StylePlain, fitText (Just labelw) (Just labelw) True True rowLabel)] else [])
+      ++ (if sublabelw > 0 then [(StylePlain, "  "), (StylePlain, fitText (Just sublabelw) (Just sublabelw) True True rowSubLabel)] else [])
       ++ (if hasvalues
           then [(StylePlain, "  "), (maybe StylePlain valueStyle rowValue, fitText (Just valuew) Nothing False False $ maybe "" showValue rowValue)]
           else [])
@@ -269,13 +273,13 @@ tests_Hledger_Write_Chart_Text = testGroup "Write.Chart.Text" [
   ,testCase "single series, scaled to the width" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0]]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0] []]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 20 True) chart)
        @?= ["a  1  ███████", "b  2  ██████████████"]
   ,testCase "mixed signs grow from an axis" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0]]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0] []]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 21 False) chart)
        @?= ["a  -1  ####|", "b   2      |#########"]
   ]

@@ -366,6 +366,9 @@ Vertical category bars, as done: SVG category charts (single-period balance) are
 else horizontal bars (`barsSvg`). Names are full account names (no indentation), shortened beyond 30 characters, angled 45° when they
 don't fit; values are shown above (or below, if negative) the bars when they fit. Vertical stacking is shared (`vstack`). Text charts stay horizontal.
 
+Stack names: panels have `pnStackLabels` (eg a compound report's section titles); text charts with several stacks show them
+as a second label column, with the net row labelled too, so each number is identified (like a balance report's rows).
+
 ## Open questions
 
 - Chart variant names for `--chart=KIND`, when needed.

@@ -29,43 +29,43 @@ $ hledger -f - is -M --chart -O csv
 "","Net","total","marker","Jan","70"
 "","Net","total","marker","Feb","20"
 
-# ** 2. In a text chart, each period has a row per section (showing its total), and a row marking the net total.
-$ hledger -f - is -M --chart -w 40
+# ** 2. In a text chart, each period has a row per section (named, and showing its total), and a row marking the net total.
+$ hledger -f - is -M --chart -w 50
 Monthly Income Statement 2024-01-01..2024-02-29
 
 █ revenues:salary  ▓ expenses:food
 ▒ expenses:rent  ┃ Net
 
-Jan  100  ██████████████████████████████
-      30  ▓▓▓▓▓▓▓▓▓
-      70                      ┃
-Feb  100  ██████████████████████████████
-      80  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
-      20       ┃
+Jan  Revenues  100  ██████████████████████████████
+     Expenses   30  ▓▓▓▓▓▓▓▓▓
+     Net        70                      ┃
+Feb  Revenues  100  ██████████████████████████████
+     Expenses   80  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+     Net        20       ┃
 
 # ** 3. A single-period report is charted the same way, with one period.
-$ hledger -f - is --chart -w 40
+$ hledger -f - is --chart -w 50
 Income Statement 2024-01-01..2024-02-10
 
 █ revenues:salary  ▓ expenses:food
 ▒ expenses:rent  ┃ Net
 
-200  ███████████████████████████████████
-110  ▓▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒
- 90                 ┃
+Revenues  200  ███████████████████████████████████
+Expenses  110  ▓▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+Net        90                 ┃
 
 # ** 4. With -1, each section has a single bar.
-$ hledger -f - is -M -1 --chart -w 40
+$ hledger -f - is -M -1 --chart -w 50
 Monthly Income Statement 2024-01-01..2024-02-29
 
 █ revenues  ▓ expenses  ┃ Net
 
-Jan  100  ██████████████████████████████
-      30  ▓▓▓▓▓▓▓▓▓
-      70                      ┃
-Feb  100  ██████████████████████████████
-      80  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
-      20       ┃
+Jan  Revenues  100  ██████████████████████████████
+     Expenses   30  ▓▓▓▓▓▓▓▓▓
+     Net        70                      ┃
+Feb  Revenues  100  ██████████████████████████████
+     Expenses   80  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+     Net        20       ┃
 
 # ** 5. End balances (eg balancesheet's) are stacked bars too, with the net total as a line.
 $ hledger -f - bs -M --chart -O csv
@@ -122,16 +122,15 @@ $ hledger -f - is -M -O svg | diff - compound-charts.svg
     revenues:sales
 
 # ** 9. Contra accounts (with the opposite sign to their section, like accumulated depreciation or sales returns) grow the other way from zero, within their section's stack.
-$ hledger -f - bs -M --chart -w 50
+$ hledger -f - bs -M --chart -w 60
 Monthly Balance Sheet 2024-01-31..2024-02-29
 
 █ assets:bank  ▓ assets:equipment
-▒ assets:equipment:depreciation
-░ liabilities:loan  ┃ Net
+▒ assets:equipment:depreciation  ░ liabilities:loan  ┃ Net
 
-2024-01-31  4350  ▒│█████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
-            2500   │░░░░░░░░░░░░░░░
-            1850   │          ┃
-2024-02-29  5050  ▒│█████████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
-            2500   │░░░░░░░░░░░░░░░
-            2550   │              ┃
+2024-01-31  Assets       4350  ▒│████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+            Liabilities  2500   │░░░░░░░░░░░░░
+            Net          1850   │         ┃
+2024-02-29  Assets       5050  ▒│███████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+            Liabilities  2500   │░░░░░░░░░░░░░
+            Net          2550   │             ┃
