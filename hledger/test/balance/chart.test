@@ -205,3 +205,8 @@ $ hledger -f - bal expenses -O svg | diff - chart.svg
 $ hledger -f - bal --chart -O html
 >2 /--chart does not yet support html output/
 >= 1
+
+# ** 18. A file name given to -O by mistake is reported as an unrecognised format, with a hint to use -o.
+$ hledger -f - bal --chart -O a.svg
+>2 /To write to a file named a.svg, use -o/
+>= 1

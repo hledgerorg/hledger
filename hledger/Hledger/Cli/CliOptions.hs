@@ -80,6 +80,7 @@ module Hledger.Cli.CliOptions (
   rulesFilePathFromOpts,
   outputFileFromOpts,
   outputFormatFromOpts,
+  filePathExtension,
   defaultWidth,
   replaceNumericFlags,
   ensureDebugFlagHasVal,

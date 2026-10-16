@@ -463,7 +463,8 @@ balanceChart opts@CliOpts{reportspec_=rspec} j = do
     "tsv"  -> return $ return . printTSV . chartAsCsv
     "json" -> return $ return . (<>"\n") . toJsonText
     "svg"  -> return $ return . chartAsSvg
-    _      -> error' $ "--chart does not yet support " ++ fmt ++ " output; try txt, svg, csv, tsv or json"  -- PARTIAL:
+    _ | fmt `elem` outputFormats -> error' $ "--chart does not yet support " ++ fmt ++ " output; try txt, svg, csv, tsv or json"  -- PARTIAL:
+      | otherwise -> error' $ unsupportedOutputFormatError fmt  -- PARTIAL:
   chart <- case balancecalc_ ropts of
     CalcBudget -> error' "--chart does not yet support --budget"  -- PARTIAL:
     _ | interval_ ropts /= NoInterval -> do

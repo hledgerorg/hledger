@@ -68,8 +68,13 @@ import Control.Monad (when)
 import Data.Functor ((<&>))
 
 -- | Standard error message for a bad output format specified with -O/-o.
+-- If it looks like a file name with a known format's extension, it suggests -o.
 unsupportedOutputFormatError :: String -> String
-unsupportedOutputFormatError fmt = "Sorry, output format \""++fmt++"\" is unrecognised or not yet supported for this kind of report."
+unsupportedOutputFormatError fmt =
+  "Sorry, output format \""++fmt++"\" is unrecognised or not yet supported for this kind of report."
+  ++ if '.' `elem` fmt && filePathExtension fmt `elem` outputFormats
+     then "\nTo write to a file named " ++ fmt ++ ", use -o (--output-file), not -O (--output-format)."
+     else ""
 
 -- | If a multi-period report has an implausible number of periods (more than 10,000;
 -- in practice this means a mistyped date in the journal, making the report span thousands of years),
