@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" class="hledger-chart" width="760" height="126" viewBox="0 0 760 126" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" class="hledger-chart" width="760" height="298" viewBox="0 0 760 298" role="img">
 <style>.hledger-chart{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px}
 .hledger-chart .title{font-size:14px;font-weight:600}
 .hledger-chart .heading{font-size:13px;font-weight:600}
@@ -150,34 +150,34 @@
 }
 </style>
 <rect class="bg" width="100%" height="100%" />
-<line class="axis" x1="168" x2="168" y1="20" y2="86" />
-<text class="tick" x="168" y="104" text-anchor="middle">0</text>
-<line class="grid" x1="275.8" x2="275.8" y1="20" y2="86" />
-<text class="tick" x="275.8" y="104" text-anchor="middle">20</text>
-<line class="grid" x1="383.6" x2="383.6" y1="20" y2="86" />
-<text class="tick" x="383.6" y="104" text-anchor="middle">40</text>
-<line class="grid" x1="491.4" x2="491.4" y1="20" y2="86" />
-<text class="tick" x="491.4" y="104" text-anchor="middle">60</text>
-<line class="grid" x1="599.2" x2="599.2" y1="20" y2="86" />
-<text class="tick" x="599.2" y="104" text-anchor="middle">80</text>
-<line class="grid" x1="707" x2="707" y1="20" y2="86" />
-<text class="tick" x="707" y="104" text-anchor="middle">100</text>
-<text class="label" x="16" y="35">expenses:food</text>
-<text class="value" x="744" y="35" text-anchor="end">10</text>
+<line class="axis" x1="49" x2="744" y1="256" y2="256" />
+<text class="tick" x="41" y="260" text-anchor="end">0</text>
+<line class="grid" x1="49" x2="744" y1="212" y2="212" />
+<text class="tick" x="41" y="216" text-anchor="end">20</text>
+<line class="grid" x1="49" x2="744" y1="168" y2="168" />
+<text class="tick" x="41" y="172" text-anchor="end">40</text>
+<line class="grid" x1="49" x2="744" y1="124" y2="124" />
+<text class="tick" x="41" y="128" text-anchor="end">60</text>
+<line class="grid" x1="49" x2="744" y1="80" y2="80" />
+<text class="tick" x="41" y="84" text-anchor="end">80</text>
+<line class="grid" x1="49" x2="744" y1="36" y2="36" />
+<text class="tick" x="41" y="40" text-anchor="end">100</text>
+<text class="label" x="164.8" y="272" text-anchor="middle">expenses:food</text>
 <g>
 <title>expenses:food · Balance · 10</title>
-<path class="fill tx0" d="M 168 25 H 217.9 Q 221.9 25 221.9 29 V 33 Q 221.9 37 217.9 37 H 168 Z" />
+<path class="fill tx0" d="M 152.8 256 V 238 Q 152.8 234 156.8 234 H 172.8 Q 176.8 234 176.8 238 V 256 Z" />
 </g>
-<text class="label" x="16" y="57">expenses:food:dining</text>
-<text class="value" x="744" y="57" text-anchor="end">5</text>
+<text class="value" x="164.8" y="228" text-anchor="middle">10</text>
+<text class="label" x="396.5" y="272" text-anchor="middle">expenses:food:dining</text>
 <g>
 <title>expenses:food:dining · Balance · 5</title>
-<path class="fill tx0" d="M 168 47 H 191 Q 195 47 195 51 V 55 Q 195 59 191 59 H 168 Z" />
+<path class="fill tx0" d="M 384.5 256 V 249 Q 384.5 245 388.5 245 H 404.5 Q 408.5 245 408.5 249 V 256 Z" />
 </g>
-<text class="label" x="16" y="79">expenses:rent</text>
-<text class="value" x="744" y="79" text-anchor="end">100</text>
+<text class="value" x="396.5" y="239" text-anchor="middle">5</text>
+<text class="label" x="628.2" y="272" text-anchor="middle">expenses:rent</text>
 <g>
 <title>expenses:rent · Balance · 100</title>
-<path class="fill tx0" d="M 168 69 H 703 Q 707 69 707 73 V 77 Q 707 81 703 81 H 168 Z" />
+<path class="fill tx0" d="M 616.2 256 V 40 Q 616.2 36 620.2 36 H 636.2 Q 640.2 36 640.2 40 V 256 Z" />
 </g>
+<text class="value" x="628.2" y="30" text-anchor="middle">100</text>
 </svg>

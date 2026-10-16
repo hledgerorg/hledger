@@ -197,7 +197,7 @@ $ hledger -f - bal --chart -w 0
 >2 /--width should be a positive whole number/
 >= 1
 
-# ** 16. svg output always shows a chart (here, of a single-period report: one horizontal bar per account).
+# ** 16. svg output always shows a chart (here, of a single-period report: a vertical bar per account, coloured by account type).
 # The expected output is in chart.svg.
 $ hledger -f - bal expenses -O svg | diff - chart.svg
 

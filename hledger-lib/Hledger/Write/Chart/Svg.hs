@@ -238,20 +238,8 @@ timeSvg top unit drawn mtotal xscale = (plotHeight + 28, do
       | otherwise = max 1 $ min 24 ((band * 0.8 - 2 * fromIntegral (nbars - 1)) / fromIntegral nbars)
     groupwidth = fromIntegral nbars * barwidth + 2 * fromIntegral (nbars - 1)
     labelevery = max 1 $ ceiling ((maximumDef 0 (map textWidth xlabels) + 12) / band) :: Int
-    -- one direction of a stacked bar, at x: segments from the baseline outward, 2px apart, the outermost with a rounded end
     stack :: Text -> Double -> [(DrawSeries, Quantity)] -> Double -> Svg
-    stack lbl x segs sign = do
-      let cums = scanl1 (+) (map (toD . snd) segs)
-          starts = 0 : cums
-          lastk = length segs - 1
-      forM_ (zip3 [0 :: Int ..] segs (zip starts cums)) $ \(k, (d, q), (c0, c1)) -> do
-        let gap = if k > 0 && abs (yof c1 - yof c0) >= 4 then 2 else 0  -- no gap for tiny segments, which it would hide
-            ybase = yof c0 - sign * gap   -- the end nearer the baseline, after the gap
-            yend = yof c1
-            len = (ybase - yend) * sign   -- positive when there is something to draw
-        when (len > 0.5) $ withTooltip (tooltip lbl (dsSeries d) q) $
-          S.path ! A.class_ ("fill " <> toValue (dsClass d))
-            ! A.d (toValue $ barPath True x ybase barwidth (-sign * len) (k == lastk))
+    stack lbl x segs = vstack yof x barwidth [(d, q, tooltip lbl (dsSeries d) q) | (d, q) <- segs]
     lineSvg :: Text -> Series -> Svg
     lineSvg cls s = do
       -- runs of consecutive values, so that gaps break the line
@@ -266,41 +254,109 @@ timeSvg top unit drawn mtotal xscale = (plotHeight + 28, do
     tooltip lbl s q = T.intercalate " · " (filter (not . T.null) [lbl, lbFull (seLabel s), showValue unit q])
 
 -- | Draw series of categories as horizontal bars (stacked if several), with labels and a value column.
+-- | Draw series of categories (eg accounts): as vertical bars, or as horizontal bars when there are more than 'maxColumns' categories.
+-- Categories with no values at all (eg accounts without this commodity) are left out.
+-- With a single series, each category's bar has its own account type's colour, if known.
 categoriesSvg :: Double -> Amount -> [DrawSeries] -> Maybe Series -> [ChartLabel] -> (Double, Svg)
-categoriesSvg top unit drawn mtotal labels = (fromIntegral (length rows) * rowHeight + 28, do
+categoriesSvg top unit drawn mtotal labels
+  | length rows <= maxColumns = columnsSvg top unit rows rowValue
+  | otherwise                 = barsSvg top unit rows rowValue
+  where
+    rows = [ (l, j, [(categoryColoured l d, q) | d <- drawn, Just q <- [valueAt (dsValues d) j]])
+           | (j, l) <- zip [0 ..] labels, not $ all (isNothing . flip valueAt j . dsValues) drawn ]
+    categoryColoured lbl d = case (drawn, lbType lbl) of
+      ([_], Just at) -> d{dsClass = colourClass $ TypeColour (mainAccountType at) 0}
+      _              -> d
+    mtotalvals = seriesValues <$> mtotal
+    -- the value to show for each category: the total's, or the single series'
+    rowValue j = case (mtotal, drawn) of
+      (Just _, _) -> mtotalvals >>= flip valueAt j
+      (_, [d])    -> valueAt (dsValues d) j
+      _           -> Nothing
+
+-- | The most categories to draw as vertical bars; beyond this, they are drawn as horizontal bars (rows), which can show many more names.
+maxColumns :: Int
+maxColumns = 30
+
+-- | Draw categories as vertical bars (stacked if several series), with their names below (angled if they don't fit),
+-- and their values above the bars (when they fit).
+columnsSvg :: Double -> Amount -> [(ChartLabel, Int, [(DrawSeries, Quantity)])] -> (Int -> Maybe Quantity) -> (Double, Svg)
+columnsSvg top unit rows rowValue = (plotHeight + 22 + negroom + labelheight, do
+    -- gridlines and y tick labels
+    forM_ ticks $ \t -> do
+      S.line ! A.class_ (if t == 0 then "axis" else "grid")
+        ! A.x1 (toValue $ num plotleft) ! A.x2 (toValue $ num plotright) ! A.y1 (toValue $ num (yof t)) ! A.y2 (toValue $ num (yof t))
+      S.text_ ! A.class_ "tick" ! A.x (toValue $ num (plotleft - 8)) ! A.y (toValue $ num (yof t + 4)) ! A.textAnchor "end" $ S.toMarkup (ticklabel t)
+    forM_ (zip [0 :: Int ..] rows) $ \(i, (lbl, j, segs)) -> do
+      let x = xcenter i
+          name = shortName lbl
+          ly = plotbottom + negroom + 16
+      -- the category's name, below; angled (reading upward to the bar) if the names don't fit
+      if angled
+      then S.text_ ! A.class_ "label" ! A.x (toValue $ num (x + 4)) ! A.y (toValue $ num ly) ! A.textAnchor "end"
+             ! A.transform (toValue $ "rotate(-45 " <> num (x + 4) <> " " <> num ly <> ")") $ S.toMarkup name
+      else S.text_ ! A.class_ "label" ! A.x (toValue $ num x) ! A.y (toValue $ num ly) ! A.textAnchor "middle" $ S.toMarkup name
+      -- the bar
+      let tip d q = T.intercalate " · " $ nub [lbFull lbl, lbFull (seLabel $ dsSeries d), showValue unit q]
+          bx = x - barwidth / 2
+      vstack yof bx barwidth [(d, q, tip d q) | (d, q) <- segs, q > 0] 1
+      vstack yof bx barwidth [(d, q, tip d q) | (d, q) <- segs, q < 0] (-1)
+      -- the value, above the bar (or below, if negative), if it fits
+      forM_ (rowValue j) $ \q -> do
+        let v = showValue unit q
+            pos = sum [toD a | (_, a) <- segs, a > 0]
+            neg = sum [toD a | (_, a) <- segs, a < 0]
+            vy = if q >= 0 then yof pos - 6 else yof neg + 14
+        when (textWidth v <= band - 2) $
+          S.text_ ! A.class_ "value" ! A.x (toValue $ num x) ! A.y (toValue $ num vy) ! A.textAnchor "middle" $ S.toMarkup v
+  )
+  where
+    n = length rows
+    stackedsums sign = [sum [toD q | (_, q) <- segs, signum q == sign] | (_, _, segs) <- rows]
+    (lo, hi, ticks, tickdecimals) = niceScale (minimumDef 0 $ stackedsums (-1)) (maximumDef 0 $ stackedsums 1)
+    ticklabel t = showValue (withPrecision tickdecimals unit) (tickQuantity tickdecimals t)
+    plotleft = pad + maximumDef 0 (map (textWidth . ticklabel) ticks) + 12
+    plotright = chartWidth - pad
+    plottop = top + 20  -- leaving room for values above the bars
+    plotbottom = plottop + plotHeight
+    yof v = plottop + plotHeight * (hi - v) / (hi - lo)
+    band = (plotright - plotleft) / fromIntegral (max 1 n)
+    xcenter i = plotleft + band * (fromIntegral i + 0.5)
+    barwidth = max 1 $ min 24 (band * 0.7)
+    -- names: full account names (since there's no indentation), shortened if very long
+    shortName l = let t = lbFull l in if T.length t > 30 then T.take 29 t <> "…" else t
+    namewidth = maximumDef 0 [textWidth (shortName l) | (l, _, _) <- rows]
+    angled = namewidth > band - 4
+    labelheight = if angled then namewidth * 0.71 + 16 else 24
+    -- room below the plot for the values of negative bars, which may reach its bottom
+    negroom = if any (any ((< 0) . snd) . (\(_, _, segs) -> segs)) rows then 16 else 0
+
+-- | Draw categories as horizontal bars (rows; stacked if several series), with their names on the left (indented as in the report)
+-- and an aligned value column on the right.
+barsSvg :: Double -> Amount -> [(ChartLabel, Int, [(DrawSeries, Quantity)])] -> (Int -> Maybe Quantity) -> (Double, Svg)
+barsSvg top unit rows rowValue = (fromIntegral (length rows) * rowHeight + 28, do
     -- gridlines and x tick labels (labels thinned to avoid overlap, always including zero)
     forM_ ticks $ \t -> do
       S.line ! A.class_ (if t == 0 then "axis" else "grid")
         ! A.x1 (toValue $ num (xof t)) ! A.x2 (toValue $ num (xof t)) ! A.y1 (toValue $ num plottop) ! A.y2 (toValue $ num plotbottom)
       when (round (t / tickstep) `mod` labelevery == (0 :: Integer)) $
         S.text_ ! A.class_ "tick" ! A.x (toValue $ num (xof t)) ! A.y (toValue $ num (plotbottom + 18)) ! A.textAnchor "middle" $ S.toMarkup (ticklabel t)
-    forM_ (zip [0 :: Int ..] rows) $ \(i, (lbl, j)) -> do
+    forM_ (zip [0 :: Int ..] rows) $ \(i, (lbl, j, segs)) -> do
       let ymid = plottop + rowHeight * (fromIntegral i + 0.5)
       S.text_ ! A.class_ "label" ! A.x (toValue $ num (pad + 12 * fromIntegral (lbIndent lbl))) ! A.y (toValue $ num (ymid + 4))
         $ S.toMarkup (lbShort lbl)
       forM_ (rowValue j) $ \q ->
         S.text_ ! A.class_ "value" ! A.x (toValue $ num (chartWidth - pad)) ! A.y (toValue $ num (ymid + 4)) ! A.textAnchor "end"
           $ S.toMarkup (showValue unit q)
-      stack lbl ymid [(categoryColoured lbl d, q) | d <- drawn, Just q <- [valueAt (dsValues d) j], q > 0] 1
-      stack lbl ymid [(categoryColoured lbl d, q) | d <- drawn, Just q <- [valueAt (dsValues d) j], q < 0] (-1)
+      stack lbl ymid [(d, q) | (d, q) <- segs, q > 0] 1
+      stack lbl ymid [(d, q) | (d, q) <- segs, q < 0] (-1)
   )
   where
-    -- categories with no values at all (eg accounts without this commodity) are left out
-    rows = [(l, j) | (j, l) <- zip [0 ..] labels, not $ all (isNothing . flip valueAt j . dsValues) drawn]
-    -- with a single series, each category's bar has its own account type's colour, if known
-    categoryColoured lbl d = case (drawn, lbType lbl) of
-      ([_], Just at) -> d{dsClass = colourClass $ TypeColour (mainAccountType at) 0}
-      _              -> d
-    mtotalvals = seriesValues <$> mtotal
-    rowValue j = case (mtotal, drawn) of
-      (Just _, _) -> mtotalvals >>= flip valueAt j
-      (_, [d])    -> valueAt (dsValues d) j
-      _           -> Nothing
-    stackedsums sign = [sum [toD q | d <- drawn, Just q <- [valueAt (dsValues d) j], signum q == sign] | (_, j) <- rows]
+    stackedsums sign = [sum [toD q | (_, q) <- segs, signum q == sign] | (_, _, segs) <- rows]
     (lo, hi, ticks, tickdecimals) = niceScale (minimumDef 0 $ stackedsums (-1)) (maximumDef 0 $ stackedsums 1)
     ticklabel t = showValue (withPrecision tickdecimals unit) (tickQuantity tickdecimals t)
-    labelwidth = min (chartWidth * 0.4) $ maximumDef 0 [12 * fromIntegral (lbIndent l) + textWidth (lbShort l) | (l, _) <- rows]
-    valuewidth = maximumDef 0 [textWidth (showValue unit q) | (_, j) <- rows, Just q <- [rowValue j]]
+    labelwidth = min (chartWidth * 0.4) $ maximumDef 0 [12 * fromIntegral (lbIndent l) + textWidth (lbShort l) | (l, _, _) <- rows]
+    valuewidth = maximumDef 0 [textWidth (showValue unit q) | (_, j, _) <- rows, Just q <- [rowValue j]]
     -- leave room for half of a tick label at each end
     edge = maximumDef 0 (map (textWidth . ticklabel) ticks) / 2
     plotleft = pad + max labelwidth edge + 12
@@ -323,6 +379,22 @@ categoriesSvg top unit drawn mtotal labels = (fromIntegral (length rows) * rowHe
         when (len > 0.5) $ withTooltip (T.intercalate " · " [lbFull lbl, lbFull (seLabel $ dsSeries d), showValue unit q]) $
           S.path ! A.class_ ("fill " <> toValue (dsClass d))
             ! A.d (toValue $ barPath False xbase (ymid - thickness / 2) thickness (sign * len) (k == lastk))
+
+-- | One direction of a vertical stacked bar, with its left edge at x and the given width, on a y scale:
+-- segments (each with its series, value and tooltip) from zero outward (up if sign is 1, down if -1),
+-- 2px apart (except tiny ones, which a gap would hide), the outermost with a rounded end.
+vstack :: (Double -> Double) -> Double -> Double -> [(DrawSeries, Quantity, Text)] -> Double -> Svg
+vstack yof x width segs sign = do
+  let cums = scanl1 (+) [toD q | (_, q, _) <- segs]
+      starts = 0 : cums
+      lastk = length segs - 1
+  forM_ (zip3 [0 :: Int ..] segs (zip starts cums)) $ \(k, (d, _, tip), (c0, c1)) -> do
+    let gap = if k > 0 && abs (yof c1 - yof c0) >= 4 then 2 else 0
+        ybase = yof c0 - sign * gap   -- the end nearer zero, after the gap
+        len = (ybase - yof c1) * sign  -- positive when there is something to draw
+    when (len > 0.5) $ withTooltip tip $
+      S.path ! A.class_ ("fill " <> toValue (dsClass d))
+        ! A.d (toValue $ barPath True x ybase width (-sign * len) (k == lastk))
 
 -- | The points of a step line through these points: each value holds until the next point's x position.
 steps :: [(Double, Double)] -> [(Double, Double)]

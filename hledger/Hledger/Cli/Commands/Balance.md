@@ -1041,8 +1041,10 @@ In tree mode, each account's own amounts are stacked, excluding its subaccounts'
 At most 8 accounts are shown per panel; the smallest are combined into an "other" series.
 The total is omitted with `-N` or `--percent`.
 
-With [SVG output](#svg-output) (`-o FILE.svg` or `-O svg`), `balance` always shows a chart, as a graphical image;
-time runs along the x axis, and end balances are drawn as lines.
+With [SVG output](#svg-output) (`-o FILE.svg` or `-O svg`), `balance` always shows a chart, as a graphical image.
+Time runs along the x axis, and end balances are drawn as lines.
+A single-period report is drawn as vertical bars, one per account, with the account names below (angled if needed)
+and values above the bars (where they fit); or with more than 30 accounts, as horizontal bars.
 
 With [HTML output](#html-output), `--chart` shows the chart (as SVG) above the report's table.
 

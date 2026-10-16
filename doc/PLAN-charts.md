@@ -362,6 +362,10 @@ Compound reports' accounts, as done: Panel's BarLayout is replaced by each serie
 (at most `maxSectionSeries` = 5 per section, ie 4 tints + other), with the net as a mark (flows) or line (stocks).
 In text, several stacks give a row per stack (showing its sum) plus a net mark row. End balances are stacked bars too in compound charts (no longer lines).
 
+Vertical category bars, as done: SVG category charts (single-period balance) are columns (`columnsSvg`) up to `maxColumns` (30) categories,
+else horizontal bars (`barsSvg`). Names are full account names (no indentation), shortened beyond 30 characters, angled 45° when they
+don't fit; values are shown above (or below, if negative) the bars when they fit. Vertical stacking is shared (`vstack`). Text charts stay horizontal.
+
 ## Open questions
 
 - Chart variant names for `--chart=KIND`, when needed.
