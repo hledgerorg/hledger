@@ -1,431 +1,147 @@
 # Charts from reports - design notes and plan
 
-Status: 2026-10-16. Interface and architecture agreed (see Decisions). Phases 1, 1b and 2 done (chart model and data output; text and SVG renderers; bal, bs, bse, cf, is, aregister, register; html). Next: phase 4 (hledger-web, hledger-ui), phase 3 (multiple outputs) is deferred.
+Status, 2026-10-16: done for bal, bs, bse, cf, is, aregister, register and activity, as text, SVG, html (chart above the table)
+and chart data (csv/tsv/json). Next: hledger-web and hledger-ui (phase 4), then extras (phase 5). Multiple outputs (phase 3) deferred.
+This doc describes the current design, then the decisions and rejected alternatives behind it.
 
 ## Goal
 
-Easy, ubiquitous chart output from hledger's reports:
+Easy, ubiquitous charts from hledger's reports: each report gets a chart mode reusing its logic and data;
+smart defaults always give a useful chart, no configuration needed; graphical (SVG) and terminal output;
+the same chart work reused by the CLI, `-O html`, hledger-web and hledger-ui.
+Non-goals for now: customisable charts, raster formats, interactive charts, pie charts.
 
-- each report (added incrementally) gets a chart mode that reuses the report's logic and data
-- it just works: smart defaults always produce a useful chart, no configuration needed
-- graphical output (SVG first) that users can view easily
-- character-based output that renders in any terminal, as the fastest, cheapest visual report
-- the chart work is reused across the CLI, `-O html`, hledger-web and hledger-ui
-
-Non-goals for now: customisable charts (colours, sizes, explicit chart types per series),
-raster formats (PNG), interactive charts, pie charts.
-
-## Prior work
-
-- **activity** command: counts postings per interval, prints one row of `*` per period.
-  Not auto-scaled, ASCII only, counts only.
-- **hledger-bar** (bin/hledger-bar): bash wrapper around `bal -Ocsv --transpose -N -0 --layout=bare -M`.
-  Horizontal bars, one row per period, `+`/`-` in green/red, manual scale (`-sSCALE`),
-  single commodity only (user must add `cur:` or `-X`). Shows that "one row per period, bar to the right"
-  is a good terminal layout, and that auto-scaling and multi-commodity handling are what's missing.
-- **hledger-web register chart**: flot (jQuery) line chart of the account's running balance,
-  one series per commodity, data passed as JSON in a data attribute (RegisterR.hs, templates/chart.hamlet, hledger.js).
-  Has hover tooltips, click to jump to the transaction, drag-select to zoom (reloads with a date: query).
-- **site/src/charts.md**: today's advice is "export CSV and chart it elsewhere", or Fava, or a long list of third-party tools
-  (hledger-plot, hledger-lit, hledger-vega, sankey tools, ploterific, r-ledger, grafana). Built-in charts would become the first answer there.
-- ROADMAP has listed "simple built in bar charts" / "simple console charts" since 2020 and 2023.
-
-## Relevant existing structure
-
-- Output format is chosen by `-O FMT`, or by `-o FILE`'s extension if it's in `outputFormats` (CliOptions.hs).
-  Each command lists its supported formats in `outputFormatFlag [...]` and dispatches with a `case fmt of` (eg Balance.hs `balance`).
-- Report data is already renderer-independent:
-  `PeriodicReport` (dates, rows, totals; used by balance, budget) and `CompoundPeriodicReport` (bs, bse, is, cf),
-  `BalanceReport` (single period), `PostingsReport` (register), `AccountTransactionsReport` (aregister).
-- `Hledger.Write.Spreadsheet` is an intermediate table form shared by the csv/tsv/html/fods renderers and by hledger-web.
-  A chart model would be the analogous intermediate form for charts.
-- hledger-lib already depends on blaze-markup/blaze-html and colour; hledger has open-browser.
-- `writeOutputLazyText` writes a command's single output to stdout (with pager) or to the -o file.
-- Repeated `-o` options currently mean last one wins (`maybestringopt` takes the last).
+Prior art it replaces or improves on: the old activity command (rows of `*`), bin/hledger-bar (a bash wrapper drawing `bal -O csv`),
+hledger-web's flot register chart, and site/src/charts.md's "export CSV and chart it elsewhere" (to get a "built-in charts" lead at release).
 
 ## User interface
 
-### Recommended
-
-Treat a chart as a different *view* of the report, and the output format as how that view is *encoded*.
-
-| Command                         | Result                                                        |
-|---------------------------------|---------------------------------------------------------------|
-| `hledger bal -M food`           | table, as now                                                 |
-| `hledger bal -M food --chart`   | text chart in the terminal                                    |
-| `hledger bal -M food -o f.svg`  | SVG chart (svg only makes sense as a chart, so `--chart` is implied) |
-| `hledger bal -M food -O svg`    | SVG chart on stdout                                           |
-| `hledger bal -M food --chart -o f.html` | HTML page with the chart (inline SVG) above the table  |
-| `hledger bal -M food -o f.html` | HTML table, as now                                            |
-
-So:
-
-- `svg` becomes a new output format. Choosing it implies chart mode. This is your proposal, unchanged.
-- `--chart` turns on chart mode for formats that can show either a table or a chart (txt, html).
-  It's needed because `txt` is already the table.
-  With formats that can't show a chart (csv, tsv, json, fods...) it's an error, at least initially.
-- Define the flag as `--chart[=KIND]` from the start, with only `auto` (the default) implemented at first,
-  so adding `bar`, `stack`, `line`, `hbar`... later changes nothing. (cmdargs optional values need `=`, as with `--forecast`.)
-- Commands without chart support reject `--chart` and `-O svg` with the usual unsupported-format error.
-
-Why a flag rather than more format names: a text chart needs some name other than `txt`, eg `-O chart` or `-O bars`,
-and then `chart` would sit beside `svg` as if they were alternative encodings, when really one is "text chart" and the other "graphical chart".
-A flag keeps formats meaning encodings, and gives variants a natural home (`--chart=line`).
-It also works with html, which can show the table, the chart, or both.
-
-### On sub-extensions (foo.line.svg)
-
-Workable but I'd avoid it as the main mechanism:
-dotted filenames are common (`expenses.2026.svg`, `report.v2.svg`), so we could only recognise a fixed set of kind names,
-and then `foo.bar.svg` is ambiguous between "a file called foo.bar" and "a bar chart".
-It also hides the option from `--help`. `--chart=KIND` is explicit and discoverable.
-If wanted later, sub-extensions could be accepted as sugar for `--chart=KIND`, only for known kinds.
-
-### Multiple outputs
-
-Useful and independent of charts; worth doing once two or more formats per command exist.
-Two options:
-
-- **Repeatable `-o`** (recommended): `hledger bal -M food -o - -o food.svg` shows the table on stdout and writes a chart.
-  Unambiguous, no quoting concerns. Changes current last-wins behaviour, which nobody should be relying on.
-- **Comma-separated `-o`**: `-o -,food.svg`. More concise, but commas are legal in filenames;
-  we'd need an escape or a "file exists" heuristic. Could be accepted as sugar later.
-
-`-O` keeps its current, documented meaning: when given, it sets the format of every output,
-overriding file extensions (`-o foo.txt -O csv` writes CSV).
-Without `-O`, each output's format comes from its file extension, or is txt for stdout and for files with no recognised extension, as now.
-So to write different formats at once, you'd omit `-O` and rely on the extensions.
-`--chart` applies to the txt and html outputs.
-
-Implementation: commands would provide a "render for format" function and a shared helper would call it once per output,
-so the report is computed only once. Commands migrate incrementally; until then they reject more than one `-o`.
-
-### Viewing graphical output easily
-
-The friction with SVG is "write file, then open it". Options:
-
-- Document `-o x.svg && open x.svg` (macOS), `xdg-open` (linux), `start` (windows).
-- Later: a `--view`/`--open` flag that writes to a temp file and opens it with open-browser (already a dependency, used by hledger-web).
-  This would make graphical charts nearly as quick as text ones.
-- Inline terminal images (kitty, iTerm2, sixel) would be nice but need raster output; out of scope.
-
-### Alternatives considered
-
-- **A `chart` command wrapping other commands** (`hledger chart bal -M food`), like hledger-bar.
-  Discoverable as one place, but duplicates each command's option handling and help, and doesn't reuse the per-command format dispatch.
-  Could exist later as a thin alias for `CMD --chart`.
-- **Charts in html output by default.** Attractive, but changes existing html output; keep it opt-in via `--chart` for now.
-- **A sparkline column in tables** (`▁▂▃▅▇` per row, eg `bal -M --sparkline`).
-  A cheap, compact visual for wide multi-period tables, complementary to charts. Easy to add once the text renderer exists.
-- **Vega-Lite JSON output** (`-O vegalite`). Great for power users and could drive richer html/web charts,
-  but needs JavaScript to render, so not the first format. We can generate it with aeson from the same chart model later.
+- `--chart[=KIND][,SCALE...]` shows a chart instead of the table (txt), above the table (html), or the chart's data (csv, tsv, json).
+  Other formats (eg fods) give an error. The `svg` output format always shows a chart. `-O` keeps its existing meaning.
+- KIND: `auto` (default), or for compound reports `grouped` or `diverging`. A kind that doesn't apply (eg grouped for bal) is ignored.
+  It must come before any SCALE.
+- SCALE: amounts, eg `5000` or `5000 USD`, fixing the scale so successive charts are comparable (see Fixed scale).
+  Written without digit group marks, since commas separate the parts.
+- `-w/--width N` sets a text chart's width (default: the terminal width).
+- `activity` is a shortcut for `balance --count --chart`, weekly by default.
 
 ## Architecture
 
 ```
-report (existing)  -->  Chart (new, renderer-independent)  -->  text  (terminal, hledger-ui)
-  per-command adapter                                      -->  SVG   (files, html output, hledger-web)
-  holds the smart defaults                                 -->  later: Vega-Lite JSON, sparklines
+report  -->  adapter (Hledger.Cli.Chart; smart defaults)  -->  Chart (Hledger.Write.Chart)  -->  text   (Chart.Text)
+                                                                                           -->  SVG    (Chart.Svg)
+                                                                                           -->  data   (chartAsCsv, JSON)
 ```
 
-- **Chart model** (hledger-lib, eg `Hledger.Write.Chart`), roughly:
-  a title; one panel per commodity; each panel has an x axis (categories, or periods/dates),
-  a unit (commodity symbol and display style, for tick labels), a list of named series of numbers, and a chart kind
-  (bars, stacked bars, lines, horizontal bars).
-  Values are converted to Double only here, for drawing; all report arithmetic stays exact.
-- **Adapters** (hledger package, next to each command, like the existing `*AsSpreadsheet` functions):
-  `multiBalanceReportAsChart :: ReportOpts -> MultiBalanceReport -> Chart` etc.
-  This is where each report's smart defaults live. hledger-web and hledger-ui already depend on the hledger package, so they can use them.
-- **Renderers** (hledger-lib):
-  - `chartAsSvg`: a small hand-written SVG renderer (axes, nice ticks, bars, lines, legend, panels).
-  - `chartAsText`: returns styled lines (a list of styled text segments) rather than raw ANSI,
-    so the CLI can render ANSI colour and hledger-ui can render brick attributes from the same output.
-- **Reused helpers**: period column headings (same labels as the table), amount styles for tick labels, report titles, terminal width, colour detection.
-
-### SVG renderer details
-
-- Hand-written, not a charting library.
-  Haskell `Chart` needs cairo (C) or diagrams (very heavy dependency tree); hvega needs JS to render.
-  A focused renderer for four chart kinds is perhaps 600-900 lines, with full control and no new heavy deps.
-  Build the markup with blaze-svg (see Libraries below): its `Svg` type is blaze's `Markup`, the same type as our `Html`,
-  so the chart embeds directly in `-O html` output and hledger-web pages.
-- Deterministic output (fixed coordinate rounding), so shelltest golden files work.
-- Self-contained file: embedded `<style>` with a `prefers-color-scheme: dark` variant, system font stack, no external resources.
-- Accessible and slightly interactive without JS: `role="img"`, `<title>`/`<desc>`,
-  a `<title>` on each bar/point giving period, account and amount (shown as a tooltip by browsers).
-- Colour-blind-safe categorical palette of about 8 colours; positive/negative not signalled by colour alone.
-- Text width can't be measured without fonts; estimate from character count, and right-align labels against the axis.
-
-### Text renderer details
-
-- Horizontal bars, one row per period (or per account for single-period reports), as in hledger-bar and activity.
-  This scales to many periods (they just scroll) and keeps labels readable.
-- Auto-scaled to the terminal width (or `--width`, for tests), with eighth-block characters (`▏▎▍▌▋▊▉█`) for 8x finer resolution.
-  ASCII fallback (`#`, `-`) when the output encoding isn't UTF-8.
-- Values printed at the end of each bar, using the commodity's display style.
-- Negative values: bars grow left from a zero axis, when any value is negative.
-- Several series: stacked segments in distinct colours, plus distinct fill characters (`█▓▒░`) so it still reads without colour,
-  and a one-line legend. Segments are whole cells, rounded so the total length is preserved (largest remainder);
-  only a single-series bar uses eighth blocks.
-- Width comes from `available_width_` (terminal size or COLUMNS), as for other reports.
-  `--width` is currently a register-only flag; chart-capable commands need it too, so tests can fix the width.
-- No text line charts initially (braille plots are font-dependent and hard to read); stocks are shown as bars of the balance at each period end.
+- **Model** (`Hledger.Write.Chart`): a title, an x axis (categories, periods or dates), and one panel per commodity.
+  A panel has a unit (an amount template, for display styles), series, group names, an optional fixed scale, a bar layout
+  and a counts flag. A series has a label (with account type, and whether it's an account), a role (item, other, total),
+  a mark (bar, line, marker), values, a group (eg a compound report's section) and a usual sign (for contra amounts).
+  Values stay exact (Quantity) until renderers convert them for drawing.
+- **Adapters** (hledger package, so hledger-web/ui can use them): multiBalanceReportAsChart, balanceReportAsChart,
+  compoundBalanceReportAsChart, accountTransactionsReportAsChart, postingsReportAsChart. `writeChart` dispatches on format,
+  applying `--chart`'s SCALE (`setChartScales`) and KIND (`setChartLayout`) first.
+- **Colours** (`seriesColours`, `stableSlots`; exact values in `Chart.Palette`, shared by SVG and truecolor text).
+- **Text renderer**: returns styled lines (so hledger-ui could draw them with brick); `styledLinesAsText` makes plain or ANSI text.
+- **SVG renderer**: hand-written with blaze-svg (whose `Svg` is blaze `Markup`, so it embeds in our html).
 
 ## Smart defaults
 
-General rules:
+- **Flows as bars, stocks as lines** (lines are bars in text). Time along the x axis in SVG; categories (single-period reports)
+  as vertical bars, or horizontal beyond 30. Text charts are always horizontal bars, a row per x position.
+- **One panel per commodity**, those in most report cells first; a warning above 8 panels suggests `-X` or `cur:`.
+- **At most 8 series** (5 per compound section): the largest by absolute total, the rest combined into "other (N accounts)".
+- **No double counting**: in tree mode, each account's own amounts are charted.
+- **Respects report options** (query, depth, period, interval, valuation, `--invert`, sorting, `-N`, `--title`, `--percent`);
+  table-only options are ignored.
+- **Mixed signs**: positive segments stack above (right of) zero, negative below; nothing is silently flipped (except grouped compound charts, below).
+- **Nets and totals**: a thin ink line mark across bars (1.5px in SVG; `┃` in text), or an ink line with lines.
 
-- **Flows as bars, stocks as lines.** Period changes (`bal` default, `is`, `cf`) are bars;
-  end balances (`--historical`, `--cumulative`, `bs`, `bse`, aregister) are lines in SVG, bars in text.
-- **Time goes along the x axis** in SVG (vertical bars); categories (accounts in a single-period report) use horizontal bars.
-- **One panel per commodity.** Multi-commodity reports produce several small charts in one output, sharing the x axis,
-  largest commodity first. Users can reduce this with `-X`, `-B` or `cur:` as usual, but needn't.
-- **At most ~8 series.** Pick the largest by total absolute amount, keep the report's ordering among them,
-  and combine the rest into "other (N accounts)".
-- **No double counting.** In tree mode, stacked charts use only rows with no displayed subaccounts.
-  Non-stacked charts can show all rows, with indented labels.
-- **Respect report options**: query, depth, period, interval, valuation, `--invert`, sorting, `-N` (hide total), `--title`, `--percent`.
-  `--percent` naturally gives a 100% stacked chart. Options that only shape the table are ignored: `--transpose`, `--layout`, `-T`, `-A`, `--pretty`.
-- **Mixed signs.** Stacked bars stack positive segments above zero and negative ones below (left of the axis, in text),
-  so `bal -M type:rx` works without `--invert`. Series are never silently flipped.
-- **Degenerate cases still produce output**: an empty report gives a chart saying "no data"; all-zero data gives a flat axis, not an error.
-- Large numbers of periods: SVG bars get thinner, and past some count (a few hundred) become an area/line.
-  Text gets long, like the table; the existing large-report warning applies.
+Per report:
 
-Per report (first column is the suggested order of work):
+| Report | Chart |
+|--------|-------|
+| `bal` multi-period | stacked bars per period with a total mark; with `-H`/`--cumulative`, lines (SVG) |
+| `bal` single period | a bar per account, coloured by type |
+| `is`, `cf` (changes) | grouped layout by default |
+| `bs`, `bse` (end balances) | diverging layout by default, net as a line |
+| `aregister` | the balance after each transaction, a stepped line on a time scale |
+| `register` | each account's running total as a line (with -H, from its start balance), plus the overall total; with an interval, stacked bars per period |
+| `activity`, `bal --count` | posting counts by account, at most one text cell per posting |
 
-| # | Report | Default chart |
-|---|--------|---------------|
-| 1 | `bal` multi-period, changes | bars per period; one account: plain bars; several: stacked bars with a net total marker |
-| 1 | `bal` multi-period, `-H`/`--cumulative` | lines, one per account (text: bars of the end balance) |
-| 1 | `bal` single period | horizontal bars, one per account |
-| 2 | `is` | per period: revenues and expenses side by side (both positive, thanks to normal-balance signs), net income marker or line |
-| 2 | `bs`, `bse` | per period: assets and liabilities lines, net worth line; single period: horizontal bars of section subtotals |
-| 2 | `cf` | per period: net cash change bars |
-| 2 | `aregister` | running balance line (stepped), one per commodity; this is hledger-web's register chart |
-| 3 | `register` | running total line; with an interval, period amount bars |
-| 3 | `activity` | counts per period, as now, gaining auto-scaling and SVG (keep its current text output unless we decide otherwise) |
-| 4 | `bal --budget` | actual bars with the goal as a marker per period |
-| 4 | `prices` | price lines over time, one panel per commodity pair |
-| 4 | `roi`, `holdings` | later: return per period bars; holdings value horizontal bars |
+Text register charts have a row per posting (or transaction); a report interval gives a row per period.
 
-Commands with no chart (print, accounts, stats, etc.) reject chart mode.
+## Compound reports
 
-## Reuse across interfaces
+Each section's accounts are charted, in one of two layouts (`pnLayout`, chosen by the adapter, or `--chart=KIND`):
 
-- **CLI**: text and SVG, as above.
-- **`-O html --chart`**: inline SVG above the table, in one self-contained file. No JavaScript, works offline.
-- **hledger-web**: could render the same SVG server-side on the balance, bs, is, cf and register pages.
-  That's cheap new charts for every report page, and could eventually remove the flot/jQuery chart code.
-  Hover tooltips and click-to-transaction work with SVG `<title>` and `<a>`.
-  Drag-to-zoom would need a little JS on top of the SVG, or could be dropped.
-  Suggest leaving the existing register chart alone until the SVG charts are proven.
-- **hledger-ui**: the text renderer's styled lines can be drawn with brick, eg a toggle that shows a chart in the register screen.
+- **grouped** (default for changes, eg `is`): each section's accounts stacked in their own bar, sections side by side, so sizes can be compared.
+  Amounts are normal-signed as in the tables (`setChartLayout` re-signs the data, so chart data matches).
+  Text: a row per section (named, with its total) and a net row with only a mark.
+- **diverging** (default for end balances, eg `bs`): all accounts stacked in one bar, as contributions to the net
+  (sections that subtract from it, like expenses and liabilities, negated). Text: one row per period with the net,
+  each side's section totals at that end of the bar (as the tables show them), a header naming the sections, and the net marked over the bar.
 
-## Libraries
+Contra amounts (opposite to their section's usual sign, eg a refund, accumulated depreciation) are drawn nearest the axis,
+hatched in their account's colour (`╱`/`/` in text), with a "contra" legend entry. Compound charts only:
+`bal` shows raw amounts, in its table too, so it doesn't mark them.
+Sections take an account type from their query, which their accounts inherit if they have none; "..." rows are labelled with the section.
 
-Surveyed 2026-10-15 (Stackage nightly 2026-09-01 / LTS 24 unless noted; we also build with LTS 22 and 23 for GHC 9.6/9.8).
+## Colours
 
-| Package | Status | Verdict |
-|---------|--------|---------|
-| blaze-svg 0.3.7 | in Stackage; deps: base, blaze-markup, mtl; last upload 2023, bounds current (base <4.23) | **Use** for SVG markup. Tiny, same `Markup` type as our html output. |
-| hvega 0.12.0.7 | in Stackage; deps: aeson, text, unordered-containers; maintained | **Later**, for `-O vegalite` export from the chart model. Needs JS to render, so not a first format. |
-| chart-svg 0.8.3.3 | pure-Haskell SVG charts, active (Aug 2026), but only in LTS 24+; pulls in numhask, harpie, cubicbezier, flatparse, markup-parse, formatn, Color, and both lens and optics-core; API has churned (0.4 to 0.8 in a few years) | No. Heavy for our needs, not in our older snapshots, and we'd fight its styling. |
-| Chart 1.9.5 + Chart-diagrams | in Stackage; core is a pure model (has bars, lines, a SparkLine module) but rendering needs diagrams-lib/-svg/-core/-postscript and SVGFonts | No. The diagrams stack is a very long build and a big surface for breakage. Chart-cairo needs C. |
-| plot-light | blaze-svg based, last upload 2018 | No, unmaintained. |
-| svg-builder | used by diagrams-svg, last upload 2018, not in Stackage | No; blaze-svg covers it. |
-| asciichart 1.0.2 | terminal line charts, base+array only, 2020, not in Stackage | No; we want bars, and a line renderer is a few dozen lines if ever wanted. |
-| unicode (Data.Char.Block) | block characters, maintained | Not worth a dependency; the eight block characters are a literal. |
+- Accounts of several types: conventional type hues (assets blue, liabilities amber, equity violet, revenues green, expenses red),
+  with up to 4 tints per type. Accounts all of one type, or untyped: 8 categorical colours (the type hue would tell nothing).
+  "other" is grey, totals ink; a lone series that isn't an account (eg a total) is neutral.
+- Chosen by account name, not position or count (`stableSlots`): each name has a hashed order of preference, names choose largest first.
+  So -S changes nothing, and removing the largest account (drilling down) disturbs only accounts it had displaced. Text fill characters likewise.
+- Palette: the dataviz skill's validated reference palette; type hues validated on the pairs that co-occur (green/red is in the CVD warn band,
+  so legends and positions matter). Tints mix with white/black ([0, 0.4, -0.3, 0.65]).
+- Text: exact colours with `COLORTERM=truecolor` (dark variants when the background is known dark), else basic ANSI colours.
+  Negative values stay ANSI red, like other output.
 
-Nothing found for terminal bar charts; that part is small and ours. So: hand-written renderers, one tiny new dependency (blaze-svg), hvega optional later.
+## Fixed scale
 
-## Plan
+SCALE is the amount a chart spans (`pnScale`), per commodity (a bare number for the rest). `scaleSpans` divides it:
+negatives get what they need, positives the rest, both shrunk proportionally if they don't fit; so the amount per cell is the same in every chart.
+Bars beyond it are clipped: `▸`/`◂` (`>`/`<`) in text; in SVG a small ink triangle beyond the edge and an unrounded end.
+SVG lines are clipped with a clipPath; ticks are the nice ticks within the exact range.
+Count charts (`pnCounts`) instead cap text at one cell per unit when no SCALE is given.
 
-Phases, each a separately useful, committable step:
+## Rendering details
 
-1. **Foundation, with balance, text only.** In this order, with review stops:
-   1. **Chart model types** (`Hledger.Write.Chart`), with haddocks, and nothing else. **Stop for review**: everything downstream depends on these,
-      and reworking them later is the expensive failure.
-   2. `bal` adapters (multi-period changes, `-H`/cumulative, single period) and `--chart[=KIND]` with `auto`;
-      `--chart` with csv/tsv/json emitting the chart data. **Stop for review** of that data on examples/sample.journal,
-      examples/bcexample.journal and a large generated journal, before any renderer exists.
-   3. Text renderer; `--width` for bal.
-   Functional tests: chart data via csv (tests the adapters), text golden files at a fixed width (tests the renderer); unit tests for scaling.
-   Docs: output format section, balance docs, charts.md lead paragraph.
-1b. **SVG.** SVG renderer on the same model; `svg` output format; tests with small fixtures.
-2. **More reports and html.** is, bs, bse, cf, aregister, register; `--chart` with html output (chart above the table).
-3. **Multiple outputs** (deferred). Repeatable `-o`, shared multi-output helper, migrate the main report commands.
-4. **Interfaces.** hledger-web SVG charts on report pages; hledger-ui chart toggle.
-5. **Variants and extras.** `--chart=KIND`; budget, prices, roi, holdings; sparkline column; `--view`; Vega-Lite export.
+- Text: value column before the bars; eighth blocks for single-segment bars, whole cells (rounded cumulatively) for stacked ones;
+  fill characters `█▓▒░` (`#=+:` in ASCII, chosen from the locale encoding); legend wrapped, listing only visible series; trailing spaces trimmed.
+- SVG: self-contained, deterministic (one-decimal coordinates, one element per line, for golden tests), system fonts, literal colours in CSS
+  (librsvg doesn't support `var()`), a `prefers-color-scheme` dark variant (omitted when embedded in html, which is light).
+  Ticks by d3's 1-2-5 rule. Tooltips as `<title>` (marks wrapped in `<g>`, as blaze-svg leaf elements can't have children).
+  Bars at most 24px, 4px rounded ends, 2px gaps; lines 2px, thinned to 4 points per pixel column (a 100k-posting register: 286s to 44s).
+- Tests: shelltest; SVG goldens are separate files compared with diff, since shelltest treats lines starting with `<` as input.
 
+## Decisions and rejected alternatives
 
-## Working notes
+- A `--chart` flag plus an `svg` format, rather than chart formats (`-O chart`), a `chart` command wrapping others, or sub-extensions (`foo.line.svg`):
+  formats stay encodings, variants get a home in KIND, and html can show both.
+- Hand-written renderers with blaze-svg, rather than Chart (cairo or the heavy diagrams stack), chart-svg (heavy, not in older snapshots)
+  or hvega (needs JS; possible later for `-O vegalite`). Nothing suitable existed for terminal bar charts.
+- Text charts first; chart data via csv first, as a way to review what charts show before rendering.
+- Compound charts: first section totals, side by side; then accounts; then signed contributions in one diverging bar, which halves the space
+  and shows the net as a difference; grouped restored as an option and made the default for changes, normal-signed so heights compare.
+- Net marks: dots, then extra bars, then line marks, thinned; a white surface ring around them was removed.
+- Colours: by position at first; then by name, with count-based rules (tints for up to 4 accounts of one type, neutral for a lone series)
+  removed, since they repainted accounts as others were removed.
+- Fixed scale as a per-direction maximum was tried first: one small negative value halved the resolution, defeating comparison.
+  KIND and SCALE in any order was allowed at first, then KIND first, as less surprising.
+- One cell per unit for all charts was rejected: amounts' units are arbitrary (eg 0.5 BTC would be half a cell). Counts only.
+- Automatic date grouping of long text register charts (by day/week/.. to fit 50 rows) was dropped as unpredictable.
+- activity was reimplemented on `balance --count --chart` rather than removed; its old `*` output and daily default are gone.
+- Repeatable `-o` (several outputs, eg table on stdout plus an SVG file) is deferred: useful independently of charts,
+  and better than comma-separated `-o` (commas are legal in file names).
+- A `--view`/`--open` flag (temp file, open-browser) could make SVG nearly as quick as text; inline terminal images need raster output.
 
-- Design is settled here; implementation phases are expected to run with Opus. The review stops above are the points where
-  design judgment matters most; if one stalls on a design question, that is a reason to switch models for that decision only.
-- Follow the project's usual practice: show each step's plan and discuss before starting; pre-commit checklist before every commit.
+## Next
 
-## Review notes
-
-2026-10-15, second pass over the original brief and this plan:
-
-- The brief's priorities (ubiquity, zero configuration, reuse across interfaces) all point at the same thing: invest in the
-  model and the adapters' defaults, keep renderers dumb. The plan does that. The one structural choice to get right early is
-  that the model carries *display* information from the report (period headings, commodity display styles, the report title,
-  normal-balance sign convention) so every renderer labels things exactly as the table would.
-- Charts in hledger-ui and hledger-web depend on the adapters, which live in the hledger package. Both already depend on it, so that's fine.
-- The biggest risk is not rendering but choosing good defaults for messy real data: many commodities, deep trees, mixed signs,
-  hundreds of periods, long account names. Test with examples/bcexample.journal and a large generated journal from the start, not just sample.journal.
-- The "chart data as csv" decision is also a design aid: we can review what a chart will show before any renderer exists.
-- Consider making `bal --chart` able to replace hledger-bar fully (it shows numbers always, auto-scales, handles commodities),
-  so the script can later be retired without loss.
-
-## Decisions
-
-2026-10-15:
-
-- Interface: the `--chart` flag plus the `svg` output format, as above. `-O` keeps its current meaning.
-- Text charts first, then SVG.
-- `--chart` with csv/tsv/json output emits the chart's data (the series after top-N and "other" aggregation), not the normal report.
-  So the chart model needs a tabular rendering too; this doubles as a way to inspect what a chart shows.
-- Deferred: repeatable `-o` (multiple outputs); reimplementing activity on the new renderer; hledger-bar's future.
-- register/aregister text charts without an interval: try both one row per transaction and an automatic interval when we get there.
-
-2026-10-16, after reviewing chart data on sample, bcexample and large generated journals:
-
-- Panels are ordered by the number of non-zero report cells in each commodity (cells, not amounts, since a cell can hold several cost-keyed amounts of one commodity).
-- No cap on the number of panels; instead, visual outputs (text, SVG) warn on stderr above a threshold, suggesting `-X` or `cur:`. To do in step 3.
-- Chart data CSV is long ("tidy") form: commodity, series, role, mark, x, value.
-- The net-total marker is kept even when all series have one sign.
-
-2026-10-16, text renderer (step 3), after confirming mockups:
-
-- Value column before the bars; stacked segments for several series (stocks too, in text); legend wrapped left to right; heading per commodity panel (omitted for no commodity).
-- Fill characters cycle after four series (█▓▒░); colour distinguishes more. A limitation without colour.
-- ASCII fallback is chosen from GHC's locale encoding; on macOS this reports UTF-8 even with LANG=C, so it is exercised only by a unit test.
-- The many-panels warning (more than 8) is issued for text output only.
-
-2026-10-16, SVG renderer (phase 1b):
-
-- blaze-svg (0.3.7, in all our stackage snapshots) builds the markup; coordinates are formatted by us (one decimal), and each element is put on its own line, for readable diffs and golden tests.
-- Palette and chrome colours are the dataviz skill's validated reference palette (8 categorical slots, light and dark). "other" is muted grey; totals are ink-coloured.
-- Colours are written literally in CSS rules, not as custom properties: librsvg (rsvg-convert, many Linux image viewers) rendered everything black with `var()`.
-  The dark variant is a `prefers-color-scheme` media query; not yet checked in a browser.
-- Marks: bars at most 24px thick, 4px rounded far end, 2px gaps between stacked segments (none for segments under 4px, which the gap would hide);
-  2px lines; total as ringed dots over bars (only where there are bars), or an ink line with lines. Tooltips are SVG titles (each mark is wrapped in a `<g>`, since blaze-svg's leaf elements can't have children).
-- Ticks use d3's 1-2-5 step rule; tick labels use the commodity's style with just enough decimals.
-- `XDates` are still evenly spaced, like periods; a real time scale is needed for register charts (phase 2).
-- The website's charts.md (in the separate site repo) should get a "Built-in charts" lead paragraph when a release includes charts.
-- Golden SVG test output is kept in a file (hledger/test/balance/chart.svg) compared with diff, since shelltest treats lines starting with `<` as input delimiters.
-
-2026-10-16, phase 2 step 1, compound reports (is, bs, bse, cf):
-
-- They chart section totals (plus the net total, labelled with the table's translated "Net:" minus its colon), not individual accounts.
-- Section amounts are normal-signed (all positive), so they are never stacked: flows are grouped bars (text: a row per section per period, plus an uncoloured net row; SVG: side-by-side bars with a net dot), stocks are lines (text: grouped rows too).
-- A single-period compound report is categories: a bar per section and one for the net.
-- Chart output dispatch is shared: `writeChart` in Hledger.Cli.Chart.
-
-2026-10-16, phase 2 step 2, aregister:
-
-- Charts the balance (or running total/average) after each transaction, as a line, dated as the register shows (transactionRegisterDate).
-- Text (superseded: see below, grouping was dropped): one row per transaction up to 50; beyond that, `groupDates` groups them into the shortest of days/weeks/months/quarters/years giving at most 50 rows, labelled with showDateSpan, showing each period's last balance. (This settles open question 6: both, by size.)
-- SVG: dates on a real time scale (`DateScale`), lines as steps, x ticks at calendar boundaries (`dateTicks`); x labels are kept within the chart.
-- aregister's existing -w/--width sets the text chart width (its `N,M` form falls back to the terminal width).
-
-2026-10-16, phase 2 step 3, register:
-
-- No interval: the running total (or average) after each posting, as a line by posting date (like aregister).
-- With an interval: each (depth-clipped) account's amount per period as stacked bars, limited to 8 series, with the period total as a marker; period labels as in bal -M.
-
-2026-10-16, phase 2 step 4, html:
-
-- `--chart -O html` puts the chart (inline SVG) above the report's normal html table, for all chart-capable commands. `writeChart` takes the report's html (lazily, so it's only made for html output).
-- The embedded SVG omits the dark variant, since hledger's html output is always light (`chartAsSvgWith False`). hledger-web can choose.
-- The chart's title duplicates the table's heading; acceptable for now.
-
-2026-10-16, after review of phase 2 (user suggestions), in this order:
-
-1. Net/total as a line mark, not a dot or an extra bar: in SVG a short ink horizontal line across each period's bars, or a line where the sections are lines; in text a row with a `┃` at the net's position. Single-period compound reports are drawn as one period of grouped bars (no "Net" category).
-2. Conventional colours for the five account types (validated with the dataviz skill's validator, on the adjacent pairs that co-occur): assets blue, liabilities amber, equity violet, revenues green, expenses red; accounts within a type as tints of its hue. Green/red is in the CVD warn band (needs secondary encoding: legend, positions).
-3. Compound reports chart their accounts (`-1` gives section totals): per period one stacked column per section, side by side, never stacked across sections; contra balances stack below zero within their section.
-4. SVG single-period (category) charts as vertical bars, labels angled when needed; horizontal only beyond ~30 categories.
-
-Type colours, as done: the account type is on ChartLabel (`lbType`), so it colours both series and (single-series) category bars.
-`seriesColours` assigns a renderer-independent `Colour` (type hue + tint index, categorical index, other, total);
-up to `maxTints` (4) accounts per type, beyond which the panel falls back to categorical colours.
-SVG tints mix the type colour with white/black ([0, 0.4, -0.3, 0.65]); text uses the terminal's blue/yellow/magenta/green/red, normal and bright.
-Compound report sections take the type of their first typed account.
-Also fixed: negative bars in horizontal (category) SVG charts were not drawn (a sign error), and their x tick labels are now thinned.
-
-Compound reports' accounts, as done: Panel's BarLayout is replaced by each series' `seStack`; bars of one stack are stacked
-(positive above zero, negative below), stacks are side by side. Compound charts put each section's accounts in its own stack
-(at most `maxSectionSeries` = 5 per section, ie 4 tints + other), with the net as a mark (flows) or line (stocks).
-In text, several stacks give a row per stack (showing its sum) plus a net mark row. End balances are stacked bars too in compound charts (no longer lines).
-
-Vertical category bars, as done: SVG category charts (single-period balance) are columns (`columnsSvg`) up to `maxColumns` (30) categories,
-else horizontal bars (`barsSvg`). Names are full account names (no indentation), shortened beyond 30 characters, angled 45° when they
-don't fit; values are shown above (or below, if negative) the bars when they fit. Vertical stacking is shared (`vstack`). Text charts stay horizontal.
-
-Stack names: panels have `pnStackLabels` (eg a compound report's section titles); text charts with several stacks show them
-as a second label column, with the net row labelled too, so each number is identified (like a balance report's rows).
-
-Signed contributions: compound charts show each section's amounts as contributions to the net total (sections that subtract from it,
-like expenses and liabilities, are negated, per the subreport's "increases total" flag). So up always adds to the net and down reduces it;
-a refund (negative expense) rises within the expenses column, and the net is visibly the sum. Prompted by a refund that looked like it
-should make the net negative. The chart values (text value column, tooltips, CSV) are these signed contributions, unlike the tables.
-Colour rule, revised: fall back to categorical colours only when all of a panel's typed accounts are of one type
-(so the type colour tells nothing) and there are more than `maxTints`; mixed-type panels keep type hues, tints repeating.
-A panel's only series, with no type, gets `NeutralColour` (secondary ink / uncoloured), eg a register's mixed-type running total.
-Register without interval: a line per account (their running totals, from `postingsReportStartBalances` with -H, so they add up
-to the historical total), at most 8 with "other", plus the overall running total in ink; one account or --average: just the total.
-SVG lines are thinned to at most 4 points per pixel column (first, lowest, highest, last): a 100k-posting register SVG went from
-286s/hundreds of MB to 44s/4.7MB. Text legends omit series with no visible segment.
-Text chart colours: with COLORTERM=truecolor, exact 24-bit colours from the shared `Hledger.Write.Chart.Palette`
-(the same as SVG's; dark variants when the terminal background is known dark, via terminalIsLight); otherwise basic ANSI colours,
-whose shades depend on the terminal theme (eg a Ghostty theme's olive "green"). Negative values stay ANSI red, like hledger's other output.
-Compound sections also get an account type from their query (eg `Type [Revenue]`), which accounts without a type inherit;
-"..." accounts (depth 0) are labelled with the section title. Net marks in SVG are 1.5px ink lines, with no surface ring (2026-10-16).
-Fixed scale (2026-10-16): `--chart=[KIND][,SCALE...]`, comma-separated parts (an optional kind first, then amounts;
-so no digit group marks), so successive charts can be compared. SCALE is the amount the chart spans (`pnScale`, set by
-`setChartScales`, per commodity, with a bare number for the rest), shared between directions by `scaleSpans`: negatives get what
-they need, positives the rest, both shrunk proportionally if they don't fit. A per-direction maximum was tried first, but one small
-negative value then halved the resolution and changed the scale between otherwise similar charts. Text bars beyond it end with
-`▸`/`◂` (`>`/`<`); SVG bars are clamped with a small ink triangle beyond the edge (and an unrounded end), lines are clipped
-with a clipPath (only emitted with a fixed scale), ticks are the nice ticks within the exact range.
-Diverging compound charts (2026-10-16): staggered sections (side by side in SVG, a row per section in text) were replaced
-by one diverging bar per period, all sections stacked (positive contributions above/right, negative below/left).
-The stagger had served (a) to give each section's number its own line in text, and (b) to show contrabalances clearly.
-Instead: (a) text rows show the net, and each side's sum at that end of the bar, with a header line naming the sections on each
-side (`pnSideNames`), and the net as a `┃` over the bar. The side figures are section totals as the tables show them (normal-positive,
-contra amounts included, eg expenses -1700 in a refund month), not the bar extents, so every number matches the table;
-(b) each series has its section's usual sign (`seSign`); contra amounts (`isContra`) are drawn nearest the axis (so a refund
-continues its section's run across zero), with `╱` (`/`) in text and a surface-coloured hatch over their colour in SVG,
-with a legend entry. The side-by-side stack support was removed, then restored as an option, `--chart=grouped` (and `diverging`,
-the default): series have a group (`seGroup`, the section) and panels group names (`pnGroupNames`) and a `pnLayout` (`BarLayout`),
-set from --chart's KIND by `setChartLayout`; kinds that don't apply (eg grouped for bal) are ignored. In the grouped text layout,
-section rows show section totals as the tables do, like the diverging end figures; the net row is a row with only a mark.
-Grouped charts show sections normal-signed (setChartLayout re-signs the data, so csv/json match), so that bars side by side
-can be compared by height (the first grouped version kept contributions' signs, putting expenses below zero beside revenues above).
-Default layout: `auto` lets the adapter choose (`pnLayout`): grouped for changes (is: the familiar income-vs-expenses comparison,
-matching the tables' signs), diverging for end balances (bs: the familiar net worth chart, assets above and liabilities below).
-setChartLayout takes a Maybe (an explicit KIND), is applied by writeChart before rendering or showing data, and is idempotent.
-Contra marking was considered for `bal` (from account types' normal signs) but not done: bal shows raw amounts, in its table too.
-activity reimplemented (2026-10-16): it now runs `balance --count --chart`, weekly unless an interval is given, showing each
-account's counts stacked (`-0` for just the total, mentioned in its manual), and accepting -w and -O/-o (txt, svg, html, csv, tsv, json).
-Its old `*` rows output is gone. Like it, count charts (`pnCounts`, from --count) draw at most one text cell per unit,
-so small counts aren't magnified (still scaled down to fit; a fixed scale overrides). Considered for all charts but rejected:
-amounts' units are arbitrary (eg 0.5 BTC would be half a cell). `balance --count` reports are now titled "Posting counts" (they said "Balance changes").
-Stable colours (2026-10-16): colours and text fill characters are chosen by account name, not position (`stableSlots`): each name has
-its own hashed order of preference among the slots (8 categorical colours, 4 tints, 4 fill characters), and names choose largest first,
-so removing the largest account (the usual drill-down) disturbs only accounts it had displaced, and -S changes nothing.
-To keep colours when accounts are removed, the scheme no longer depends on counts: single-type (or untyped) panels always use
-categorical colours (previously type tints up to 4 accounts), mixed-type panels type hues with tints; a lone account keeps its colour
-(only a lone non-account series, `lbAccount` False, eg a total, is neutral); a register of one account labels its line with the account.
-Dropped automatic date grouping (2026-10-16): text charts of registers no longer switch to a row per day/week/month/.. beyond 50 rows,
-since that heuristic was hard to predict and understand; they always have a row per posting (or transaction). Use a report interval
-(register -M, or balance -M -H for an account's balance) for a row per period.
-
-## Open questions
-
-- Chart variant names for `--chart=KIND`, when needed.
-- Whether `--chart` should become the default for html output, once proven.
+- Phase 4: SVG charts on hledger-web's report pages (could eventually replace the flot register chart); a chart toggle in hledger-ui.
+- Phase 5: more KINDs (eg line, hbar); budget (goal marks), prices, roi, holdings; a sparkline column for tables; `--view`; Vega-Lite.
+- Loose ends: dark-mode SVG unchecked in a browser; Commands/*.md flags blocks need `./Shake cmddocs`;
+  new strings untranslated ("contra" is hard-coded in the renderers); charts.md at release.
+- Open: whether html output should include the chart by default, once proven.
