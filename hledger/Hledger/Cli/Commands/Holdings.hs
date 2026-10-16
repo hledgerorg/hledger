@@ -7,6 +7,9 @@ Currently it shows the Date, Age, Units, Unit/Avg cost, Price, Cost,
 Value, Weight, UGain, UGain%, RGain and XIRR columns, one row per
 account (or lot subaccount, with --lots) and held commodity.
 
+The report computation (holdingsReport) is exported for reuse by other
+UIs; the holdings command renders it in the usual output formats.
+
 -}
 
 {-# LANGUAGE OverloadedStrings #-}
@@ -16,6 +19,13 @@ account (or lot subaccount, with --lots) and held commodity.
 module Hledger.Cli.Commands.Holdings (
   holdingsmode
  ,holdings
+ ,HoldingsReport(..)
+ ,HoldingsReportOpts(..)
+ ,HoldingsTotals(..)
+ ,Holding(..)
+ ,holdingsReport
+ ,showage
+ ,showPercentWith
 ) where
 
 import Control.Applicative ((<|>))
@@ -151,42 +161,80 @@ showage d
   | d >= 365  = T.pack (show (roundTo 1 (fromIntegral d / 365))) <> "y"
   | otherwise = T.pack (show d) <> "d"
 
--- | Show the holdings report: the assets held in lot-tracked accounts
--- as of the report end date, one row per account (or per lot, with --lots).
+-- | Show a percentage (eg for the Weight, UGain% and XIRR columns) as a
+-- "%" commodity amount, using the given styles' display style for the
+-- "%" commodity (eg from a commodity directive or -c, or
+-- holdingsReport's default): eg 64.3%.
+showPercentWith :: M.Map CommoditySymbol AmountStyle -> Quantity -> T.Text
+showPercentWith styles p =
+  T.pack $ showAmountWith noCostFmt{displayZeroCommodity=True} $
+  styleAmounts styles nullamt{acommodity="%", aquantity=p}
+
+-- | Options for the holdings report, besides the usual ReportSpec.
+data HoldingsReportOpts = HoldingsReportOpts {
+   hroLots     :: Bool      -- ^ show each lot (one row per lot subaccount) rather than aggregating them per account, like --lots
+  ,hroRounding :: Rounding  -- ^ how much rounding or padding to apply to displayed amounts, like --round
+  }
+
+-- | The grand totals of a holdings report, summed over its topmost
+-- displayed rows (which include everything below them) - except RGain
+-- and XIRR, which cover all the lots within the query and end date,
+-- including fully disposed lots, commodities and accounts, which have
+-- no row unless -E is used; so the totals are the same in list or tree
+-- mode, with or without --lots or -E (#2769). Absent components
+-- (Nothing or empty) are shown as blank cells.
+-- Units, and the average cost per unit, are present only when the
+-- holdings are all in one commodity (a multi-commodity total would
+-- widen the column for everyone, and a multi-commodity average is
+-- not meaningful); the average also needs a single cost commodity.
+-- Value and gains are absent unless all holdings have a market price.
+data HoldingsTotals = HoldingsTotals {
+   htUnits    :: Maybe Amount    -- ^ total units held, when all in one commodity
+  ,htAvgCost  :: Maybe Amount    -- ^ their average unit cost, when also in one cost commodity
+  ,htCost     :: [Amount]        -- ^ total cost basis, per cost commodity
+  ,htValue    :: Maybe [Amount]  -- ^ total market value, per value commodity
+  ,htWeight   :: Maybe Quantity  -- ^ percent of the portfolio's value, unrounded
+  ,htUgain    :: Maybe [Amount]  -- ^ total unrealised gain, when values and costs are comparable
+  ,htUgainPct :: Maybe Quantity  -- ^ total unrealised gain percent, unrounded
+  ,htRgain    :: [Amount]        -- ^ total realised gain, per cost commodity
+  ,htXirr     :: Maybe Double    -- ^ the portfolio's annualised internal rate of return percent
+  }
+
+-- | A computed holdings report: the display lines and totals shown by
+-- the holdings command, renderable by any UI.
+data HoldingsReport = HoldingsReport {
+   hrDate            :: Day     -- ^ the date holdings are shown at: the day before the (exclusive) report end date if specified, otherwise today
+  ,hrRows            :: [(PeriodicReportRow DisplayName MixedAmount, Holding)]
+     -- ^ the display lines in display order: each holding, paired with the
+     --   report row it belongs to for rendering the account cell (a row
+     --   holding several commodities repeats on several lines)
+  ,hrTotals          :: HoldingsTotals  -- ^ the grand totals row's components
+  ,hrUnitCostHeading :: T.Text  -- ^ what the unit cost column shows: "Unit cost", "Avg cost", or "Unit/Avg cost"
+  ,hrStyles          :: M.Map CommoditySymbol AmountStyle
+     -- ^ the journal's display styles with hroRounding applied, plus a
+     --   style for the "%" commodity, for showing the percent columns
+     --   (see showPercentWith)
+  }
+
+-- | Compute the holdings report: the assets held in lot-tracked accounts
+-- as of the report end date, one row per account (or per lot, with
+-- hroLots) and held commodity, plus grand totals.
 --
--- This command receives the journal with lot detail (lot subaccounts and
--- synthetic postings) uncollapsed, regardless of --lots
--- (see maybeCollapseLotDetail); it aggregates lots itself.
-holdings :: CliOpts -> Journal -> IO ()
-holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q, _rsReportOpts=ropts}} j = do
-  if (case mvalue of Just (AtThen _) -> True; _ -> False)
-  then error' "holdings: --value=then is not supported"
-  else rounding `seq`  -- validate the --round value before any output
-    writeOutputLazyText opts $ case outputFormatFromOpts opts of
-      "txt"  -> txtoutput
-      "csv"  -> printCSV csvoutput
-      "tsv"  -> printTSV csvoutput
-      "html" -> (<>"\n") $ htmlAsLazyText $ titledTableHtml title htmltable
-      "fods" -> printFods IO.localeEncoding $ M.singleton "Holdings" ((1,0), fodstable)
-      "json" -> (<>"\n") $ toJsonText $ map holdingJson holdingrecords
-      fmt    -> error' $ unsupportedOutputFormatError fmt
+-- The journal must have its lot detail (lot subaccounts and synthetic
+-- postings) uncollapsed, as the holdings command receives it
+-- (see maybeCollapseLotDetail); this report aggregates lots itself.
+-- A --value=then valuation strategy is not supported; callers reject it.
+holdingsReport :: HoldingsReportOpts -> ReportSpec -> Journal -> HoldingsReport
+holdingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
+               rspec@ReportSpec{_rsQuery=q, _rsReportOpts=ropts} j =
+  HoldingsReport
+    { hrDate            = reportdate
+    , hrRows            = rowlines
+    , hrTotals          = totals
+    , hrUnitCostHeading = unitcostheading
+    , hrStyles          = pctstyles
+    }
   where
-    -- The default title can be customised or suppressed with --title.
-    title = effectiveTitle ropts ("Holdings on " <> showDate reportdate)
-    txtoutput =
-      (case title of
-         "" -> ""
-         t  -> TL.fromStrict t <> "\n\n")
-      <>
-      if null rows
-      then "(no holdings)\n"
-      else renderTable
-        def{tableBorders=False}
-        (textCell TopLeft)
-        (textCell TopRight)
-        (textCell TopRight)
-        tbl
-    showlots = boolopt "lots" rawopts
     tree = accountlistmode_ ropts == ALTree
 
     -- The date this report shows holdings at: the day before the (exclusive)
@@ -317,8 +365,7 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
       where parseAmt = either (const Nothing) Just . parseamount
 
     -- Amounts are displayed normalised to their commodity's display
-    -- precision by default; --round can choose another rounding strategy.
-    rounding = fromMaybe HardRounding $ roundFromRawOpts rawopts
+    -- precision by default; hroRounding can choose another rounding strategy.
     styles = journalCommodityStylesWith rounding j
 
     priceoracle = journalPriceOracle (infer_prices_ ropts) j
@@ -452,18 +499,6 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
     pctstyles = M.union styles $ M.singleton "%" $
       amountstyle{ascommodityside=R, asprecision=Precision 1, asrounding=HardRounding}
 
-    -- Show a percentage (for the Weight, UGain% and XIRR columns) as a
-    -- "%" commodity amount, using the display style of "%" (eg from a
-    -- commodity directive or -c) or the default above: eg 64.3%.
-    showpct :: Quantity -> T.Text
-    showpct p =
-      T.pack $ showAmountWith noCostFmt{displayZeroCommodity=True} $
-      styleAmounts pctstyles nullamt{acommodity="%", aquantity=p}
-
-    -- Show an XIRR percentage, like showpct: eg 12.3%.
-    showxirr :: Double -> T.Text
-    showxirr = showpct . realToFrac
-
     -- The unrealised gains implied by value and cost amounts: value minus
     -- cost per commodity, when they cover exactly the same (nonempty) set
     -- of commodities; otherwise Nothing.
@@ -590,15 +625,6 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
     rowlines :: [(PeriodicReportRow DisplayName MixedAmount, Holding)]
     rowlines = [(r, h) | r <- sortedrows, h <- rowHoldings r]
 
-    tbl = maybe id addtotalrow (map (T.intercalate ", ") <$> mtotalrowparts) $ Table
-      (Group NoLine $ map (Header . renderacct . fst) rowlines)
-      (Group NoLine $ map Header colheadings)
-      (map (map (T.intercalate ", ") . holdingCellParts . snd) rowlines)
-      where
-        addtotalrow totalrow tbl' = concatTables SingleLine tbl' $
-          Table (Group NoLine [Header ""]) (Header []) [totalrow]
-    colheadings = ["Date", "Age", "Units", unitcostheading, "Unit price", "Total cost", "Total value", "Weight", "UGain", "UGain%", "RGain", "XIRR"]
-
     -- The cost column's heading matches what's shown: "Avg cost" on rows
     -- aggregating multiple lots (the default) or when the lots shown all
     -- belong to AVERAGE/AVERAGEALL pools (whose per-lot rows show the
@@ -615,76 +641,9 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
                | (sub, c) <- M.keys lotmap ]
         allavg = not (null avgs) && and avgs
         anyavg = or avgs
-    renderacct r = renderPeriodicAcct ropts " " r
 
     rowLotCosts r = [rowCostValuer r $ multiplyAmount (aquantity a) c
                     | (a, mcb) <- lotsOf $ prrFullName r, Just c <- [cbCost =<< mcb]]
-
-    -- A holding's cells, each as a list of parts: possibly several in Cost
-    -- and RGain (when cost commodities are mixed), at most one elsewhere.
-    -- Units show a commodity symbol even when zero (for rgain-only rows).
-    holdingCellParts :: Holding -> [[T.Text]]
-    holdingCellParts h =
-      [ [maybe "" showDate (hDate h)]
-      , [maybe "" showage (hAge h)]
-      , [T.pack $ showAmountWith noCostFmt{displayZeroCommodity=True} (hUnits h)]
-      , [maybe "" showamt (hUnitCost h)]
-      , map showamt $ hPrice h
-      , map showamt $ hCost h
-      , map showamtz $ hValue h
-      , [maybe "" showpct (hWeight h)]
-      , map showamtz $ hUgain h
-      , [maybe "" showpct (hUgainPct h)]
-      , map showamt $ hRgain h
-      , [maybe "" showxirr (hXirr h)]
-      ]
-      where
-        showamt  = T.pack . showAmountWith noCostFmt
-        showamtz = T.pack . showAmountWith noCostFmt{displayZeroCommodity=True}
-
-    -- Spreadsheet-shaped tables for the html and fods output: like the
-    -- text table, but with single-line cells, an Account column heading,
-    -- and a Total: row heading. Parameterised on how to convert plain
-    -- text, and a cell's list of (possibly amount) parts, to content.
-    spreadsheetWith :: forall content. (T.Text -> content) -> (Bool -> [T.Text] -> content)
-                    -> [[Ods.Cell Ods.NumLines content]]
-    spreadsheetWith plain parts =
-      addHeaderBorders (zipWith hcell colclasses ("Account" : colheadings))
-      : [ zipWith3 bodycell [0..] colclasses
-            (plain (acctcell r) : zipWith parts amountcols (holdingCellParts h))
-        | (r, h) <- rowlines ]
-      ++ maybe [] (\tot -> addTotalBorders
-           [zipWith3 totalcell [0..] colclasses
-              (plain "Total:" : zipWith parts amountcols tot) :: [Ods.Cell () content]])
-           mtotalrowparts
-      where
-        -- per-column css classes, so the html cells can be styled
-        colclasses = ["account","date","age","units","unitcost","unitprice","totalcost","totalvalue","weight","ugain","ugainpct","rgain","xirr"]
-        -- which of the other columns' cell parts are amounts
-        amountcols = [False, False, True, True, True, True, True, False, True, False, True, False]
-        hcell cls t = plain <$> (headerCell t){Ods.cellClass = Ods.Class cls}
-        -- body cells are right-aligned, except the first two columns
-        -- (Account and Date); headings are unaffected
-        bodycell :: Ods.Lines border => Int -> T.Text -> content' -> Ods.Cell border content'
-        bodycell i cls t = (Ods.defaultCell t)
-          {Ods.cellType = if i < 2 then Ods.TypeString else Ods.TypeMixedAmount
-          ,Ods.cellClass = Ods.Class cls}
-        totalcell i cls = bodycell i (cls <> " coltotal")
-        -- indent tree-mode account names with no-break spaces
-        acctcell r = T.replicate (prrIndent r * 2) "\160" <> prrDisplayName r
-
-    -- Each commodity amount gets its own span with an "amount" class,
-    -- so eg wrapping within amounts can be prevented with css.
-    htmltable :: [[Ods.Cell Ods.NumLines Html]]
-    htmltable = spreadsheetWith toHtml partsHtml
-      where
-        partsHtml isamount parts =
-          mconcat $ intersperse (toHtml (", "::T.Text)) $
-          map (\p -> if isamount then (H.span ! A.class_ "amount") (toHtml p) else toHtml p) $
-          filter (not . T.null) parts
-
-    fodstable :: [[Ods.Cell Ods.NumLines T.Text]]
-    fodstable = spreadsheetWith id (\_ -> T.intercalate ", " . filter (not . T.null))
 
     -- Sum amounts per commodity, keeping an empty list empty
     -- (unlike amounts . mixed, which would make it a single zero).
@@ -752,60 +711,34 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
               [v] <- Just vals
               xirrOf (flowsOf acct (Just c)) v
 
-    -- Machine-readable records for the csv/tsv/json output, one per
-    -- displayed table line. No totals records.
-    holdingrecords :: [Holding]
-    holdingrecords = map snd rowlines
-
-    csvoutput :: CSV
-    csvoutput =
-      ["account","commodity","date","age","units","unitcost","unitprice","totalcost","totalvalue","weight","ugain","ugainpct","rgain","xirr"]
-      : map holdingCsv holdingrecords
-
-    -- Grand totals row (as cell parts, like rowCellParts): the Units,
-    -- Avg cost, Cost, Value and UGain columns, summed over the topmost
-    -- displayed rows (which include everything below them); and RGain and
-    -- XIRR, over all the lots within the query and end date, including
-    -- fully disposed lots, commodities and accounts, which have no row
-    -- unless -E is used. So the totals are the same in list or tree mode,
-    -- with or without --lots or -E (#2769).
-    -- Units, and the average cost per unit, are shown only when the
-    -- holdings are all in one commodity (a multi-commodity total would
-    -- widen the column for everyone, and a multi-commodity average is
-    -- not meaningful); the average also needs a single cost commodity.
-    -- Value and gains are blank unless all rows have a market price.
-    mtotalrowparts :: Maybe [[T.Text]]
-    mtotalrowparts
-      | no_total_ ropts = Nothing
-      | otherwise = Just [[], [], unitsparts, avgcostparts, [], costparts, valueparts, [weightcell], ugainparts, [ugainpctcell], rgainparts, [xirrcell]]
+    -- The grand totals, summed over the topmost displayed rows; the
+    -- RGain and XIRR components cover all the lots within the query and
+    -- end date, whatever rows are displayed (#2769; see HoldingsTotals).
+    totals :: HoldingsTotals
+    totals = HoldingsTotals
+      { htUnits    = case totunits of [u] -> Just u; _ -> Nothing
+      , htAvgCost  = case (totunits, sumAmounts totcosts) of
+          ([u], [c]) -> Just $ avgcost u c
+          _          -> Nothing
+      , htCost     = amounts $ mixed totcosts
+      , htValue    = mportfoliovalue
+      , htWeight   = weightPct =<< mportfoliovalue
+      , htUgain    = mtotgains
+      , htUgainPct = gainPct (fromMaybe [] mtotgains) totcosts
+      , htRgain    = case map (costValuerTo mportvaluecomm) $ M.elems rgainmap of
+          [] -> []
+          rs -> amounts $ mixed rs
+      , htXirr     = do
+          totvalue <- mportfoliovalue
+          [tv] <- Just totvalue
+          xirrOf (concat $ M.elems flowmap) tv
+      }
       where
         totunits = filter (not . amountLooksZero) $ sumAmounts $
                    concatMap (map fst . lotsUnder . prrFullName) toprows
-        unitsparts = case totunits of
-          [u] -> [showamt u]
-          _   -> []
-        avgcostparts = case (totunits, sumAmounts totcosts) of
-          ([u], [c]) -> [showamt $ avgcost u c]
-          _          -> []
         totcosts = [ rowCostValuer r $ multiplyAmount (aquantity a) c
                    | r <- toprows, (a, mcb) <- lotsUnder (prrFullName r), Just c <- [cbCost =<< mcb] ]
-        costparts = map showamt $ amounts $ mixed totcosts
-        (valueparts, weightcell, ugainparts, ugainpctcell) = case mportfoliovalue of
-          Nothing -> ([], "", [], "")
-          Just totvalue -> ( map showamt totvalue
-                           , maybe "" showpct $ weightPct totvalue
-                           , maybe [] (map showamtz) mtotgains
-                           , maybe "" showpct $ gainPct (fromMaybe [] mtotgains) totcosts)
-            where mtotgains = gainAmounts totvalue totcosts
-        rgainparts = case map (costValuerTo mportvaluecomm) $ M.elems rgainmap of
-          [] -> []
-          rs -> map showamt $ amounts $ mixed rs
-        xirrcell = fromMaybe "" $ do
-          totvalue <- mportfoliovalue
-          [tv] <- Just totvalue
-          showxirr <$> xirrOf (concat $ M.elems flowmap) tv
-        showamt = T.pack . showAmountWith noCostFmt
-        showamtz = T.pack . showAmountWith noCostFmt{displayZeroCommodity=True}
+        mtotgains = mportfoliovalue >>= \totvalue -> gainAmounts totvalue totcosts
 
     -- An average cost: total cost / total units, shown like other amounts
     -- in the cost commodity's display precision - but with at least 2
@@ -819,3 +752,164 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsQuery=q,
         clamp lo hi = max lo . min hi
         pdiv = case asprecision (astyle avg) of Precision n -> n; _ -> defaultMaxDisplayPrecision
         pstyle = case asprecision (astyle costa) of Precision n -> n; _ -> 2
+
+-- | Show the holdings report: the assets held in lot-tracked accounts
+-- as of the report end date, one row per account (or per lot, with --lots).
+--
+-- This command receives the journal with lot detail (lot subaccounts and
+-- synthetic postings) uncollapsed, regardless of --lots
+-- (see maybeCollapseLotDetail); holdingsReport aggregates lots itself.
+holdings :: CliOpts -> Journal -> IO ()
+holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ropts}} j = do
+  if (case value_ ropts of Just (AtThen _) -> True; _ -> False)
+  then error' "holdings: --value=then is not supported"
+  else rounding `seq`  -- validate the --round value before any output
+    writeOutputLazyText opts $ case outputFormatFromOpts opts of
+      "txt"  -> txtoutput
+      "csv"  -> printCSV csvoutput
+      "tsv"  -> printTSV csvoutput
+      "html" -> (<>"\n") $ htmlAsLazyText $ titledTableHtml title htmltable
+      "fods" -> printFods IO.localeEncoding $ M.singleton "Holdings" ((1,0), fodstable)
+      "json" -> (<>"\n") $ toJsonText $ map holdingJson holdingrecords
+      fmt    -> error' $ unsupportedOutputFormatError fmt
+  where
+    -- Amounts are displayed normalised to their commodity's display
+    -- precision by default; --round can choose another rounding strategy.
+    rounding = fromMaybe HardRounding $ roundFromRawOpts rawopts
+
+    rpt = holdingsReport
+      HoldingsReportOpts{hroLots = boolopt "lots" rawopts, hroRounding = rounding}
+      rspec j
+    rowlines = hrRows rpt
+    reportdate = hrDate rpt
+
+    -- The default title can be customised or suppressed with --title.
+    title = effectiveTitle ropts ("Holdings on " <> showDate reportdate)
+    txtoutput =
+      (case title of
+         "" -> ""
+         t  -> TL.fromStrict t <> "\n\n")
+      <>
+      if null rowlines
+      then "(no holdings)\n"
+      else renderTable
+        def{tableBorders=False}
+        (textCell TopLeft)
+        (textCell TopRight)
+        (textCell TopRight)
+        tbl
+
+    tbl = maybe id addtotalrow (map (T.intercalate ", ") <$> mtotalrowparts) $ Table
+      (Group NoLine $ map (Header . renderacct . fst) rowlines)
+      (Group NoLine $ map Header colheadings)
+      (map (map (T.intercalate ", ") . holdingCellParts . snd) rowlines)
+      where
+        addtotalrow totalrow tbl' = concatTables SingleLine tbl' $
+          Table (Group NoLine [Header ""]) (Header []) [totalrow]
+    colheadings = ["Date", "Age", "Units", hrUnitCostHeading rpt, "Unit price", "Total cost", "Total value", "Weight", "UGain", "UGain%", "RGain", "XIRR"]
+    renderacct r = renderPeriodicAcct ropts " " r
+
+    showpct = showPercentWith (hrStyles rpt)
+    -- Show an XIRR percentage, like showpct: eg 12.3%.
+    showxirr :: Double -> T.Text
+    showxirr = showpct . realToFrac
+
+    -- A holding's cells, each as a list of parts: possibly several in Cost
+    -- and RGain (when cost commodities are mixed), at most one elsewhere.
+    -- Units show a commodity symbol even when zero (for rgain-only rows).
+    holdingCellParts :: Holding -> [[T.Text]]
+    holdingCellParts h =
+      [ [maybe "" showDate (hDate h)]
+      , [maybe "" showage (hAge h)]
+      , [T.pack $ showAmountWith noCostFmt{displayZeroCommodity=True} (hUnits h)]
+      , [maybe "" showamt (hUnitCost h)]
+      , map showamt $ hPrice h
+      , map showamt $ hCost h
+      , map showamtz $ hValue h
+      , [maybe "" showpct (hWeight h)]
+      , map showamtz $ hUgain h
+      , [maybe "" showpct (hUgainPct h)]
+      , map showamt $ hRgain h
+      , [maybe "" showxirr (hXirr h)]
+      ]
+      where
+        showamt  = T.pack . showAmountWith noCostFmt
+        showamtz = T.pack . showAmountWith noCostFmt{displayZeroCommodity=True}
+
+    -- The grand totals row as cell parts, like holdingCellParts,
+    -- unless --no-total is in effect.
+    mtotalrowparts :: Maybe [[T.Text]]
+    mtotalrowparts
+      | no_total_ ropts = Nothing
+      | otherwise = Just
+          [ []
+          , []
+          , maybe [] ((:[]) . showamt) (htUnits tot)
+          , maybe [] ((:[]) . showamt) (htAvgCost tot)
+          , []
+          , map showamt (htCost tot)
+          , maybe [] (map showamt) (htValue tot)
+          , [maybe "" showpct (htWeight tot)]
+          , maybe [] (map showamtz) (htUgain tot)
+          , [maybe "" showpct (htUgainPct tot)]
+          , map showamt (htRgain tot)
+          , [maybe "" showxirr (htXirr tot)]
+          ]
+      where
+        tot = hrTotals rpt
+        showamt  = T.pack . showAmountWith noCostFmt
+        showamtz = T.pack . showAmountWith noCostFmt{displayZeroCommodity=True}
+
+    -- Spreadsheet-shaped tables for the html and fods output: like the
+    -- text table, but with single-line cells, an Account column heading,
+    -- and a Total: row heading. Parameterised on how to convert plain
+    -- text, and a cell's list of (possibly amount) parts, to content.
+    spreadsheetWith :: forall content. (T.Text -> content) -> (Bool -> [T.Text] -> content)
+                    -> [[Ods.Cell Ods.NumLines content]]
+    spreadsheetWith plain parts =
+      addHeaderBorders (zipWith hcell colclasses ("Account" : colheadings))
+      : [ zipWith3 bodycell [0..] colclasses
+            (plain (acctcell r) : zipWith parts amountcols (holdingCellParts h))
+        | (r, h) <- rowlines ]
+      ++ maybe [] (\tot -> addTotalBorders
+           [zipWith3 totalcell [0..] colclasses
+              (plain "Total:" : zipWith parts amountcols tot) :: [Ods.Cell () content]])
+           mtotalrowparts
+      where
+        -- per-column css classes, so the html cells can be styled
+        colclasses = ["account","date","age","units","unitcost","unitprice","totalcost","totalvalue","weight","ugain","ugainpct","rgain","xirr"]
+        -- which of the other columns' cell parts are amounts
+        amountcols = [False, False, True, True, True, True, True, False, True, False, True, False]
+        hcell cls t = plain <$> (headerCell t){Ods.cellClass = Ods.Class cls}
+        -- body cells are right-aligned, except the first two columns
+        -- (Account and Date); headings are unaffected
+        bodycell :: Ods.Lines border => Int -> T.Text -> content' -> Ods.Cell border content'
+        bodycell i cls t = (Ods.defaultCell t)
+          {Ods.cellType = if i < 2 then Ods.TypeString else Ods.TypeMixedAmount
+          ,Ods.cellClass = Ods.Class cls}
+        totalcell i cls = bodycell i (cls <> " coltotal")
+        -- indent tree-mode account names with no-break spaces
+        acctcell r = T.replicate (prrIndent r * 2) "\160" <> prrDisplayName r
+
+    -- Each commodity amount gets its own span with an "amount" class,
+    -- so eg wrapping within amounts can be prevented with css.
+    htmltable :: [[Ods.Cell Ods.NumLines Html]]
+    htmltable = spreadsheetWith toHtml partsHtml
+      where
+        partsHtml isamount parts =
+          mconcat $ intersperse (toHtml (", "::T.Text)) $
+          map (\p -> if isamount then (H.span ! A.class_ "amount") (toHtml p) else toHtml p) $
+          filter (not . T.null) parts
+
+    fodstable :: [[Ods.Cell Ods.NumLines T.Text]]
+    fodstable = spreadsheetWith id (\_ -> T.intercalate ", " . filter (not . T.null))
+
+    -- Machine-readable records for the csv/tsv/json output, one per
+    -- displayed table line. No totals records.
+    holdingrecords :: [Holding]
+    holdingrecords = map snd rowlines
+
+    csvoutput :: CSV
+    csvoutput =
+      ["account","commodity","date","age","units","unitcost","unitprice","totalcost","totalvalue","weight","ugain","ugainpct","rgain","xirr"]
+      : map holdingCsv holdingrecords
