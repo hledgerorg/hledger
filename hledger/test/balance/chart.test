@@ -202,11 +202,16 @@ $ hledger -f - bal --chart -w 0
 $ hledger -f - bal expenses -O svg | diff - chart.svg
 
 # ** 17. --chart with an output format that can't show charts gives an error.
-$ hledger -f - bal --chart -O html
->2 /--chart does not yet support html output/
+$ hledger -f - bal --chart -O fods
+>2 /--chart does not yet support fods output/
 >= 1
 
 # ** 18. A file name given to -O by mistake is reported as an unrecognised format, with a hint to use -o.
 $ hledger -f - bal --chart -O a.svg
 >2 /To write to a file named a.svg, use -o/
 >= 1
+
+# ** 19. With html output, --chart shows the chart (as SVG, always light, like the table) above the report's table.
+$ hledger -f - bal --chart -O html | grep -o -e '<svg' -e '<table' -e 'prefers-color-scheme' | tr -d '<'
+svg
+table

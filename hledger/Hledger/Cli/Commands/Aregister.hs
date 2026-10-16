@@ -146,7 +146,7 @@ aregister opts@CliOpts{rawopts_=rawopts,reportspec_=rspec} j = do
         fmt = outputFormatFromOpts opts
 
   if chartRequested opts
-  then writeChart opts $
+  then writeChart opts (Just $ render items') $
        accountTransactionsReportAsChart (accountTransactionsReportTitle opts (_rsQuery rspec') thisacctq) acct
          (transactionRegisterDate wd (_rsQuery rspec') thisacctq) items'
   else writeOutputLazyText opts $ render items'

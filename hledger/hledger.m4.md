@@ -7890,6 +7890,9 @@ within dates and individual commodity amounts.
 It can be customised (or overridden) by an optional `hledger.css` file in the
 same directory (there is a sample in the hledger repo).
 
+With `--chart`, commands that can show charts add one (as inline SVG) above the table
+(see [Balance charts](#balance-charts)).
+
 HTML output will be a HTML fragment, not a complete HTML document.
 It has a newline after each table row, for readability.
 Like other hledger output, for non-ascii characters it will use the system locale's text encoding

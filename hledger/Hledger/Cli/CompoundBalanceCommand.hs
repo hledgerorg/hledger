@@ -149,7 +149,7 @@ compoundBalanceCommand :: CompoundBalanceCommandSpec -> (CliOpts -> Journal -> I
 compoundBalanceCommand spec@CompoundBalanceCommandSpec{..} opts@CliOpts{reportspec_=rspec, rawopts_=rawopts} j = do
     warnIfLargeMultiPeriodReport rspec j
     if chartRequested opts
-    then writeChart opts $ compoundBalanceReportAsChart ropts' $ styleAmounts styles cbr
+    then writeChart opts (Just $ render $ styleAmounts styles cbr) $ compoundBalanceReportAsChart ropts' $ styleAmounts styles cbr
     else writeOutputLazyText opts $ render $ styleAmounts styles cbr
   where
     styles = journalCommodityStylesWith HardRounding j

@@ -1,6 +1,6 @@
 # Charts from reports - design notes and plan
 
-Status: 2026-10-16. Interface and architecture agreed (see Decisions). Phases 1 and 1b done (chart model; bal adapters and chart data output; text and SVG renderers); phase 2 (more reports, html) next.
+Status: 2026-10-16. Interface and architecture agreed (see Decisions). Phases 1, 1b and 2 done (chart model and data output; text and SVG renderers; bal, bs, bse, cf, is, aregister, register; html). Next: phase 4 (hledger-web, hledger-ui), phase 3 (multiple outputs) is deferred.
 
 ## Goal
 
@@ -336,6 +336,12 @@ Phases, each a separately useful, committable step:
 
 - No interval: the running total (or average) after each posting, as a line by posting date (like aregister).
 - With an interval: each (depth-clipped) account's amount per period as stacked bars, limited to 8 series, with the period total as a marker; period labels as in bal -M.
+
+2026-10-16, phase 2 step 4, html:
+
+- `--chart -O html` puts the chart (inline SVG) above the report's normal html table, for all chart-capable commands. `writeChart` takes the report's html (lazily, so it's only made for html output).
+- The embedded SVG omits the dark variant, since hledger's html output is always light (`chartAsSvgWith False`). hledger-web can choose.
+- The chart's title duplicates the table's heading; acceptable for now.
 
 ## Open questions
 

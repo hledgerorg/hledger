@@ -459,8 +459,12 @@ balanceChart opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
     _ | interval_ ropts /= NoInterval -> do
       warnIfLargeMultiPeriodReport rspec j
       let report = styleAmounts styles $ multiBalanceReport rspec j
-      writeChart opts $ multiBalanceReportAsChart ropts (multiBalanceReportTitle ropts report) report
-    _ -> writeChart opts $ balanceReportAsChart ropts (effectiveTitle ropts "") $ styleAmounts styles $ balanceReport rspec j
+      writeChart opts (Just $ (<>"\n") $ htmlAsLazyText $ multiBalanceReportAsHtml ropts report) $
+        multiBalanceReportAsChart ropts (multiBalanceReportTitle ropts report) report
+    _ -> do
+      let report = styleAmounts styles $ balanceReport rspec j
+      writeChart opts (Just $ (<>"\n") $ htmlAsLazyText $ balanceReportAsHtml ropts report) $
+        balanceReportAsChart ropts (effectiveTitle ropts "") report
   where
     ropts  = _rsReportOpts rspec
     styles = journalCommodityStylesWith HardRounding j

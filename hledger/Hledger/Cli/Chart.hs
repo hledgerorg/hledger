@@ -46,7 +46,7 @@ import Hledger.Cli.CliOptions (CliOpts(..), outputFormatFromOpts, outputFormats)
 import Hledger.Cli.Utils (unsupportedOutputFormatError, writeOutputLazyText)
 import Hledger.Utils.I18n qualified as I18n
 import Hledger.Write.Chart
-import Hledger.Write.Chart.Svg (chartAsSvg)
+import Hledger.Write.Chart.Svg (chartAsSvg, chartAsSvgWith)
 import Hledger.Write.Chart.Text
 import Hledger.Write.Csv (printCSV, printTSV)
 
@@ -58,7 +58,7 @@ chartKinds = ["auto"]
 -- | The --chart[=KIND] option, for commands that can show a chart.
 chartFlag :: Flag RawOpts
 chartFlag = flagOpt "auto" ["chart"] setchart "KIND"
-  "show a chart instead of the report table (with txt output), or the chart's data (with csv, tsv or json output). svg output always shows a chart. KIND can be: auto (the default)."
+  "show a chart instead of the report table (with txt output), a chart above the table (with html output), or the chart's data (with csv, tsv or json output). svg output always shows a chart. KIND can be: auto (the default)."
   where
     setchart s opts
       | s `elem` chartKinds = Right $ setopt "chart" s opts
@@ -95,17 +95,21 @@ chartAsTextForOpts CliOpts{width_, available_width_, reportspec_} chart = do
     maxPanels = 8 :: Int
 
 -- | Write a chart in the output format and to the destination selected by the command line options:
--- as text (txt), as an SVG image (svg), or as the chart's data (csv, tsv, json).
+-- as text (txt), as an SVG image (svg), as the chart's data (csv, tsv, json),
+-- or as an SVG image above the report's html, if that is provided (html).
 -- Other formats give an error (before the chart is computed).
-writeChart :: CliOpts -> Chart -> IO ()
-writeChart opts chart = do
+writeChart :: CliOpts -> Maybe TL.Text -> Chart -> IO ()
+writeChart opts mreporthtml chart = do
   render <- case fmt of
     "txt"  -> return $ chartAsTextForOpts opts
     "svg"  -> return $ return . chartAsSvg
+    "html" | Just reporthtml <- mreporthtml ->
+      -- without the dark variant, since our html is always light
+      return $ \c -> return $ chartAsSvgWith False c <> reporthtml
     "csv"  -> return $ return . printCSV . chartAsCsv
     "tsv"  -> return $ return . printTSV . chartAsCsv
     "json" -> return $ return . (<>"\n") . toJsonText
-    _ | fmt `elem` outputFormats -> error' $ "--chart does not yet support " ++ fmt ++ " output; try txt, svg, csv, tsv or json"  -- PARTIAL:
+    _ | fmt `elem` outputFormats -> error' $ "--chart does not yet support " ++ fmt ++ " output; try txt, svg, html, csv, tsv or json"  -- PARTIAL:
       | otherwise -> error' $ unsupportedOutputFormatError fmt  -- PARTIAL:
   render chart >>= writeOutputLazyText opts
   where

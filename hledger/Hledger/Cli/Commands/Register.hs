@@ -99,7 +99,8 @@ register opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j
                               ,styleAmounts styles p
                               ,styleAmounts styles nullmixedamt)
   -- chart
-  | chartRequested opts = writeChart opts $ postingsReportAsChart (_rsReportOpts rspec) (effectiveTitle (_rsReportOpts rspec) "") $ styleAmounts styles rpt
+  | chartRequested opts = writeChart opts (Just $ render $ styleAmounts styles rpt) $
+      postingsReportAsChart (_rsReportOpts rspec) (effectiveTitle (_rsReportOpts rspec) "") $ styleAmounts styles rpt
   -- normal register report, list postings
   | otherwise = writeOutputLazyText opts $ render $ styleAmounts styles rpt
   where

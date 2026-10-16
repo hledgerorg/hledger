@@ -1040,6 +1040,8 @@ The total is omitted with `-N` or `--percent`.
 With [SVG output](#svg-output) (`-o FILE.svg` or `-O svg`), `balance` always shows a chart, as a graphical image;
 time runs along the x axis, and end balances are drawn as lines.
 
+With [HTML output](#html-output), `--chart` shows the chart (as SVG) above the report's table.
+
 With `-O csv`, `-O tsv` or `-O json`, `--chart` shows the chart's data, eg to inspect it or chart it with other tools.
 
 The compound balance commands ([`balancesheet`](#balancesheet), [`balancesheetequity`](#balancesheetequity),

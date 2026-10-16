@@ -18,6 +18,7 @@ Coordinates are rounded to one decimal place, so the output is deterministic.
 
 module Hledger.Write.Chart.Svg (
   chartAsSvg,
+  chartAsSvgWith,
   chartSvgMarkup,
   tests_Hledger_Write_Chart_Svg,
 ) where
@@ -47,13 +48,19 @@ import Hledger.Utils.Test
 import Hledger.Write.Chart
 
 
--- | Render a chart as a complete SVG document.
+-- | Render a chart as a complete SVG document, with a dark variant for viewers preferring a dark colour scheme.
 chartAsSvg :: Chart -> TL.Text
-chartAsSvg = (<> "\n") . TL.replace "><" ">\n<" . renderSvg . chartSvgMarkup  -- one element per line, for readability
+chartAsSvg = chartAsSvgWith True
 
--- | A chart as SVG markup, which can also be embedded in HTML.
-chartSvgMarkup :: Chart -> Svg
-chartSvgMarkup Chart{chTitle, chXAxis, chPanels} =
+-- | Render a chart as SVG, with or without the dark variant
+-- (eg without, when embedding it in a page that is always light).
+-- It has one element per line, for readability.
+chartAsSvgWith :: Bool -> Chart -> TL.Text
+chartAsSvgWith dark = (<> "\n") . TL.replace "><" ">\n<" . renderSvg . chartSvgMarkup dark
+
+-- | A chart as SVG markup, which can also be embedded in HTML; with or without the dark variant.
+chartSvgMarkup :: Bool -> Chart -> Svg
+chartSvgMarkup dark Chart{chTitle, chXAxis, chPanels} =
   S.svg
     ! customAttribute "xmlns" "http://www.w3.org/2000/svg"
     ! A.class_ "hledger-chart"
@@ -64,7 +71,7 @@ chartSvgMarkup Chart{chTitle, chXAxis, chPanels} =
     !? (not $ T.null chTitle, customAttribute "aria-label" (toValue chTitle))
     $ do
       unless (T.null chTitle) $ S.title (S.toMarkup chTitle)
-      S.style (S.toMarkup stylesheet)
+      S.style (S.toMarkup $ stylesheet dark)
       S.rect ! A.class_ "bg" ! A.width "100%" ! A.height "100%"
       unless (T.null chTitle) $
         S.text_ ! A.class_ "title" ! A.x (toValue $ num pad) ! A.y (toValue $ num (pad + 14)) $ S.toMarkup chTitle
@@ -414,8 +421,8 @@ runs ms = case dropWhile isNothing ms of
 -- with a dark variant used when the viewer prefers a dark colour scheme.
 -- Colours are written literally in each rule (rather than as CSS custom properties),
 -- since some SVG renderers (eg librsvg, used by many image viewers) don't support those.
-stylesheet :: Text
-stylesheet = T.unlines $
+stylesheet :: Bool -> Text
+stylesheet dark = T.unlines $
   [ ".hledger-chart{font-family:system-ui,-apple-system,\"Segoe UI\",sans-serif;font-size:12px}"
   , ".hledger-chart .title{font-size:14px;font-weight:600}"
   , ".hledger-chart .heading{font-size:13px;font-weight:600}"
@@ -426,7 +433,7 @@ stylesheet = T.unlines $
   , ".hledger-chart .hit{fill:transparent}"
   ]
   ++ colourRules lightcolours
-  ++ ["@media (prefers-color-scheme:dark){"] ++ colourRules darkcolours ++ ["}"]
+  ++ (if dark then ["@media (prefers-color-scheme:dark){"] ++ colourRules darkcolours ++ ["}"] else [])
   where
     colourRules cs =
       [ ".hledger-chart " <> sel <> "{" <> prop <> ":" <> colour <> "}"
