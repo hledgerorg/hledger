@@ -312,3 +312,13 @@ $ hledger -f - bal -M assets liabilities --chart -O csv
 "","liabilities:l2","item","bar","Jan","-2"
 "","other (4 accounts)","other","bar","Jan","100"
 "","Total","total","marker","Jan","447"
+
+# ** 28. A chart with nothing to show, eg of an empty period, says so.
+$ hledger -f - bal -M -p 2099 --chart
+Balance changes in 2099:
+
+No data
+
+# ** 29. Likewise in SVG.
+$ hledger -f - bal -M -p 2099 -O svg | sed -n 's/.*class="label".*>\(.*\)<.*/\1/p'
+No data

@@ -108,9 +108,10 @@ styledLinesAsText mode = TL.fromChunks . concatMap (\l -> map piece l ++ ["\n"])
 -- with a heading naming its commodity when there are several (and it has a commodity symbol),
 -- and a legend when it has several series (listing those that are visible: a series too small to fill a character cell is not).
 -- A chart of dates (eg a register) has a row per date, however many there are.
+-- A chart with no panels (nothing to show, eg in an empty period) says so.
 chartAsStyledLines :: TextChartOpts -> Chart -> [StyledLine]
 chartAsStyledLines opts Chart{chTitle, chXAxis, chPanels} =
-  titlelines ++ concatMap (\(i, p) -> [[] | i > 0] ++ panelLines opts chXAxis (length chPanels > 1) p) (zip [0 :: Int ..] chPanels)
+  titlelines ++ [[(StylePlain, "No data")] | null chPanels] ++ concatMap (\(i, p) -> [[] | i > 0] ++ panelLines opts chXAxis (length chPanels > 1) p) (zip [0 :: Int ..] chPanels)
   where
     titlelines = if T.null chTitle then [] else [[(StylePlain, chTitle)], []]
 

@@ -145,5 +145,5 @@ Count charts (`pnCounts`) instead cap text at one cell per unit when no SCALE is
 - Phase 4: SVG charts on hledger-web's report pages (could eventually replace the flot register chart); a chart toggle in hledger-ui.
 - Phase 5: more KINDs (eg line, hbar); budget (goal marks), prices, roi, holdings; a sparkline column for tables; `--view`; Vega-Lite.
 - Loose ends: dark-mode SVG unchecked in a browser; Commands/*.md flags blocks need `./Shake cmddocs`;
-  new strings untranslated ("contra" is hard-coded in the renderers); charts.md at release.
+  new strings untranslated ("contra" and "No data" are hard-coded in the renderers); charts.md at release.
 - Open: whether html output should include the chart by default, once proven.

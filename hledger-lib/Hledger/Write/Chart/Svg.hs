@@ -83,10 +83,13 @@ chartSvgMarkup dark Chart{chTitle, chXAxis, chPanels} =
       unless (T.null chTitle) $
         S.text_ ! A.class_ "title" ! A.x (toValue $ num pad) ! A.y (toValue $ num (pad + 14)) $ S.toMarkup chTitle
       sequence_ panelmarkups
+      when (null chPanels) $
+        S.text_ ! A.class_ "label" ! A.x (toValue $ num pad) ! A.y (toValue $ num (pad + titleheight + 14)) $ "No data"
   where
     titleheight = if T.null chTitle then 0 else 32
     showheadings = length chPanels > 1
-    (totalheight, panelmarkups) = foldl stackPanel (pad + titleheight, []) chPanels
+    (panelsbottom, panelmarkups) = foldl stackPanel (pad + titleheight, []) chPanels
+    totalheight = if null chPanels then panelsbottom + 14 + pad else panelsbottom
     stackPanel (top, ms) p =
       let (h, m) = panelSvg chXAxis showheadings top p
       in (top + h + panelGap, ms ++ [m])
