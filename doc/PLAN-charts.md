@@ -1,6 +1,6 @@
 # Charts from reports - design notes and plan
 
-Status: draft, 2026-10-15. Interface and architecture agreed (see Decisions). Nothing implemented yet.
+Status: 2026-10-16. Interface and architecture agreed (see Decisions). Phase 1 steps 1-2 done (chart model; bal adapters and chart data output); step 3 (text renderer) next.
 
 ## Goal
 
@@ -290,6 +290,13 @@ Phases, each a separately useful, committable step:
   So the chart model needs a tabular rendering too; this doubles as a way to inspect what a chart shows.
 - Deferred: repeatable `-o` (multiple outputs); reimplementing activity on the new renderer; hledger-bar's future.
 - register/aregister text charts without an interval: try both one row per transaction and an automatic interval when we get there.
+
+2026-10-16, after reviewing chart data on sample, bcexample and large generated journals:
+
+- Panels are ordered by the number of non-zero report cells in each commodity (cells, not amounts, since a cell can hold several cost-keyed amounts of one commodity).
+- No cap on the number of panels; instead, visual outputs (text, SVG) warn on stderr above a threshold, suggesting `-X` or `cur:`. To do in step 3.
+- Chart data CSV is long ("tidy") form: commodity, series, role, mark, x, value.
+- The net-total marker is kept even when all series have one sign.
 
 ## Open questions
 

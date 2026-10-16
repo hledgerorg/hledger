@@ -1,0 +1,128 @@
+# * balance command --chart flag, showing chart data with -O csv/tsv
+
+<
+2024-01-01
+    expenses:food            10
+    assets:cash
+
+2024-01-15
+    expenses:food:dining      5
+    assets:cash
+
+2024-02-01
+    expenses:rent           100
+    assets:cash
+
+# ** 1. Period changes are stacked bars, with the net total as a marker.
+$ hledger -f - bal -M expenses --chart -O csv
+"commodity","series","role","mark","x","value"
+"","expenses:food","item","bar","Jan","10"
+"","expenses:food","item","bar","Feb","0"
+"","expenses:food:dining","item","bar","Jan","5"
+"","expenses:food:dining","item","bar","Feb","0"
+"","expenses:rent","item","bar","Jan","0"
+"","expenses:rent","item","bar","Feb","100"
+"","Total","total","marker","Jan","15"
+"","Total","total","marker","Feb","100"
+
+# ** 2. In tree mode, each account's own amounts are charted, so nothing is counted twice
+# (expenses:food is 10, not 15; expenses, with no amounts of its own, is omitted).
+$ hledger -f - bal -M expenses --tree --chart -O csv
+"commodity","series","role","mark","x","value"
+"","expenses:food","item","bar","Jan","10"
+"","expenses:food","item","bar","Feb","0"
+"","expenses:food:dining","item","bar","Jan","5"
+"","expenses:food:dining","item","bar","Feb","0"
+"","expenses:rent","item","bar","Jan","0"
+"","expenses:rent","item","bar","Feb","100"
+"","Total","total","marker","Jan","15"
+"","Total","total","marker","Feb","100"
+
+# ** 3. End balances are lines, labelled by period end date. A single series has no total.
+$ hledger -f - bal -M -H assets --chart -O csv
+"commodity","series","role","mark","x","value"
+"","assets:cash","item","line","2024-01-31","-15"
+"","assets:cash","item","line","2024-02-29","-115"
+
+# ** 4. -N omits the total.
+$ hledger -f - bal -M expenses -N --chart -O csv
+"commodity","series","role","mark","x","value"
+"","expenses:food","item","bar","Jan","10"
+"","expenses:food","item","bar","Feb","0"
+"","expenses:food:dining","item","bar","Jan","5"
+"","expenses:food:dining","item","bar","Feb","0"
+"","expenses:rent","item","bar","Jan","0"
+"","expenses:rent","item","bar","Feb","100"
+
+# ** 5. Only chart kinds that exist are accepted.
+$ hledger -f - bal --chart=nosuchkind
+>2 /--chart's KIND should be one of: auto/
+>= 1
+
+<
+2024-01-01
+    a    1
+    b    2
+    c    3
+    d    4
+    e    5
+    f    6
+    g    7
+    h    8
+    i    9
+    j   10
+    k  -55
+
+2024-01-02
+    x    5 EUR
+    y   -5 EUR
+
+2024-02-02
+    x    3 EUR
+    y   -3 EUR
+
+# ** 6. There is one panel per commodity, the one in most report cells first.
+# Beyond 8 series, the smallest are combined into "other".
+$ hledger -f - bal -M --chart -O csv
+"commodity","series","role","mark","x","value"
+"","e","item","bar","Jan","5"
+"","e","item","bar","Feb","0"
+"","f","item","bar","Jan","6"
+"","f","item","bar","Feb","0"
+"","g","item","bar","Jan","7"
+"","g","item","bar","Feb","0"
+"","h","item","bar","Jan","8"
+"","h","item","bar","Feb","0"
+"","i","item","bar","Jan","9"
+"","i","item","bar","Feb","0"
+"","j","item","bar","Jan","10"
+"","j","item","bar","Feb","0"
+"","k","item","bar","Jan","-55"
+"","k","item","bar","Feb","0"
+"","other (4 accounts)","other","bar","Jan","10"
+"","other (4 accounts)","other","bar","Feb","0"
+"","Total","total","marker","Jan","0"
+"","Total","total","marker","Feb","0"
+"EUR","x","item","bar","Jan","5"
+"EUR","x","item","bar","Feb","3"
+"EUR","y","item","bar","Jan","-5"
+"EUR","y","item","bar","Feb","-3"
+"EUR","Total","total","marker","Jan","0"
+"EUR","Total","total","marker","Feb","0"
+
+# ** 7. A single-period report charts one bar per account.
+# An account with no amount in a panel's commodity has no value there.
+$ hledger -f - bal x a --chart -O csv
+"commodity","series","role","mark","x","value"
+"","Balance","item","bar","a","1"
+"","Balance","item","bar","x",""
+"EUR","Balance","item","bar","a",""
+"EUR","Balance","item","bar","x","8"
+
+# ** 8. TSV works too.
+$ hledger -f - bal x a --chart -O tsv
+commodity	series	role	mark	x	value
+	Balance	item	bar	a	1
+	Balance	item	bar	x	
+EUR	Balance	item	bar	a	
+EUR	Balance	item	bar	x	8

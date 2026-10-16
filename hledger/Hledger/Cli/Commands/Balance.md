@@ -1005,6 +1005,32 @@ E.g. if your `hledger-web` server is reachable at `http://localhost:5000`
 then you might run the `balance` command with the extra option `--base-url=http://localhost:5000`.
 You can also produce relative links, like `--base-url="some/path"` or `--base-url=""`.)
 
+### Balance charts
+
+With `--chart`, `balance` makes a chart of the report instead of a table, choosing a useful kind of chart automatically.
+(Chart drawing is under construction; currently `--chart` works only with `-O csv`, `-O tsv` or `-O json`,
+which show the chart's data.)
+
+- A multi-period report of balance changes is charted as stacked bars per period, with the net total as a marker.
+- A multi-period report of end balances (`--cumulative`, `-H`) is charted as lines, with the total as a line.
+- A single-period report is charted as one bar per account.
+
+There is one chart panel per commodity. You can reduce this by converting to one commodity (eg `-X USD`) or selecting some (eg `cur:USD`).
+In tree mode, each account's own amounts are charted, excluding its subaccounts', so that nothing is counted twice.
+At most 8 accounts are shown per panel; the smallest are combined into an "other" series.
+The total is omitted with `-N` or `--percent`.
+
+The chart data has one record per value, with fields:
+commodity, series (usually an account name), role (`item`, `other` or `total`), mark (`bar`, `line` or `marker`),
+x (a period heading, period end date, or account name), and value. Eg:
+
+```cli
+$ hledger -f examples/sample.journal bal -M expenses -N --chart -O csv
+"commodity","series","role","mark","x","value"
+"$","expenses:food","item","bar","Jan","0"
+"$","expenses:food","item","bar","Feb","0"
+...
+```
 
 ### Some useful balance reports
 

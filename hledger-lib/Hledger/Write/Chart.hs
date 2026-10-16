@@ -15,6 +15,7 @@ Values are kept exact here ('Quantity'); renderers convert them to Double only f
 -}
 
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Hledger.Write.Chart (
   Chart(..),
@@ -25,15 +26,20 @@ module Hledger.Write.Chart (
   Series(..),
   SeriesRole(..),
   Mark(..),
+  chartAsCsv,
 ) where
 
 import Data.Aeson (ToJSON)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Time (Day)
 import GHC.Generics (Generic)
 
+import Hledger.Data.Amount (AmountFormat(..), machineFmt, showAmountWith)
+import Hledger.Data.Dates (showDate)
 import Hledger.Data.Json ()
-import Hledger.Data.Types (Amount, DateSpan, Quantity)
+import Hledger.Data.Types (Amount(..), DateSpan, Quantity)
+import Hledger.Write.Csv (CSV)
 
 
 -- | A chart: a title, an x axis, and one or more panels drawn against that x axis.
@@ -100,3 +106,32 @@ data Mark
   | MarkLine    -- ^ a line joining the values (in text charts, drawn as bars)
   | MarkMarker  -- ^ a marker at the value, not joined, eg a net total over stacked bars, or a budget goal
   deriving (Show, Eq, Generic, ToJSON)
+
+-- | Render a chart's data as CSV (or TSV) records, in long ("tidy") form: one record per value,
+-- with a header record. This shows exactly what the chart shows, after any combining of series,
+-- and can be charted with other tools.
+--
+-- Values are shown with the panel unit's display precision, without commodity symbol or digit group marks.
+-- A gap (no value) is shown as an empty field.
+chartAsCsv :: Chart -> CSV
+chartAsCsv Chart{chXAxis, chPanels} =
+  ["commodity", "series", "role", "mark", "x", "value"]
+  : [ [acommodity pnUnit, lbFull (seLabel s), roleName (seRole s), markName (seMark s), x, maybe "" (showValue pnUnit) mq]
+    | Panel{pnUnit, pnSeries} <- chPanels
+    , s <- pnSeries
+    , (x, mq) <- zip xlabels (seValues s)
+    ]
+  where
+    xlabels = case chXAxis of
+      XCategories ls -> map lbFull ls
+      XPeriods ps    -> map snd ps
+      XDates ds      -> map showDate ds
+    showValue unit q = T.pack $ showAmountWith machineFmt{displayCommodity=False} unit{aquantity=q}
+    roleName r = case r of
+      SeriesItem  -> "item"
+      SeriesOther -> "other"
+      SeriesTotal -> "total"
+    markName m = case m of
+      MarkBar    -> "bar"
+      MarkLine   -> "line"
+      MarkMarker -> "marker"
