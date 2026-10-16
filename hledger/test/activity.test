@@ -83,3 +83,17 @@ $ hledger -f - activity -0 -w 30
 Posting counts in 2022-W52:
 
 W52  30  █████████████████████
+
+<
+2023-01-01
+  (a)  1
+  (b)  1
+  (b)  1
+
+# ** 6. -S/--sort-amount shows the accounts with most postings first.
+$ hledger -f - activity -S -w 40
+Posting counts in 2022-W52:
+
+▒ b  ▓ a
+
+W52  3  ▒▒▓

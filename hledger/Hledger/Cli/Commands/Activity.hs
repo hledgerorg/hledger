@@ -10,6 +10,8 @@ This is a shortcut for @balance --count --chart -W@.
 module Hledger.Cli.Commands.Activity
 where
 
+import System.Console.CmdArgs.Explicit (flagNone)
+
 import Hledger
 import Hledger.Cli.Chart (chartWidthFlag)
 import Hledger.Cli.CliOptions
@@ -20,6 +22,7 @@ activitymode = hledgerCommandMode
   [ outputFormatFlag ["txt","svg","html","csv","tsv","json"]
   , outputFileFlag
   , chartWidthFlag
+  , flagNone ["sort-amount","S"] (setboolopt "sort-amount") "sort accounts by posting count, largest first"
   ]
   cligeneralflagsgroups1
   hiddenflags

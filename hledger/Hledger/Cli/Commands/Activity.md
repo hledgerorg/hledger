@@ -16,6 +16,7 @@ With query arguments, it counts only the matched postings.
 This is a shortcut for [`balance --count --chart`](#balance-charts), with a weekly interval by default,
 so it can show charts in all the same ways: eg with `-w`/`--width` to set the width,
 `-0` to show just the total count, without the accounts' detail,
+`-S`/`--sort-amount` to show the accounts with most postings first,
 or `-o FILE.svg` (or `-O svg`) for a graphical chart.
 
 Examples:
