@@ -215,3 +215,19 @@ Mar  Expenses   300                     │████████████�
      Net       -300  ┃                  │
 Apr  Expenses   300                     │███████████████████
      Net       -300  ┃                  │
+
+# ** 17. Cash flows have no usual sign, so cf doesn't show outflows as contra amounts.
+<
+2024-01-01
+    assets:bank        100
+    revenues:salary
+
+2024-02-01
+    expenses:rent       80
+    assets:bank
+
+$ hledger -f - cf -M --chart -w 40
+Monthly Cashflow Statement 2024-01-01..2024-02-29
+
+Jan  100               │████████████████
+Feb  -80  █████████████│

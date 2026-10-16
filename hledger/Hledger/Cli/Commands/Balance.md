@@ -1089,6 +1089,7 @@ Contra amounts - those with the opposite sign to their section's usual sign, lik
 or a contra account like accumulated depreciation - are drawn next to the zero line, hatched in their account's colour
 (below zero in the grouped layout, and on the other side from their section in the diverging layout).
 They are included in their section's totals.
+(Cash flows, in `cf`, have no usual sign: decreases are drawn like increases, below zero.)
 Each section shows at most five accounts, combining the smallest into "other"; use a depth limit (eg `-1` or `-2`) for less detail.
 A single-period report is charted the same way, with one period.
 The chart data has one record per value, with fields:

@@ -254,6 +254,8 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
       | lbFull l == "..." = ChartLabel t t 0 sectype True
       | otherwise         = l{lbType = lbType l <|> sectype}
       where l = accountLabel accttype $ prrName r
+    -- a section's usual sign, for showing contra amounts; cash (cf's section) has none, since it flows both ways as usual
+    usualSign (_, sectype) sign = if sectype == Just Cash then 0 else round sign
     nettotals = prrAmounts totals
     showtotal = length subreports > 1 && not no_total_ && not percent_
     -- the table's "Net:" label, without the colon
@@ -274,7 +276,7 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
           }
       where
         series = concat
-          [ [ s{seGroup = k, seSign = round sign} | s <- limitSeries maxSectionSeries translations_ MarkBar accts ]
+          [ [ s{seGroup = k, seSign = usualSign section sign} | s <- limitSeries maxSectionSeries translations_ MarkBar accts ]
           | (k, (section, sign, rows)) <- zip [0 ..] sections
           , let accts = [ (sectionAccountLabel section r, qs) | r <- rows, let qs = map ((* sign) . quantityIn c) (prrAmounts r), any (/= 0) qs ]
           ]
