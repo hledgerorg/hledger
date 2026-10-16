@@ -345,7 +345,7 @@ Phases, each a separately useful, committable step:
 
 2026-10-16, after review of phase 2 (user suggestions), in this order:
 
-1. Net/total as a line mark, not a dot or an extra bar: in SVG a short ink horizontal line (with a surface ring) across each period's bars, or a line where the sections are lines; in text a row with a `┃` at the net's position. Single-period compound reports are drawn as one period of grouped bars (no "Net" category).
+1. Net/total as a line mark, not a dot or an extra bar: in SVG a short ink horizontal line across each period's bars, or a line where the sections are lines; in text a row with a `┃` at the net's position. Single-period compound reports are drawn as one period of grouped bars (no "Net" category).
 2. Conventional colours for the five account types (validated with the dataviz skill's validator, on the adjacent pairs that co-occur): assets blue, liabilities amber, equity violet, revenues green, expenses red; accounts within a type as tints of its hue. Green/red is in the CVD warn band (needs secondary encoding: legend, positions).
 3. Compound reports chart their accounts (`-1` gives section totals): per period one stacked column per section, side by side, never stacked across sections; contra balances stack below zero within their section.
 4. SVG single-period (category) charts as vertical bars, labels angled when needed; horizontal only beyond ~30 categories.
@@ -384,7 +384,7 @@ Text chart colours: with COLORTERM=truecolor, exact 24-bit colours from the shar
 (the same as SVG's; dark variants when the terminal background is known dark, via terminalIsLight); otherwise basic ANSI colours,
 whose shades depend on the terminal theme (eg a Ghostty theme's olive "green"). Negative values stay ANSI red, like hledger's other output.
 Compound sections also get an account type from their query (eg `Type [Revenue]`), which accounts without a type inherit;
-"..." accounts (depth 0) are labelled with the section title. Net marks in SVG are 1.5px (ring 4.5px).
+"..." accounts (depth 0) are labelled with the section title. Net marks in SVG are 1.5px ink lines, with no surface ring (2026-10-16).
 
 ## Open questions
 

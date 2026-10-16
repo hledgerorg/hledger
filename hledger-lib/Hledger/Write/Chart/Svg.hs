@@ -186,7 +186,7 @@ timeSvg top unit drawn mtotal xscale = (plotHeight + 28, do
         stack lbl x [(d, q) | d <- stk, Just q <- [valueAt (dsValues d) j], q < 0] (-1)
     -- lines
     forM_ lines_ $ \d -> lineSvg (dsClass d) (dsSeries d)
-    -- the total: as a line, or as a mark (a short horizontal line, ringed with the surface colour) across each period's bars
+    -- the total: as a line, or as a mark (a thin horizontal line) across each period's bars
     forM_ mtotal $ \t ->
       if seMark t == MarkLine || null bars then lineSvg "total" t
       else let tvals = seriesValues t in
@@ -195,7 +195,6 @@ timeSvg top unit drawn mtotal xscale = (plotHeight + 28, do
               halfw = groupwidth / 2 + 4
               x1 = toValue $ num (xcenter j - halfw)
               x2 = toValue $ num (xcenter j + halfw)
-          S.line ! A.class_ "markring" ! A.x1 x1 ! A.x2 x2 ! A.y1 y ! A.y2 y
           S.line ! A.class_ "mark total" ! A.x1 x1 ! A.x2 x2 ! A.y1 y ! A.y2 y
   )
   where
@@ -547,8 +546,7 @@ stylesheet dark = T.unlines $
   , ".hledger-chart .value,.hledger-chart .tick{font-variant-numeric:tabular-nums}"
   , ".hledger-chart .grid,.hledger-chart .axis{stroke-width:1}"
   , ".hledger-chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}"
-  , ".hledger-chart .mark{stroke-width:1.5;stroke-linecap:round}"
-  , ".hledger-chart .markring{stroke-width:4.5;stroke-linecap:round}"
+  , ".hledger-chart .mark{stroke-width:1.5}"
   , ".hledger-chart .hit{fill:transparent}"
   ]
   ++ colourRules False lightcolours
@@ -567,7 +565,7 @@ stylesheet dark = T.unlines $
       [ (".bg", "fill", "surface"), (".title", "fill", "ink"), (".heading", "fill", "ink")
       , (".label", "fill", "ink2"), (".value", "fill", "ink2"), (".tick", "fill", "muted")
       , (".grid", "stroke", "grid"), (".axis", "stroke", "axis")
-      , (".line.total", "stroke", "ink"), (".mark.total", "stroke", "ink"), (".markring", "stroke", "surface")
+      , (".line.total", "stroke", "ink"), (".mark.total", "stroke", "ink")
       ]
     lightcolours :: [(Text, Text)]
     lightcolours =
