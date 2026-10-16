@@ -1022,7 +1022,7 @@ Feb  481.48 USD  ████████████████▓▓▓▓▓
 Mar  603.32 USD  ██████████████████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
 ```
 
-- A multi-period report of balance changes is charted as stacked bars per period, showing the net total as the value.
+- A multi-period report of balance changes is charted as stacked bars per period, showing the net total as the value (and in graphical charts, as a line mark).
 - A multi-period report of end balances (`--cumulative`, `-H`) is charted the same way in text (and as lines in graphical charts).
 - A single-period report is charted as one bar per account.
 
@@ -1047,8 +1047,8 @@ With `-O csv`, `-O tsv` or `-O json`, `--chart` shows the chart's data, eg to in
 The compound balance commands ([`balancesheet`](#balancesheet), [`balancesheetequity`](#balancesheetequity),
 [`cashflow`](#cashflow), [`incomestatement`](#incomestatement)) can show charts in the same ways.
 They chart the totals of their sections (eg revenues and expenses), side by side, and the net total
-(as a marker over bars, or as a line with end balances).
-A single-period report is charted as one bar per section, and one for the net total.
+(as a line mark across the bars, or as a line with end balances; in text charts, as a mark on a row of its own).
+A single-period report is charted the same way, with one period.
 The chart data has one record per value, with fields:
 commodity, series (usually an account name), role (`item`, `other` or `total`), mark (`bar`, `line` or `marker`),
 x (a period heading, period end date, or account name), and value. Eg:

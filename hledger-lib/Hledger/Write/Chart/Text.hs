@@ -2,7 +2,7 @@
 Draw a 'Chart' as text, for terminals.
 
 Every chart is drawn as horizontal bars, one row per x position (or, for grouped series, per series per x position,
-with the total as one more uncoloured bar),
+with the total as a mark on a row of its own),
 with an aligned value column before the bars. Several series in a stacked panel are drawn as stacked segments,
 positive values growing right from a zero axis and negative values growing left.
 Lines are drawn as bars too, since text has no good way to draw lines.
@@ -96,6 +96,7 @@ data Row = Row
   { rowLabel    :: Text
   , rowValue    :: Maybe Quantity
   , rowSegments :: [(Style, Char, Quantity)]
+  , rowMark     :: Maybe Quantity  -- ^ a value to mark with a vertical line (eg a net total), instead of bar segments
   }
 
 panelLines :: TextChartOpts -> XAxis -> Bool -> Panel -> [StyledLine]
@@ -109,10 +110,10 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
     mtotal = find ((== SeriesTotal) . seRole) pnSeries
     single = length drawn == 1
     styled = zipWith seriesStyle [0 ..] drawn
-    -- With several grouped series, the total is drawn as one more bar (uncoloured), after them.
+    -- With several grouped series, the total is drawn as a mark on a row of its own, after them.
     groupedtotal = case (pnBarLayout, drawn, mtotal) of
-      (Grouped, _:_:_, Just t) -> [((StylePlain, fillChar (length drawn), seriesValues t), t)]
-      _                        -> []
+      (Grouped, _:_:_, Just t) -> Just t
+      _                        -> Nothing
     seriesStyle i s = (if seRole s == SeriesOther then StyleOther else StyleSeries i, fillChar i, seriesValues s)
     mtotalvals = seriesValues <$> mtotal
     fillChar i
@@ -128,11 +129,12 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
     rows = case (pnBarLayout, drawn) of
       (Grouped, _:_:_) ->  -- several grouped series: a row for each series, with the x label on the first
         concat
-          [ [ Row (if k == 0 then lbl else "") (valueAt vals j) (segmentsAt j [ser])
-            | (k, ser@(_, _, vals)) <- zip [0 :: Int ..] (styled ++ map fst groupedtotal) ]
+          [ [ Row (if k == 0 then lbl else "") (valueAt vals j) (segmentsAt j [ser]) Nothing
+            | (k, ser@(_, _, vals)) <- zip [0 :: Int ..] styled ]
+            ++ [ Row "" (valueAt tvals j) [] (valueAt tvals j) | Just t <- [groupedtotal], let tvals = seriesValues t ]
           | (j, lbl) <- zip [0 ..] xlabels ]
       _ ->
-        [ Row lbl rowval (segmentsAt j styled)
+        [ Row lbl rowval (segmentsAt j styled) Nothing
         | (j, lbl) <- zip [0 ..] xlabels
         , let rowval = case (mtotalvals, styled) of
                 (Just tvals, _)     -> valueAt tvals j
@@ -144,7 +146,10 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
     isCategories = case xaxis of XCategories _ -> True; _ -> False
 
     legend
-      | length drawn > 1 = wrapLegend [ [(st, T.singleton c), (StylePlain, " " <> lbFull (seLabel s))] | ((st, c, _), s) <- zip styled drawn ++ groupedtotal ] ++ [[]]
+      | length drawn > 1 = wrapLegend (
+          [ [(st, T.singleton c), (StylePlain, " " <> lbFull (seLabel s))] | ((st, c, _), s) <- zip styled drawn ]
+          ++ [ [(StylePlain, markchar), (StylePlain, " " <> lbFull (seLabel t))] | Just t <- [groupedtotal] ]
+          ) ++ [[]]
       | otherwise = []
     -- Lay out legend items left to right, two spaces apart, starting a new line when the next item won't fit.
     wrapLegend = reverse . foldl' addItem []
@@ -160,9 +165,9 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
     labelw = min (tcWidth `div` 3) $ maximumDef 0 $ map (realLength . rowLabel) rows
     valuew = maximumDef 0 [realLength (showValue q) | Row{rowValue = Just q} <- rows]
     hasvalues = any (isJust . rowValue) rows
-    barw = max 10 $ tcWidth - labelw - 2 - (if hasvalues then valuew + 2 else 0)
-    posTotal r = sum [q | (_, _, q) <- rowSegments r, q > 0]
-    negTotal r = sum [abs q | (_, _, q) <- rowSegments r, q < 0]
+    barw = max 10 $ tcWidth - (if labelw > 0 then labelw + 2 else 0) - (if hasvalues then valuew + 2 else 0)
+    posTotal r = sum [q | (_, _, q) <- rowSegments r, q > 0] `max` maybe 0 (max 0) (rowMark r)
+    negTotal r = sum [abs q | (_, _, q) <- rowSegments r, q < 0] `max` maybe 0 (abs . min 0) (rowMark r)
     maxpos = maximumDef 0 $ map posTotal rows
     maxneg = maximumDef 0 $ map negTotal rows
     hasaxis = maxneg > 0
@@ -175,16 +180,29 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
       | otherwise   = round (fromIntegral area * realToFrac maxneg / realToFrac (maxpos + maxneg) :: Double)
     rightw = area - leftw
     axischar = if tcUnicode then "│" else "|"
+    markchar = if tcUnicode then "┃" else "!"
 
+    -- the label column, value column and bars, separated by two spaces (columns with nothing in them are left out)
     rowLine r@Row{rowLabel, rowValue} =
-      [ (StylePlain, fitText (Just labelw) (Just labelw) True True rowLabel) ]
+      drop 1 $
+      (if labelw > 0 then [(StylePlain, "  "), (StylePlain, fitText (Just labelw) (Just labelw) True True rowLabel)] else [])
       ++ (if hasvalues
           then [(StylePlain, "  "), (maybe StylePlain valueStyle rowValue, fitText (Just valuew) Nothing False False $ maybe "" showValue rowValue)]
           else [])
       ++ [(StylePlain, "  ")]
-      ++ (if hasaxis then negativeBar r ++ [(StylePlain, axischar)] else [])
-      ++ positiveBar r
+      ++ case rowMark r of
+           Just q  -> markLine q
+           Nothing -> (if hasaxis then negativeBar r ++ [(StylePlain, axischar)] else []) ++ positiveBar r
     valueStyle q = if q < 0 then StyleNegative else StylePlain
+
+    -- A mark at a value's position: right of the axis if positive, left of it if negative.
+    markLine q
+      | q >= 0 =
+          let p = max 1 $ min rightw $ cells 1 q
+          in [(StylePlain, T.replicate leftw " "), (StylePlain, if hasaxis then axischar else ""), (StylePlain, T.replicate (p - 1) " "), (StylePlain, markchar)]
+      | otherwise =
+          let p = max 1 $ min leftw $ cells 1 (abs q)
+          in [(StylePlain, T.replicate (leftw - p) " "), (StylePlain, markchar), (StylePlain, T.replicate (p - 1) " "), (StylePlain, axischar)]
 
     -- The positive segments, growing right from the axis.
     -- A single segment uses eighth-block characters for finer resolution (in unicode mode); several use whole cells.

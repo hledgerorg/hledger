@@ -6,7 +6,8 @@
 .hledger-chart .value,.hledger-chart .tick{font-variant-numeric:tabular-nums}
 .hledger-chart .grid,.hledger-chart .axis{stroke-width:1}
 .hledger-chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-.hledger-chart .dot.total{stroke-width:2}
+.hledger-chart .mark{stroke-width:3;stroke-linecap:round}
+.hledger-chart .markring{stroke-width:7;stroke-linecap:round}
 .hledger-chart .hit{fill:transparent}
 .hledger-chart .bg{fill:#fcfcfb}
 .hledger-chart .title{fill:#0b0b0b}
@@ -19,8 +20,8 @@
 .hledger-chart .fill.other{fill:#898781}
 .hledger-chart .line.other{stroke:#898781}
 .hledger-chart .line.total{stroke:#0b0b0b}
-.hledger-chart .dot.total{fill:#0b0b0b}
-.hledger-chart .dot.total{stroke:#fcfcfb}
+.hledger-chart .mark.total{stroke:#0b0b0b}
+.hledger-chart .markring{stroke:#fcfcfb}
 .hledger-chart .fill.s0{fill:#2a78d6}
 .hledger-chart .line.s0{stroke:#2a78d6}
 .hledger-chart .fill.s1{fill:#eb6834}
@@ -49,8 +50,8 @@
 .hledger-chart .fill.other{fill:#898781}
 .hledger-chart .line.other{stroke:#898781}
 .hledger-chart .line.total{stroke:#ffffff}
-.hledger-chart .dot.total{fill:#ffffff}
-.hledger-chart .dot.total{stroke:#1a1a19}
+.hledger-chart .mark.total{stroke:#ffffff}
+.hledger-chart .markring{stroke:#1a1a19}
 .hledger-chart .fill.s0{fill:#3987e5}
 .hledger-chart .line.s0{stroke:#3987e5}
 .hledger-chart .fill.s1{fill:#d95926}
@@ -75,7 +76,7 @@
 <text class="label" x="34" y="62">Revenues</text>
 <rect class="fill s1" x="106" y="53" width="10" height="10" rx="2" />
 <text class="label" x="124" y="62">Expenses</text>
-<circle class="dot total" cx="202" cy="58" r="4" />
+<line class="mark total" x1="196" x2="208" y1="58" y2="58" />
 <text class="label" x="214" y="62">Net</text>
 <line class="axis" x1="49" x2="744" y1="302" y2="302" />
 <text class="tick" x="41" y="306" text-anchor="end">0</text>
@@ -109,10 +110,12 @@
 </g>
 <g>
 <title>Jan · Net · 70</title>
-<circle class="dot total" cx="222.8" cy="148" r="4" />
+<line class="markring" x1="193.8" x2="251.8" y1="148" y2="148" />
+<line class="mark total" x1="193.8" x2="251.8" y1="148" y2="148" />
 </g>
 <g>
 <title>Feb · Net · 20</title>
-<circle class="dot total" cx="570.2" cy="258" r="4" />
+<line class="markring" x1="541.2" x2="599.2" y1="258" y2="258" />
+<line class="mark total" x1="541.2" x2="599.2" y1="258" y2="258" />
 </g>
 </svg>

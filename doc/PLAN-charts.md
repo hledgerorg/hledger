@@ -343,6 +343,13 @@ Phases, each a separately useful, committable step:
 - The embedded SVG omits the dark variant, since hledger's html output is always light (`chartAsSvgWith False`). hledger-web can choose.
 - The chart's title duplicates the table's heading; acceptable for now.
 
+2026-10-16, after review of phase 2 (user suggestions), in this order:
+
+1. Net/total as a line mark, not a dot or an extra bar: in SVG a short ink horizontal line (with a surface ring) across each period's bars, or a line where the sections are lines; in text a row with a `┃` at the net's position. Single-period compound reports are drawn as one period of grouped bars (no "Net" category).
+2. Conventional colours for the five account types (validated with the dataviz skill's validator, on the adjacent pairs that co-occur): assets blue, liabilities amber, equity violet, revenues green, expenses red; accounts within a type as tints of its hue. Green/red is in the CVD warn band (needs secondary encoding: legend, positions).
+3. Compound reports chart their accounts (`-1` gives section totals): per period one stacked column per section, side by side, never stacked across sections; contra balances stack below zero within their section.
+4. SVG single-period (category) charts as vertical bars, labels angled when needed; horizontal only beyond ~30 categories.
+
 ## Open questions
 
 - Chart variant names for `--chart=KIND`, when needed.

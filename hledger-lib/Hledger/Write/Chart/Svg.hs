@@ -3,7 +3,7 @@ Draw a 'Chart' as SVG, a self-contained graphical file viewable in web browsers 
 
 Charts over time (periods or dates) are drawn with time along the x axis:
 bar series as vertical bars (stacked, with a 2px gap between segments), line series as 2px lines,
-and totals as ringed dots (with bars) or an ink-coloured line (with lines).
+and totals as ink-coloured line marks across each period's bars, or as an ink-coloured line.
 Charts of categories (eg the accounts of a single-period report) are drawn as horizontal bars,
 with labels on the left and an aligned value column on the right.
 There is one panel per commodity, one above the other, and a legend when a panel has several series.
@@ -133,7 +133,7 @@ legendSvg top entries mtotal
   | length entries < 2 = (0, mempty)
   | otherwise = (fromIntegral (length rows) * legendRowHeight + 8, mapM_ drawRow (zip [0 ..] rows))
   where
-    allentries = entries ++ [("total", if any (\(_, mk, _) -> mk == MarkLine) entries then MarkLine else MarkMarker, lbFull (seLabel t)) | Just t <- [mtotal]]
+    allentries = entries ++ [("total", if seMark t == MarkLine || all (\(_, mk, _) -> mk == MarkLine) entries then MarkLine else MarkMarker, lbFull (seLabel t)) | Just t <- [mtotal]]
     itemWidth (_, _, lbl) = 18 + textWidth lbl + 16
     rows = reverse $ map reverse $ foldl place [] allentries
     place [] e = [[e]]
@@ -148,7 +148,8 @@ legendSvg top entries mtotal
         case mk of
           MarkLine   -> S.line ! A.class_ ("line " <> toValue cls) ! A.x1 (toValue $ num x) ! A.x2 (toValue $ num (x + 12))
                           ! A.y1 (toValue $ num y) ! A.y2 (toValue $ num y)
-          MarkMarker -> S.circle ! A.class_ ("dot " <> toValue cls) ! A.cx (toValue $ num (x + 6)) ! A.cy (toValue $ num y) ! A.r "4"
+          MarkMarker -> S.line ! A.class_ ("mark " <> toValue cls) ! A.x1 (toValue $ num x) ! A.x2 (toValue $ num (x + 12))
+                          ! A.y1 (toValue $ num y) ! A.y2 (toValue $ num y)
           MarkBar    -> S.rect ! A.class_ ("fill " <> toValue cls) ! A.x (toValue $ num x) ! A.y (toValue $ num (y - 5))
                           ! A.width "10" ! A.height "10" ! A.rx "2"
         S.text_ ! A.class_ "label" ! A.x (toValue $ num (x + 18)) ! A.y (toValue $ num (y + 4)) $ S.toMarkup lbl
@@ -185,12 +186,17 @@ timeSvg top unit layout drawn mtotal xscale = (plotHeight + 28, do
         stack lbl j [(d, q) | d <- bars, Just q <- [valueAt (dsValues d) j], q < 0] (-1)
     -- lines
     forM_ lines_ $ \d -> lineSvg (dsClass d) (dsSeries d)
-    -- the total, as a line (when the other series are lines) or as dots
+    -- the total: as a line, or as a mark (a short horizontal line, ringed with the surface colour) across each period's bars
     forM_ mtotal $ \t ->
-      if null bars then lineSvg "total" t
+      if seMark t == MarkLine || null bars then lineSvg "total" t
       else let tvals = seriesValues t in
-        forM_ (zip [0 ..] xlabels) $ \(j, lbl) -> forM_ (valueAt tvals j) $ \q -> when (hasbars j) $ withTooltip (tooltip lbl t q) $
-        S.circle ! A.class_ "dot total" ! A.cx (toValue $ num (xcenter j)) ! A.cy (toValue $ num (yof $ toD q)) ! A.r "4"
+        forM_ (zip [0 ..] xlabels) $ \(j, lbl) -> forM_ (valueAt tvals j) $ \q -> when (hasbars j) $ withTooltip (tooltip lbl t q) $ do
+          let y = toValue $ num (yof $ toD q)
+              halfw = groupwidth / 2 + 4
+              x1 = toValue $ num (xcenter j - halfw)
+              x2 = toValue $ num (xcenter j + halfw)
+          S.line ! A.class_ "markring" ! A.x1 x1 ! A.x2 x2 ! A.y1 y ! A.y2 y
+          S.line ! A.class_ "mark total" ! A.x1 x1 ! A.x2 x2 ! A.y1 y ! A.y2 y
   )
   where
     xlabels = case xscale of
@@ -429,7 +435,8 @@ stylesheet dark = T.unlines $
   , ".hledger-chart .value,.hledger-chart .tick{font-variant-numeric:tabular-nums}"
   , ".hledger-chart .grid,.hledger-chart .axis{stroke-width:1}"
   , ".hledger-chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}"
-  , ".hledger-chart .dot.total{stroke-width:2}"
+  , ".hledger-chart .mark{stroke-width:3;stroke-linecap:round}"
+  , ".hledger-chart .markring{stroke-width:7;stroke-linecap:round}"
   , ".hledger-chart .hit{fill:transparent}"
   ]
   ++ colourRules lightcolours
@@ -443,7 +450,7 @@ stylesheet dark = T.unlines $
       , (".label", "fill", "ink2"), (".value", "fill", "ink2"), (".tick", "fill", "muted")
       , (".grid", "stroke", "grid"), (".axis", "stroke", "axis")
       , (".fill.other", "fill", "muted"), (".line.other", "stroke", "muted"), (".line.total", "stroke", "ink")
-      , (".dot.total", "fill", "ink"), (".dot.total", "stroke", "surface")
+      , (".mark.total", "stroke", "ink"), (".markring", "stroke", "surface")
       ]
       ++ concat [ [(".fill." <> c, "fill", c), (".line." <> c, "stroke", c)] | c <- map (("s" <>) . T.pack . show) [0 :: Int .. 7] ]
     lightcolours :: [(Text, Text)]

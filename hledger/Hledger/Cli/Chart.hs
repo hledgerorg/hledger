@@ -180,9 +180,9 @@ balanceReportAsChart ReportOpts{translations_} title (items, _total) =
 -- | Chart a compound balance report (balancesheet, incomestatement, cashflow..), showing the sections' totals and the net total.
 --
 -- Section amounts are normally positive in these reports (eg both revenues and expenses), so they are not stacked:
--- period changes (flows) are drawn as side-by-side bars, with the net total as a marker;
+-- period changes (flows) are drawn as side-by-side bars, with the net total as a mark across them;
 -- end balances (stocks, eg balancesheet) as lines, with the net total as a line.
--- A single-period report is drawn as one bar per section, and one for the net total.
+-- A single-period report is drawn the same way, with one period.
 -- There is one panel per commodity, most-used commodity first.
 -- The net total is omitted with -N, with --percent, and when there is only one section.
 compoundBalanceReportAsChart :: ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount -> Chart
@@ -190,13 +190,10 @@ compoundBalanceReportAsChart ropts@ReportOpts{balanceaccum_, no_total_, percent_
   (CompoundPeriodicReport title spans subreports totals) =
   Chart
     { chTitle  = title
-    , chXAxis  = if singleperiod
-                 then XCategories $ map (plainLabel . fst) sections ++ [plainLabel netlabel | showtotal]
-                 else XPeriods [(s, reportPeriodName ropts spans s) | s <- spans]
+    , chXAxis  = XPeriods [(s, if length spans == 1 then "" else reportPeriodName ropts spans s) | s <- spans]  -- the title names a single period
     , chPanels = mapMaybe panel $ commoditiesByUse cells
     }
   where
-    singleperiod = length spans == 1
     flow = balanceaccum_ == PerPeriod
     sections = [(t, prrAmounts $ prTotals r) | (t, r, _) <- subreports]
     nettotals = prrAmounts totals
@@ -206,16 +203,15 @@ compoundBalanceReportAsChart ropts@ReportOpts{balanceaccum_, no_total_, percent_
     cells = concatMap snd sections ++ nettotals
     allamts = concatMap amountsRaw cells
     panel c
-      | singleperiod = Just $ mkpanel
-          [Series (plainLabel $ I18n.tr translations_ "Balance") SeriesItem MarkBar
-            [ if any ((== c) . acommodity) (concatMap amountsRaw amts) then Just (sum $ map (quantityIn c) amts) else Nothing
-            | amts <- map snd sections ++ [nettotals | showtotal] ]]
       | null series = Nothing
-      | otherwise = Just $ mkpanel $ series ++
-          [ Series (plainLabel netlabel) SeriesTotal (if flow then MarkMarker else MarkLine) (map (Just . quantityIn c) nettotals)
-          | showtotal ]
+      | otherwise = Just Panel
+          { pnUnit      = unitAmount c allamts
+          , pnBarLayout = Grouped
+          , pnSeries    = series ++
+              [ Series (plainLabel netlabel) SeriesTotal (if flow then MarkMarker else MarkLine) (map (Just . quantityIn c) nettotals)
+              | showtotal ]
+          }
       where
-        mkpanel ss = Panel{pnUnit = unitAmount c allamts, pnBarLayout = Grouped, pnSeries = ss}
         series =
           [ Series (plainLabel t) SeriesItem (if flow then MarkBar else MarkLine) qs
           | (t, amts) <- sections, let qs = map (Just . quantityIn c) amts, any (maybe False (/= 0)) qs ]
