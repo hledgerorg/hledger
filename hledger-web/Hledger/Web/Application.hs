@@ -47,7 +47,7 @@ mkYesodDispatch "App" resourcesApp
 makeApplication :: WebOpts -> Journal -> AppConfig DefaultEnv Extra -> IO Application
 makeApplication opts' j' conf' = do
     app <- makeApp conf' opts'
-    writeIORef (appJournal app) j'
+    writeIORef (appJournal app) (mkJournalState j')
     (logWare . corsPolicy opts' . securityHeaders) <$> toWaiApp app
   where
     logWare | development  = logStdoutDev
@@ -75,7 +75,7 @@ makeAppWith :: Journal -> AppConfig DefaultEnv Extra -> WebOpts -> IO App
 makeAppWith j' aconf wopts = do
   s    <- staticSite
   m    <- newManager defaultManagerSettings
-  jref <- newIORef j'
+  jref <- newIORef (mkJournalState j')
   trs  <- loadAllTranslations
   return App{
       settings    = aconf
