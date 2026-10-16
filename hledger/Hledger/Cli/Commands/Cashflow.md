@@ -99,4 +99,4 @@ This command also supports the
 [output destination](hledger.html#output-destination) and
 [output format](hledger.html#output-format) options
 The output formats supported are
-`txt`, `csv`, `tsv`, `html`, and `json`.
+`txt`, `csv`, `tsv`, `html`, `json`, and `svg` (a chart; see [Balance charts](#balance-charts)).

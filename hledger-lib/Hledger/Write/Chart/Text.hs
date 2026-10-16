@@ -1,7 +1,8 @@
 {- |
 Draw a 'Chart' as text, for terminals.
 
-Every chart is drawn as horizontal bars, one row per x position (or, for grouped series, per series per x position),
+Every chart is drawn as horizontal bars, one row per x position (or, for grouped series, per series per x position,
+with the total as one more uncoloured bar),
 with an aligned value column before the bars. Several series in a stacked panel are drawn as stacked segments,
 positive values growing right from a zero axis and negative values growing left.
 Lines are drawn as bars too, since text has no good way to draw lines.
@@ -102,6 +103,10 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
     mtotal = find ((== SeriesTotal) . seRole) pnSeries
     single = length drawn == 1
     styled = zipWith seriesStyle [0 ..] drawn
+    -- With several grouped series, the total is drawn as one more bar (uncoloured), after them.
+    groupedtotal = case (pnBarLayout, drawn, mtotal) of
+      (Grouped, _:_:_, Just t) -> [((StylePlain, fillChar (length drawn), seriesValues t), t)]
+      _                        -> []
     seriesStyle i s = (if seRole s == SeriesOther then StyleOther else StyleSeries i, fillChar i, seriesValues s)
     mtotalvals = seriesValues <$> mtotal
     fillChar i
@@ -118,7 +123,7 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
       (Grouped, _:_:_) ->  -- several grouped series: a row for each series, with the x label on the first
         concat
           [ [ Row (if k == 0 then lbl else "") (valueAt vals j) (segmentsAt j [ser])
-            | (k, ser@(_, _, vals)) <- zip [0 :: Int ..] styled ]
+            | (k, ser@(_, _, vals)) <- zip [0 :: Int ..] (styled ++ map fst groupedtotal) ]
           | (j, lbl) <- zip [0 ..] xlabels ]
       _ ->
         [ Row lbl rowval (segmentsAt j styled)
@@ -133,7 +138,7 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
     isCategories = case xaxis of XCategories _ -> True; _ -> False
 
     legend
-      | length drawn > 1 = wrapLegend [ [(st, T.singleton c), (StylePlain, " " <> lbFull (seLabel s))] | ((st, c, _), s) <- zip styled drawn ] ++ [[]]
+      | length drawn > 1 = wrapLegend [ [(st, T.singleton c), (StylePlain, " " <> lbFull (seLabel s))] | ((st, c, _), s) <- zip styled drawn ++ groupedtotal ] ++ [[]]
       | otherwise = []
     -- Lay out legend items left to right, two spaces apart, starting a new line when the next item won't fit.
     wrapLegend = reverse . foldl' addItem []

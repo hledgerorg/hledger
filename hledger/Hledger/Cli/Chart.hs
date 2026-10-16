@@ -13,8 +13,10 @@ module Hledger.Cli.Chart (
   chartWidthFlag,
   chartRequested,
   chartAsTextForOpts,
+  writeChart,
   multiBalanceReportAsChart,
   balanceReportAsChart,
+  compoundBalanceReportAsChart,
 ) where
 
 import Data.List (find, intercalate, isPrefixOf, partition, sortOn, transpose)
@@ -28,6 +30,7 @@ import Data.Set qualified as S
 import Control.Monad (when)
 import Data.Char (toUpper)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import GHC.IO.Encoding (getLocaleEncoding, textEncodingName)
 import Safe (readMay)
@@ -35,10 +38,13 @@ import System.Console.CmdArgs.Explicit (Flag, flagOpt, flagReq)
 import Text.Printf (printf)
 
 import Hledger
-import Hledger.Cli.CliOptions (CliOpts(..), outputFormatFromOpts)
+import Hledger.Cli.CliOptions (CliOpts(..), outputFormatFromOpts, outputFormats)
+import Hledger.Cli.Utils (unsupportedOutputFormatError, writeOutputLazyText)
 import Hledger.Utils.I18n qualified as I18n
 import Hledger.Write.Chart
+import Hledger.Write.Chart.Svg (chartAsSvg)
 import Hledger.Write.Chart.Text
+import Hledger.Write.Csv (printCSV, printTSV)
 
 
 -- | The chart kinds that --chart accepts. Only "auto" (choose the best chart for the report) so far.
@@ -83,6 +89,23 @@ chartAsTextForOpts CliOpts{width_, available_width_, reportspec_} chart = do
   where
     width = fromMaybe available_width_ (width_ >>= readMay)
     maxPanels = 8 :: Int
+
+-- | Write a chart in the output format and to the destination selected by the command line options:
+-- as text (txt), as an SVG image (svg), or as the chart's data (csv, tsv, json).
+-- Other formats give an error (before the chart is computed).
+writeChart :: CliOpts -> Chart -> IO ()
+writeChart opts chart = do
+  render <- case fmt of
+    "txt"  -> return $ chartAsTextForOpts opts
+    "svg"  -> return $ return . chartAsSvg
+    "csv"  -> return $ return . printCSV . chartAsCsv
+    "tsv"  -> return $ return . printTSV . chartAsCsv
+    "json" -> return $ return . (<>"\n") . toJsonText
+    _ | fmt `elem` outputFormats -> error' $ "--chart does not yet support " ++ fmt ++ " output; try txt, svg, csv, tsv or json"  -- PARTIAL:
+      | otherwise -> error' $ unsupportedOutputFormatError fmt  -- PARTIAL:
+  render chart >>= writeOutputLazyText opts
+  where
+    fmt = outputFormatFromOpts opts
 
 -- | The most series to show in one panel. Beyond this, the smallest series are combined into one "other" series.
 maxSeries :: Int
@@ -145,6 +168,49 @@ balanceReportAsChart ReportOpts{translations_} title (items, _total) =
                         [ if any ((== c) . acommodity) (amountsRaw ma) then Just (quantityIn c ma) else Nothing
                         | (_, _, _, ma) <- items ]]
       }
+
+-- | Chart a compound balance report (balancesheet, incomestatement, cashflow..), showing the sections' totals and the net total.
+--
+-- Section amounts are normally positive in these reports (eg both revenues and expenses), so they are not stacked:
+-- period changes (flows) are drawn as side-by-side bars, with the net total as a marker;
+-- end balances (stocks, eg balancesheet) as lines, with the net total as a line.
+-- A single-period report is drawn as one bar per section, and one for the net total.
+-- There is one panel per commodity, most-used commodity first.
+-- The net total is omitted with -N, with --percent, and when there is only one section.
+compoundBalanceReportAsChart :: ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount -> Chart
+compoundBalanceReportAsChart ropts@ReportOpts{balanceaccum_, no_total_, percent_, translations_}
+  (CompoundPeriodicReport title spans subreports totals) =
+  Chart
+    { chTitle  = title
+    , chXAxis  = if singleperiod
+                 then XCategories $ map (plainLabel . fst) sections ++ [plainLabel netlabel | showtotal]
+                 else XPeriods [(s, reportPeriodName ropts spans s) | s <- spans]
+    , chPanels = mapMaybe panel $ commoditiesByUse cells
+    }
+  where
+    singleperiod = length spans == 1
+    flow = balanceaccum_ == PerPeriod
+    sections = [(t, prrAmounts $ prTotals r) | (t, r, _) <- subreports]
+    nettotals = prrAmounts totals
+    showtotal = length subreports > 1 && not no_total_ && not percent_
+    -- the table's "Net:" label, without the colon
+    netlabel = T.dropWhileEnd (`elem` [':', '\xff1a']) $ I18n.tr translations_ "Net:"
+    cells = concatMap snd sections ++ nettotals
+    allamts = concatMap amountsRaw cells
+    panel c
+      | singleperiod = Just $ mkpanel
+          [Series (plainLabel $ I18n.tr translations_ "Balance") SeriesItem MarkBar
+            [ if any ((== c) . acommodity) (concatMap amountsRaw amts) then Just (sum $ map (quantityIn c) amts) else Nothing
+            | amts <- map snd sections ++ [nettotals | showtotal] ]]
+      | null series = Nothing
+      | otherwise = Just $ mkpanel $ series ++
+          [ Series (plainLabel netlabel) SeriesTotal (if flow then MarkMarker else MarkLine) (map (Just . quantityIn c) nettotals)
+          | showtotal ]
+      where
+        mkpanel ss = Panel{pnUnit = unitAmount c allamts, pnBarLayout = Grouped, pnSeries = ss}
+        series =
+          [ Series (plainLabel t) SeriesItem (if flow then MarkBar else MarkLine) qs
+          | (t, amts) <- sections, let qs = map (Just . quantityIn c) amts, any (maybe False (/= 0)) qs ]
 
 -- Helpers
 

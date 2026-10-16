@@ -308,9 +308,7 @@ import Hledger.Cli.Utils
 import Hledger.Cli.Anchor (linkParams, composeAnchorWith, dateTerm, removeInacct,
   withLink, setAccountAnchor, setAccountAnchorWith, renderPeriodHeading, amountPhrase)
 import Hledger.Cli.Commands.Balance.Internal
-import Hledger.Cli.Chart (chartFlag, chartWidthFlag, chartRequested, chartAsTextForOpts, multiBalanceReportAsChart, balanceReportAsChart)
-import Hledger.Write.Chart (chartAsCsv)
-import Hledger.Write.Chart.Svg (chartAsSvg)
+import Hledger.Cli.Chart (chartFlag, chartWidthFlag, chartRequested, writeChart, multiBalanceReportAsChart, balanceReportAsChart)
 import Hledger.Write.Csv (CSV, printCSV, printTSV)
 import Hledger.Write.Ods (printFods)
 import Hledger.Write.Html (Html, titledTableHtml, htmlAsLazyText, toHtml)
@@ -454,29 +452,18 @@ balance opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
     delimited   = fmt == "csv" || fmt == "tsv"
     fmt         = outputFormatFromOpts opts
 
--- | The balance command with --chart: shows a chart of the balance report, or the chart's data.
+-- | The balance command with --chart (or svg output): shows a chart of the balance report, or the chart's data.
 balanceChart :: CliOpts -> Journal -> IO ()
-balanceChart opts@CliOpts{reportspec_=rspec} j = do
-  render <- case fmt of
-    "txt"  -> return $ chartAsTextForOpts opts
-    "csv"  -> return $ return . printCSV . chartAsCsv
-    "tsv"  -> return $ return . printTSV . chartAsCsv
-    "json" -> return $ return . (<>"\n") . toJsonText
-    "svg"  -> return $ return . chartAsSvg
-    _ | fmt `elem` outputFormats -> error' $ "--chart does not yet support " ++ fmt ++ " output; try txt, svg, csv, tsv or json"  -- PARTIAL:
-      | otherwise -> error' $ unsupportedOutputFormatError fmt  -- PARTIAL:
-  chart <- case balancecalc_ ropts of
+balanceChart opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
     CalcBudget -> error' "--chart does not yet support --budget"  -- PARTIAL:
     _ | interval_ ropts /= NoInterval -> do
       warnIfLargeMultiPeriodReport rspec j
       let report = styleAmounts styles $ multiBalanceReport rspec j
-      return $ multiBalanceReportAsChart ropts (multiBalanceReportTitle ropts report) report
-    _ -> return $ balanceReportAsChart ropts (effectiveTitle ropts "") $ styleAmounts styles $ balanceReport rspec j
-  render chart >>= writeOutputLazyText opts
+      writeChart opts $ multiBalanceReportAsChart ropts (multiBalanceReportTitle ropts report) report
+    _ -> writeChart opts $ balanceReportAsChart ropts (effectiveTitle ropts "") $ styleAmounts styles $ balanceReport rspec j
   where
     ropts  = _rsReportOpts rspec
     styles = journalCommodityStylesWith HardRounding j
-    fmt    = outputFormatFromOpts opts
 
 -- Rendering
 

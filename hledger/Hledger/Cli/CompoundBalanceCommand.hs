@@ -43,6 +43,7 @@ import Text.Tabular.AsciiWide as Tabular hiding (render)
 import Hledger.Utils.I18n qualified as I18n
 import Hledger
 import Hledger.Cli.Anchor (LinkOpts(..), headerDateSpanCell)
+import Hledger.Cli.Chart (chartFlag, chartRequested, chartWidthFlag, compoundBalanceReportAsChart, writeChart)
 import Hledger.Cli.Commands.Balance
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils (unsupportedOutputFormatError, writeOutputLazyText, warnIfLargeMultiPeriodReport)
@@ -124,8 +125,10 @@ compoundBalanceCommandMode CompoundBalanceCommandSpec{..} =
         ])
     ,flagReq  ["base-url"] (\s opts -> Right $ setopt "base-url" s opts) "URLPREFIX" "in html output, generate hyperlinks to hledger-web, with this prefix. (Usually the base url shown by hledger-web; can also be relative.)"
 
-    ,outputFormatFlag ["txt","html","csv","tsv","json"]
+    ,outputFormatFlag ["txt","html","csv","tsv","json","svg"]
     ,outputFileFlag
+    ,chartFlag
+    ,chartWidthFlag
 
     ])
     cligeneralflagsgroups1
@@ -145,7 +148,9 @@ compoundBalanceCommandMode CompoundBalanceCommandSpec{..} =
 compoundBalanceCommand :: CompoundBalanceCommandSpec -> (CliOpts -> Journal -> IO ())
 compoundBalanceCommand spec@CompoundBalanceCommandSpec{..} opts@CliOpts{reportspec_=rspec, rawopts_=rawopts} j = do
     warnIfLargeMultiPeriodReport rspec j
-    writeOutputLazyText opts $ render $ styleAmounts styles cbr
+    if chartRequested opts
+    then writeChart opts $ compoundBalanceReportAsChart ropts' $ styleAmounts styles cbr
+    else writeOutputLazyText opts $ render $ styleAmounts styles cbr
   where
     styles = journalCommodityStylesWith HardRounding j
     ropts = _rsReportOpts rspec

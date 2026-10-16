@@ -1041,6 +1041,12 @@ With [SVG output](#svg-output) (`-o FILE.svg` or `-O svg`), `balance` always sho
 time runs along the x axis, and end balances are drawn as lines.
 
 With `-O csv`, `-O tsv` or `-O json`, `--chart` shows the chart's data, eg to inspect it or chart it with other tools.
+
+The compound balance commands ([`balancesheet`](#balancesheet), [`balancesheetequity`](#balancesheetequity),
+[`cashflow`](#cashflow), [`incomestatement`](#incomestatement)) can show charts in the same ways.
+They chart the totals of their sections (eg revenues and expenses), side by side, and the net total
+(as a marker over bars, or as a line with end balances).
+A single-period report is charted as one bar per section, and one for the net total.
 The chart data has one record per value, with fields:
 commodity, series (usually an account name), role (`item`, `other` or `total`), mark (`bar`, `line` or `marker`),
 x (a period heading, period end date, or account name), and value. Eg:

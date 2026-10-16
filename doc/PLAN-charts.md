@@ -318,6 +318,13 @@ Phases, each a separately useful, committable step:
 - The website's charts.md (in the separate site repo) should get a "Built-in charts" lead paragraph when a release includes charts.
 - Golden SVG test output is kept in a file (hledger/test/balance/chart.svg) compared with diff, since shelltest treats lines starting with `<` as input delimiters.
 
+2026-10-16, phase 2 step 1, compound reports (is, bs, bse, cf):
+
+- They chart section totals (plus the net total, labelled with the table's translated "Net:" minus its colon), not individual accounts.
+- Section amounts are normal-signed (all positive), so they are never stacked: flows are grouped bars (text: a row per section per period, plus an uncoloured net row; SVG: side-by-side bars with a net dot), stocks are lines (text: grouped rows too).
+- A single-period compound report is categories: a bar per section and one for the net.
+- Chart output dispatch is shared: `writeChart` in Hledger.Cli.Chart.
+
 ## Open questions
 
 - Chart variant names for `--chart=KIND`, when needed.

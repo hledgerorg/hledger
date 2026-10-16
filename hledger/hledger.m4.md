@@ -7755,11 +7755,11 @@ Here are those commands and the formats currently supported:
 |--------------------|-----|------|---------|------|--------|-----------|-----|------|-----|
 | aregister          | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
 | balance            | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
-| balancesheet       | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
-| balancesheetequity | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
-| cashflow           | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
+| balancesheet       | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
+| balancesheetequity | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
+| cashflow           | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
 | holdings           | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
-| incomestatement    | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
+| incomestatement    | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
 | print              | Y   | Y    | Y       | Y    | Y      | Y         | Y   | Y    |     |
 | register           | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
 
@@ -8042,7 +8042,7 @@ SVG output shows a chart of the report, rather than the report's table
 It is a self-contained image file, viewable in web browsers and many image viewers.
 It has a light and a dark colour scheme, chosen by the viewer's preference,
 and tooltips showing each bar's or point's values.
-Currently only the `balance` command can produce it. Eg:
+Currently the `balance`, `balancesheet`, `balancesheetequity`, `cashflow` and `incomestatement` commands can produce it. Eg:
 ```cli
 $ hledger bal -M expenses -o expenses.svg
 ```

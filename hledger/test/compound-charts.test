@@ -1,0 +1,78 @@
+# * --chart with the compound balance commands (incomestatement, balancesheet, cashflow..)
+
+<
+2024-01-01
+    assets:bank       100
+    revenues:salary
+
+2024-01-05
+    expenses:food      30
+    assets:bank
+
+2024-02-01
+    assets:bank       100
+    revenues:salary
+
+2024-02-10
+    expenses:rent      80
+    liabilities:card
+
+# ** 1. Period changes are charted as side-by-side bars of the section totals, with the net total as a marker.
+$ hledger -f - is -M --chart -O csv
+"commodity","series","role","mark","x","value"
+"","Revenues","item","bar","Jan","100"
+"","Revenues","item","bar","Feb","100"
+"","Expenses","item","bar","Jan","30"
+"","Expenses","item","bar","Feb","80"
+"","Net","total","marker","Jan","70"
+"","Net","total","marker","Feb","20"
+
+# ** 2. In a text chart, each period has a row per section, and one for the net total.
+$ hledger -f - is -M --chart -w 40
+Monthly Income Statement 2024-01-01..2024-02-29
+
+█ Revenues  ▓ Expenses  ▒ Net
+
+Jan  100  ██████████████████████████████
+      30  ▓▓▓▓▓▓▓▓▓
+      70  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+Feb  100  ██████████████████████████████
+      80  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+      20  ▒▒▒▒▒▒
+
+# ** 3. A single-period report has a bar per section, and one for the net total.
+$ hledger -f - is --chart -w 40
+Income Statement 2024-01-01..2024-02-10
+
+Revenues  200  █████████████████████████
+Expenses  110  █████████████▊
+Net        90  ███████████▎
+
+# ** 4. End balances (eg balancesheet's) are lines, including the net total.
+$ hledger -f - bs -M --chart -O csv
+"commodity","series","role","mark","x","value"
+"","Assets","item","line","2024-01-31","70"
+"","Assets","item","line","2024-02-29","170"
+"","Liabilities","item","line","2024-01-31","0"
+"","Liabilities","item","line","2024-02-29","80"
+"","Net","total","line","2024-01-31","70"
+"","Net","total","line","2024-02-29","90"
+
+# ** 5. With one section there is no net total.
+$ hledger -f - cf -M --chart -w 40
+Monthly Cashflow Statement 2024-01-01..2024-02-29
+
+Jan   70  █████████████████████
+Feb  100  ██████████████████████████████
+
+# ** 6. -N omits the net total.
+$ hledger -f - is -M -N --chart -O csv
+"commodity","series","role","mark","x","value"
+"","Revenues","item","bar","Jan","100"
+"","Revenues","item","bar","Feb","100"
+"","Expenses","item","bar","Jan","30"
+"","Expenses","item","bar","Feb","80"
+
+# ** 7. In SVG, side-by-side bars are grouped in each period, with the net total as a dot.
+# The expected output is in compound-charts.svg.
+$ hledger -f - is -M -O svg | diff - compound-charts.svg

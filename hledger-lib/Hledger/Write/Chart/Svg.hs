@@ -98,7 +98,7 @@ data DrawSeries = DrawSeries
 
 -- | Draw one panel with its top at the given y; return its height and markup.
 panelSvg :: XAxis -> Bool -> Double -> Panel -> (Double, Svg)
-panelSvg xaxis showheading top Panel{pnUnit, pnSeries} =
+panelSvg xaxis showheading top Panel{pnUnit, pnBarLayout, pnSeries} =
   (headingh + legendh + bodyh, do
     when (headingh > 0) $
       S.text_ ! A.class_ "heading" ! A.x (toValue $ num pad) ! A.y (toValue $ num (top + 14)) $ S.toMarkup (acommodity pnUnit)
@@ -115,8 +115,8 @@ panelSvg xaxis showheading top Panel{pnUnit, pnSeries} =
                            (if length items > 1 then mtotal else Nothing)
     (bodyh, bodym) = case xaxis of
       XCategories ls -> categoriesSvg (top + headingh + legendh) pnUnit drawn mtotal ls
-      XPeriods ps    -> timeSvg (top + headingh + legendh) pnUnit drawn mtotal (map snd ps)
-      XDates ds      -> timeSvg (top + headingh + legendh) pnUnit drawn mtotal (map showDate ds)
+      XPeriods ps    -> timeSvg (top + headingh + legendh) pnUnit pnBarLayout drawn mtotal (map snd ps)
+      XDates ds      -> timeSvg (top + headingh + legendh) pnUnit pnBarLayout drawn mtotal (map showDate ds)
 
 -- | A legend: a swatch and label for each series, flowing left to right, when there are several series.
 legendSvg :: Double -> [(Text, Mark, Text)] -> Maybe Series -> (Double, Svg)
@@ -144,9 +144,10 @@ legendSvg top entries mtotal
                           ! A.width "10" ! A.height "10" ! A.rx "2"
         S.text_ ! A.class_ "label" ! A.x (toValue $ num (x + 18)) ! A.y (toValue $ num (y + 4)) $ S.toMarkup lbl
 
--- | Draw series over time (periods or dates, evenly spaced), with the given x labels: vertical stacked bars, lines and total dots.
-timeSvg :: Double -> Amount -> [DrawSeries] -> Maybe Series -> [Text] -> (Double, Svg)
-timeSvg top unit drawn mtotal xlabels = (plotHeight + 28, do
+-- | Draw series over time (periods or dates, evenly spaced), with the given x labels:
+-- vertical bars (stacked, or grouped side by side), lines, and total dots.
+timeSvg :: Double -> Amount -> BarLayout -> [DrawSeries] -> Maybe Series -> [Text] -> (Double, Svg)
+timeSvg top unit layout drawn mtotal xlabels = (plotHeight + 28, do
     -- gridlines and y tick labels
     forM_ ticks $ \t -> do
       S.line ! A.class_ (if t == 0 then "axis" else "grid")
@@ -157,9 +158,17 @@ timeSvg top unit drawn mtotal xlabels = (plotHeight + 28, do
       when (j `mod` labelevery == 0) $
         S.text_ ! A.class_ "tick" ! A.x (toValue $ num (xcenter j)) ! A.y (toValue $ num (plotbottom + 18)) ! A.textAnchor "middle" $ S.toMarkup lbl
     -- bars
-    forM_ (zip [0 ..] xlabels) $ \(j, lbl) -> do
-      stack lbl j [(d, q) | d <- bars, Just q <- [valueAt (dsValues d) j], q > 0] 1
-      stack lbl j [(d, q) | d <- bars, Just q <- [valueAt (dsValues d) j], q < 0] (-1)
+    forM_ (zip [0 ..] xlabels) $ \(j, lbl) ->
+      if grouped
+      then forM_ (zip [0 :: Int ..] bars) $ \(k, d) -> forM_ (valueAt (dsValues d) j) $ \q ->
+        let len = abs (yof (toD q) - yof 0)
+            x = xcenter j - groupwidth / 2 + fromIntegral k * (barwidth + 2)
+        in when (len > 0.5) $ withTooltip (tooltip lbl (dsSeries d) q) $
+          S.path ! A.class_ ("fill " <> toValue (dsClass d))
+            ! A.d (toValue $ barPath True x (yof 0) barwidth (if q > 0 then -len else len) True)
+      else do
+        stack lbl j [(d, q) | d <- bars, Just q <- [valueAt (dsValues d) j], q > 0] 1
+        stack lbl j [(d, q) | d <- bars, Just q <- [valueAt (dsValues d) j], q < 0] (-1)
     -- lines
     forM_ lines_ $ \d -> lineSvg (dsClass d) (dsSeries d)
     -- the total, as a line (when the other series are lines) or as dots
@@ -173,7 +182,12 @@ timeSvg top unit drawn mtotal xlabels = (plotHeight + 28, do
     n = length xlabels
     bars   = [d | d <- drawn, seMark (dsSeries d) == MarkBar]
     lines_ = [d | d <- drawn, seMark (dsSeries d) == MarkLine]
-    stackedsums sign = [sum [toD q | d <- bars, Just q <- [valueAt (dsValues d) j], signum q == sign] | j <- [0 .. n - 1]]
+    grouped = layout == Grouped && length bars > 1
+    -- the extent of the bars at each x position, in each direction: their sum if stacked, their largest if grouped
+    stackedsums sign = [combine [toD q | d <- bars, Just q <- [valueAt (dsValues d) j], signum q == sign] | j <- [0 .. n - 1]]
+      where combine | not grouped = sum
+                    | sign > 0    = maximumDef 0
+                    | otherwise   = minimumDef 0
     hasbars j = any (\d -> maybe False (/= 0) $ valueAt (dsValues d) j) bars
     pointvalues = [toD q | s <- map dsSeries lines_ ++ maybe [] pure mtotal, Just q <- seValues s]
     datamax = maximumDef 0 (stackedsums 1 ++ pointvalues)
@@ -187,7 +201,12 @@ timeSvg top unit drawn mtotal xlabels = (plotHeight + 28, do
     yof v = plottop + plotHeight * (hi - v) / (hi - lo)
     band = (plotright - plotleft) / fromIntegral (max 1 n)
     xcenter j = plotleft + band * (fromIntegral j + 0.5)
-    barwidth = if band >= 4 then min 24 (band * 0.7) else max 1 (band * 0.9)
+    nbars = if grouped then length bars else 1
+    -- each bar's width, and the width of a group of side-by-side bars (2px apart)
+    barwidth
+      | band < 4  = max 1 (band * 0.9 / fromIntegral nbars)
+      | otherwise = max 1 $ min 24 ((band * 0.8 - 2 * fromIntegral (nbars - 1)) / fromIntegral nbars)
+    groupwidth = fromIntegral nbars * barwidth + 2 * fromIntegral (nbars - 1)
     labelevery = max 1 $ ceiling ((maximumDef 0 (map textWidth xlabels) + 12) / band) :: Int
     -- one direction of a stacked bar: segments from the baseline outward, 2px apart, the outermost with a rounded end
     stack :: Text -> Int -> [(DrawSeries, Quantity)] -> Double -> Svg
