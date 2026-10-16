@@ -21,7 +21,7 @@ module Hledger.Cli.Chart (
   postingsReportAsChart,
 ) where
 
-import Data.List (find, intercalate, isPrefixOf, partition, sort, sortOn, transpose)
+import Data.List (find, intercalate, isPrefixOf, nub, partition, sort, sortOn, transpose)
 import Data.List.Extra (nubSort, splitOn, trim)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
@@ -38,7 +38,7 @@ import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Data.Time (Day)
 import GHC.IO.Encoding (getLocaleEncoding, textEncodingName)
-import Safe (readMay)
+import Safe (atMay, readMay)
 import System.Console.CmdArgs.Explicit (Flag, flagOpt, flagReq)
 import Text.Printf (printf)
 
@@ -344,20 +344,20 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
     -- Each account starts from its balance before the report period, if any.
     accountRunningTotals c =
       [ Series (ChartLabel a a 0 (accttype a) True) SeriesItem MarkLine (runningTotal (== a)) 0 0 | a <- kept ]
-      ++ [ Series (plainLabel $ I18n.trn translations_ n "other ({n} account)" "other ({n} accounts)") SeriesOther MarkLine
-             (runningTotal (`S.notMember` keptset)) 0 0
-         | let n = length accts - length kept, n > 0 ]
+      ++ [ Series (otherLabel translations_ (length othergroups) grp) SeriesOther MarkLine
+             (runningTotal (`S.member` S.fromList grp)) 0 0
+         | grp <- othergroups ]
       where
-        sizes = accountSizes c
-        accts = M.keys sizes
-        kept | length accts <= maxSeries = accts
-             | otherwise = sort $ take (maxSeries - 1) $ map fst $ sortOn (Down . snd) $ M.toList sizes
-        keptset = S.fromList kept
+        sizes = M.toList $ accountSizes c
+        (keptis, othergroupis) = chooseSeries maxSeries [(mainAccountType <$> accttype a, q) | (a, q) <- sizes]
+        acctAt = fmap fst . atMay sizes
+        kept = mapMaybe acctAt keptis
+        othergroups = map (mapMaybe acctAt) othergroupis
         runningTotal match =
           map Just $ drop 1 $ scanl (+) (sum [startIn c a | a <- M.keys startbals, match a])
             [if match (paccount p) then quantityIn c (pamount p) else 0 | p <- postings]
     -- the accounts with postings, or a starting balance, in this commodity, with their total absolute amount (for ranking)
-    accountSizes c = M.unionWith (+)
+    accountSizes c = M.filter (/= 0) $ M.unionWith (+)
       (M.fromListWith (+) [(paccount p, abs $ quantityIn c $ pamount p) | p <- postings])
       (M.fromList [(a, abs q) | a <- M.keys startbals, let q = startIn c a, q /= 0])
     runningTotalAccounts c = M.keys $ accountSizes c
@@ -390,20 +390,48 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
 -- | Keep at most this many series. If there are more, keep the largest (by total absolute value) in their original order,
 -- and combine the rest into a final "other" series.
 limitSeries :: Int -> I18n.Translations -> Mark -> [(ChartLabel, [Quantity])] -> [Series]
-limitSeries maxn t mark items
-  | length items <= maxn = map item items
-  | otherwise = map (item . snd) kept ++ [other]
+limitSeries maxn t mark items =
+  [ Series l SeriesItem mark (map Just qs) 0 0 | i <- kept, Just (l, qs) <- [items `atMay` i] ]
+  ++ [ Series (otherLabel t (length othergroups) [lbFull l | (l, _) <- grp]) SeriesOther mark
+         (map (Just . sum) $ transpose $ map snd grp) 0 0
+     | grp <- map (mapMaybe (items `atMay`)) othergroups ]
   where
-    item (l, qs) = Series l SeriesItem mark (map Just qs) 0 0
-    numbered = zip [0 :: Int ..] items
-    largest = S.fromList $ take (maxn - 1) $ map fst $ sortOn (Down . sum . map abs . snd . snd) numbered
-    (kept, rest) = partition ((`S.member` largest) . fst) numbered
-    n = length rest
-    other = Series
-      (plainLabel $ I18n.trn t n "other ({n} account)" "other ({n} accounts)")
-      SeriesOther mark
-      (map (Just . sum) $ transpose $ map (snd . snd) rest)
-      0 0
+    (kept, othergroups) = chooseSeries maxn [(mainAccountType <$> lbType l, sum $ map abs qs) | (l, qs) <- items]
+
+-- | Choose which of these items (given as their account type, if known, and size) to show as series of their own,
+-- when at most n series can be shown: all of them if they fit; otherwise the largest, but at least the largest of each
+-- account type, with the rest of each type to be combined into an "other" series (so accounts of different types,
+-- eg assets and liabilities, are never combined). A type with just one item left over shows that item instead.
+-- Returns the positions of the items to show (in order), and of each type's items to combine (each at least two).
+chooseSeries :: Int -> [(Maybe AccountType, Quantity)] -> ([Int], [[Int]])
+chooseSeries n items
+  | length items <= n = (positions, [])
+  | otherwise = (sort $ S.toList keptset ++ concat singles, multiples)
+  where
+    positions = [0 .. length items - 1]
+    typeAt i = maybe Nothing fst (items `atMay` i)
+    sizeAt i = maybe 0 snd (items `atMay` i)
+    types = nub $ map typeAt positions
+    ranked = sortOn (Down . sizeAt) positions
+    -- the largest of each type, then more by size while they fit, with a series for each type's leftovers
+    guaranteed = S.fromList [i | ty <- types, Just i <- [find ((== ty) . typeAt) ranked]]
+    keptset = foldl' (\ks i -> let ks' = S.insert i ks in if fits ks' then ks' else ks) guaranteed ranked
+    fits ks = S.size ks + length (filter (not . null) $ leftovers ks) <= n
+    leftovers ks = [[i | i <- positions, typeAt i == ty, i `S.notMember` ks] | ty <- types]
+    (singles, multiples) = partition ((== 1) . length) $ filter (not . null) $ leftovers keptset
+
+-- | The label for an "other" series combining these accounts. When there are several "other" series,
+-- it names the accounts' common parent, if they have one, to tell them apart.
+otherLabel :: I18n.Translations -> Int -> [AccountName] -> ChartLabel
+otherLabel t nothers accts
+  | nothers > 1, not (T.null parent) = plainLabel $ T.replace "{parent}" parent $ I18n.trn t n "other {parent} ({n} account)" "other {parent} ({n} accounts)"
+  | otherwise = plainLabel $ I18n.trn t n "other ({n} account)" "other ({n} accounts)"
+  where
+    n = length accts
+    parent = case map (T.splitOn ":") accts of
+      []     -> ""
+      p : ps -> T.intercalate ":" $ foldl' commonPrefix p ps
+    commonPrefix a b = map fst $ takeWhile (uncurry (==)) $ zip a b
 
 -- | In tree mode, a parent account's row includes the amounts of its displayed subaccounts' rows.
 -- Subtract those, leaving each row with only its own amounts.

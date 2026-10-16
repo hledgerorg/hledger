@@ -283,3 +283,32 @@ $ hledger -f - bal --chart=1,000
 $ hledger -f - bal --chart=200,auto
 >2 /--chart's KIND \(auto\) should come before any SCALE amounts/
 >= 1
+
+<
+2024-01-01
+    assets:a1        10
+    assets:a2        20
+    assets:a3        30
+    assets:a4        40
+    assets:a5        50
+    assets:a6        60
+    assets:a7        70
+    assets:a8        80
+    assets:a9        90
+    liabilities:l1   -1
+    liabilities:l2   -2
+    equity
+
+# ** 27. When accounts are combined into "other", accounts of different types are never combined,
+# and each type keeps at least its largest account (here, the small liabilities are still shown).
+$ hledger -f - bal -M assets liabilities --chart -O csv
+"commodity","series","role","mark","x","value"
+"","assets:a5","item","bar","Jan","50"
+"","assets:a6","item","bar","Jan","60"
+"","assets:a7","item","bar","Jan","70"
+"","assets:a8","item","bar","Jan","80"
+"","assets:a9","item","bar","Jan","90"
+"","liabilities:l1","item","bar","Jan","-1"
+"","liabilities:l2","item","bar","Jan","-2"
+"","other (4 accounts)","other","bar","Jan","100"
+"","Total","total","marker","Jan","447"

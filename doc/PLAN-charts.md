@@ -50,7 +50,9 @@ report  -->  adapter (Hledger.Cli.Chart; smart defaults)  -->  Chart (Hledger.Wr
 - **Flows as bars, stocks as lines** (lines are bars in text). Time along the x axis in SVG; categories (single-period reports)
   as vertical bars, or horizontal beyond 30. Text charts are always horizontal bars, a row per x position.
 - **One panel per commodity**, those in most report cells first; a warning above 8 panels suggests `-X` or `cur:`.
-- **At most 8 series** (5 per compound section): the largest by absolute total, the rest combined into "other (N accounts)".
+- **At most 8 series** (5 per compound section): the largest by absolute total, the rest combined into "other (N accounts)",
+  per account type (each type keeps its largest account; several "other" series are named by their accounts' common parent),
+  so eg a small liability isn't hidden among assets (`chooseSeries`).
 - **No double counting**: in tree mode, each account's own amounts are charted.
 - **Respects report options** (query, depth, period, interval, valuation, `--invert`, sorting, `-N`, `--title`, `--percent`);
   table-only options are ignored.

@@ -1045,7 +1045,8 @@ It is drawn with unicode block characters, or with ASCII characters if the syste
 There is one chart panel per commodity. You can reduce this by converting to one commodity (eg `-X USD`) or selecting some (eg `cur:USD`);
 hledger suggests this when there are more than 8 panels.
 In tree mode, each account's own amounts are stacked, excluding its subaccounts', so that nothing is counted twice.
-At most 8 accounts are shown per panel; the smallest are combined into an "other" series.
+At most 8 accounts are shown per panel; the smallest are combined into "other" series,
+one for each account type (so eg assets and liabilities are never combined), and each type keeps at least its largest account.
 The total is omitted with `-N` or `--percent`.
 
 Each chart is scaled to fit its values. To draw charts at a fixed scale instead,
