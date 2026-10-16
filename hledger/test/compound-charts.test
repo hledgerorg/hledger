@@ -206,3 +206,12 @@ tr0 208
 tx0 234
 tr0 548
 tx0 574
+
+# ** 16. A grouped chart with only one section left (here, revenues are excluded) still has its section and net rows.
+$ hledger -f - is -M 'not:amt:<0' --chart -w 60
+Monthly Income Statement 2024-03-01..2024-04-30
+
+Mar  Expenses   300                     │███████████████████
+     Net       -300  ┃                  │
+Apr  Expenses   300                     │███████████████████
+     Net       -300  ┃                  │
