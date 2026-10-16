@@ -174,7 +174,7 @@
 <text class="tick" x="413.5" y="292" text-anchor="middle">2024-01-22</text>
 <text class="tick" x="532.3" y="292" text-anchor="middle">2024-01-29</text>
 <text class="tick" x="651.1" y="292" text-anchor="middle">2024-02-05</text>
-<polyline class="line ta0" points="57,164 124.9,164 124.9,197 583.2,197 583.2,87 736,87 736,175" />
+<polyline class="line s5" points="57,164 124.9,164 124.9,197 583.2,197 583.2,87 736,87 736,175" />
 <g>
 <title>2024-01-01 · assets:bank · 100</title>
 <circle class="hit" cx="57" cy="164" r="6" />

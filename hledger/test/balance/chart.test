@@ -158,21 +158,21 @@ Feb  100  ███████████████████████�
 $ hledger -f - bal -M expenses --chart -w 50
 Balance changes in 2024-01-01..2024-02-29:
 
-█ expenses:food  ▓ expenses:food:dining
+░ expenses:food  █ expenses:food:dining
 ▒ expenses:rent
 
-Jan   15  ████▓▓
+Jan   15  ░░░░██
 Feb  100  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 # ** 12. Negative values grow left from an axis.
 $ hledger -f - bal -M --chart -w 50
 Balance changes in 2024-01-01..2024-02-29:
 
-█ assets:cash  ▓ expenses:food
-▒ expenses:food:dining  ░ expenses:rent
+▒ assets:cash  ▓ expenses:food
+█ expenses:food:dining  ░ expenses:rent
 
-Jan  0                   ███│▓▓▒
-Feb  0  ████████████████████│░░░░░░░░░░░░░░░░░░░░
+Jan  0                   ▒▒▒│▓▓█
+Feb  0  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│░░░░░░░░░░░░░░░░░░░░
 
 # ** 13. A single-period chart has a bar per account, indented in tree mode.
 $ hledger -f - bal --tree --chart -w 40
@@ -186,10 +186,10 @@ expenses      115            │██████████
 $ hledger -f - bal -M expenses -N --chart -w 50
 Balance changes in 2024-01-01..2024-02-29:
 
-█ expenses:food  ▓ expenses:food:dining
+░ expenses:food  █ expenses:food:dining
 ▒ expenses:rent
 
-Jan  ████▓▓▓
+Jan  ░░░░███
 Feb  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 # ** 15. --width must be a positive number.
@@ -226,9 +226,9 @@ table
 $ hledger -f - bal -M a b --chart -w 40
 Balance changes in 2024-01:
 
-▓ b
+▒ b
 
-Jan  1001  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+Jan  1001  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 <
 2024-01-01
@@ -249,19 +249,19 @@ Jan  1001  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
 $ hledger -f - bal -M expenses --chart=50 -w 40
 Balance changes in 2024-01-01..2024-02-29:
 
-█ expenses:food  ▓ expenses:rent
+░ expenses:food  ▒ expenses:rent
 
-Jan  110  ██████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▸
-Feb   20  ████████████
+Jan  110  ░░░░░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▸
+Feb   20  ░░░░░░░░░░░░
 
 # ** 22. KIND and SCALE can be given together, KIND first.
 $ hledger -f - bal -M expenses --chart=auto,200 -w 40
 Balance changes in 2024-01-01..2024-02-29:
 
-█ expenses:food  ▓ expenses:rent
+░ expenses:food  ▒ expenses:rent
 
-Jan  110  ██▓▓▓▓▓▓▓▓▓▓▓▓▓▓
-Feb   20  ███
+Jan  110  ░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+Feb   20  ░░░
 
 # ** 23. A SCALE with a commodity symbol applies to that commodity's chart; one without, to the others.
 $ hledger -f - bal cash euro --chart='100,10 EUR' -w 30

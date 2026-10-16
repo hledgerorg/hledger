@@ -415,6 +415,12 @@ account's counts stacked (`-0` for just the total, mentioned in its manual), and
 Its old `*` rows output is gone. Like it, count charts (`pnCounts`, from --count) draw at most one text cell per unit,
 so small counts aren't magnified (still scaled down to fit; a fixed scale overrides). Considered for all charts but rejected:
 amounts' units are arbitrary (eg 0.5 BTC would be half a cell). `balance --count` reports are now titled "Posting counts" (they said "Balance changes").
+Stable colours (2026-10-16): colours and text fill characters are chosen by account name, not position (`stableSlots`): each name has
+its own hashed order of preference among the slots (8 categorical colours, 4 tints, 4 fill characters), and names choose largest first,
+so removing the largest account (the usual drill-down) disturbs only accounts it had displaced, and -S changes nothing.
+To keep colours when accounts are removed, the scheme no longer depends on counts: single-type (or untyped) panels always use
+categorical colours (previously type tints up to 4 accounts), mixed-type panels type hues with tints; a lone account keeps its colour
+(only a lone non-account series, `lbAccount` False, eg a total, is neutral); a register of one account labels its line with the account.
 Dropped automatic date grouping (2026-10-16): text charts of registers no longer switch to a row per day/week/month/.. beyond 50 rows,
 since that heuristic was hard to predict and understand; they always have a row per posting (or transaction). Use a report interval
 (register -M, or balance -M -H for an account's balance) for a row per period.

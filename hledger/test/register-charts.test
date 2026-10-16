@@ -27,10 +27,10 @@ $ hledger -f - reg expenses --chart -O csv
 "","Total","total","line","2024-01-05","30"
 "","Total","total","line","2024-02-10","110"
 
-# ** 2. With postings to one account, it is just the running total.
+# ** 2. With postings to one account, it is just the running total, labelled with the account (so it has the account's colour).
 $ hledger -f - reg rent --chart -O csv
 "commodity","series","role","mark","x","value"
-"","Total","item","line","2024-02-10","80"
+"","expenses:rent","item","line","2024-02-10","80"
 
 # ** 3. With a report interval, it is each account's amount in each period, as stacked bars, with the period total as a marker.
 $ hledger -f - reg expenses -M --chart -O csv
@@ -44,10 +44,10 @@ $ hledger -f - reg expenses -M --chart -O csv
 
 # ** 4. A text chart has a row per posting, with the accounts' running totals stacked, and the overall running total as the value.
 $ hledger -f - reg expenses --chart -w 40
-█ expenses:food  ▓ expenses:rent
+░ expenses:food  ▒ expenses:rent
 
-2024-01-05   30  ██████▎
-2024-02-10  110  ██████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+2024-01-05   30  ░░░░░░
+2024-02-10  110  ░░░░░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 # ** 5. With -H, each account's running total starts from its balance before the report period, so they add up to the overall (historical) running total.
 $ hledger -f - reg expenses -b 2024-02 -H --chart -O csv

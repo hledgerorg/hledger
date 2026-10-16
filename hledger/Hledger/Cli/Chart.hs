@@ -201,7 +201,7 @@ balanceReportAsChart :: (AccountName -> Maybe AccountType) -> ReportOpts -> Text
 balanceReportAsChart accttype ReportOpts{balancecalc_, translations_} title (items, _total) =
   Chart
     { chTitle  = title
-    , chXAxis  = XCategories [ChartLabel full short indent (accttype full) | (full, short, indent, _) <- items]
+    , chXAxis  = XCategories [ChartLabel full short indent (accttype full) True | (full, short, indent, _) <- items]
     , chPanels = map panel $ commoditiesByUse cells
     }
   where
@@ -251,7 +251,7 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
                | ((t, r, increasestotal), sectype) <- zip subreports (sectiontypes ++ repeat Nothing) ]
     -- an account's label, with its section's type if it has none, or its section's title if it's "..."
     sectionAccountLabel (t, sectype) r
-      | lbFull l == "..." = ChartLabel t t 0 sectype
+      | lbFull l == "..." = ChartLabel t t 0 sectype True
       | otherwise         = l{lbType = lbType l <|> sectype}
       where l = accountLabel accttype $ prrName r
     nettotals = prrAmounts totals
@@ -295,7 +295,7 @@ accountTransactionsReportAsChart accttype title acct txndate items =
     allamts = concatMap amountsRaw bals
     panel c = Panel
       { pnUnit      = unitAmount c allamts
-      , pnSeries    = [Series (ChartLabel acct acct 0 (accttype acct)) SeriesItem MarkLine (map (Just . quantityIn c) bals) 0 0]
+      , pnSeries    = [Series (ChartLabel acct acct 0 (accttype acct) True) SeriesItem MarkLine (map (Just . quantityIn c) bals) 0 0]
       , pnGroupNames = []
       , pnScale = Nothing
       , pnLayout = Diverging
@@ -318,9 +318,12 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
       let totals = [t | (_, _, _, _, t) <- items]
           totalamts = concatMap amountsRaw totals
           totalseries c role = Series ((plainLabel $ I18n.tr translations_ "Total"){lbType = commontype}) role MarkLine (map (Just . quantityIn c) totals) 0 0
-          -- with postings to several accounts (and not --average), each account's running total as a line, and the overall running total
+          -- with postings to several accounts (and not --average), each account's running total as a line, and the overall running total;
+          -- otherwise just the running total (labelled with the account, if there's one, so that it has the account's colour)
           linespanel c
-            | average_ || length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] [] Nothing Diverging False
+            | average_ = Panel (unitAmount c totalamts) [totalseries c SeriesItem] [] Nothing Diverging False
+            | [a] <- runningTotalAccounts c = Panel (unitAmount c totalamts) [(totalseries c SeriesItem){seLabel = ChartLabel a a 0 (accttype a) True}] [] Nothing Diverging False
+            | length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] [] Nothing Diverging False
             | otherwise = Panel (unitAmount c totalamts) (accountRunningTotals c ++ [totalseries c SeriesTotal]) [] Nothing Diverging False
       in Chart
         { chTitle  = title
@@ -340,7 +343,7 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
     -- (Only these are computed, since there can be many accounts and postings.)
     -- Each account starts from its balance before the report period, if any.
     accountRunningTotals c =
-      [ Series (ChartLabel a a 0 (accttype a)) SeriesItem MarkLine (runningTotal (== a)) 0 0 | a <- kept ]
+      [ Series (ChartLabel a a 0 (accttype a) True) SeriesItem MarkLine (runningTotal (== a)) 0 0 | a <- kept ]
       ++ [ Series (plainLabel $ I18n.trn translations_ n "other ({n} account)" "other ({n} accounts)") SeriesOther MarkLine
              (runningTotal (`S.notMember` keptset)) 0 0
          | let n = length accts - length kept, n > 0 ]
@@ -376,7 +379,7 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
       | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total, pnGroupNames = [], pnScale = Nothing, pnLayout = Diverging, pnCounts = False}
       where
         series = limitSeries maxSeries translations_ MarkBar
-          [ (ChartLabel a a 0 (accttype a), qs) | (a, amts) <- rows, let qs = map (quantityIn c) amts, any (/= 0) qs ]
+          [ (ChartLabel a a 0 (accttype a) True, qs) | (a, amts) <- rows, let qs = map (quantityIn c) amts, any (/= 0) qs ]
         total =
           [ Series (plainLabel $ I18n.tr translations_ "Total") SeriesTotal MarkMarker
               (map (Just . sum) $ transpose [map (quantityIn c) amts | (_, amts) <- rows]) 0 0
@@ -434,8 +437,10 @@ unitAmount c as = case find ((== c) . acommodity) as of
 quantityIn :: CommoditySymbol -> MixedAmount -> Quantity
 quantityIn c ma = sum [aquantity a | a <- amountsRaw ma, acommodity a == c]
 
+-- | A label for an account (or accounts, eg a depth-clipped one), from a report row's name.
 accountLabel :: (AccountName -> Maybe AccountType) -> DisplayName -> ChartLabel
-accountLabel accttype DisplayName{displayFull, displayName, displayIndent} = ChartLabel displayFull displayName displayIndent (accttype displayFull)
+accountLabel accttype DisplayName{displayFull, displayName, displayIndent} = ChartLabel displayFull displayName displayIndent (accttype displayFull) True
 
+-- | A label for something other than an account, eg a total.
 plainLabel :: Text -> ChartLabel
-plainLabel t = ChartLabel t t 0 Nothing
+plainLabel t = ChartLabel t t 0 Nothing False

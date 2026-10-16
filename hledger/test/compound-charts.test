@@ -36,32 +36,32 @@ $ hledger -f - is -M --chart -O csv
 $ hledger -f - is -M --chart=diverging -w 50
 Monthly Income Statement 2024-01-01..2024-02-29
 
-█ revenues:salary  ▓ expenses:food
+▓ revenues:salary  ░ expenses:food
 ▒ expenses:rent  ┃ Net
 
      Net  Expenses                         Revenues
-Jan  70        30       ▓▓▓▓│████████┃███ 100
-Feb  20        80 ▒▒▒▒▒▒▒▒▒▒│█┃██████████ 100
+Jan  70        30       ░░░░│▓▓▓▓▓▓▓▓┃▓▓▓ 100
+Feb  20        80 ▒▒▒▒▒▒▒▒▒▒│▓┃▓▓▓▓▓▓▓▓▓▓ 100
 
 # ** 3. A single-period report is charted the same way, with one period.
 $ hledger -f - is --chart=diverging -w 50
 Income Statement 2024-01-01..2024-02-10
 
-█ revenues:salary  ▓ expenses:food
+▓ revenues:salary  ░ expenses:food
 ▒ expenses:rent  ┃ Net
 
 Net  Expenses                              Revenues
-90       110 ▒▒▒▒▒▒▒▓▓▓│███████┃█████████ 200
+90       110 ▒▒▒▒▒▒▒░░░│▓▓▓▓▓▓▓┃▓▓▓▓▓▓▓▓▓ 200
 
 # ** 4. With -1, each section has a single bar.
 $ hledger -f - is -M -1 --chart=diverging -w 50
 Monthly Income Statement 2024-01-01..2024-02-29
 
-█ revenues  ▓ expenses  ┃ Net
+▓ revenues  █ expenses  ┃ Net
 
      Net  Expenses                         Revenues
-Jan  70        30       ▓▓▓▓│████████┃███ 100
-Feb  20        80 ▓▓▓▓▓▓▓▓▓▓│█┃██████████ 100
+Jan  70        30       ████│▓▓▓▓▓▓▓▓┃▓▓▓ 100
+Feb  20        80 ██████████│▓┃▓▓▓▓▓▓▓▓▓▓ 100
 
 # ** 5. End balances (eg balancesheet's) are charted with the diverging layout by default (liabilities below zero), with the net total as a line.
 $ hledger -f - bs -M --chart -O csv
@@ -158,12 +158,12 @@ $ hledger -f - bs -M --chart -O csv
 $ hledger -f - is -M --chart=diverging -w 60
 Monthly Income Statement 2024-03-01..2024-04-30
 
-█ revenues:salary  ▓ expenses:food  ▒ expenses:taxes  ┃ Net
+▓ revenues:salary  ░ expenses:food  █ expenses:taxes  ┃ Net
 ╱ contra
 
       Net  Expenses                                 Revenues
-Mar   700       300 ▓▓▓│█████┃███                   1000
-Apr  2700     -1700 ▓▓▓│╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱██████┃██ 1000
+Mar   700       300 ░░░│▓▓▓▓▓┃▓▓▓                   1000
+Apr  2700     -1700 ░░░│╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱▓▓▓▓▓▓┃▓▓ 1000
 
 # ** 11. In the grouped layout (the default for changes, or --chart=grouped), each section has its own bar
 # (in text, a row per period per section, showing its total), and the net is marked on a row of its own.
@@ -171,14 +171,14 @@ Apr  2700     -1700 ▓▓▓│╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱
 $ hledger -f - is -M --chart -w 60
 Monthly Income Statement 2024-03-01..2024-04-30
 
-█ revenues:salary  ▓ expenses:food  ▒ expenses:taxes  ┃ Net
+▓ revenues:salary  ░ expenses:food  █ expenses:taxes  ┃ Net
 ╱ contra
 
-Mar  Revenues   1000                  │███████▉
-     Expenses    300                  │▓▓
+Mar  Revenues   1000                  │▓▓▓▓▓▓▓▓
+     Expenses    300                  │░░
      Net         700                  │     ┃
-Apr  Revenues   1000                  │███████▉
-     Expenses  -1700  ╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱│▓▓
+Apr  Revenues   1000                  │▓▓▓▓▓▓▓▓
+     Expenses  -1700  ╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱│░░
      Net        2700                  │                    ┃
 
 # ** 12. With depth 0, each section's single bar is labelled with the section's name.
@@ -201,11 +201,11 @@ $ hledger -f - is -M -O svg | grep -c 'url(#hledger-chart-hatch)'
 2
 
 # ** 15. In SVG, --chart=grouped draws the sections' bars side by side: here, revenues' and expenses' bars at different x positions in each period.
-$ hledger -f - is -M --chart=grouped -O svg | sed -n 's/.*class="fill \(t[rx]0\)" d="M \([0-9]*\).*/\1 \2/p'
-tr0 208
-tx0 234
-tr0 548
-tx0 574
+$ hledger -f - is -M --chart=grouped -O svg | sed -n 's/.*class="fill \(t[rx]\)[0-9]" d="M \([0-9]*\).*/\1 \2/p' | uniq
+tr 208
+tx 234
+tr 548
+tx 574
 
 # ** 16. A grouped chart with only one section left (here, revenues are excluded) still has its section and net rows.
 $ hledger -f - is -M 'not:amt:<0' --chart -w 60

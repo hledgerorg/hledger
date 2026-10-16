@@ -14,6 +14,7 @@ Signs are already as the report shows them (eg normal-balance flipping done by b
 Values are kept exact here ('Quantity'); renderers convert them to Double only for drawing.
 -}
 
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -28,6 +29,8 @@ module Hledger.Write.Chart (
   Mark(..),
   Colour(..),
   seriesColours,
+  stableSlots,
+  seriesSize,
   maxTints,
   mainAccountType,
   SeriesValues,
@@ -42,9 +45,17 @@ module Hledger.Write.Chart (
 ) where
 
 import Control.Applicative ((<|>))
+import Data.Bits (xor)
+import Data.Char (ord)
+import Data.List (find, nub, sortOn)
+#if !MIN_VERSION_base(4,20,0)
+import Data.List (foldl')
+#endif
 import Data.Map qualified as M
-import Data.List (find)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust, listToMaybe)
+import Data.Ord (Down(..))
+import Data.Set qualified as S
+import Data.Word (Word32)
 
 import Data.Array (Array, bounds, inRange, listArray, (!))
 
@@ -91,6 +102,7 @@ data ChartLabel = ChartLabel
   , lbIndent :: Int                 -- ^ indentation level to display it with (0 for none)
   , lbType   :: Maybe AccountType   -- ^ the account type, if this names an account (or accounts) of a known type;
                                     --   charts colour accounts by their main type (see 'seriesColours')
+  , lbAccount :: Bool               -- ^ does this name an account (or accounts) ? Otherwise it's something else, eg a total.
   } deriving (Show, Eq, Generic, ToJSON)
 
 -- | One chart area with its own y axis, holding series of values in a single unit.
@@ -165,27 +177,66 @@ data Colour
 maxTints :: Int
 maxTints = 4
 
--- | Colours for a panel's series, in order: accounts of a known type get their main type's hue,
--- tinted differently for each of that type in the panel (the tints repeat after 'maxTints');
--- other ordinary series get categorical colours in order, or a neutral colour if there's only one series.
--- If all the accounts are of one type (so the type's colour tells nothing) and there are more of them than tints
--- (so they would not all be distinguishable), they get categorical colours instead.
+-- | How many categorical colours renderers provide (see 'IndexColour').
+categoricalColours :: Int
+categoricalColours = 8
+
+-- | Colours for a panel's series, in order. When the panel's accounts are of several known types, each gets its main type's hue,
+-- in one of several tints (repeating when there are more than 'maxTints' of a type). Otherwise (when their types are all the same,
+-- so the type's hue would tell nothing, or unknown) they get categorical colours.
+-- A lone series which is not an account (eg a total) gets a neutral colour.
+--
+-- The tints and categorical colours are chosen by the series' names, not their positions or number (see 'stableSlots'),
+-- so that an account keeps its colour in other charts: eg after removing other accounts (even down to just one), or sorting differently.
 seriesColours :: [Series] -> [Colour]
-seriesColours series
-  | M.size typecounts == 1 && any (> maxTints) (M.elems typecounts) = go M.empty 0 [s{seLabel = (seLabel s){lbType = Nothing}} | s <- series]
-  | otherwise = go M.empty 0 series
+seriesColours series = zipWith colour series' slots
   where
-    typecounts = M.fromListWith (+) [(t, 1 :: Int) | s <- series, seRole s == SeriesItem, Just t <- [mainAccountType <$> lbType (seLabel s)]]
+    series'
+      | M.size typecounts <= 1 = [s{seLabel = (seLabel s){lbType = Nothing}} | s <- series]
+      | otherwise = series
+    typecounts = M.fromListWith (+) [(t, 1 :: Int) | s <- series, seRole s == SeriesItem, Just t <- [typeOf s]]
+    typeOf s = mainAccountType <$> lbType (seLabel s)
     onlyone = length [s | s <- series, seRole s /= SeriesTotal] == 1
-    go :: M.Map AccountType Int -> Int -> [Series] -> [Colour]
-    go _ _ [] = []
-    go tints n (s:ss) = case (seRole s, mainAccountType <$> lbType (seLabel s)) of
-      (SeriesTotal, _) -> TotalColour : go tints n ss
-      (SeriesOther, _) -> OtherColour : go tints n ss
-      (_, Just t)      -> let k = M.findWithDefault 0 t tints in TypeColour t k : go (M.insert t (k + 1) tints) n ss
+    -- each series' slot among the other ordinary series of its type (or with no type)
+    slots = [ fromMaybe 0 $ M.lookup i slotmap | i <- [0 .. length series' - 1] ]
+    slotmap = M.fromList $ concat
+      [ zip is $ stableSlots (if isJust t then maxTints else categoricalColours) [(lbFull $ seLabel s, seriesSize s) | s <- ss]
+      | t <- nub $ map typeOf ordinary
+      , let (is, ss) = unzip [(i, s) | (i, s) <- zip [0 :: Int ..] series', seRole s == SeriesItem, typeOf s == t] ]
+    ordinary = [s | s <- series', seRole s == SeriesItem]
+    colour s k = case (seRole s, typeOf s) of
+      (SeriesTotal, _) -> TotalColour
+      (SeriesOther, _) -> OtherColour
+      (_, Just t)      -> TypeColour t k
       (_, Nothing)
-        | onlyone      -> NeutralColour : go tints n ss
-        | otherwise    -> IndexColour n : go tints (n + 1) ss
+        | onlyone && not (lbAccount $ seLabel s) -> NeutralColour
+        | otherwise    -> IndexColour k
+
+-- | A series' size, for ranking: the sum of its absolute values.
+seriesSize :: Series -> Quantity
+seriesSize = sum . map abs . catMaybes . seValues
+
+-- | Give each of these names one of n slots (0 to n-1), chosen by the name rather than its position,
+-- so that a name tends to get the same slot in other lists: eg a colour that stays with an account in successive charts.
+-- Each name has its own order of preference for the slots (from a hash of it), and gets the first one still free.
+-- The names choose in order of their sizes (largest first; then by name), so that adding or removing small items
+-- (or removing the largest) disturbs few others; positions don't matter.
+-- When there are more names than slots, some slots are shared.
+stableSlots :: Ord a => Int -> [(Text, a)] -> [Int]
+stableSlots n items
+  | n <= 0    = map (const 0) items
+  | otherwise = [ fromMaybe 0 $ M.lookup i assigned | i <- [0 .. length items - 1] ]
+  where
+    assigned = snd $ foldl' place (S.empty, M.empty) $ sortOn (\(i, (nm, size)) -> (Down size, nm, i)) $ zip [0 :: Int ..] items
+    place (used, m) (i, (nm, _)) =
+      let prefs = preferences nm
+          slot = fromMaybe (fromMaybe 0 $ listToMaybe prefs) $ find (`S.notMember` used) prefs
+      in (S.insert slot used, M.insert i slot m)
+    -- a name's slots, in its order of preference
+    preferences nm = sortOn (\k -> fnv1a (nm <> "/" <> T.pack (show k))) [0 .. n - 1]
+    -- a simple, stable hash (FNV-1a, 32 bit)
+    fnv1a :: Text -> Word32
+    fnv1a = T.foldl' (\h c -> (h `xor` fromIntegral (ord c)) * 16777619) 2166136261
 
 -- | A series' values, indexed by x position, for fast lookup by renderers.
 type SeriesValues = Array Int (Maybe Quantity)
@@ -267,15 +318,30 @@ tests_Hledger_Write_Chart = testGroup "Write.Chart" [
      scaleSpans 100 150 50 @?= (75, 25)
      scaleSpans 100 0 0 @?= (100, 0)
   ,testCase "seriesColours" $ do
-     let ser t = Series (ChartLabel "" "" 0 t) SeriesItem MarkBar [] 0 0
-     seriesColours [ser (Just Expense), ser (Just Cash), ser Nothing, ser (Just Expense), ser Nothing]
-       @?= [TypeColour Expense 0, TypeColour Asset 0, IndexColour 0, TypeColour Expense 1, IndexColour 1]
-     -- more series of one type than tints: all get categorical colours
-     seriesColours (replicate (maxTints + 1) (ser (Just Revenue)))
-       @?= map IndexColour [0 .. maxTints]
-     -- but with several types, the type colours are kept, and the tints repeat
-     seriesColours (ser (Just Asset) : replicate (maxTints + 1) (ser (Just Revenue)))
-       @?= TypeColour Asset 0 : [TypeColour Revenue k | k <- [0 .. maxTints]]
-     -- a single series with no type gets a neutral colour
-     seriesColours [ser Nothing] @?= [NeutralColour]
+     let ser n t = Series (ChartLabel n n 0 t True) SeriesItem MarkBar [Just 1] 0 0
+         tints cs = [k | TypeColour _ k <- cs]
+     -- accounts of several types get their types' hues, in different tints; untyped series get categorical colours
+     let cs = seriesColours [ser "e1" (Just Expense), ser "a" (Just Cash), ser "u1" Nothing, ser "e2" (Just Expense), ser "u2" Nothing]
+     length [c | c@(TypeColour Asset _) <- cs] @?= 1
+     length (nub $ tints [c | c@(TypeColour Expense _) <- cs]) @?= 2
+     length (nub [k | IndexColour k <- cs]) @?= 2
+     -- colours follow the accounts, not their positions
+     seriesColours [ser "e2" (Just Expense), ser "e1" (Just Expense)] @?= reverse (seriesColours [ser "e1" (Just Expense), ser "e2" (Just Expense)])
+     -- accounts all of one type get categorical colours, all different
+     let rs = seriesColours [ser (T.pack $ show i) (Just Revenue) | i <- [0 .. maxTints]]
+     length (nub [k | IndexColour k <- rs]) @?= maxTints + 1
+     -- and keep them when fewer are shown, down to one
+     seriesColours (take 1 [ser (T.pack $ show i) (Just Revenue) | i <- [0 .. maxTints]]) @?= take 1 rs
+     -- a lone series which is not an account gets a neutral colour; others and totals get theirs
+     seriesColours [(ser "u" Nothing){seLabel = ChartLabel "u" "u" 0 Nothing False}] @?= [NeutralColour]
+     seriesColours [(ser "o" Nothing){seRole = SeriesOther}, (ser "t" Nothing){seRole = SeriesTotal}]
+       @?= [OtherColour, TotalColour]
+  ,testCase "stableSlots" $ do
+     let items = [("a", 3), ("b", 2), ("c", 1)] :: [(Text, Int)]
+         slots = stableSlots 8 items
+     length (nub slots) @?= 3                       -- different slots, while there are enough
+     stableSlots 8 (reverse items) @?= reverse slots  -- positions don't matter
+     all (`elem` [0 .. 7]) slots @?= True
+     length (nub $ stableSlots 2 items) @?= 2         -- more items than slots: they share them
+     stableSlots 0 items @?= [0, 0, 0]
   ]

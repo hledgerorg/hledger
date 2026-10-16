@@ -135,7 +135,8 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     drawn = [s | s <- pnSeries, seRole s /= SeriesTotal, seMark s /= MarkMarker]
     mtotal = find ((== SeriesTotal) . seRole) pnSeries
     single = length drawn == 1
-    styled = zipWith3 seriesStyle [0 ..] (seriesColours drawn) drawn
+    -- each series' style, fill character (chosen by its name, like its colour, so that it stays the same in other charts) and values
+    styled = zipWith3 seriesStyle (stableSlots (length fillchars) [(lbFull $ seLabel s, seriesSize s) | s <- drawn]) (seriesColours drawn) drawn
     styledseries = zip styled drawn
     -- The groups of series (see 'seGroup'), in order, and each group's name and usual sign (if its series have one; otherwise 1).
     groups = nub $ map seGroup drawn
@@ -162,9 +163,8 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
       (XCategories ls, True) | Just l <- ls `atMay` j, Just at <- lbType l -> StyleType (mainAccountType at) 0
       _ -> st
     mtotalvals = seriesValues <$> mtotal
-    fillChar i
-      | tcUnicode = if single then '█' else cyclicAt '█' "█▓▒░" i
-      | otherwise = if single then '#' else cyclicAt '#' "#=+:" i
+    fillchars = if tcUnicode then "█▓▒░" else "#=+:"
+    fillChar i = if single then cyclicAt ' ' fillchars 0 else cyclicAt ' ' fillchars i
 
     xlabels = case xaxis of
       XCategories ls -> [T.replicate (2 * lbIndent l) " " <> lbShort l | l <- ls]
@@ -356,13 +356,13 @@ tests_Hledger_Write_Chart_Text = testGroup "Write.Chart.Text" [
      trimEnd [(StylePlain, "a "), (StylePlain, "  ")] @?= [(StylePlain, "a")]
      trimEnd [] @?= []
   ,testCase "single series, scaled to the width" $ do
-     let lbl t = ChartLabel t t 0 Nothing
+     let lbl t = ChartLabel t t 0 Nothing True
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
                    [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0 0] [] Nothing Diverging False]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 20 True) chart)
        @?= ["a  1  ███████", "b  2  ██████████████"]
   ,testCase "mixed signs grow from an axis" $ do
-     let lbl t = ChartLabel t t 0 Nothing
+     let lbl t = ChartLabel t t 0 Nothing True
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
                    [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0 0] [] Nothing Diverging False]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 21 False) chart)

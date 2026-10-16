@@ -13,10 +13,10 @@
 $ hledger -f - activity -w 40
 Posting counts in 2022-12-26..2023-01-08:
 
-█ a  ▓ b
+▓ a  ▒ b
 
-2022-W52  1  █
-2023-W01  2  █▓
+2022-W52  1  ▓
+2023-W01  2  ▓▒
 
 # ** 2. With a report interval, and -0 to show just the total count.
 $ hledger -f - activity -D -0 -w 40
