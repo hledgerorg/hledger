@@ -332,6 +332,11 @@ Phases, each a separately useful, committable step:
 - SVG: dates on a real time scale (`DateScale`), lines as steps, x ticks at calendar boundaries (`dateTicks`); x labels are kept within the chart.
 - aregister's existing -w/--width sets the text chart width (its `N,M` form falls back to the terminal width).
 
+2026-10-16, phase 2 step 3, register:
+
+- No interval: the running total (or average) after each posting, as a line by posting date (like aregister).
+- With an interval: each (depth-clipped) account's amount per period as stacked bars, limited to 8 series, with the period total as a marker; period labels as in bal -M.
+
 ## Open questions
 
 - Chart variant names for `--chart=KIND`, when needed.

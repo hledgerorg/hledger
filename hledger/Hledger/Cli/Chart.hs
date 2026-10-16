@@ -18,9 +18,11 @@ module Hledger.Cli.Chart (
   balanceReportAsChart,
   compoundBalanceReportAsChart,
   accountTransactionsReportAsChart,
+  postingsReportAsChart,
 ) where
 
 import Data.List (find, intercalate, isPrefixOf, partition, sortOn, transpose)
+import Data.List.Extra (nubSort)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
 #endif
@@ -233,6 +235,50 @@ accountTransactionsReportAsChart title acct txndate items =
       , pnBarLayout = Grouped
       , pnSeries    = [Series (plainLabel acct) SeriesItem MarkLine (map (Just . quantityIn c) bals)]
       }
+
+-- | Chart a postings report (register).
+-- With a report interval, each account's amount in each period is drawn as stacked bars, with the period's total as a marker
+-- (like a multi-period balance report; at most 'maxSeries' series, the smallest combined into "other").
+-- Otherwise, the running total (or average) after each posting is drawn as a line over time.
+-- There is one panel per commodity, most-used commodity first.
+postingsReportAsChart :: ReportOpts -> Text -> PostingsReport -> Chart
+postingsReportAsChart ropts@ReportOpts{translations_} title items
+  | null periods =
+      let totals = [t | (_, _, _, _, t) <- items]
+          totalamts = concatMap amountsRaw totals
+      in Chart
+        { chTitle  = title
+        , chXAxis  = XDates [postingDateOrDate2 (whichDate ropts) p | (_, _, _, p, _) <- items]
+        , chPanels =
+            [ Panel (unitAmount c totalamts) Grouped
+                [Series (plainLabel $ I18n.tr translations_ "Total") SeriesItem MarkLine (map (Just . quantityIn c) totals)]
+            | c <- commoditiesByUse totals ]
+        }
+  | otherwise =
+      Chart
+        { chTitle  = title
+        , chXAxis  = XPeriods [(s, reportPeriodName ropts{balanceaccum_ = PerPeriod} spans s) | s <- spans]
+        , chPanels = mapMaybe panel $ commoditiesByUse cells
+        }
+  where
+    periods = nubSort [prd | (_, Just prd, _, _, _) <- items]
+    spans = map periodAsDateSpan periods
+    -- each account's amount in each period
+    acctamts :: M.Map AccountName (M.Map Period MixedAmount)
+    acctamts = M.fromListWith (M.unionWith (<>)) [(paccount p, M.singleton prd (pamount p)) | (_, Just prd, _, p, _) <- items]
+    rows = [(a, [M.findWithDefault nullmixedamt prd m | prd <- periods]) | (a, m) <- M.toList acctamts]
+    cells = concatMap snd rows
+    allamts = concatMap amountsRaw cells
+    panel c
+      | null series = Nothing
+      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnBarLayout = Stacked, pnSeries = series ++ total}
+      where
+        series = limitSeries translations_ MarkBar
+          [ (plainLabel a, qs) | (a, amts) <- rows, let qs = map (quantityIn c) amts, any (/= 0) qs ]
+        total =
+          [ Series (plainLabel $ I18n.tr translations_ "Total") SeriesTotal MarkMarker
+              (map (Just . sum) $ transpose [map (quantityIn c) amts | (_, amts) <- rows])
+          | length series > 1 ]
 
 -- Helpers
 

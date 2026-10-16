@@ -1,0 +1,39 @@
+# * register --chart and svg output
+
+<
+2024-01-01
+    assets:bank       100
+    revenues:salary
+
+2024-01-05
+    expenses:food      30
+    assets:bank
+
+2024-02-01
+    assets:bank       100
+    revenues:salary
+
+2024-02-10
+    expenses:rent      80
+    liabilities:card
+
+# ** 1. Without a report interval, the chart data is the running total after each posting, as a line, by date.
+$ hledger -f - reg expenses --chart -O csv
+"commodity","series","role","mark","x","value"
+"","Total","item","line","2024-01-05","30"
+"","Total","item","line","2024-02-10","110"
+
+# ** 2. With a report interval, it is each account's amount in each period, as stacked bars, with the period total as a marker.
+$ hledger -f - reg expenses -M --chart -O csv
+"commodity","series","role","mark","x","value"
+"","expenses:food","item","bar","Jan","30"
+"","expenses:food","item","bar","Feb","0"
+"","expenses:rent","item","bar","Jan","0"
+"","expenses:rent","item","bar","Feb","80"
+"","Total","total","marker","Jan","30"
+"","Total","total","marker","Feb","80"
+
+# ** 3. A text chart of the running total has a row per posting.
+$ hledger -f - reg expenses --chart -w 40
+2024-01-05   30  ██████▎
+2024-02-10  110  ███████████████████████

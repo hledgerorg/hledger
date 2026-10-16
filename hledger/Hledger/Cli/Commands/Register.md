@@ -184,4 +184,11 @@ This command also supports the
 [output destination](hledger.html#output-destination) and
 [output format](hledger.html#output-format) options
 The output formats supported are
-`txt`, `csv`, `tsv`, and `json`.
+`txt`, `csv`, `tsv`, `html`, `fods`, `json`, and `svg`.
+
+With `--chart`, or with `svg` output (`-o FILE.svg`), it shows a chart instead.
+Without a report interval, this is the running total (or average) after each posting, as a line over time;
+a text chart has a row per posting, or when there are more than 50, a row per period.
+With a report interval, it is each account's amount in each period, as stacked bars, with the period's total.
+With `--chart -O csv` (or tsv or json) it shows the chart's data.
+See also [Balance charts](#balance-charts).

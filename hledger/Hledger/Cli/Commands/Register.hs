@@ -35,6 +35,7 @@ import Hledger.Write.Csv (CSV, printCSV, printTSV)
 import Hledger.Write.Ods (printFods)
 import Hledger.Write.Html (titledTableHtml, htmlAsLazyText, toHtml)
 import Hledger.Write.Spreadsheet qualified as Spr
+import Hledger.Cli.Chart (chartFlag, chartRequested, postingsReportAsChart, writeChart)
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils
 import Hledger.Cli.Anchor (setAccountAnchor, dateCell)
@@ -72,8 +73,9 @@ registermode = hledgerCommandMode
      )
   ,flagNone ["align-all"] (setboolopt "align-all") "guarantee alignment across all lines (slower)"
   ,flagReq  ["base-url"] (\s opts -> Right $ setopt "base-url" s opts) "URLPREFIX" "in html output, generate links to hledger-web, with this prefix. (Usually the base url shown by hledger-web; can also be relative.)"
-  ,outputFormatFlag ["txt","csv","tsv","html","fods","json"]
+  ,outputFormatFlag ["txt","csv","tsv","html","fods","json","svg"]
   ,outputFileFlag
+  ,chartFlag
   ])
   cligeneralflagsgroups1
   hiddenflags
@@ -96,6 +98,8 @@ register opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j
                               ,tdescription <$> ptransaction p
                               ,styleAmounts styles p
                               ,styleAmounts styles nullmixedamt)
+  -- chart
+  | chartRequested opts = writeChart opts $ postingsReportAsChart (_rsReportOpts rspec) (effectiveTitle (_rsReportOpts rspec) "") $ styleAmounts styles rpt
   -- normal register report, list postings
   | otherwise = writeOutputLazyText opts $ render $ styleAmounts styles rpt
   where
