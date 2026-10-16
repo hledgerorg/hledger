@@ -162,7 +162,7 @@ maxSeries = 8
 -- In tree mode, each account's own amounts are charted, excluding its displayed subaccounts', so nothing is counted twice.
 -- The total is omitted with -N, with --percent (where it is always 100), and when there is only one series.
 multiBalanceReportAsChart :: (AccountName -> Maybe AccountType) -> ReportOpts -> Text -> MultiBalanceReport -> Chart
-multiBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlistmode_, no_total_, percent_, translations_} title
+multiBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, balancecalc_, accountlistmode_, no_total_, percent_, translations_} title
   (PeriodicReport spans rows totals) =
   Chart
     { chTitle  = title
@@ -183,6 +183,7 @@ multiBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlistmo
           , pnGroupNames = []
           , pnScale = Nothing
           , pnLayout = Diverging
+          , pnCounts = balancecalc_ == CalcPostingsCount
           }
       where
         series = limitSeries maxSeries translations_ mark
@@ -197,7 +198,7 @@ multiBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlistmo
 -- accounts with no amount in a panel's commodity have no value (a gap) there.
 -- Unlike stacked charts, all rows are shown, with the report's indentation in tree mode.
 balanceReportAsChart :: (AccountName -> Maybe AccountType) -> ReportOpts -> Text -> BalanceReport -> Chart
-balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
+balanceReportAsChart accttype ReportOpts{balancecalc_, translations_} title (items, _total) =
   Chart
     { chTitle  = title
     , chXAxis  = XCategories [ChartLabel full short indent (accttype full) | (full, short, indent, _) <- items]
@@ -214,6 +215,7 @@ balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
       , pnGroupNames = []
       , pnScale = Nothing
       , pnLayout = Diverging
+      , pnCounts = balancecalc_ == CalcPostingsCount
       }
 
 -- | Chart a compound balance report (balancesheet, incomestatement, cashflow..): its sections' accounts, and the net total.
@@ -234,7 +236,7 @@ balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
 -- The second argument gives each section's account type, if known (eg from the report's query for it); accounts with no
 -- type of their own get their section's, for colouring. An account shown as "..." (eg with depth 0) is labelled with its section's title.
 compoundBalanceReportAsChart :: (AccountName -> Maybe AccountType) -> [Maybe AccountType] -> ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount -> Chart
-compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum_, accountlistmode_, no_total_, percent_, translations_}
+compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum_, balancecalc_, accountlistmode_, no_total_, percent_, translations_}
   (CompoundPeriodicReport title spans subreports totals) =
   Chart
     { chTitle  = title
@@ -268,6 +270,7 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
           , pnGroupNames = [t | (t, _, _) <- subreports]
           , pnScale = Nothing
           , pnLayout = if flow then Grouped else Diverging
+          , pnCounts = balancecalc_ == CalcPostingsCount
           }
       where
         series = concat
@@ -296,6 +299,7 @@ accountTransactionsReportAsChart accttype title acct txndate items =
       , pnGroupNames = []
       , pnScale = Nothing
       , pnLayout = Diverging
+      , pnCounts = False
       }
 
 -- | Chart a postings report (register).
@@ -316,8 +320,8 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
           totalseries c role = Series ((plainLabel $ I18n.tr translations_ "Total"){lbType = commontype}) role MarkLine (map (Just . quantityIn c) totals) 0 0
           -- with postings to several accounts (and not --average), each account's running total as a line, and the overall running total
           linespanel c
-            | average_ || length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] [] Nothing Diverging
-            | otherwise = Panel (unitAmount c totalamts) (accountRunningTotals c ++ [totalseries c SeriesTotal]) [] Nothing Diverging
+            | average_ || length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] [] Nothing Diverging False
+            | otherwise = Panel (unitAmount c totalamts) (accountRunningTotals c ++ [totalseries c SeriesTotal]) [] Nothing Diverging False
       in Chart
         { chTitle  = title
         , chXAxis  = XDates [postingDateOrDate2 (whichDate ropts) p | p <- postings]
@@ -369,7 +373,7 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
     allamts = concatMap amountsRaw cells
     panel c
       | null series = Nothing
-      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total, pnGroupNames = [], pnScale = Nothing, pnLayout = Diverging}
+      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total, pnGroupNames = [], pnScale = Nothing, pnLayout = Diverging, pnCounts = False}
       where
         series = limitSeries maxSeries translations_ MarkBar
           [ (ChartLabel a a 0 (accttype a), qs) | (a, amts) <- rows, let qs = map (quantityIn c) amts, any (/= 0) qs ]

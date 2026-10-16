@@ -58,8 +58,8 @@ $ hledger -f- register date:2019-02 date:2019-01-01-
 #> /2019-01-01/
 
 # ** 0. Smart dates https://github.com/hledgerorg/hledger/issues/1079
-$ hledger -f- activity -b 2019-02-01 -e 'next year'
-> /2019-02-01 \*/
+$ hledger -f- activity -D -0 -b 2019-02-01 -e 'next year'
+> /2019-02-01  1 /
 
 # ** 0. Date ranges
 # Dotted range syntax, full dates

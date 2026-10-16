@@ -1,39 +1,85 @@
 # * activity command
-# ** 1. activity report is daily by default.
+
 <
 2023-01-01
   (a)  1
 
 2023-01-06
   (a)  1
+  (b)  1
 
-$ hledger -f - activity
-2023-01-01 *
-2023-01-02 
-2023-01-03 
-2023-01-04 
-2023-01-05 
-2023-01-06 *
+# ** 1. activity shows a chart of posting counts per week by default, with each account's postings stacked,
+# one character per posting.
+$ hledger -f - activity -w 40
+Posting counts in 2022-12-26..2023-01-08:
 
-# ** 2. A weekly activity report.
+█ a  ▓ b
+
+2022-W52  1  █
+2023-W01  2  █▓
+
+# ** 2. With a report interval, and -0 to show just the total count.
+$ hledger -f - activity -D -0 -w 40
+Posting counts in 2023-01-01..2023-01-06:
+
+2023-01-01  1  █
+2023-01-02  0
+2023-01-03  0
+2023-01-04  0
+2023-01-05  0
+2023-01-06  2  ██
+
+# ** 3. A 7-day activity report starting on a date.
+$ hledger -f - activity -W -b2023-01-01 -0 -w 80
+Posting counts in 2023-01-01..2023-01-07:
+
+2023-01-01..2023-01-07  3  ███
+
+# ** 4. Chart data can be shown, like balance --count --chart's.
+$ hledger -f - activity -O csv
+"commodity","series","role","mark","x","value"
+"","a","item","bar","2022-W52","1"
+"","a","item","bar","2023-W01","1"
+"","b","item","bar","2022-W52","0"
+"","b","item","bar","2023-W01","1"
+"","Total","total","marker","2022-W52","1"
+"","Total","total","marker","2023-W01","2"
+
 <
 2023-01-01
   (a)  1
-
-2023-01-06
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
+  (a)  1
   (a)  1
 
-$ hledger -f - activity -W
-2022-12-26 *
-2023-01-02 *
+# ** 5. Larger counts are scaled down to fit the width.
+$ hledger -f - activity -0 -w 30
+Posting counts in 2022-W52:
 
-# ** 2. A 7-day activity report starting on an date.
-<
-2023-01-01
-  (a)  1
-
-2023-01-06
-  (a)  1
-
-$ hledger -f - activity -W -b2023-01-01
-2023-01-01 **
+W52  30  █████████████████████

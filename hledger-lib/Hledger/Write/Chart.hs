@@ -105,6 +105,8 @@ data Panel = Panel
                               --   so that charts with the same scale are drawn at the same size per amount.
                               --   Otherwise the chart is scaled to fit its values.
   , pnLayout    :: BarLayout  -- ^ how to draw bars of several groups
+  , pnCounts    :: Bool       -- ^ are the values counts of whole things (eg postings) ? Then text charts draw at most one cell per unit,
+                              --   so that small counts are not magnified (unless a fixed scale is set).
   } deriving (Show, Eq, Generic, ToJSON)
 
 -- | How to draw the bars of a panel whose series are in several groups (eg a compound report's sections).

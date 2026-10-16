@@ -125,7 +125,7 @@ data Row = Row
   }
 
 panelLines :: TextChartOpts -> XAxis -> Bool -> Panel -> [StyledLine]
-panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries, pnGroupNames, pnScale, pnLayout} =
+panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries, pnGroupNames, pnScale, pnLayout, pnCounts} =
   [[(StylePlain, acommodity pnUnit)] | showheading, not $ T.null $ acommodity pnUnit]
   ++ legend
   ++ [trimEnd headerline | diverging, not $ all T.null [posname, negname, netname]]
@@ -256,12 +256,17 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
       Just s | s > 0 -> scaleSpans s maxpos maxneg
       _              -> (maxpos, maxneg)
     area = if hasaxis then barw - 1 else barw
-    -- cells per unit of value, shared by both sides
+    -- cells per unit of value, shared by both sides: enough for the values to fill the area
+    -- (but for counts, at most one cell per unit, unless the scale is fixed)
     scale :: Double
-    scale = if posspan + negspan == 0 then 0 else fromIntegral area / realToFrac (posspan + negspan)
+    scale
+      | posspan + negspan == 0       = 0
+      | pnCounts && isNothing pnScale = min 1 fillscale
+      | otherwise                    = fillscale
+      where fillscale = fromIntegral area / realToFrac (posspan + negspan)
     leftw
       | not hasaxis = 0
-      | otherwise   = round (fromIntegral area * realToFrac negspan / realToFrac (posspan + negspan) :: Double)
+      | otherwise   = round (scale * realToFrac negspan)
     rightw = area - leftw
     axischar = if tcUnicode then "│" else "|"
     markchar = if tcUnicode then "┃" else "!"
@@ -353,13 +358,13 @@ tests_Hledger_Write_Chart_Text = testGroup "Write.Chart.Text" [
   ,testCase "single series, scaled to the width" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0 0] [] Nothing Diverging]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0 0] [] Nothing Diverging False]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 20 True) chart)
        @?= ["a  1  ███████", "b  2  ██████████████"]
   ,testCase "mixed signs grow from an axis" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0 0] [] Nothing Diverging]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0 0] [] Nothing Diverging False]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 21 False) chart)
        @?= ["a  -1  ####|", "b   2      |#########"]
   ]

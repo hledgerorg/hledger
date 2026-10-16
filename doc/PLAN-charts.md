@@ -410,6 +410,11 @@ Default layout: `auto` lets the adapter choose (`pnLayout`): grouped for changes
 matching the tables' signs), diverging for end balances (bs: the familiar net worth chart, assets above and liabilities below).
 setChartLayout takes a Maybe (an explicit KIND), is applied by writeChart before rendering or showing data, and is idempotent.
 Contra marking was considered for `bal` (from account types' normal signs) but not done: bal shows raw amounts, in its table too.
+activity reimplemented (2026-10-16): it now runs `balance --count --chart`, weekly unless an interval is given, showing each
+account's counts stacked (`-0` for just the total, mentioned in its manual), and accepting -w and -O/-o (txt, svg, html, csv, tsv, json).
+Its old `*` rows output is gone. Like it, count charts (`pnCounts`, from --count) draw at most one text cell per unit,
+so small counts aren't magnified (still scaled down to fit; a fixed scale overrides). Considered for all charts but rejected:
+amounts' units are arbitrary (eg 0.5 BTC would be half a cell). `balance --count` reports are now titled "Posting counts" (they said "Balance changes").
 Dropped automatic date grouping (2026-10-16): text charts of registers no longer switch to a row per day/week/month/.. beyond 50 rows,
 since that heuristic was hard to predict and understand; they always have a row per posting (or transaction). Use a report interval
 (register -M, or balance -M -H for an account's balance) for a row per period.

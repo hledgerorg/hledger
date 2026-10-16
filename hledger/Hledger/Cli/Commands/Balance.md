@@ -1036,7 +1036,8 @@ otherwise they are the terminal's basic blue, yellow, magenta, green and red, wh
 several accounts of one type get different shades of its colour.
 (When all of a chart's accounts are of one type and there are more than four, they get distinct colours instead;
 and accounts with no known type get distinct colours, or a neutral colour if there's only one.)
-The chart fills the terminal width, or the width set by `-w`/`--width`.
+The chart fills the terminal width, or the width set by `-w`/`--width`
+(except for posting counts, with `--count`, which use at most one character per posting).
 It is drawn with unicode block characters, or with ASCII characters if the system's text encoding is not UTF-8.
 
 There is one chart panel per commodity. You can reduce this by converting to one commodity (eg `-X USD`) or selecting some (eg `cur:USD`);
