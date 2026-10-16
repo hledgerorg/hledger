@@ -374,7 +374,7 @@ like expenses and liabilities, are negated, per the subreport's "increases total
 a refund (negative expense) rises within the expenses column, and the net is visibly the sum. Prompted by a refund that looked like it
 should make the net negative. The chart values (text value column, tooltips, CSV) are these signed contributions, unlike the tables.
 Compound sections also get an account type from their query (eg `Type [Revenue]`), which accounts without a type inherit;
-"..." accounts (depth 0) are labelled with the section title. Net marks in SVG are 2px (ring 6px).
+"..." accounts (depth 0) are labelled with the section title. Net marks in SVG are 1.5px (ring 4.5px).
 
 ## Open questions
 
