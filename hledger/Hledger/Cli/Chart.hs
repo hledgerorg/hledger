@@ -27,7 +27,7 @@ import Data.List.Extra (nubSort)
 import Data.List (foldl')
 #endif
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, listToMaybe, mapMaybe)
 import Data.Ord (Down(..))
 import Data.Set qualified as S
 import Control.Monad (when)
@@ -126,8 +126,8 @@ maxSeries = 8
 -- There is one panel per commodity, most-used commodity first.
 -- In tree mode, each account's own amounts are charted, excluding its displayed subaccounts', so nothing is counted twice.
 -- The total is omitted with -N, with --percent (where it is always 100), and when there is only one series.
-multiBalanceReportAsChart :: ReportOpts -> Text -> MultiBalanceReport -> Chart
-multiBalanceReportAsChart ropts@ReportOpts{balanceaccum_, accountlistmode_, no_total_, percent_, translations_} title
+multiBalanceReportAsChart :: (AccountName -> Maybe AccountType) -> ReportOpts -> Text -> MultiBalanceReport -> Chart
+multiBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlistmode_, no_total_, percent_, translations_} title
   (PeriodicReport spans rows totals) =
   Chart
     { chTitle  = title
@@ -149,7 +149,7 @@ multiBalanceReportAsChart ropts@ReportOpts{balanceaccum_, accountlistmode_, no_t
           }
       where
         series = limitSeries translations_ mark
-          [ (accountLabel $ prrName r, qs) | r <- rows', let qs = map (quantityIn c) (prrAmounts r), any (/= 0) qs ]
+          [ (accountLabel accttype $ prrName r, qs) | r <- rows', let qs = map (quantityIn c) (prrAmounts r), any (/= 0) qs ]
         total =
           [ Series (plainLabel $ I18n.tr translations_ "Total") SeriesTotal (if flow then MarkMarker else MarkLine)
               (map (Just . quantityIn c) $ prrAmounts totals)
@@ -159,11 +159,11 @@ multiBalanceReportAsChart ropts@ReportOpts{balanceaccum_, accountlistmode_, no_t
 -- There is one panel per commodity, most-used commodity first;
 -- accounts with no amount in a panel's commodity have no value (a gap) there.
 -- Unlike stacked charts, all rows are shown, with the report's indentation in tree mode.
-balanceReportAsChart :: ReportOpts -> Text -> BalanceReport -> Chart
-balanceReportAsChart ReportOpts{translations_} title (items, _total) =
+balanceReportAsChart :: (AccountName -> Maybe AccountType) -> ReportOpts -> Text -> BalanceReport -> Chart
+balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
   Chart
     { chTitle  = title
-    , chXAxis  = XCategories [ChartLabel full short indent | (full, short, indent, _) <- items]
+    , chXAxis  = XCategories [ChartLabel full short indent (accttype full) | (full, short, indent, _) <- items]
     , chPanels = map panel $ commoditiesByUse cells
     }
   where
@@ -185,8 +185,8 @@ balanceReportAsChart ReportOpts{translations_} title (items, _total) =
 -- A single-period report is drawn the same way, with one period.
 -- There is one panel per commodity, most-used commodity first.
 -- The net total is omitted with -N, with --percent, and when there is only one section.
-compoundBalanceReportAsChart :: ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount -> Chart
-compoundBalanceReportAsChart ropts@ReportOpts{balanceaccum_, no_total_, percent_, translations_}
+compoundBalanceReportAsChart :: (AccountName -> Maybe AccountType) -> ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount -> Chart
+compoundBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, no_total_, percent_, translations_}
   (CompoundPeriodicReport title spans subreports totals) =
   Chart
     { chTitle  = title
@@ -195,7 +195,9 @@ compoundBalanceReportAsChart ropts@ReportOpts{balanceaccum_, no_total_, percent_
     }
   where
     flow = balanceaccum_ == PerPeriod
-    sections = [(t, prrAmounts $ prTotals r) | (t, r, _) <- subreports]
+    -- each section's title, account type (that of its first account with a known type), and totals
+    sections = [ ((t, listToMaybe $ mapMaybe (accttype . displayFull . prrName) (prRows r)), prrAmounts $ prTotals r)
+               | (t, r, _) <- subreports ]
     nettotals = prrAmounts totals
     showtotal = length subreports > 1 && not no_total_ && not percent_
     -- the table's "Net:" label, without the colon
@@ -213,15 +215,15 @@ compoundBalanceReportAsChart ropts@ReportOpts{balanceaccum_, no_total_, percent_
           }
       where
         series =
-          [ Series (plainLabel t) SeriesItem (if flow then MarkBar else MarkLine) qs
-          | (t, amts) <- sections, let qs = map (Just . quantityIn c) amts, any (maybe False (/= 0)) qs ]
+          [ Series (ChartLabel t t 0 mtype) SeriesItem (if flow then MarkBar else MarkLine) qs
+          | ((t, mtype), amts) <- sections, let qs = map (Just . quantityIn c) amts, any (maybe False (/= 0)) qs ]
 
 -- | Chart an account register (aregister): the balance after each transaction
 -- (or the running total or average, as the report shows), as a line over time.
 -- The arguments are the title, the account's name, and a function giving a transaction's date in the register.
 -- There is one panel per commodity, most-used commodity first.
-accountTransactionsReportAsChart :: Text -> Text -> (Transaction -> Day) -> AccountTransactionsReport -> Chart
-accountTransactionsReportAsChart title acct txndate items =
+accountTransactionsReportAsChart :: (AccountName -> Maybe AccountType) -> Text -> AccountName -> (Transaction -> Day) -> AccountTransactionsReport -> Chart
+accountTransactionsReportAsChart accttype title acct txndate items =
   Chart
     { chTitle  = title
     , chXAxis  = XDates [txndate t | (t, _, _, _, _, _) <- items]
@@ -233,7 +235,7 @@ accountTransactionsReportAsChart title acct txndate items =
     panel c = Panel
       { pnUnit      = unitAmount c allamts
       , pnBarLayout = Grouped
-      , pnSeries    = [Series (plainLabel acct) SeriesItem MarkLine (map (Just . quantityIn c) bals)]
+      , pnSeries    = [Series (ChartLabel acct acct 0 (accttype acct)) SeriesItem MarkLine (map (Just . quantityIn c) bals)]
       }
 
 -- | Chart a postings report (register).
@@ -241,8 +243,8 @@ accountTransactionsReportAsChart title acct txndate items =
 -- (like a multi-period balance report; at most 'maxSeries' series, the smallest combined into "other").
 -- Otherwise, the running total (or average) after each posting is drawn as a line over time.
 -- There is one panel per commodity, most-used commodity first.
-postingsReportAsChart :: ReportOpts -> Text -> PostingsReport -> Chart
-postingsReportAsChart ropts@ReportOpts{translations_} title items
+postingsReportAsChart :: (AccountName -> Maybe AccountType) -> ReportOpts -> Text -> PostingsReport -> Chart
+postingsReportAsChart accttype ropts@ReportOpts{translations_} title items
   | null periods =
       let totals = [t | (_, _, _, _, t) <- items]
           totalamts = concatMap amountsRaw totals
@@ -274,7 +276,7 @@ postingsReportAsChart ropts@ReportOpts{translations_} title items
       | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnBarLayout = Stacked, pnSeries = series ++ total}
       where
         series = limitSeries translations_ MarkBar
-          [ (plainLabel a, qs) | (a, amts) <- rows, let qs = map (quantityIn c) amts, any (/= 0) qs ]
+          [ (ChartLabel a a 0 (accttype a), qs) | (a, amts) <- rows, let qs = map (quantityIn c) amts, any (/= 0) qs ]
         total =
           [ Series (plainLabel $ I18n.tr translations_ "Total") SeriesTotal MarkMarker
               (map (Just . sum) $ transpose [map (quantityIn c) amts | (_, amts) <- rows])
@@ -331,8 +333,8 @@ unitAmount c as = case find ((== c) . acommodity) as of
 quantityIn :: CommoditySymbol -> MixedAmount -> Quantity
 quantityIn c ma = sum [aquantity a | a <- amountsRaw ma, acommodity a == c]
 
-accountLabel :: DisplayName -> ChartLabel
-accountLabel DisplayName{displayFull, displayName, displayIndent} = ChartLabel displayFull displayName displayIndent
+accountLabel :: (AccountName -> Maybe AccountType) -> DisplayName -> ChartLabel
+accountLabel accttype DisplayName{displayFull, displayName, displayIndent} = ChartLabel displayFull displayName displayIndent (accttype displayFull)
 
 plainLabel :: Text -> ChartLabel
-plainLabel t = ChartLabel t t 0
+plainLabel t = ChartLabel t t 0 Nothing

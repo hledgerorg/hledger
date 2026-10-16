@@ -39,11 +39,12 @@ import Text.Blaze.Svg11 ((!), Svg)
 import Text.Blaze.Svg11 qualified as S
 import Text.Blaze.Svg11.Attributes qualified as A
 import Text.DocLayout (realLength)
+import Numeric (readHex)
 import Text.Printf (printf)
 
 import Hledger.Data.Amount (oneLineNoCostFmt, showAmountWith)
 import Hledger.Data.Dates (showDate)
-import Hledger.Data.Types (Amount(..), AmountPrecision(..), AmountStyle(..), Quantity)
+import Hledger.Data.Types (AccountType(..), Amount(..), AmountPrecision(..), AmountStyle(..), Quantity)
 import Hledger.Utils.Test
 import Hledger.Write.Chart
 
@@ -118,8 +119,7 @@ panelSvg xaxis showheading top Panel{pnUnit, pnBarLayout, pnSeries} =
     -- The series drawn as marks: items and "other" (bars or lines), and the total (dots or a line). Other markers are not drawn yet.
     items = [s | s <- pnSeries, seRole s /= SeriesTotal, seMark s /= MarkMarker]
     mtotal = find ((== SeriesTotal) . seRole) pnSeries
-    drawn = zipWith classify [0 :: Int ..] items
-    classify i s = DrawSeries (if seRole s == SeriesOther then "other" else "s" <> T.pack (show (i `mod` 8))) s (seriesValues s)
+    drawn = zipWith (\c s -> DrawSeries (colourClass c) s (seriesValues s)) (seriesColours items) items
     (legendh, legendm) = legendSvg (top + headingh) [(dsClass d, seMark (dsSeries d), lbFull $ seLabel $ dsSeries d) | d <- drawn]
                            (if length items > 1 then mtotal else Nothing)
     (bodyh, bodym) = case xaxis of
@@ -277,11 +277,12 @@ timeSvg top unit layout drawn mtotal xscale = (plotHeight + 28, do
 -- | Draw series of categories as horizontal bars (stacked if several), with labels and a value column.
 categoriesSvg :: Double -> Amount -> [DrawSeries] -> Maybe Series -> [ChartLabel] -> (Double, Svg)
 categoriesSvg top unit drawn mtotal labels = (fromIntegral (length rows) * rowHeight + 28, do
-    -- gridlines and x tick labels
+    -- gridlines and x tick labels (labels thinned to avoid overlap, always including zero)
     forM_ ticks $ \t -> do
       S.line ! A.class_ (if t == 0 then "axis" else "grid")
         ! A.x1 (toValue $ num (xof t)) ! A.x2 (toValue $ num (xof t)) ! A.y1 (toValue $ num plottop) ! A.y2 (toValue $ num plotbottom)
-      S.text_ ! A.class_ "tick" ! A.x (toValue $ num (xof t)) ! A.y (toValue $ num (plotbottom + 18)) ! A.textAnchor "middle" $ S.toMarkup (ticklabel t)
+      when (round (t / tickstep) `mod` labelevery == (0 :: Integer)) $
+        S.text_ ! A.class_ "tick" ! A.x (toValue $ num (xof t)) ! A.y (toValue $ num (plotbottom + 18)) ! A.textAnchor "middle" $ S.toMarkup (ticklabel t)
     forM_ (zip [0 :: Int ..] rows) $ \(i, (lbl, j)) -> do
       let ymid = plottop + rowHeight * (fromIntegral i + 0.5)
       S.text_ ! A.class_ "label" ! A.x (toValue $ num (pad + 12 * fromIntegral (lbIndent lbl))) ! A.y (toValue $ num (ymid + 4))
@@ -289,19 +290,23 @@ categoriesSvg top unit drawn mtotal labels = (fromIntegral (length rows) * rowHe
       forM_ (rowValue j) $ \q ->
         S.text_ ! A.class_ "value" ! A.x (toValue $ num (chartWidth - pad)) ! A.y (toValue $ num (ymid + 4)) ! A.textAnchor "end"
           $ S.toMarkup (showValue unit q)
-      stack lbl ymid [(d, q) | d <- drawn, Just q <- [valueAt (dsValues d) j], q > 0] 1
-      stack lbl ymid [(d, q) | d <- drawn, Just q <- [valueAt (dsValues d) j], q < 0] (-1)
+      stack lbl ymid [(categoryColoured lbl d, q) | d <- drawn, Just q <- [valueAt (dsValues d) j], q > 0] 1
+      stack lbl ymid [(categoryColoured lbl d, q) | d <- drawn, Just q <- [valueAt (dsValues d) j], q < 0] (-1)
   )
   where
     -- categories with no values at all (eg accounts without this commodity) are left out
     rows = [(l, j) | (j, l) <- zip [0 ..] labels, not $ all (isNothing . flip valueAt j . dsValues) drawn]
+    -- with a single series, each category's bar has its own account type's colour, if known
+    categoryColoured lbl d = case (drawn, lbType lbl) of
+      ([_], Just at) -> d{dsClass = colourClass $ TypeColour (mainAccountType at) 0}
+      _              -> d
     mtotalvals = seriesValues <$> mtotal
     rowValue j = case (mtotal, drawn) of
       (Just _, _) -> mtotalvals >>= flip valueAt j
       (_, [d])    -> valueAt (dsValues d) j
       _           -> Nothing
     stackedsums sign = [sum [toD q | d <- drawn, Just q <- [valueAt (dsValues d) j], signum q == sign] | (_, j) <- rows]
-    (lo, hi, ticks, tickdecimals) = niceScale (minimumDef 0 $ map negate $ stackedsums (-1)) (maximumDef 0 $ stackedsums 1)
+    (lo, hi, ticks, tickdecimals) = niceScale (minimumDef 0 $ stackedsums (-1)) (maximumDef 0 $ stackedsums 1)
     ticklabel t = showValue (withPrecision tickdecimals unit) (tickQuantity tickdecimals t)
     labelwidth = min (chartWidth * 0.4) $ maximumDef 0 [12 * fromIntegral (lbIndent l) + textWidth (lbShort l) | (l, _) <- rows]
     valuewidth = maximumDef 0 [textWidth (showValue unit q) | (_, j) <- rows, Just q <- [rowValue j]]
@@ -312,6 +317,8 @@ categoriesSvg top unit drawn mtotal labels = (fromIntegral (length rows) * rowHe
     plottop = top + 4
     plotbottom = plottop + rowHeight * fromIntegral (length rows)
     xof v = plotleft + (plotright - plotleft) * (v - lo) / (hi - lo)
+    tickstep = case ticks of t1:t2:_ -> t2 - t1; _ -> 1
+    labelevery = max 1 $ ceiling ((maximumDef 0 (map (textWidth . ticklabel) ticks) + 12) / max 1 (xof tickstep - xof 0)) :: Integer
     thickness = 12
     stack :: ChartLabel -> Double -> [(DrawSeries, Quantity)] -> Double -> Svg
     stack lbl ymid segs sign = do
@@ -319,9 +326,9 @@ categoriesSvg top unit drawn mtotal labels = (fromIntegral (length rows) * rowHe
           starts = 0 : cums
           lastk = length segs - 1
       forM_ (zip3 [0 :: Int ..] segs (zip starts cums)) $ \(k, (d, q), (c0, c1)) -> do
-        let gap = if k > 0 && abs (xof (sign * c1) - xof (sign * c0)) >= 4 then 2 else 0  -- no gap for tiny segments, which it would hide
-            xbase = xof (sign * c0) + sign * gap
-            len = (xof (sign * c1) - xbase) * sign
+        let gap = if k > 0 && abs (xof c1 - xof c0) >= 4 then 2 else 0  -- no gap for tiny segments, which it would hide
+            xbase = xof c0 + sign * gap   -- the end nearer the axis, after the gap (the sums are negative for negative segments)
+            len = (xof c1 - xbase) * sign
         when (len > 0.5) $ withTooltip (T.intercalate " · " [lbFull lbl, lbFull (seLabel $ dsSeries d), showValue unit q]) $
           S.path ! A.class_ ("fill " <> toValue (dsClass d))
             ! A.d (toValue $ barPath False xbase (ymid - thickness / 2) thickness (sign * len) (k == lastk))
@@ -423,6 +430,51 @@ runs ms = case dropWhile isNothing ms of
   [] -> []
   rest -> let (run, more) = span (not . isNothing) rest in catMaybes run : runs more
 
+-- | The CSS class for a colour. (The rules are in 'stylesheet'.)
+colourClass :: Colour -> Text
+colourClass c = case c of
+  TypeColour at k -> "t" <> typeCode at <> T.pack (show (k `mod` maxTints))
+  IndexColour k   -> "s" <> T.pack (show (k `mod` 8))
+  OtherColour     -> "other"
+  TotalColour     -> "total"
+
+-- | A short code for each main account type, for CSS class names.
+typeCode :: AccountType -> Text
+typeCode at = case at of
+  Asset     -> "a"
+  Liability -> "l"
+  Equity    -> "e"
+  Revenue   -> "r"
+  Expense   -> "x"
+  _         -> "e"
+
+-- | Conventional colours for the main account types (light, dark),
+-- validated (by the dataviz skill's validator) on the pairs that appear together (A-L-E, R-X).
+typeColours :: [(Text, (Text, Text))]
+typeColours =
+  [ ("a", ("#2a78d6", "#3987e5"))  -- assets: blue
+  , ("l", ("#eda100", "#c98500"))  -- liabilities: amber
+  , ("e", ("#4a3aa7", "#9085e9"))  -- equity: violet
+  , ("r", ("#008300", "#008300"))  -- revenues: green
+  , ("x", ("#e34948", "#e66767"))  -- expenses: red
+  ]
+
+-- | The tints that distinguish several accounts of one type ('maxTints' of them): the type's colour, then lighter, darker,
+-- and lighter still (fraction to mix with white (positive) or black (negative)).
+tints :: [Double]
+tints = take maxTints [0, 0.4, -0.3, 0.65]
+
+-- | Mix a #rrggbb colour with white (by a positive fraction) or black (by a negative fraction).
+tint :: Double -> Text -> Text
+tint f hex = case mapM channel [T.take 2 $ T.drop i digits | i <- [0, 2, 4]] of
+    Just cs | T.length digits == 6 -> "#" <> T.concat (map (T.pack . printf "%02x" . mix) cs)
+    _ -> hex
+  where
+    digits = T.drop 1 hex
+    channel t = case readHex (T.unpack t) of [(n, "")] -> Just (n :: Int); _ -> Nothing
+    mix :: Int -> Int
+    mix c = round $ if f >= 0 then fromIntegral c + (255 - fromIntegral c) * f else fromIntegral c * (1 + f)
+
 -- | The chart's styles: a colour-blind-safe categorical palette (8 slots) and chart chrome colours,
 -- with a dark variant used when the viewer prefers a dark colour scheme.
 -- Colours are written literally in each rule (rather than as CSS custom properties),
@@ -439,12 +491,16 @@ stylesheet dark = T.unlines $
   , ".hledger-chart .markring{stroke-width:7;stroke-linecap:round}"
   , ".hledger-chart .hit{fill:transparent}"
   ]
-  ++ colourRules lightcolours
-  ++ (if dark then ["@media (prefers-color-scheme:dark){"] ++ colourRules darkcolours ++ ["}"] else [])
+  ++ colourRules False lightcolours
+  ++ (if dark then ["@media (prefers-color-scheme:dark){"] ++ colourRules True darkcolours ++ ["}"] else [])
   where
-    colourRules cs =
+    colourRules isdark cs =
       [ ".hledger-chart " <> sel <> "{" <> prop <> ":" <> colour <> "}"
       | (sel, prop, role) <- rules, Just colour <- [lookup role cs] ]
+      ++ concat [ [ ".hledger-chart .fill." <> cls <> "{fill:" <> colour <> "}", ".hledger-chart .line." <> cls <> "{stroke:" <> colour <> "}" ]
+                | (code, (light, darkc)) <- typeColours, (k, f) <- zip [0 :: Int ..] tints
+                , let cls = "t" <> code <> T.pack (show k)
+                , let colour = tint f (if isdark then darkc else light) ]
     rules =
       [ (".bg", "fill", "surface"), (".title", "fill", "ink"), (".heading", "fill", "ink")
       , (".label", "fill", "ink2"), (".value", "fill", "ink2"), (".tick", "fill", "muted")

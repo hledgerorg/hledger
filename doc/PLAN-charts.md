@@ -350,6 +350,13 @@ Phases, each a separately useful, committable step:
 3. Compound reports chart their accounts (`-1` gives section totals): per period one stacked column per section, side by side, never stacked across sections; contra balances stack below zero within their section.
 4. SVG single-period (category) charts as vertical bars, labels angled when needed; horizontal only beyond ~30 categories.
 
+Type colours, as done: the account type is on ChartLabel (`lbType`), so it colours both series and (single-series) category bars.
+`seriesColours` assigns a renderer-independent `Colour` (type hue + tint index, categorical index, other, total);
+up to `maxTints` (4) accounts per type, beyond which the panel falls back to categorical colours.
+SVG tints mix the type colour with white/black ([0, 0.4, -0.3, 0.65]); text uses the terminal's blue/yellow/magenta/green/red, normal and bright.
+Compound report sections take the type of their first typed account.
+Also fixed: negative bars in horizontal (category) SVG charts were not drawn (a sign error), and their x tick labels are now thinned.
+
 ## Open questions
 
 - Chart variant names for `--chart=KIND`, when needed.

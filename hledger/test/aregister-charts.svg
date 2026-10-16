@@ -38,6 +38,46 @@
 .hledger-chart .line.s6{stroke:#4a3aa7}
 .hledger-chart .fill.s7{fill:#e34948}
 .hledger-chart .line.s7{stroke:#e34948}
+.hledger-chart .fill.ta0{fill:#2a78d6}
+.hledger-chart .line.ta0{stroke:#2a78d6}
+.hledger-chart .fill.ta1{fill:#7faee6}
+.hledger-chart .line.ta1{stroke:#7faee6}
+.hledger-chart .fill.ta2{fill:#1d5496}
+.hledger-chart .line.ta2{stroke:#1d5496}
+.hledger-chart .fill.ta3{fill:#b4d0f1}
+.hledger-chart .line.ta3{stroke:#b4d0f1}
+.hledger-chart .fill.tl0{fill:#eda100}
+.hledger-chart .line.tl0{stroke:#eda100}
+.hledger-chart .fill.tl1{fill:#f4c766}
+.hledger-chart .line.tl1{stroke:#f4c766}
+.hledger-chart .fill.tl2{fill:#a67100}
+.hledger-chart .line.tl2{stroke:#a67100}
+.hledger-chart .fill.tl3{fill:#f9dea6}
+.hledger-chart .line.tl3{stroke:#f9dea6}
+.hledger-chart .fill.te0{fill:#4a3aa7}
+.hledger-chart .line.te0{stroke:#4a3aa7}
+.hledger-chart .fill.te1{fill:#9289ca}
+.hledger-chart .line.te1{stroke:#9289ca}
+.hledger-chart .fill.te2{fill:#342975}
+.hledger-chart .line.te2{stroke:#342975}
+.hledger-chart .fill.te3{fill:#c0bae0}
+.hledger-chart .line.te3{stroke:#c0bae0}
+.hledger-chart .fill.tr0{fill:#008300}
+.hledger-chart .line.tr0{stroke:#008300}
+.hledger-chart .fill.tr1{fill:#66b566}
+.hledger-chart .line.tr1{stroke:#66b566}
+.hledger-chart .fill.tr2{fill:#005c00}
+.hledger-chart .line.tr2{stroke:#005c00}
+.hledger-chart .fill.tr3{fill:#a6d4a6}
+.hledger-chart .line.tr3{stroke:#a6d4a6}
+.hledger-chart .fill.tx0{fill:#e34948}
+.hledger-chart .line.tx0{stroke:#e34948}
+.hledger-chart .fill.tx1{fill:#ee9291}
+.hledger-chart .line.tx1{stroke:#ee9291}
+.hledger-chart .fill.tx2{fill:#9f3332}
+.hledger-chart .line.tx2{stroke:#9f3332}
+.hledger-chart .fill.tx3{fill:#f5bfbf}
+.hledger-chart .line.tx3{stroke:#f5bfbf}
 @media (prefers-color-scheme:dark){
 .hledger-chart .bg{fill:#1a1a19}
 .hledger-chart .title{fill:#ffffff}
@@ -68,6 +108,46 @@
 .hledger-chart .line.s6{stroke:#9085e9}
 .hledger-chart .fill.s7{fill:#e66767}
 .hledger-chart .line.s7{stroke:#e66767}
+.hledger-chart .fill.ta0{fill:#3987e5}
+.hledger-chart .line.ta0{stroke:#3987e5}
+.hledger-chart .fill.ta1{fill:#88b7ef}
+.hledger-chart .line.ta1{stroke:#88b7ef}
+.hledger-chart .fill.ta2{fill:#285ea0}
+.hledger-chart .line.ta2{stroke:#285ea0}
+.hledger-chart .fill.ta3{fill:#bad5f6}
+.hledger-chart .line.ta3{stroke:#bad5f6}
+.hledger-chart .fill.tl0{fill:#c98500}
+.hledger-chart .line.tl0{stroke:#c98500}
+.hledger-chart .fill.tl1{fill:#dfb666}
+.hledger-chart .line.tl1{stroke:#dfb666}
+.hledger-chart .fill.tl2{fill:#8d5d00}
+.hledger-chart .line.tl2{stroke:#8d5d00}
+.hledger-chart .fill.tl3{fill:#ecd4a6}
+.hledger-chart .line.tl3{stroke:#ecd4a6}
+.hledger-chart .fill.te0{fill:#9085e9}
+.hledger-chart .line.te0{stroke:#9085e9}
+.hledger-chart .fill.te1{fill:#bcb6f2}
+.hledger-chart .line.te1{stroke:#bcb6f2}
+.hledger-chart .fill.te2{fill:#655da3}
+.hledger-chart .line.te2{stroke:#655da3}
+.hledger-chart .fill.te3{fill:#d8d4f7}
+.hledger-chart .line.te3{stroke:#d8d4f7}
+.hledger-chart .fill.tr0{fill:#008300}
+.hledger-chart .line.tr0{stroke:#008300}
+.hledger-chart .fill.tr1{fill:#66b566}
+.hledger-chart .line.tr1{stroke:#66b566}
+.hledger-chart .fill.tr2{fill:#005c00}
+.hledger-chart .line.tr2{stroke:#005c00}
+.hledger-chart .fill.tr3{fill:#a6d4a6}
+.hledger-chart .line.tr3{stroke:#a6d4a6}
+.hledger-chart .fill.tx0{fill:#e66767}
+.hledger-chart .line.tx0{stroke:#e66767}
+.hledger-chart .fill.tx1{fill:#f0a4a4}
+.hledger-chart .line.tx1{stroke:#f0a4a4}
+.hledger-chart .fill.tx2{fill:#a14848}
+.hledger-chart .line.tx2{stroke:#a14848}
+.hledger-chart .fill.tx3{fill:#f6caca}
+.hledger-chart .line.tx3{stroke:#f6caca}
 }
 </style>
 <rect class="bg" width="100%" height="100%" />
@@ -88,7 +168,7 @@
 <text class="tick" x="413.5" y="292" text-anchor="middle">2024-01-22</text>
 <text class="tick" x="532.3" y="292" text-anchor="middle">2024-01-29</text>
 <text class="tick" x="651.1" y="292" text-anchor="middle">2024-02-05</text>
-<polyline class="line s0" points="57,164 124.9,164 124.9,197 583.2,197 583.2,87 736,87 736,175" />
+<polyline class="line ta0" points="57,164 124.9,164 124.9,197 583.2,197 583.2,87 736,87 736,175" />
 <g>
 <title>2024-01-01 · assets:bank · 100</title>
 <circle class="hit" cx="57" cy="164" r="6" />

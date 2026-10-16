@@ -26,6 +26,10 @@ module Hledger.Write.Chart (
   Series(..),
   SeriesRole(..),
   Mark(..),
+  Colour(..),
+  seriesColours,
+  maxTints,
+  mainAccountType,
   SeriesValues,
   seriesValues,
   valueAt,
@@ -35,6 +39,7 @@ module Hledger.Write.Chart (
 ) where
 
 import Data.Function (on)
+import Data.Map qualified as M
 import Data.List (find, groupBy)
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 import Data.Time (addDays, addGregorianMonthsClip, fromGregorian, toGregorian)
@@ -51,7 +56,8 @@ import GHC.Generics (Generic)
 import Hledger.Data.Amount (AmountFormat(..), machineFmt, nullamt, showAmountWith)
 import Hledger.Data.Dates (showDate, showDateSpan)
 import Hledger.Data.Json ()
-import Hledger.Data.Types (Amount(..), DateSpan(..), EFDay(..), Quantity)
+import Hledger.Data.AccountType (isAccountSubtypeOf)
+import Hledger.Data.Types (AccountType(..), Amount(..), DateSpan(..), EFDay(..), Quantity)
 import Hledger.Utils.Test
 import Hledger.Write.Csv (CSV)
 
@@ -79,9 +85,11 @@ data XAxis
 -- | A name for a category or a series.
 -- For accounts this comes from the report's display name, so it follows the report's tree/flat mode and depth.
 data ChartLabel = ChartLabel
-  { lbFull   :: Text  -- ^ the full name, eg a full account name; used in CSV/JSON and tooltips
-  , lbShort  :: Text  -- ^ the name to display, eg a leaf account name in tree mode
-  , lbIndent :: Int   -- ^ indentation level to display it with (0 for none)
+  { lbFull   :: Text                -- ^ the full name, eg a full account name; used in CSV/JSON and tooltips
+  , lbShort  :: Text                -- ^ the name to display, eg a leaf account name in tree mode
+  , lbIndent :: Int                 -- ^ indentation level to display it with (0 for none)
+  , lbType   :: Maybe AccountType   -- ^ the account type, if this names an account (or accounts) of a known type;
+                                    --   charts colour accounts by their main type (see 'seriesColours')
   } deriving (Show, Eq, Generic, ToJSON)
 
 -- | One chart area with its own y axis, holding series of values in a single unit.
@@ -120,6 +128,40 @@ data Mark
   | MarkLine    -- ^ a line joining the values (in text charts, drawn as bars)
   | MarkMarker  -- ^ a marker at the value, not joined, eg a net total over stacked bars, or a budget goal
   deriving (Show, Eq, Generic, ToJSON)
+
+-- | The main account type (asset, liability, equity, revenue or expense) of an account type, which is one of those or a subtype of one.
+mainAccountType :: AccountType -> AccountType
+mainAccountType t = fromMaybe t $ find (t `isAccountSubtypeOf`) [Asset, Liability, Equity, Revenue, Expense]
+
+-- | How a series (or a bar) is coloured, in a renderer-independent way.
+data Colour
+  = TypeColour AccountType Int  -- ^ the conventional hue of this main account type, in its Nth tint (to distinguish several of that type)
+  | IndexColour Int             -- ^ the Nth categorical colour, for series with no account type
+  | OtherColour                 -- ^ a muted colour, for a series combining several items
+  | TotalColour                 -- ^ the ink (text) colour, for a total
+  deriving (Show, Eq)
+
+-- | How many tints of a type's colour renderers provide, to distinguish several accounts of one type.
+maxTints :: Int
+maxTints = 4
+
+-- | Colours for a panel's series, in order: accounts of a known type get their main type's hue,
+-- tinted differently for each of that type in the panel; other ordinary series get categorical colours in order.
+-- If some type has more series than there are tints, they would not all be distinguishable,
+-- so all series get categorical colours instead.
+seriesColours :: [Series] -> [Colour]
+seriesColours series
+  | any (> maxTints) $ M.elems typecounts = go M.empty 0 [s{seLabel = (seLabel s){lbType = Nothing}} | s <- series]
+  | otherwise = go M.empty 0 series
+  where
+    typecounts = M.fromListWith (+) [(t, 1 :: Int) | s <- series, seRole s == SeriesItem, Just t <- [mainAccountType <$> lbType (seLabel s)]]
+    go :: M.Map AccountType Int -> Int -> [Series] -> [Colour]
+    go _ _ [] = []
+    go tints n (s:ss) = case (seRole s, mainAccountType <$> lbType (seLabel s)) of
+      (SeriesTotal, _) -> TotalColour : go tints n ss
+      (SeriesOther, _) -> OtherColour : go tints n ss
+      (_, Just t)      -> let k = M.findWithDefault 0 t tints in TypeColour t k : go (M.insert t (k + 1) tints) n ss
+      (_, Nothing)     -> IndexColour n : go tints (n + 1) ss
 
 -- | A series' values, indexed by x position, for fast lookup by renderers.
 type SeriesValues = Array Int (Maybe Quantity)
@@ -197,7 +239,7 @@ chartAsCsv Chart{chXAxis, chPanels} =
 tests_Hledger_Write_Chart :: TestTree
 tests_Hledger_Write_Chart = testGroup "Write.Chart" [
    testCase "groupDates" $ do
-     let lbl t = ChartLabel t t 0
+     let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XDates [fromGregorian 2024 1 5, fromGregorian 2024 1 20, fromGregorian 2024 2 3])
                    [Panel nullamt Grouped
                      [ Series (lbl "balance") SeriesItem MarkLine [Just 1, Just 2, Just 3]
@@ -208,4 +250,11 @@ tests_Hledger_Write_Chart = testGroup "Write.Chart" [
        _           -> assertFailure "expected periods"
      map seValues (concatMap pnSeries chPanels) @?= [[Just 2, Just 3], [Just 2, Nothing]]
      groupDates 3 chart @?= chart
+  ,testCase "seriesColours" $ do
+     let ser t = Series (ChartLabel "" "" 0 t) SeriesItem MarkBar []
+     seriesColours [ser (Just Expense), ser (Just Cash), ser Nothing, ser (Just Expense), ser Nothing]
+       @?= [TypeColour Expense 0, TypeColour Asset 0, IndexColour 0, TypeColour Expense 1, IndexColour 1]
+     -- more series of one type than tints: all get categorical colours
+     seriesColours (replicate (maxTints + 1) (ser (Just Revenue)))
+       @?= map IndexColour [0 .. maxTints]
   ]

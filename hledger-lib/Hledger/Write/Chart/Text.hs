@@ -37,7 +37,7 @@ import Text.DocLayout (realLength)
 
 import Hledger.Data.Amount (nullamt, oneLineNoCostFmt, showAmountWith)
 import Hledger.Data.Dates (showDate)
-import Hledger.Data.Types (Amount(..), Quantity)
+import Hledger.Data.Types (AccountType(..), Amount(..), Quantity)
 import Hledger.Utils.IO (color, faint')
 import Hledger.Utils.Test
 import Hledger.Utils.Text (fitText)
@@ -54,6 +54,7 @@ data TextChartOpts = TextChartOpts
 data Style
   = StylePlain
   | StyleSeries Int  -- ^ the colour of the Nth ordinary series in a panel
+  | StyleType AccountType Int  -- ^ the colour of a main account type, in its Nth variant
   | StyleOther       -- ^ the colour of a series combining several items ("other")
   | StyleNegative    -- ^ a negative value
   deriving (Show, Eq)
@@ -68,12 +69,21 @@ styledLinesAsText usecolour = TL.fromChunks . concatMap (\l -> map piece l ++ ["
     piece (st, t)
       | usecolour = case st of
           StylePlain    -> t
-          StyleSeries n -> T.pack $ uncurry color (cyclicAt (Dull, Blue) seriesColours n) $ T.unpack t
+          StyleSeries n -> T.pack $ uncurry color (cyclicAt (Dull, Blue) indexColours n) $ T.unpack t
+          StyleType at n -> T.pack $ color (if even n then Dull else Vivid) (typeColour at) $ T.unpack t
           StyleOther    -> T.pack $ faint' $ T.unpack t
           StyleNegative -> T.pack $ color Dull Red $ T.unpack t
       | otherwise = t
-    -- Avoiding red, used for negative values. Repeated after this many series (more than the usual series limit).
-    seriesColours =
+    -- Conventional colours for the main account types, in the terminal's palette.
+    typeColour at = case at of
+      Asset     -> Blue
+      Liability -> Yellow
+      Equity    -> Magenta
+      Revenue   -> Green
+      Expense   -> Red
+      _         -> Magenta
+    -- For series of no account type. Avoiding red, used for negative values. Repeated after this many series (more than the usual series limit).
+    indexColours =
       [(Dull, Blue), (Dull, Yellow), (Dull, Magenta), (Dull, Cyan), (Dull, Green), (Vivid, Blue), (Vivid, Yellow), (Vivid, Magenta)]
 
 -- | Draw a chart as styled lines of text: the title (if any), then each panel,
@@ -109,12 +119,21 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
     drawn = [s | s <- pnSeries, seRole s /= SeriesTotal, seMark s /= MarkMarker]
     mtotal = find ((== SeriesTotal) . seRole) pnSeries
     single = length drawn == 1
-    styled = zipWith seriesStyle [0 ..] drawn
+    styled = zipWith3 seriesStyle [0 ..] (seriesColours drawn) drawn
     -- With several grouped series, the total is drawn as a mark on a row of its own, after them.
     groupedtotal = case (pnBarLayout, drawn, mtotal) of
       (Grouped, _:_:_, Just t) -> Just t
       _                        -> Nothing
-    seriesStyle i s = (if seRole s == SeriesOther then StyleOther else StyleSeries i, fillChar i, seriesValues s)
+    seriesStyle i colour s = (colourStyle colour, fillChar i, seriesValues s)
+    colourStyle colour = case colour of
+      TypeColour at k -> StyleType at k
+      IndexColour k   -> StyleSeries k
+      OtherColour     -> StyleOther
+      TotalColour     -> StylePlain
+    -- in a chart of categories (eg accounts) with a single series, each category's bar has its own account type's colour, if known
+    categoryStyle j st = case (xaxis, single) of
+      (XCategories ls, True) | Just l <- ls `atMay` j, Just at <- lbType l -> StyleType (mainAccountType at) 0
+      _ -> st
     mtotalvals = seriesValues <$> mtotal
     fillChar i
       | tcUnicode = if single then '█' else cyclicAt '█' "█▓▒░" i
@@ -124,7 +143,7 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
       XCategories ls -> [T.replicate (2 * lbIndent l) " " <> lbShort l | l <- ls]
       XPeriods ps    -> map snd ps
       XDates ds      -> map showDate ds
-    segmentsAt j sers = [(st, c, q) | (st, c, vals) <- sers, Just q <- [valueAt vals j], q /= 0]
+    segmentsAt j sers = [(categoryStyle j st, c, q) | (st, c, vals) <- sers, Just q <- [valueAt vals j], q /= 0]
 
     rows = case (pnBarLayout, drawn) of
       (Grouped, _:_:_) ->  -- several grouped series: a row for each series, with the x label on the first
@@ -244,13 +263,13 @@ tests_Hledger_Write_Chart_Text = testGroup "Write.Chart.Text" [
      trimEnd [(StylePlain, "a "), (StylePlain, "  ")] @?= [(StylePlain, "a")]
      trimEnd [] @?= []
   ,testCase "single series, scaled to the width" $ do
-     let lbl t = ChartLabel t t 0
+     let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
                    [Panel nullamt Grouped [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2]]]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 20 True) chart)
        @?= ["a  1  ███████", "b  2  ██████████████"]
   ,testCase "mixed signs grow from an axis" $ do
-     let lbl t = ChartLabel t t 0
+     let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
                    [Panel nullamt Grouped [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2]]]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 21 False) chart)
