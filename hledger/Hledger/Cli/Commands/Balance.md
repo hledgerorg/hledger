@@ -1068,11 +1068,15 @@ The compound balance commands ([`balancesheet`](#balancesheet), [`balancesheeteq
 [`cashflow`](#cashflow), [`incomestatement`](#incomestatement)) can show charts in the same ways.
 They chart their sections' accounts, showing each amount as its contribution to the net total:
 sections that add to it (eg revenues, assets) above zero, and sections that subtract from it (eg expenses, liabilities) below zero.
-(Unlike the tables, where both are shown as positive.) So bars above zero increase the net and bars below zero reduce it;
-eg a refund recorded as a negative expense is drawn above zero, and a contra account like accumulated depreciation below.
-At each period, each section's accounts are stacked, and the sections are side by side - never stacked together.
-The net total is shown as a line mark across the bars (or as a line, with end balances).
-In text charts, each period has a row for each section, named and showing the section's total, and a row marking the net total.
+(Unlike the tables, where both are shown as positive.) So bars above zero increase the net and bars below zero reduce it.
+(This is also why `is` draws expenses below zero while `bal` draws them above, as their raw amounts are positive;
+`bal --invert` gives the same signs as `is`.)
+At each period, all accounts are stacked in one bar, diverging from zero, with the net total as a mark across it
+(or as a line, with end balances).
+Contra amounts - those with the opposite sign to their section's usual sign, like a refund recorded as a negative expense,
+or a contra account like accumulated depreciation - are drawn next to the zero line, hatched in their account's colour.
+In text charts, each period is a row showing the net total, the totals of the sections on each side at the ends of the bar
+(as the report's table shows them, including any contra amounts; headed by the sections' names), and a mark at the net total's position.
 Each section shows at most five accounts, combining the smallest into "other"; use a depth limit (eg `-1` or `-2`) for less detail.
 A single-period report is charted the same way, with one period.
 The chart data has one record per value, with fields:

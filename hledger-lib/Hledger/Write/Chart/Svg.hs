@@ -26,7 +26,7 @@ module Hledger.Write.Chart.Svg (
 
 import Control.Monad (forM_, unless, when)
 import Data.Function (on)
-import Data.List (find, groupBy, nub)
+import Data.List (find, groupBy, nub, sortOn)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
 #endif
@@ -127,19 +127,23 @@ panelSvg xaxis showheading top Panel{pnUnit, pnSeries, pnScale} =
     mtotal = find ((== SeriesTotal) . seRole) pnSeries
     drawn = zipWith (\c s -> DrawSeries (colourClass c) s (seriesValues s)) (seriesColours items) items
     (legendh, legendm) = legendSvg (top + headingh) [(dsClass d, seMark (dsSeries d), lbFull $ seLabel $ dsSeries d) | d <- drawn]
-                           (if length items > 1 then mtotal else Nothing)
+                           (if length items > 1 then mtotal else Nothing) hascontra
+    hascontra = or [isContra s q | s <- items, seMark s == MarkBar, Just q <- seValues s]
     (bodyh, bodym) = case xaxis of
       XCategories ls -> categoriesSvg (top + headingh + legendh) pnScale pnUnit drawn mtotal ls
       XPeriods ps    -> timeSvg (top + headingh + legendh) pnScale pnUnit drawn mtotal (EvenScale $ map snd ps)
       XDates ds      -> timeSvg (top + headingh + legendh) pnScale pnUnit drawn mtotal (DateScale ds)
 
 -- | A legend: a swatch and label for each series, flowing left to right, when there are several series.
-legendSvg :: Double -> [(Text, Mark, Text)] -> Maybe Series -> (Double, Svg)
-legendSvg top entries mtotal
+-- If there are contra amounts, a hatched swatch is shown for them too.
+legendSvg :: Double -> [(Text, Mark, Text)] -> Maybe Series -> Bool -> (Double, Svg)
+legendSvg top entries mtotal hascontra
   | length entries < 2 = (0, mempty)
   | otherwise = (fromIntegral (length rows) * legendRowHeight + 8, mapM_ drawRow (zip [0 ..] rows))
   where
     allentries = entries ++ [("total", if seMark t == MarkLine || all (\(_, mk, _) -> mk == MarkLine) entries then MarkLine else MarkMarker, lbFull (seLabel t)) | Just t <- [mtotal]]
+                 ++ [(contraClass, MarkBar, "contra") | hascontra]
+    contraClass = "contra"
     itemWidth (_, _, lbl) = 18 + textWidth lbl + 16
     rows = reverse $ map reverse $ foldl place [] allentries
     place [] e = [[e]]
@@ -156,16 +160,19 @@ legendSvg top entries mtotal
                           ! A.y1 (toValue $ num y) ! A.y2 (toValue $ num y)
           MarkMarker -> S.line ! A.class_ ("mark " <> toValue cls) ! A.x1 (toValue $ num x) ! A.x2 (toValue $ num (x + 12))
                           ! A.y1 (toValue $ num y) ! A.y2 (toValue $ num y)
-          MarkBar    -> S.rect ! A.class_ ("fill " <> toValue cls) ! A.x (toValue $ num x) ! A.y (toValue $ num (y - 5))
-                          ! A.width "10" ! A.height "10" ! A.rx "2"
+          MarkBar | cls == contraClass -> do  -- a neutral swatch, hatched
+                          swatch x y ! A.class_ ("fill " <> toValue (colourClass NeutralColour))
+                          swatch x y ! A.fill (toValue $ "url(#" <> hatchId <> ")")
+          MarkBar    -> swatch x y ! A.class_ ("fill " <> toValue cls)
         S.text_ ! A.class_ "label" ! A.x (toValue $ num (x + 18)) ! A.y (toValue $ num (y + 4)) $ S.toMarkup lbl
+    swatch x y = S.rect ! A.x (toValue $ num x) ! A.y (toValue $ num (y - 5)) ! A.width "10" ! A.height "10" ! A.rx "2"
 
 -- | How x positions are placed along a time axis: evenly, with these labels (eg report periods),
 -- or by date, on a time scale (eg a register's transactions; lines are then drawn as steps).
 data XScale = EvenScale [Text] | DateScale [Day]
 
 -- | Draw series over time, along the given x scale:
--- vertical bars (in stacks, side by side), lines, and total marks or lines.
+-- vertical stacked bars, lines, and total marks or lines.
 timeSvg :: Double -> Maybe Quantity -> Amount -> [DrawSeries] -> Maybe Series -> XScale -> (Double, Svg)
 timeSvg top mscale unit drawn mtotal xscale = (plotHeight + 28, do
     -- gridlines and y tick labels
@@ -178,12 +185,14 @@ timeSvg top mscale unit drawn mtotal xscale = (plotHeight + 28, do
       EvenScale _ -> forM_ (zip [0 :: Int ..] xlabels) $ \(j, lbl) ->
         when (j `mod` labelevery == 0) $ xlabel (xcenter j) lbl
       DateScale _ -> forM_ (dateTicks d0 d1) $ \(d, lbl) -> xlabel (xofday d) lbl
-    -- bars: the stacks side by side (2px apart), each with its positive segments stacked upward and negative ones downward
-    forM_ (zip [0 ..] xlabels) $ \(j, lbl) ->
-      forM_ (zip [0 :: Int ..] stacks) $ \(k, stk) -> do
-        let x = xcenter j - groupwidth / 2 + fromIntegral k * (barwidth + 2)
-        stack lbl x [(d, q) | d <- stk, Just q <- [valueAt (dsValues d) j], q > 0] 1
-        stack lbl x [(d, q) | d <- stk, Just q <- [valueAt (dsValues d) j], q < 0] (-1)
+    -- bars: positive segments stacked upward and negative ones downward
+    forM_ (zip [0 ..] xlabels) $ \(j, lbl) -> do
+      let x = xcenter j - barwidth / 2
+      stack lbl x (contraFirst [(d, q) | d <- bars, Just q <- [valueAt (dsValues d) j], q > 0]) 1
+      stack lbl x (contraFirst [(d, q) | d <- bars, Just q <- [valueAt (dsValues d) j], q < 0]) (-1)
+    -- a hatching pattern, for contra amounts
+    when hascontra $ S.defs $ S.pattern ! A.id_ (toValue hatchId) ! A.width "5" ! A.height "5" ! A.patternunits "userSpaceOnUse" ! A.patterntransform "rotate(45)" $
+      S.line ! A.class_ "hatch" ! A.x1 "0" ! A.y1 "0" ! A.x2 "0" ! A.y2 "5"
     -- with a fixed scale, lines are clipped at the plot's edges
     when (isJust mscale) $ S.defs $ S.clippath ! A.id_ (toValue clipid) $
       S.rect ! A.x (toValue $ num plotleft) ! A.y (toValue $ num plottop) ! A.width (toValue $ num (plotright - plotleft)) ! A.height (toValue $ num plotHeight)
@@ -196,7 +205,7 @@ timeSvg top mscale unit drawn mtotal xscale = (plotHeight + 28, do
       else let tvals = seriesValues t in
         forM_ (zip [0 ..] xlabels) $ \(j, lbl) -> forM_ (valueAt tvals j) $ \q -> when (hasbars j) $ withTooltip (tooltip lbl t q) $ do
           let y = toValue $ num (yof $ toD q)
-              halfw = groupwidth / 2 + 4
+              halfw = barwidth / 2 + 4
               x1 = toValue $ num (xcenter j - halfw)
               x2 = toValue $ num (xcenter j + halfw)
           S.line ! A.class_ "mark total" ! A.x1 x1 ! A.x2 x2 ! A.y1 y ! A.y2 y
@@ -221,11 +230,12 @@ timeSvg top mscale unit drawn mtotal xscale = (plotHeight + 28, do
     xofday d = plotleft + 8 + (plotright - plotleft - 16) * fromIntegral (diffDays d d0) / fromIntegral (max 1 (diffDays d1 d0))
     bars   = [d | d <- drawn, seMark (dsSeries d) == MarkBar]
     lines_ = [d | d <- drawn, seMark (dsSeries d) == MarkLine]
-    -- the bar series in stacks, in order (see 'seStack')
-    stacks = [ [d | d <- bars, seStack (dsSeries d) == k] | k <- nub $ map (seStack . dsSeries) bars ]
-    -- the extent of the bars in each direction: each stack's sum, at each x position
-    stackedsums sign = [ sum [toD q | d <- stk, Just q <- [valueAt (dsValues d) j], signum q == sign] | j <- [0 .. n - 1], stk <- stacks ]
+    -- the extent of the bars in each direction, at each x position
+    stackedsums sign = [ sum [toD q | d <- bars, Just q <- [valueAt (dsValues d) j], signum q == sign] | j <- [0 .. n - 1] ]
     hasbars j = any (\d -> maybe False (/= 0) $ valueAt (dsValues d) j) bars
+    hascontra = or [isContra (dsSeries d) q | d <- bars, Just q <- seValues (dsSeries d)]
+    -- contra amounts are drawn nearest the axis
+    contraFirst = sortOn (\(d, q) -> not $ isContra (dsSeries d) q)
     pointvalues = [toD q | s <- map dsSeries lines_ ++ maybe [] pure mtotal, Just q <- seValues s]
     datamax = maximumDef 0 (stackedsums 1 ++ pointvalues)
     datamin = minimumDef 0 (stackedsums (-1) ++ pointvalues)
@@ -244,12 +254,9 @@ timeSvg top mscale unit drawn mtotal xscale = (plotHeight + 28, do
     xcenter j = case datearray of
       Just a | Arr.inRange (Arr.bounds a) j -> xofday (a Arr.! j)
       _ -> plotleft + band * (fromIntegral j + 0.5)
-    nbars = max 1 $ length stacks
-    -- each bar's width, and the width of a group of side-by-side bars (2px apart)
     barwidth
-      | band < 4  = max 1 (band * 0.9 / fromIntegral nbars)
-      | otherwise = max 1 $ min 24 ((band * 0.8 - 2 * fromIntegral (nbars - 1)) / fromIntegral nbars)
-    groupwidth = fromIntegral nbars * barwidth + 2 * fromIntegral (nbars - 1)
+      | band < 4  = max 1 (band * 0.9)
+      | otherwise = max 1 $ min 24 (band * 0.8)
     labelevery = max 1 $ ceiling ((maximumDef 0 (map textWidth xlabels) + 12) / band) :: Int
     stack :: Text -> Double -> [(DrawSeries, Quantity)] -> Double -> Svg
     stack lbl x segs = vstack (lo, hi) yof x barwidth [(d, q, tooltip lbl (dsSeries d) q) | (d, q) <- segs]
@@ -407,14 +414,20 @@ vstack (lo, hi) yof x width segs sign = do
       starts = 0 : cums
       lastk = length segs - 1
       clipped = any (\c -> c > hi || c < lo) (lastMay cums)
-  forM_ (zip3 [0 :: Int ..] segs (zip starts cums)) $ \(k, (d, _, tip), (c0, c1)) -> do
+  forM_ (zip3 [0 :: Int ..] segs (zip starts cums)) $ \(k, (d, q, tip), (c0, c1)) -> do
     let gap = if k > 0 && abs (yof c1 - yof c0) >= 4 then 2 else 0
         ybase = yof c0 - sign * gap   -- the end nearer zero, after the gap
         len = (ybase - yof c1) * sign  -- positive when there is something to draw
-    when (len > 0.5) $ withTooltip tip $
-      S.path ! A.class_ ("fill " <> toValue (dsClass d))
-        ! A.d (toValue $ barPath True x ybase width (-sign * len) (k == lastk && not clipped))
+        path = toValue $ barPath True x ybase width (-sign * len) (k == lastk && not clipped)
+    when (len > 0.5) $ withTooltip tip $ do
+      S.path ! A.class_ ("fill " <> toValue (dsClass d)) ! A.d path
+      -- a contra amount is hatched
+      when (isContra (dsSeries d) q) $ S.path ! A.fill (toValue $ "url(#" <> hatchId <> ")") ! A.d path
   when clipped $ clipMark True (yof $ if sign > 0 then hi else lo) (x + width / 2) width sign
+
+-- | The id of the hatching pattern for contra amounts.
+hatchId :: Text
+hatchId = "hledger-chart-hatch"
 
 -- | A small triangle pointing outward from the edge of a plot, marking a bar that was clipped there:
 -- for a vertical bar (at y position edge, centred on x position mid) or a horizontal one (at x position edge, centred on y position mid).
@@ -593,6 +606,7 @@ stylesheet dark = T.unlines $
   , ".hledger-chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}"
   , ".hledger-chart .mark{stroke-width:1.5}"
   , ".hledger-chart .hit{fill:transparent}"
+  , ".hledger-chart .hatch{stroke-width:2.5}"
   ]
   ++ colourRules False lightcolours
   ++ (if dark then ["@media (prefers-color-scheme:dark){"] ++ colourRules True darkcolours ++ ["}"] else [])
@@ -610,7 +624,7 @@ stylesheet dark = T.unlines $
       [ (".bg", "fill", "surface"), (".title", "fill", "ink"), (".heading", "fill", "ink")
       , (".label", "fill", "ink2"), (".value", "fill", "ink2"), (".tick", "fill", "muted")
       , (".grid", "stroke", "grid"), (".axis", "stroke", "axis")
-      , (".line.total", "stroke", "ink"), (".mark.total", "stroke", "ink"), (".clip", "fill", "ink")
+      , (".line.total", "stroke", "ink"), (".mark.total", "stroke", "ink"), (".clip", "fill", "ink"), (".hatch", "stroke", "surface")
       ]
     lightcolours :: [(Text, Text)]
     lightcolours =

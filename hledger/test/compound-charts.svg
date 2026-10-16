@@ -8,6 +8,7 @@
 .hledger-chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .hledger-chart .mark{stroke-width:1.5}
 .hledger-chart .hit{fill:transparent}
+.hledger-chart .hatch{stroke-width:2.5}
 .hledger-chart .bg{fill:#fcfcfb}
 .hledger-chart .title{fill:#0b0b0b}
 .hledger-chart .heading{fill:#0b0b0b}
@@ -19,6 +20,7 @@
 .hledger-chart .line.total{stroke:#0b0b0b}
 .hledger-chart .mark.total{stroke:#0b0b0b}
 .hledger-chart .clip{fill:#0b0b0b}
+.hledger-chart .hatch{stroke:#fcfcfb}
 .hledger-chart .fill.ta0{fill:#2a78d6}
 .hledger-chart .line.ta0{stroke:#2a78d6}
 .hledger-chart .fill.ta1{fill:#7faee6}
@@ -91,6 +93,7 @@
 .hledger-chart .line.total{stroke:#ffffff}
 .hledger-chart .mark.total{stroke:#ffffff}
 .hledger-chart .clip{fill:#ffffff}
+.hledger-chart .hatch{stroke:#1a1a19}
 .hledger-chart .fill.ta0{fill:#3987e5}
 .hledger-chart .line.ta0{stroke:#3987e5}
 .hledger-chart .fill.ta1{fill:#88b7ef}
@@ -155,11 +158,11 @@
 </style>
 <rect class="bg" width="100%" height="100%" />
 <text class="title" x="16" y="30">Monthly Income Statement 2024-01-01..2024-02-29</text>
-<rect class="fill tr0" x="16" y="53" width="10" height="10" rx="2" />
+<rect x="16" y="53" width="10" height="10" rx="2" class="fill tr0" />
 <text class="label" x="34" y="62">revenues:salary</text>
-<rect class="fill tx0" x="155" y="53" width="10" height="10" rx="2" />
+<rect x="155" y="53" width="10" height="10" rx="2" class="fill tx0" />
 <text class="label" x="173" y="62">expenses:food</text>
-<rect class="fill tx1" x="280" y="53" width="10" height="10" rx="2" />
+<rect x="280" y="53" width="10" height="10" rx="2" class="fill tx1" />
 <text class="label" x="298" y="62">expenses:rent</text>
 <line class="mark total" x1="405" x2="417" y1="58" y2="58" />
 <text class="label" x="423" y="62">Net</text>
@@ -177,26 +180,26 @@
 <text class="tick" x="572" y="320" text-anchor="middle">Feb</text>
 <g>
 <title>Jan · revenues:salary · 100</title>
-<path class="fill tr0" d="M 203 192 V 86 Q 203 82 207 82 H 223 Q 227 82 227 86 V 192 Z" />
+<path class="fill tr0" d="M 216 192 V 86 Q 216 82 220 82 H 236 Q 240 82 240 86 V 192 Z" />
 </g>
 <g>
 <title>Jan · expenses:food · -30</title>
-<path class="fill tx0" d="M 229 192 V 221 Q 229 225 233 225 H 249 Q 253 225 253 221 V 192 Z" />
+<path class="fill tx0" d="M 216 192 V 221 Q 216 225 220 225 H 236 Q 240 225 240 221 V 192 Z" />
 </g>
 <g>
 <title>Feb · revenues:salary · 100</title>
-<path class="fill tr0" d="M 547 192 V 86 Q 547 82 551 82 H 567 Q 571 82 571 86 V 192 Z" />
+<path class="fill tr0" d="M 560 192 V 86 Q 560 82 564 82 H 580 Q 584 82 584 86 V 192 Z" />
 </g>
 <g>
 <title>Feb · expenses:rent · -80</title>
-<path class="fill tx1" d="M 573 192 V 276 Q 573 280 577 280 H 593 Q 597 280 597 276 V 192 Z" />
+<path class="fill tx1" d="M 560 192 V 276 Q 560 280 564 280 H 580 Q 584 280 584 276 V 192 Z" />
 </g>
 <g>
 <title>Jan · Net · 70</title>
-<line class="mark total" x1="199" x2="257" y1="115" y2="115" />
+<line class="mark total" x1="212" x2="244" y1="115" y2="115" />
 </g>
 <g>
 <title>Feb · Net · 20</title>
-<line class="mark total" x1="543" x2="601" y1="170" y2="170" />
+<line class="mark total" x1="556" x2="588" y1="170" y2="170" />
 </g>
 </svg>

@@ -173,7 +173,7 @@ multiBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlistmo
       | otherwise = Just Panel
           { pnUnit      = unitAmount c allamts
           , pnSeries    = series ++ total
-          , pnStackLabels = []
+          , pnSideNames = ("", "")
           , pnScale = Nothing
           }
       where
@@ -203,7 +203,7 @@ balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
       , pnSeries    = [Series (plainLabel $ I18n.tr translations_ "Balance") SeriesItem MarkBar
                         [ if any ((== c) . acommodity) (amountsRaw ma) then Just (quantityIn c ma) else Nothing
                         | (_, _, _, ma) <- items ] 0]
-      , pnStackLabels = []
+      , pnSideNames = ("", "")
       , pnScale = Nothing
       }
 
@@ -212,9 +212,9 @@ balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
 -- Amounts are shown as their contribution to the net total: positive for sections that add to it (eg revenues, assets),
 -- negative for sections that subtract from it (eg expenses, liabilities). (The report's tables show both as positive.)
 -- So bars above zero increase the net and bars below zero reduce it; eg a refund, which is a negative expense, is drawn above zero.
--- At each period, each section's accounts are stacked (positive amounts above zero, negative ones below),
--- and the sections are side by side (never stacked together).
--- The net total is a mark across them, or a line for end balances (eg balancesheet).
+-- At each period, all sections' accounts are stacked in one diverging bar: positive amounts above zero, negative ones below.
+-- Each series has its section's usual sign, so that renderers can show contra amounts (eg a refund) distinctly.
+-- The net total is a mark across the bar, or a line for end balances (eg balancesheet).
 -- A single-period report is drawn the same way, with one period. With -1 (depth 1), each section is a single bar.
 -- There is one panel per commodity, most-used commodity first. Each section has at most 'maxSectionSeries' series,
 -- the smallest accounts being combined into an "other" series. In tree mode, each account's own amounts are charted.
@@ -241,6 +241,8 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
       | lbFull l == "..." = ChartLabel t t 0 sectype
       | otherwise         = l{lbType = lbType l <|> sectype}
       where l = accountLabel accttype $ prrName r
+    -- the titles of the sections with this sign
+    sectionNames sign = T.intercalate ", " [t | ((t, _), sgn, _) <- sections, sgn == sign]
     nettotals = prrAmounts totals
     showtotal = length subreports > 1 && not no_total_ && not percent_
     -- the table's "Net:" label, without the colon
@@ -254,13 +256,13 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
           , pnSeries = series ++
               [ Series (plainLabel netlabel) SeriesTotal (if flow then MarkMarker else MarkLine) (map (Just . quantityIn c) nettotals) 0
               | showtotal ]
-          , pnStackLabels = [t | (t, _, _) <- subreports]
+          , pnSideNames = (sectionNames 1, sectionNames (-1))
           , pnScale = Nothing
           }
       where
         series = concat
-          [ [ s{seStack = k} | s <- limitSeries maxSectionSeries translations_ MarkBar accts ]
-          | (k, (section, sign, rows)) <- zip [0 ..] sections
+          [ [ s{seSign = round sign} | s <- limitSeries maxSectionSeries translations_ MarkBar accts ]
+          | (section, sign, rows) <- sections
           , let accts = [ (sectionAccountLabel section r, qs) | r <- rows, let qs = map ((* sign) . quantityIn c) (prrAmounts r), any (/= 0) qs ]
           ]
 
@@ -281,7 +283,7 @@ accountTransactionsReportAsChart accttype title acct txndate items =
     panel c = Panel
       { pnUnit      = unitAmount c allamts
       , pnSeries    = [Series (ChartLabel acct acct 0 (accttype acct)) SeriesItem MarkLine (map (Just . quantityIn c) bals) 0]
-      , pnStackLabels = []
+      , pnSideNames = ("", "")
       , pnScale = Nothing
       }
 
@@ -303,8 +305,8 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
           totalseries c role = Series ((plainLabel $ I18n.tr translations_ "Total"){lbType = commontype}) role MarkLine (map (Just . quantityIn c) totals) 0
           -- with postings to several accounts (and not --average), each account's running total as a line, and the overall running total
           linespanel c
-            | average_ || length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] [] Nothing
-            | otherwise = Panel (unitAmount c totalamts) (accountRunningTotals c ++ [totalseries c SeriesTotal]) [] Nothing
+            | average_ || length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] ("", "") Nothing
+            | otherwise = Panel (unitAmount c totalamts) (accountRunningTotals c ++ [totalseries c SeriesTotal]) ("", "") Nothing
       in Chart
         { chTitle  = title
         , chXAxis  = XDates [postingDateOrDate2 (whichDate ropts) p | p <- postings]
@@ -356,7 +358,7 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
     allamts = concatMap amountsRaw cells
     panel c
       | null series = Nothing
-      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total, pnStackLabels = [], pnScale = Nothing}
+      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total, pnSideNames = ("", ""), pnScale = Nothing}
       where
         series = limitSeries maxSeries translations_ MarkBar
           [ (ChartLabel a a 0 (accttype a), qs) | (a, amts) <- rows, let qs = map (quantityIn c) amts, any (/= 0) qs ]
@@ -367,7 +369,7 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
 
 -- Helpers
 
--- | Keep at most this many series (in stack 0). If there are more, keep the largest (by total absolute value) in their original order,
+-- | Keep at most this many series. If there are more, keep the largest (by total absolute value) in their original order,
 -- and combine the rest into a final "other" series.
 limitSeries :: Int -> I18n.Translations -> Mark -> [(ChartLabel, [Quantity])] -> [Series]
 limitSeries maxn t mark items

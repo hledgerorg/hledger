@@ -1,9 +1,8 @@
 {- |
 Draw a 'Chart' as text, for terminals.
 
-Every chart is drawn as horizontal bars, one row per x position (or, with several stacks, one row per stack per x position,
-with the total as a mark on a row of its own),
-with an aligned value column before the bars. Several series in a stacked panel are drawn as stacked segments,
+Every chart is drawn as horizontal bars, one row per x position,
+with an aligned value column before the bars. Several series are drawn as stacked segments,
 positive values growing right from a zero axis and negative values growing left.
 Lines are drawn as bars too, since text has no good way to draw lines.
 
@@ -24,11 +23,11 @@ module Hledger.Write.Chart.Text (
   tests_Hledger_Write_Chart_Text,
 ) where
 
-import Data.List (find, nub)
+import Data.List (find, nub, sortOn)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
 #endif
-import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
@@ -118,16 +117,17 @@ chartAsStyledLines opts Chart{chTitle, chXAxis, chPanels} =
 -- | A row of a text chart: a label, an optional value, and the bar segments (style, fill character, quantity).
 data Row = Row
   { rowLabel    :: Text
-  , rowSubLabel :: Text            -- ^ a second label, eg the name of the stack this row shows (empty for none)
   , rowValue    :: Maybe Quantity
   , rowSegments :: [(Style, Char, Quantity)]
-  , rowMark     :: Maybe Quantity  -- ^ a value to mark with a vertical line (eg a net total), instead of bar segments
+  , rowMark     :: Maybe Quantity  -- ^ a value to mark with a vertical line over the bar segments (eg a net total in a diverging bar)
+  , rowSides    :: (Maybe Quantity, Maybe Quantity)  -- ^ in a diverging chart, the totals of the series usually right and left of the axis
   }
 
 panelLines :: TextChartOpts -> XAxis -> Bool -> Panel -> [StyledLine]
-panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries, pnStackLabels, pnScale} =
+panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries, pnSideNames, pnScale} =
   [[(StylePlain, acommodity pnUnit)] | showheading, not $ T.null $ acommodity pnUnit]
   ++ legend
+  ++ [trimEnd headerline | diverging, not $ all T.null [posname, negname, netname]]
   ++ map trimEnd rowlines
   where
     -- The series drawn as bars: all but totals (shown as the value) and markers (not drawn in text).
@@ -135,12 +135,13 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     mtotal = find ((== SeriesTotal) . seRole) pnSeries
     single = length drawn == 1
     styled = zipWith3 seriesStyle [0 ..] (seriesColours drawn) drawn
-    -- The stacks, in order (see 'seStack'). With several, each x position has a row for each stack,
-    -- and the total is drawn as a mark on a row of its own, after them.
-    -- each stack's name (if it has one) and series
-    stacks = [ (fromMaybe "" $ pnStackLabels `atMay` k, [st | (st, s) <- zip styled drawn, seStack s == k]) | k <- nub $ map seStack drawn ]
-    severalstacks = length stacks > 1
-    marktotal = if severalstacks then mtotal else Nothing
+    styledseries = zip styled drawn
+    -- A diverging chart (eg of a compound report) has series with usual signs (see 'seSign'), and a total.
+    -- Each row shows the sums of its negative and positive segments at the ends of the bar (with the sides' names in a header line),
+    -- and the total as a mark over the bar.
+    -- In any chart, contra amounts (of the opposite sign to their series' usual sign) are drawn nearest the axis, with a hatched fill character.
+    diverging = isJust mtotal && any ((/= 0) . seSign) drawn
+    marktotal = if diverging then mtotal else Nothing
     seriesStyle i colour s = (colourStyle colour, fillChar i, seriesValues s)
     colourStyle colour = case colour of
       TypeColour at k -> StyleType at k
@@ -161,29 +162,22 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
       XCategories ls -> [T.replicate (2 * lbIndent l) " " <> lbShort l | l <- ls]
       XPeriods ps    -> map snd ps
       XDates ds      -> map showDate ds
-    segmentsAt j sers = [(categoryStyle j st, c, q) | (st, c, vals) <- sers, Just q <- [valueAt vals j], q /= 0]
+    segmentsAt j sers = map snd $ sortOn (not . fst)
+      [ (contra, (categoryStyle j st, if contra then contrachar else c, q))
+      | ((st, c, vals), s) <- sers, Just q <- [valueAt vals j], q /= 0, let contra = isContra s q ]
+    contrachar = if tcUnicode then '╱' else '/'
 
-    rows
-      | severalstacks =  -- a row for each stack, showing its sum, with the x label on the first; then the total's mark
-        concat
-          [ [ Row (if k == 0 then lbl else "") name (stackSum j stk) (segmentsAt j stk) Nothing
-            | (k, (name, stk)) <- zip [0 :: Int ..] stacks ]
-            ++ [ Row "" (lbShort $ seLabel t) (valueAt tvals j) [] (valueAt tvals j) | Just t <- [marktotal], let tvals = seriesValues t ]
-          | (j, lbl) <- zip [0 ..] xlabels ]
-      | otherwise =
-        [ Row lbl "" rowval (segmentsAt j styled) Nothing
-        | (j, lbl) <- zip [0 ..] xlabels
-        , let rowval = case (mtotalvals, styled) of
-                (Just tvals, _)     -> valueAt tvals j
-                (_, [(_, _, vals)]) -> valueAt vals j
-                _                   -> Nothing
-        -- categories with no values at all (eg accounts without this commodity) are left out
-        , not (isCategories && all (\(_, _, vals) -> isNothing $ valueAt vals j) styled)
-        ]
+    rows =
+      [ Row lbl rowval (segmentsAt j styledseries) (if isJust marktotal then rowval else Nothing) (sideTotal j 1, sideTotal j (-1))
+      | (j, lbl) <- zip [0 ..] xlabels
+      , let rowval = case (mtotalvals, styled) of
+              (Just tvals, _)     -> valueAt tvals j
+              (_, [(_, _, vals)]) -> valueAt vals j
+              _                   -> Nothing
+      -- categories with no values at all (eg accounts without this commodity) are left out
+      , not (isCategories && all (\(_, _, vals) -> isNothing $ valueAt vals j) styled)
+      ]
     isCategories = case xaxis of XCategories _ -> True; _ -> False
-    stackSum j stk = case mapMaybe (\(_, _, vals) -> valueAt vals j) stk of
-      [] -> Nothing
-      qs -> Just $ sum qs
 
     rowlines = map rowLine rows
     -- the styles of the bar segments actually drawn (a series too small to show at this scale has none)
@@ -193,6 +187,8 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
       | length drawn > 1 = wrapLegend (
           [ [(st, T.singleton c), (StylePlain, " " <> lbFull (seLabel s))] | ((st, c, _), s) <- zip styled drawn, st `elem` drawnstyles ]
           ++ [ [(StylePlain, markchar), (StylePlain, " " <> lbFull (seLabel t))] | Just t <- [marktotal] ]
+          ++ [ [(StylePlain, T.singleton contrachar), (StylePlain, " contra")]
+             | any (any (T.any (== contrachar) . snd)) rowlines ]
           ) ++ [[]]
       | otherwise = []
     -- Lay out legend items left to right, two spaces apart, starting a new line when the next item won't fit.
@@ -207,12 +203,31 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     -- Column widths and scale.
     showValue q = T.pack $ showAmountWith oneLineNoCostFmt pnUnit{aquantity = q}
     labelw = min (tcWidth `div` 3) $ maximumDef 0 $ map (realLength . rowLabel) rows
-    sublabelw = min (tcWidth `div` 4) $ maximumDef 0 $ map (realLength . rowSubLabel) rows
     valuew = maximumDef 0 [realLength (showValue q) | Row{rowValue = Just q} <- rows]
     hasvalues = any (isJust . rowValue) rows
-    barw = max 10 $ tcWidth - (if labelw > 0 then labelw + 2 else 0) - (if sublabelw > 0 then sublabelw + 2 else 0) - (if hasvalues then valuew + 2 else 0)
-    posTotal r = sum [q | (_, _, q) <- rowSegments r, q > 0] `max` maybe 0 (max 0) (rowMark r)
-    negTotal r = sum [abs q | (_, _, q) <- rowSegments r, q < 0] `max` maybe 0 (abs . min 0) (rowMark r)
+    -- In a diverging chart, the totals of each side's series (eg a compound report's sections), shown at that end of the bar.
+    -- They are shown with their usual sign as positive, like the report's tables (eg expenses as positive),
+    -- and include contra amounts (eg a refund counts in expenses, though it is drawn on the other side).
+    sideTotal j sign = case [q | s <- drawn, seSign s == sign, Just q <- [valueAt (seriesValues s) j]] of
+      [] -> Nothing
+      qs -> Just $ fromIntegral sign * sum qs
+    posSum = fst . rowSides
+    negSum = snd . rowSides
+    negsumw = if diverging then maximumDef 0 (realLength negname : [realLength (showValue q) | Just q <- map negSum rows]) else 0
+    possumw = if diverging then maximumDef 0 (realLength posname : [realLength (showValue q) | Just q <- map posSum rows]) else 0
+    -- In a diverging chart, a header line names the total and the side totals' columns (eg the sections on each side).
+    (posname, negname) = pnSideNames
+    netname = if hasvalues then maybe "" (lbShort . seLabel) mtotal else ""
+    headerline = drop 1 $
+      (if labelw > 0 then [(StylePlain, "  "), (StylePlain, T.replicate labelw " ")] else [])
+      ++ (if hasvalues then [(StylePlain, "  "), (StylePlain, fitText (Just valuew) Nothing False False netname)] else [])
+      ++ [(StylePlain, "  ")]
+      ++ (if negsumw > 0 then [(StylePlain, fitText (Just negsumw) Nothing False False negname), (StylePlain, " ")] else [])
+      ++ (if possumw > 0 then [(StylePlain, T.replicate barw " "), (StylePlain, " "), (StylePlain, posname)] else [])
+    barw = max 10 $ tcWidth - (if labelw > 0 then labelw + 2 else 0) - (if hasvalues then valuew + 2 else 0)
+                  - (if negsumw > 0 then negsumw + 1 else 0) - (if possumw > 0 then possumw + 1 else 0)
+    posTotal r = sum [q | (_, _, q) <- rowSegments r, q > 0]
+    negTotal r = sum [abs q | (_, _, q) <- rowSegments r, q < 0]
     maxpos = maximumDef 0 $ map posTotal rows
     maxneg = maximumDef 0 $ map negTotal rows
     hasaxis = maxneg > 0
@@ -237,27 +252,26 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     clipleft  = if tcUnicode then "◂" else "<"
 
     -- the label column, value column and bars, separated by two spaces (columns with nothing in them are left out)
-    rowLine r@Row{rowLabel, rowSubLabel, rowValue} =
+    rowLine r@Row{rowLabel, rowValue} =
       drop 1 $
       (if labelw > 0 then [(StylePlain, "  "), (StylePlain, fitText (Just labelw) (Just labelw) True True rowLabel)] else [])
-      ++ (if sublabelw > 0 then [(StylePlain, "  "), (StylePlain, fitText (Just sublabelw) (Just sublabelw) True True rowSubLabel)] else [])
       ++ (if hasvalues
           then [(StylePlain, "  "), (maybe StylePlain valueStyle rowValue, fitText (Just valuew) Nothing False False $ maybe "" showValue rowValue)]
           else [])
       ++ [(StylePlain, "  ")]
-      ++ case rowMark r of
-           Just q  -> markLine q
-           Nothing -> (if hasaxis then negativeBar r ++ [(StylePlain, axischar)] else []) ++ positiveBar r
+      ++ (if negsumw > 0 then [(maybe StylePlain valueStyle (negSum r), fitText (Just negsumw) Nothing False False $ maybe "" showValue (negSum r)), (StylePlain, " ")] else [])
+      ++ (if possumw > 0 then padTo barw bars ++ [(StylePlain, " "), (maybe StylePlain valueStyle (posSum r), maybe "" showValue (posSum r))] else bars)
+      where
+        bars = maybe id overlayMark (rowMark r) $ (if hasaxis then negativeBar r ++ [(StylePlain, axischar)] else []) ++ positiveBar r
+    -- Pad a styled line with spaces to a width.
+    padTo w l = l ++ [(StylePlain, T.replicate (w - sum (map (realLength . snd) l)) " ")]
+    -- Draw a mark over the bar at a value's position (on the axis if zero).
+    overlayMark q = overlayAt col (StylePlain, markchar)
+      where
+        col | q > 0     = leftw + (if hasaxis then 1 else 0) + max 1 (min rightw $ cells 1 q) - 1
+            | q < 0     = leftw - max 1 (min leftw $ cells 1 (abs q))
+            | otherwise = if hasaxis then leftw else 0
     valueStyle q = if q < 0 then StyleNegative else StylePlain
-
-    -- A mark at a value's position: right of the axis if positive, left of it if negative (or a clipped mark at the edge, if beyond it).
-    markLine q
-      | q >= 0 =
-          let p = max 1 $ min rightw $ cells 1 q
-          in [(StylePlain, T.replicate leftw " "), (StylePlain, if hasaxis then axischar else ""), (StylePlain, T.replicate (p - 1) " "), (StylePlain, if clippedRight q then clipright else markchar)]
-      | otherwise =
-          let p = max 1 $ min leftw $ cells 1 (abs q)
-          in [(StylePlain, T.replicate (leftw - p) " "), (StylePlain, if clippedLeft (abs q) then clipleft else markchar), (StylePlain, T.replicate (p - 1) " "), (StylePlain, axischar)]
 
     -- The positive segments, growing right from the axis.
     -- A single segment uses eighth-block characters for finer resolution (in unicode mode); several use whole cells.
@@ -290,6 +304,17 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
 cyclicAt :: a -> [a] -> Int -> a
 cyclicAt d xs n = if null xs then d else fromMaybe d $ xs `atMay` (n `mod` length xs)
 
+-- | Replace the character at a column of a styled line (of single-width characters) with some styled text,
+-- padding the line with spaces if it is shorter.
+overlayAt :: Int -> (Style, Text) -> StyledLine -> StyledLine
+overlayAt i new = go 0
+  where
+    go col [] = [(StylePlain, T.replicate (i - col) " "), new]
+    go col ((st, t) : rest)
+      | i < col + n = [(st, T.take (i - col) t) | i > col] ++ [new] ++ [(st, T.drop (i - col + 1) t) | i - col + 1 < n] ++ rest
+      | otherwise   = (st, t) : go (col + n) rest
+      where n = T.length t
+
 -- | Remove trailing spaces from a styled line.
 trimEnd :: StyledLine -> StyledLine
 trimEnd = reverse . dropSpaces . reverse
@@ -307,13 +332,13 @@ tests_Hledger_Write_Chart_Text = testGroup "Write.Chart.Text" [
   ,testCase "single series, scaled to the width" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0] [] Nothing]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0] ("", "") Nothing]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 20 True) chart)
        @?= ["a  1  ███████", "b  2  ██████████████"]
   ,testCase "mixed signs grow from an axis" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0] [] Nothing]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0] ("", "") Nothing]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 21 False) chart)
        @?= ["a  -1  ####|", "b   2      |#########"]
   ]

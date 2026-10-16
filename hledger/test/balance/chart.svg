@@ -7,6 +7,7 @@
 .hledger-chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .hledger-chart .mark{stroke-width:1.5}
 .hledger-chart .hit{fill:transparent}
+.hledger-chart .hatch{stroke-width:2.5}
 .hledger-chart .bg{fill:#fcfcfb}
 .hledger-chart .title{fill:#0b0b0b}
 .hledger-chart .heading{fill:#0b0b0b}
@@ -18,6 +19,7 @@
 .hledger-chart .line.total{stroke:#0b0b0b}
 .hledger-chart .mark.total{stroke:#0b0b0b}
 .hledger-chart .clip{fill:#0b0b0b}
+.hledger-chart .hatch{stroke:#fcfcfb}
 .hledger-chart .fill.ta0{fill:#2a78d6}
 .hledger-chart .line.ta0{stroke:#2a78d6}
 .hledger-chart .fill.ta1{fill:#7faee6}
@@ -90,6 +92,7 @@
 .hledger-chart .line.total{stroke:#ffffff}
 .hledger-chart .mark.total{stroke:#ffffff}
 .hledger-chart .clip{fill:#ffffff}
+.hledger-chart .hatch{stroke:#1a1a19}
 .hledger-chart .fill.ta0{fill:#3987e5}
 .hledger-chart .line.ta0{stroke:#3987e5}
 .hledger-chart .fill.ta1{fill:#88b7ef}

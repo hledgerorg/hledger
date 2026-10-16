@@ -30,6 +30,7 @@ module Hledger.Write.Chart (
   maxTints,
   mainAccountType,
   SeriesValues,
+  isContra,
   seriesValues,
   valueAt,
   setChartScales,
@@ -96,8 +97,8 @@ data Panel = Panel
                               --   its commodity symbol and display style are used to show values and axis ticks.
                               --   Eg a currency, @%@ (as produced by --percent), or no commodity with precision 0 for counts.
   , pnSeries    :: [Series]   -- ^ the series, in display order (legend order)
-  , pnStackLabels :: [Text]   -- ^ names for the stacks, by stack number (see 'seStack'), if they have names;
-                              --   eg a compound report's section titles. Text charts show them.
+  , pnSideNames :: (Text, Text)  -- ^ names for the positive and negative sides of the chart, if they have names (otherwise empty);
+                              --   eg the titles of a compound report's sections on each side. Text charts show them.
   , pnScale     :: Maybe Quantity  -- ^ a fixed scale, if one was requested: the amount spanned by the chart (see 'scaleSpans'),
                               --   so that charts with the same scale are drawn at the same size per amount.
                               --   Otherwise the chart is scaled to fit its values.
@@ -108,11 +109,11 @@ data Series = Series
   { seLabel  :: ChartLabel
   , seRole   :: SeriesRole
   , seMark   :: Mark
-  , seValues :: [Maybe Quantity]  -- ^ one value per x position; Nothing means no value there (a gap, not zero)
-  , seStack  :: Int               -- ^ which stack this series' bars belong to. At each x position, bars of the same stack
-                                  --   are stacked (positive values above zero, negative values below), and stacks are drawn
-                                  --   side by side, in order. Eg 0 for all series in a balance chart; a section's number
-                                  --   in a compound report chart, so that its accounts are stacked but sections are not.
+  , seValues :: [Maybe Quantity]  -- ^ one value per x position; Nothing means no value there (a gap, not zero).
+                                  --   At each x position, bar series' values are stacked: positive values above zero, negative values below.
+  , seSign   :: Int               -- ^ the usual sign of this series' values, if it has one (1 or -1; otherwise 0).
+                                  --   Values of the opposite sign are contra amounts, which renderers may show distinctly;
+                                  --   eg a refund (negative expense) in a compound report chart.
   } deriving (Show, Eq, Generic, ToJSON)
 
 -- | What a series represents, which renderers may show differently (eg a muted colour for 'SeriesOther').
@@ -128,6 +129,10 @@ data Mark
   | MarkLine    -- ^ a line joining the values (in text charts, drawn as bars)
   | MarkMarker  -- ^ a marker at the value, not joined, eg a net total over stacked bars, or a budget goal
   deriving (Show, Eq, Generic, ToJSON)
+
+-- | Is this value of the series a contra amount (of the opposite sign to the series' usual sign) ?
+isContra :: Series -> Quantity -> Bool
+isContra s q = seSign s /= 0 && q /= 0 && signum q /= fromIntegral (seSign s)
 
 -- | The main account type (asset, liability, equity, revenue or expense) of an account type, which is one of those or a subtype of one.
 mainAccountType :: AccountType -> AccountType

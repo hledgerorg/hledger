@@ -392,6 +392,16 @@ they need, positives the rest, both shrunk proportionally if they don't fit. A p
 negative value then halved the resolution and changed the scale between otherwise similar charts. Text bars beyond it end with
 `▸`/`◂` (`>`/`<`); SVG bars are clamped with a small ink triangle beyond the edge (and an unrounded end), lines are clipped
 with a clipPath (only emitted with a fixed scale), ticks are the nice ticks within the exact range.
+Diverging compound charts (2026-10-16): staggered sections (side by side in SVG, a row per section in text) were replaced
+by one diverging bar per period, all sections stacked (positive contributions above/right, negative below/left).
+The stagger had served (a) to give each section's number its own line in text, and (b) to show contrabalances clearly.
+Instead: (a) text rows show the net, and each side's sum at that end of the bar, with a header line naming the sections on each
+side (`pnSideNames`), and the net as a `┃` over the bar. The side figures are section totals as the tables show them (normal-positive,
+contra amounts included, eg expenses -1700 in a refund month), not the bar extents, so every number matches the table;
+(b) each series has its section's usual sign (`seSign`); contra amounts (`isContra`) are drawn nearest the axis (so a refund
+continues its section's run across zero), with `╱` (`/`) in text and a surface-coloured hatch over their colour in SVG,
+with a legend entry. The side-by-side stack support (`seStack`, `pnStackLabels`, text stack and mark rows) was removed.
+Contra marking was considered for `bal` (from account types' normal signs) but not done: bal shows raw amounts, in its table too.
 Dropped automatic date grouping (2026-10-16): text charts of registers no longer switch to a row per day/week/month/.. beyond 50 rows,
 since that heuristic was hard to predict and understand; they always have a row per posting (or transaction). Use a report interval
 (register -M, or balance -M -H for an account's balance) for a row per period.
