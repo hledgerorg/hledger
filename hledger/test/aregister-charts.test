@@ -1,0 +1,39 @@
+# * aregister --chart and svg output: charts of an account's balance over time
+
+<
+2024-01-01
+    assets:bank       100
+    revenues:salary
+
+2024-01-05
+    expenses:food      30
+    assets:bank
+
+2024-02-01
+    assets:bank       100
+    revenues:salary
+
+2024-02-10
+    expenses:rent      80
+    assets:bank
+
+# ** 1. The chart data is the balance after each transaction, as a line, by date.
+$ hledger -f - areg bank --chart -O csv
+"commodity","series","role","mark","x","value"
+"","assets:bank","item","line","2024-01-01","100"
+"","assets:bank","item","line","2024-01-05","70"
+"","assets:bank","item","line","2024-02-01","170"
+"","assets:bank","item","line","2024-02-10","90"
+
+# ** 2. A text chart has a row per transaction (or per period, when there are many transactions).
+$ hledger -f - areg bank --chart -w 40
+Transactions in assets:bank and subaccounts:
+
+2024-01-01  100  █████████████▌
+2024-01-05   70  █████████▌
+2024-02-01  170  ███████████████████████
+2024-02-10   90  ████████████▏
+
+# ** 3. In SVG, the balance is a step line on a time scale.
+# The expected output is in aregister-charts.svg.
+$ hledger -f - areg bank -O svg | diff - aregister-charts.svg

@@ -17,6 +17,7 @@ module Hledger.Cli.Chart (
   multiBalanceReportAsChart,
   balanceReportAsChart,
   compoundBalanceReportAsChart,
+  accountTransactionsReportAsChart,
 ) where
 
 import Data.List (find, intercalate, isPrefixOf, partition, sortOn, transpose)
@@ -32,6 +33,7 @@ import Data.Char (toUpper)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
+import Data.Time (Day)
 import GHC.IO.Encoding (getLocaleEncoding, textEncodingName)
 import Safe (readMay)
 import System.Console.CmdArgs.Explicit (Flag, flagOpt, flagReq)
@@ -211,6 +213,26 @@ compoundBalanceReportAsChart ropts@ReportOpts{balanceaccum_, no_total_, percent_
         series =
           [ Series (plainLabel t) SeriesItem (if flow then MarkBar else MarkLine) qs
           | (t, amts) <- sections, let qs = map (Just . quantityIn c) amts, any (maybe False (/= 0)) qs ]
+
+-- | Chart an account register (aregister): the balance after each transaction
+-- (or the running total or average, as the report shows), as a line over time.
+-- The arguments are the title, the account's name, and a function giving a transaction's date in the register.
+-- There is one panel per commodity, most-used commodity first.
+accountTransactionsReportAsChart :: Text -> Text -> (Transaction -> Day) -> AccountTransactionsReport -> Chart
+accountTransactionsReportAsChart title acct txndate items =
+  Chart
+    { chTitle  = title
+    , chXAxis  = XDates [txndate t | (t, _, _, _, _, _) <- items]
+    , chPanels = map panel $ commoditiesByUse bals
+    }
+  where
+    bals = [b | (_, _, _, _, _, b) <- items]
+    allamts = concatMap amountsRaw bals
+    panel c = Panel
+      { pnUnit      = unitAmount c allamts
+      , pnBarLayout = Grouped
+      , pnSeries    = [Series (plainLabel acct) SeriesItem MarkLine (map (Just . quantityIn c) bals)]
+      }
 
 -- Helpers
 

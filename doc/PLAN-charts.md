@@ -325,6 +325,13 @@ Phases, each a separately useful, committable step:
 - A single-period compound report is categories: a bar per section and one for the net.
 - Chart output dispatch is shared: `writeChart` in Hledger.Cli.Chart.
 
+2026-10-16, phase 2 step 2, aregister:
+
+- Charts the balance (or running total/average) after each transaction, as a line, dated as the register shows (transactionRegisterDate).
+- Text: one row per transaction up to 50; beyond that, `groupDates` groups them into the shortest of days/weeks/months/quarters/years giving at most 50 rows, labelled with showDateSpan, showing each period's last balance. (This settles open question 6: both, by size.)
+- SVG: dates on a real time scale (`DateScale`), lines as steps, x ticks at calendar boundaries (`dateTicks`); x labels are kept within the chart.
+- aregister's existing -w/--width sets the text chart width (its `N,M` form falls back to the terminal width).
+
 ## Open questions
 
 - Chart variant names for `--chart=KIND`, when needed.

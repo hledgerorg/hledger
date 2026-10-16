@@ -7753,7 +7753,7 @@ Here are those commands and the formats currently supported:
 
 |  command           | txt | html | csv/tsv | fods | ledger | beancount | sql | json | svg |
 |--------------------|-----|------|---------|------|--------|-----------|-----|------|-----|
-| aregister          | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
+| aregister          | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
 | balance            | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
 | balancesheet       | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
 | balancesheetequity | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
@@ -8042,7 +8042,7 @@ SVG output shows a chart of the report, rather than the report's table
 It is a self-contained image file, viewable in web browsers and many image viewers.
 It has a light and a dark colour scheme, chosen by the viewer's preference,
 and tooltips showing each bar's or point's values.
-Currently the `balance`, `balancesheet`, `balancesheetequity`, `cashflow` and `incomestatement` commands can produce it. Eg:
+Currently the `aregister`, `balance`, `balancesheet`, `balancesheetequity`, `cashflow` and `incomestatement` commands can produce it. Eg:
 ```cli
 $ hledger bal -M expenses -o expenses.svg
 ```

@@ -24,8 +24,10 @@ module Hledger.Write.Chart.Svg (
 
 import Control.Monad (forM_, unless, when)
 import Data.List (find)
+import Data.Array qualified as Arr
 import Data.Decimal (realFracToDecimal)
-import Data.Maybe (catMaybes, fromMaybe, isNothing)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
+import Data.Time (Day, addDays, diffDays, fromGregorian, toGregorian)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
@@ -115,8 +117,8 @@ panelSvg xaxis showheading top Panel{pnUnit, pnBarLayout, pnSeries} =
                            (if length items > 1 then mtotal else Nothing)
     (bodyh, bodym) = case xaxis of
       XCategories ls -> categoriesSvg (top + headingh + legendh) pnUnit drawn mtotal ls
-      XPeriods ps    -> timeSvg (top + headingh + legendh) pnUnit pnBarLayout drawn mtotal (map snd ps)
-      XDates ds      -> timeSvg (top + headingh + legendh) pnUnit pnBarLayout drawn mtotal (map showDate ds)
+      XPeriods ps    -> timeSvg (top + headingh + legendh) pnUnit pnBarLayout drawn mtotal (EvenScale $ map snd ps)
+      XDates ds      -> timeSvg (top + headingh + legendh) pnUnit pnBarLayout drawn mtotal (DateScale ds)
 
 -- | A legend: a swatch and label for each series, flowing left to right, when there are several series.
 legendSvg :: Double -> [(Text, Mark, Text)] -> Maybe Series -> (Double, Svg)
@@ -144,19 +146,24 @@ legendSvg top entries mtotal
                           ! A.width "10" ! A.height "10" ! A.rx "2"
         S.text_ ! A.class_ "label" ! A.x (toValue $ num (x + 18)) ! A.y (toValue $ num (y + 4)) $ S.toMarkup lbl
 
--- | Draw series over time (periods or dates, evenly spaced), with the given x labels:
+-- | How x positions are placed along a time axis: evenly, with these labels (eg report periods),
+-- or by date, on a time scale (eg a register's transactions; lines are then drawn as steps).
+data XScale = EvenScale [Text] | DateScale [Day]
+
+-- | Draw series over time, along the given x scale:
 -- vertical bars (stacked, or grouped side by side), lines, and total dots.
-timeSvg :: Double -> Amount -> BarLayout -> [DrawSeries] -> Maybe Series -> [Text] -> (Double, Svg)
-timeSvg top unit layout drawn mtotal xlabels = (plotHeight + 28, do
+timeSvg :: Double -> Amount -> BarLayout -> [DrawSeries] -> Maybe Series -> XScale -> (Double, Svg)
+timeSvg top unit layout drawn mtotal xscale = (plotHeight + 28, do
     -- gridlines and y tick labels
     forM_ ticks $ \t -> do
       S.line ! A.class_ (if t == 0 then "axis" else "grid")
         ! A.x1 (toValue $ num plotleft) ! A.x2 (toValue $ num plotright) ! A.y1 (toValue $ num (yof t)) ! A.y2 (toValue $ num (yof t))
       S.text_ ! A.class_ "tick" ! A.x (toValue $ num (plotleft - 8)) ! A.y (toValue $ num (yof t + 4)) ! A.textAnchor "end" $ S.toMarkup (ticklabel t)
-    -- x labels, thinned to avoid overlap
-    forM_ (zip [0 :: Int ..] xlabels) $ \(j, lbl) ->
-      when (j `mod` labelevery == 0) $
-        S.text_ ! A.class_ "tick" ! A.x (toValue $ num (xcenter j)) ! A.y (toValue $ num (plotbottom + 18)) ! A.textAnchor "middle" $ S.toMarkup lbl
+    -- x labels: periods' labels, thinned to avoid overlap; or ticks at calendar boundaries
+    case xscale of
+      EvenScale _ -> forM_ (zip [0 :: Int ..] xlabels) $ \(j, lbl) ->
+        when (j `mod` labelevery == 0) $ xlabel (xcenter j) lbl
+      DateScale _ -> forM_ (dateTicks d0 d1) $ \(d, lbl) -> xlabel (xofday d) lbl
     -- bars
     forM_ (zip [0 ..] xlabels) $ \(j, lbl) ->
       if grouped
@@ -179,7 +186,23 @@ timeSvg top unit layout drawn mtotal xlabels = (plotHeight + 28, do
         S.circle ! A.class_ "dot total" ! A.cx (toValue $ num (xcenter j)) ! A.cy (toValue $ num (yof $ toD q)) ! A.r "4"
   )
   where
+    xlabels = case xscale of
+      EvenScale ls -> ls
+      DateScale ds -> map showDate ds
     n = length xlabels
+    -- an x axis label centred at x, but kept within the chart
+    xlabel x lbl =
+      let halfw = textWidth lbl / 2
+          x' = max (pad + halfw) $ min (chartWidth - pad - halfw) x
+      in S.text_ ! A.class_ "tick" ! A.x (toValue $ num x') ! A.y (toValue $ num (plotbottom + 18)) ! A.textAnchor "middle" $ S.toMarkup lbl
+    -- the date scale, if any: its dates (as an array, for fast lookup), first and last dates, and a date's x position (inset a little from the plot's edges)
+    datearray = case xscale of
+      DateScale ds -> Just $ Arr.listArray (0, length ds - 1) ds
+      EvenScale _  -> Nothing
+    (d0, d1) = case xscale of
+      DateScale ds@(d:_) -> (minimumDef d ds, maximumDef d ds)
+      _                  -> (fromGregorian 2000 1 1, fromGregorian 2000 1 1)
+    xofday d = plotleft + 8 + (plotright - plotleft - 16) * fromIntegral (diffDays d d0) / fromIntegral (max 1 (diffDays d1 d0))
     bars   = [d | d <- drawn, seMark (dsSeries d) == MarkBar]
     lines_ = [d | d <- drawn, seMark (dsSeries d) == MarkLine]
     grouped = layout == Grouped && length bars > 1
@@ -200,7 +223,9 @@ timeSvg top unit layout drawn mtotal xlabels = (plotHeight + 28, do
     plotbottom = plottop + plotHeight
     yof v = plottop + plotHeight * (hi - v) / (hi - lo)
     band = (plotright - plotleft) / fromIntegral (max 1 n)
-    xcenter j = plotleft + band * (fromIntegral j + 0.5)
+    xcenter j = case datearray of
+      Just a | Arr.inRange (Arr.bounds a) j -> xofday (a Arr.! j)
+      _ -> plotleft + band * (fromIntegral j + 0.5)
     nbars = if grouped then length bars else 1
     -- each bar's width, and the width of a group of side-by-side bars (2px apart)
     barwidth
@@ -229,7 +254,7 @@ timeSvg top unit layout drawn mtotal xlabels = (plotHeight + 28, do
       let pts = [ fmap (\q -> (j, xcenter j, yof (toD q), q)) (valueAt vals j) | let vals = seriesValues s, j <- [0 .. n - 1] ]
       forM_ (runs pts) $ \run ->
         S.polyline ! A.class_ ("line " <> toValue cls)
-          ! A.points (toValue $ T.unwords [num x <> "," <> num y | (_, x, y, _) <- run])
+          ! A.points (toValue $ T.unwords [num x <> "," <> num y | (x, y) <- (if isJust datearray then steps else id) [(x, y) | (_, x, y, _) <- run]])
       -- invisible larger targets, for tooltips (only when there are not too many points)
       when (n <= 400) $ forM_ (catMaybes pts) $ \(j, x, y, q) -> withTooltip (tooltip (fromMaybe "" $ xlabels `atMay` j) s q) $
         S.circle ! A.class_ "hit" ! A.cx (toValue $ num x) ! A.cy (toValue $ num y) ! A.r "6"
@@ -287,6 +312,24 @@ categoriesSvg top unit drawn mtotal labels = (fromIntegral (length rows) * rowHe
         when (len > 0.5) $ withTooltip (T.intercalate " · " [lbFull lbl, lbFull (seLabel $ dsSeries d), showValue unit q]) $
           S.path ! A.class_ ("fill " <> toValue (dsClass d))
             ! A.d (toValue $ barPath False xbase (ymid - thickness / 2) thickness (sign * len) (k == lastk))
+
+-- | The points of a step line through these points: each value holds until the next point's x position.
+steps :: [(Double, Double)] -> [(Double, Double)]
+steps ps = take 1 ps ++ concat (zipWith (\(_, py) (x, y) -> [(x, py), (x, y)]) ps (drop 1 ps))
+
+-- | Up to 8 ticks for a date axis from the first to the last date, at calendar boundaries
+-- (every 1, 2, 7 or 14 days, every 1, 2, 3 or 6 months, or every 1, 2, 5, 10.. years), with labels.
+dateTicks :: Day -> Day -> [(Day, Text)]
+dateTicks d0 d1 = fromMaybe [] $ find ((<= 8) . length) candidates
+  where
+    (y0, _, _) = toGregorian d0
+    (y1, _, _) = toGregorian d1
+    candidates = [dayticks k | k <- [1, 2, 7, 14]] ++ [monthticks k | k <- [1, 2, 3, 6]] ++ [yearticks k | k <- [1, 2, 5, 10, 20, 50, 100, 1000]]
+    inrange d = d >= d0 && d <= d1
+    dayticks k = [(d, showDate d) | d <- takeWhile (<= d1) $ iterate (addDays k) d0]
+    monthticks k = [ (d, T.pack $ printf "%04d-%02d" y m)
+                   | y <- [y0 .. y1], m <- [1 .. 12], (m - 1) `mod` k == 0, let d = fromGregorian y m 1, inrange d ]
+    yearticks k = [ (d, T.pack $ show y) | y <- [y0 .. y1], y `mod` k == 0, let d = fromGregorian y 1 1, inrange d ]
 
 -- | Give some markup a tooltip, by grouping it with an SVG title.
 withTooltip :: Text -> Svg -> Svg
