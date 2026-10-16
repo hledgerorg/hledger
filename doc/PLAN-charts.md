@@ -357,6 +357,11 @@ SVG tints mix the type colour with white/black ([0, 0.4, -0.3, 0.65]); text uses
 Compound report sections take the type of their first typed account.
 Also fixed: negative bars in horizontal (category) SVG charts were not drawn (a sign error), and their x tick labels are now thinned.
 
+Compound reports' accounts, as done: Panel's BarLayout is replaced by each series' `seStack`; bars of one stack are stacked
+(positive above zero, negative below), stacks are side by side. Compound charts put each section's accounts in its own stack
+(at most `maxSectionSeries` = 5 per section, ie 4 tints + other), with the net as a mark (flows) or line (stocks).
+In text, several stacks give a row per stack (showing its sum) plus a net mark row. End balances are stacked bars too in compound charts (no longer lines).
+
 ## Open questions
 
 - Chart variant names for `--chart=KIND`, when needed.

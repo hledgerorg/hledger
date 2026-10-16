@@ -22,7 +22,6 @@ module Hledger.Write.Chart (
   XAxis(..),
   ChartLabel(..),
   Panel(..),
-  BarLayout(..),
   Series(..),
   SeriesRole(..),
   Mark(..),
@@ -97,15 +96,8 @@ data Panel = Panel
   { pnUnit      :: Amount     -- ^ the unit of all values in this panel, as a template amount whose quantity is ignored:
                               --   its commodity symbol and display style are used to show values and axis ticks.
                               --   Eg a currency, @%@ (as produced by --percent), or no commodity with precision 0 for counts.
-  , pnBarLayout :: BarLayout  -- ^ how this panel's bar series are arranged when there are several
   , pnSeries    :: [Series]   -- ^ the series, in display order (legend order)
   } deriving (Show, Eq, Generic, ToJSON)
-
--- | How several bar series in a panel are arranged at each x position.
-data BarLayout
-  = Stacked  -- ^ on top of one another; positive values stack above zero, negative values below
-  | Grouped  -- ^ side by side
-  deriving (Show, Eq, Generic, ToJSON)
 
 -- | A named sequence of values, one per x position.
 data Series = Series
@@ -113,6 +105,10 @@ data Series = Series
   , seRole   :: SeriesRole
   , seMark   :: Mark
   , seValues :: [Maybe Quantity]  -- ^ one value per x position; Nothing means no value there (a gap, not zero)
+  , seStack  :: Int               -- ^ which stack this series' bars belong to. At each x position, bars of the same stack
+                                  --   are stacked (positive values above zero, negative values below), and stacks are drawn
+                                  --   side by side, in order. Eg 0 for all series in a balance chart; a section's number
+                                  --   in a compound report chart, so that its accounts are stacked but sections are not.
   } deriving (Show, Eq, Generic, ToJSON)
 
 -- | What a series represents, which renderers may show differently (eg a muted colour for 'SeriesOther').
@@ -241,9 +237,9 @@ tests_Hledger_Write_Chart = testGroup "Write.Chart" [
    testCase "groupDates" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XDates [fromGregorian 2024 1 5, fromGregorian 2024 1 20, fromGregorian 2024 2 3])
-                   [Panel nullamt Grouped
-                     [ Series (lbl "balance") SeriesItem MarkLine [Just 1, Just 2, Just 3]
-                     , Series (lbl "change") SeriesItem MarkBar [Just 1, Just 1, Nothing] ]]
+                   [Panel nullamt
+                     [ Series (lbl "balance") SeriesItem MarkLine [Just 1, Just 2, Just 3] 0
+                     , Series (lbl "change") SeriesItem MarkBar [Just 1, Just 1, Nothing] 0 ]]
          Chart{chXAxis, chPanels} = groupDates 2 chart
      case chXAxis of
        XPeriods ps -> map snd ps @?= ["2024-01", "2024-02"]
@@ -251,7 +247,7 @@ tests_Hledger_Write_Chart = testGroup "Write.Chart" [
      map seValues (concatMap pnSeries chPanels) @?= [[Just 2, Just 3], [Just 2, Nothing]]
      groupDates 3 chart @?= chart
   ,testCase "seriesColours" $ do
-     let ser t = Series (ChartLabel "" "" 0 t) SeriesItem MarkBar []
+     let ser t = Series (ChartLabel "" "" 0 t) SeriesItem MarkBar [] 0
      seriesColours [ser (Just Expense), ser (Just Cash), ser Nothing, ser (Just Expense), ser Nothing]
        @?= [TypeColour Expense 0, TypeColour Asset 0, IndexColour 0, TypeColour Expense 1, IndexColour 1]
      -- more series of one type than tints: all get categorical colours

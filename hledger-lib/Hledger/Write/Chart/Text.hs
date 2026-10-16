@@ -1,7 +1,7 @@
 {- |
 Draw a 'Chart' as text, for terminals.
 
-Every chart is drawn as horizontal bars, one row per x position (or, for grouped series, per series per x position,
+Every chart is drawn as horizontal bars, one row per x position (or, with several stacks, one row per stack per x position,
 with the total as a mark on a row of its own),
 with an aligned value column before the bars. Several series in a stacked panel are drawn as stacked segments,
 positive values growing right from a zero axis and negative values growing left.
@@ -23,11 +23,11 @@ module Hledger.Write.Chart.Text (
   tests_Hledger_Write_Chart_Text,
 ) where
 
-import Data.List (find)
+import Data.List (find, nub)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
 #endif
-import Data.Maybe (fromMaybe, isJust, isNothing)
+import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
@@ -110,7 +110,7 @@ data Row = Row
   }
 
 panelLines :: TextChartOpts -> XAxis -> Bool -> Panel -> [StyledLine]
-panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnBarLayout, pnSeries} =
+panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries} =
   [[(StylePlain, acommodity pnUnit)] | showheading, not $ T.null $ acommodity pnUnit]
   ++ legend
   ++ map (trimEnd . rowLine) rows
@@ -120,10 +120,11 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
     mtotal = find ((== SeriesTotal) . seRole) pnSeries
     single = length drawn == 1
     styled = zipWith3 seriesStyle [0 ..] (seriesColours drawn) drawn
-    -- With several grouped series, the total is drawn as a mark on a row of its own, after them.
-    groupedtotal = case (pnBarLayout, drawn, mtotal) of
-      (Grouped, _:_:_, Just t) -> Just t
-      _                        -> Nothing
+    -- The stacks, in order (see 'seStack'). With several, each x position has a row for each stack,
+    -- and the total is drawn as a mark on a row of its own, after them.
+    stacks = [ [st | (st, s) <- zip styled drawn, seStack s == k] | k <- nub $ map seStack drawn ]
+    severalstacks = length stacks > 1
+    marktotal = if severalstacks then mtotal else Nothing
     seriesStyle i colour s = (colourStyle colour, fillChar i, seriesValues s)
     colourStyle colour = case colour of
       TypeColour at k -> StyleType at k
@@ -145,14 +146,14 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
       XDates ds      -> map showDate ds
     segmentsAt j sers = [(categoryStyle j st, c, q) | (st, c, vals) <- sers, Just q <- [valueAt vals j], q /= 0]
 
-    rows = case (pnBarLayout, drawn) of
-      (Grouped, _:_:_) ->  -- several grouped series: a row for each series, with the x label on the first
+    rows
+      | severalstacks =  -- a row for each stack, showing its sum, with the x label on the first; then the total's mark
         concat
-          [ [ Row (if k == 0 then lbl else "") (valueAt vals j) (segmentsAt j [ser]) Nothing
-            | (k, ser@(_, _, vals)) <- zip [0 :: Int ..] styled ]
-            ++ [ Row "" (valueAt tvals j) [] (valueAt tvals j) | Just t <- [groupedtotal], let tvals = seriesValues t ]
+          [ [ Row (if k == 0 then lbl else "") (stackSum j stk) (segmentsAt j stk) Nothing
+            | (k, stk) <- zip [0 :: Int ..] stacks ]
+            ++ [ Row "" (valueAt tvals j) [] (valueAt tvals j) | Just t <- [marktotal], let tvals = seriesValues t ]
           | (j, lbl) <- zip [0 ..] xlabels ]
-      _ ->
+      | otherwise =
         [ Row lbl rowval (segmentsAt j styled) Nothing
         | (j, lbl) <- zip [0 ..] xlabels
         , let rowval = case (mtotalvals, styled) of
@@ -163,11 +164,14 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
         , not (isCategories && all (\(_, _, vals) -> isNothing $ valueAt vals j) styled)
         ]
     isCategories = case xaxis of XCategories _ -> True; _ -> False
+    stackSum j stk = case mapMaybe (\(_, _, vals) -> valueAt vals j) stk of
+      [] -> Nothing
+      qs -> Just $ sum qs
 
     legend
       | length drawn > 1 = wrapLegend (
           [ [(st, T.singleton c), (StylePlain, " " <> lbFull (seLabel s))] | ((st, c, _), s) <- zip styled drawn ]
-          ++ [ [(StylePlain, markchar), (StylePlain, " " <> lbFull (seLabel t))] | Just t <- [groupedtotal] ]
+          ++ [ [(StylePlain, markchar), (StylePlain, " " <> lbFull (seLabel t))] | Just t <- [marktotal] ]
           ) ++ [[]]
       | otherwise = []
     -- Lay out legend items left to right, two spaces apart, starting a new line when the next item won't fit.
@@ -226,7 +230,7 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnB
     -- The positive segments, growing right from the axis.
     -- A single segment uses eighth-block characters for finer resolution (in unicode mode); several use whole cells.
     positiveBar Row{rowSegments} = case [(st, c, q) | (st, c, q) <- rowSegments, q > 0] of
-      [(st, _, q)] | tcUnicode && single ->
+      [(st, c, q)] | tcUnicode && c == '█' && length rowSegments == 1 ->
         let eighths = min (rightw * 8) $ cells 8 q
         in [(st, T.replicate (eighths `div` 8) "█" <> partialBlock (eighths `mod` 8))]
       segs -> segmentPieces rightw segs
@@ -265,13 +269,13 @@ tests_Hledger_Write_Chart_Text = testGroup "Write.Chart.Text" [
   ,testCase "single series, scaled to the width" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt Grouped [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2]]]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0]]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 20 True) chart)
        @?= ["a  1  ███████", "b  2  ██████████████"]
   ,testCase "mixed signs grow from an axis" $ do
      let lbl t = ChartLabel t t 0 Nothing
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt Grouped [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2]]]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0]]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 21 False) chart)
        @?= ["a  -1  ####|", "b   2      |#########"]
   ]

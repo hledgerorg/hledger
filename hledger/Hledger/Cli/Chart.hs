@@ -27,7 +27,7 @@ import Data.List.Extra (nubSort)
 import Data.List (foldl')
 #endif
 import Data.Map qualified as M
-import Data.Maybe (fromMaybe, isJust, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Ord (Down(..))
 import Data.Set qualified as S
 import Control.Monad (when)
@@ -115,6 +115,10 @@ writeChart opts mreporthtml chart = do
   where
     fmt = outputFormatFromOpts opts
 
+-- | The most series to show in each section of a compound report chart: as many as can have distinct tints of a type's colour, and "other".
+maxSectionSeries :: Int
+maxSectionSeries = maxTints + 1
+
 -- | The most series to show in one panel. Beyond this, the smallest series are combined into one "other" series.
 maxSeries :: Int
 maxSeries = 8
@@ -144,15 +148,14 @@ multiBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlistmo
       | null series = Nothing
       | otherwise = Just Panel
           { pnUnit      = unitAmount c allamts
-          , pnBarLayout = Stacked
           , pnSeries    = series ++ total
           }
       where
-        series = limitSeries translations_ mark
+        series = limitSeries maxSeries translations_ mark
           [ (accountLabel accttype $ prrName r, qs) | r <- rows', let qs = map (quantityIn c) (prrAmounts r), any (/= 0) qs ]
         total =
           [ Series (plainLabel $ I18n.tr translations_ "Total") SeriesTotal (if flow then MarkMarker else MarkLine)
-              (map (Just . quantityIn c) $ prrAmounts totals)
+              (map (Just . quantityIn c) $ prrAmounts totals) 0
           | length series > 1, not no_total_, not percent_ ]
 
 -- | Chart a single-period balance report, as one bar per account (horizontal, since the accounts are categories).
@@ -171,22 +174,22 @@ balanceReportAsChart accttype ReportOpts{translations_} title (items, _total) =
     allamts = concatMap amountsRaw cells
     panel c = Panel
       { pnUnit      = unitAmount c allamts
-      , pnBarLayout = Grouped
       , pnSeries    = [Series (plainLabel $ I18n.tr translations_ "Balance") SeriesItem MarkBar
                         [ if any ((== c) . acommodity) (amountsRaw ma) then Just (quantityIn c ma) else Nothing
-                        | (_, _, _, ma) <- items ]]
+                        | (_, _, _, ma) <- items ] 0]
       }
 
--- | Chart a compound balance report (balancesheet, incomestatement, cashflow..), showing the sections' totals and the net total.
+-- | Chart a compound balance report (balancesheet, incomestatement, cashflow..): its sections' accounts, and the net total.
 --
--- Section amounts are normally positive in these reports (eg both revenues and expenses), so they are not stacked:
--- period changes (flows) are drawn as side-by-side bars, with the net total as a mark across them;
--- end balances (stocks, eg balancesheet) as lines, with the net total as a line.
--- A single-period report is drawn the same way, with one period.
--- There is one panel per commodity, most-used commodity first.
+-- At each period, each section's accounts are stacked (positive amounts above zero, negative ones, like contra accounts, below),
+-- and the sections are side by side (they are never stacked together; eg assets and liabilities, both shown as positive, are opposites).
+-- The net total is a mark across them, or a line for end balances (eg balancesheet).
+-- A single-period report is drawn the same way, with one period. With -1 (depth 1), each section is a single bar.
+-- There is one panel per commodity, most-used commodity first. Each section has at most 'maxSectionSeries' series,
+-- the smallest accounts being combined into an "other" series. In tree mode, each account's own amounts are charted.
 -- The net total is omitted with -N, with --percent, and when there is only one section.
 compoundBalanceReportAsChart :: (AccountName -> Maybe AccountType) -> ReportOpts -> CompoundPeriodicReport DisplayName MixedAmount -> Chart
-compoundBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, no_total_, percent_, translations_}
+compoundBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, accountlistmode_, no_total_, percent_, translations_}
   (CompoundPeriodicReport title spans subreports totals) =
   Chart
     { chTitle  = title
@@ -195,28 +198,28 @@ compoundBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, no_total_,
     }
   where
     flow = balanceaccum_ == PerPeriod
-    -- each section's title, account type (that of its first account with a known type), and totals
-    sections = [ ((t, listToMaybe $ mapMaybe (accttype . displayFull . prrName) (prRows r)), prrAmounts $ prTotals r)
-               | (t, r, _) <- subreports ]
+    -- each section's account rows (in tree mode, with only their own amounts, so that nothing is counted twice)
+    sections = [ if accountlistmode_ == ALTree then ownAmountRows (prRows r) else prRows r | (_, r, _) <- subreports ]
     nettotals = prrAmounts totals
     showtotal = length subreports > 1 && not no_total_ && not percent_
     -- the table's "Net:" label, without the colon
     netlabel = T.dropWhileEnd (`elem` [':', '\xff1a']) $ I18n.tr translations_ "Net:"
-    cells = concatMap snd sections ++ nettotals
+    cells = concatMap (concatMap prrAmounts) sections ++ nettotals
     allamts = concatMap amountsRaw cells
     panel c
       | null series = Nothing
       | otherwise = Just Panel
-          { pnUnit      = unitAmount c allamts
-          , pnBarLayout = Grouped
-          , pnSeries    = series ++
-              [ Series (plainLabel netlabel) SeriesTotal (if flow then MarkMarker else MarkLine) (map (Just . quantityIn c) nettotals)
+          { pnUnit   = unitAmount c allamts
+          , pnSeries = series ++
+              [ Series (plainLabel netlabel) SeriesTotal (if flow then MarkMarker else MarkLine) (map (Just . quantityIn c) nettotals) 0
               | showtotal ]
           }
       where
-        series =
-          [ Series (ChartLabel t t 0 mtype) SeriesItem (if flow then MarkBar else MarkLine) qs
-          | ((t, mtype), amts) <- sections, let qs = map (Just . quantityIn c) amts, any (maybe False (/= 0)) qs ]
+        series = concat
+          [ [ s{seStack = k} | s <- limitSeries maxSectionSeries translations_ MarkBar accts ]
+          | (k, rows) <- zip [0 ..] sections
+          , let accts = [ (accountLabel accttype $ prrName r, qs) | r <- rows, let qs = map (quantityIn c) (prrAmounts r), any (/= 0) qs ]
+          ]
 
 -- | Chart an account register (aregister): the balance after each transaction
 -- (or the running total or average, as the report shows), as a line over time.
@@ -234,8 +237,7 @@ accountTransactionsReportAsChart accttype title acct txndate items =
     allamts = concatMap amountsRaw bals
     panel c = Panel
       { pnUnit      = unitAmount c allamts
-      , pnBarLayout = Grouped
-      , pnSeries    = [Series (ChartLabel acct acct 0 (accttype acct)) SeriesItem MarkLine (map (Just . quantityIn c) bals)]
+      , pnSeries    = [Series (ChartLabel acct acct 0 (accttype acct)) SeriesItem MarkLine (map (Just . quantityIn c) bals) 0]
       }
 
 -- | Chart a postings report (register).
@@ -252,8 +254,8 @@ postingsReportAsChart accttype ropts@ReportOpts{translations_} title items
         { chTitle  = title
         , chXAxis  = XDates [postingDateOrDate2 (whichDate ropts) p | (_, _, _, p, _) <- items]
         , chPanels =
-            [ Panel (unitAmount c totalamts) Grouped
-                [Series (plainLabel $ I18n.tr translations_ "Total") SeriesItem MarkLine (map (Just . quantityIn c) totals)]
+            [ Panel (unitAmount c totalamts)
+                [Series (plainLabel $ I18n.tr translations_ "Total") SeriesItem MarkLine (map (Just . quantityIn c) totals) 0]
             | c <- commoditiesByUse totals ]
         }
   | otherwise =
@@ -273,33 +275,34 @@ postingsReportAsChart accttype ropts@ReportOpts{translations_} title items
     allamts = concatMap amountsRaw cells
     panel c
       | null series = Nothing
-      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnBarLayout = Stacked, pnSeries = series ++ total}
+      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total}
       where
-        series = limitSeries translations_ MarkBar
+        series = limitSeries maxSeries translations_ MarkBar
           [ (ChartLabel a a 0 (accttype a), qs) | (a, amts) <- rows, let qs = map (quantityIn c) amts, any (/= 0) qs ]
         total =
           [ Series (plainLabel $ I18n.tr translations_ "Total") SeriesTotal MarkMarker
-              (map (Just . sum) $ transpose [map (quantityIn c) amts | (_, amts) <- rows])
+              (map (Just . sum) $ transpose [map (quantityIn c) amts | (_, amts) <- rows]) 0
           | length series > 1 ]
 
 -- Helpers
 
--- | Keep at most 'maxSeries' series. If there are more, keep the largest (by total absolute value) in their original order,
+-- | Keep at most this many series (in stack 0). If there are more, keep the largest (by total absolute value) in their original order,
 -- and combine the rest into a final "other" series.
-limitSeries :: I18n.Translations -> Mark -> [(ChartLabel, [Quantity])] -> [Series]
-limitSeries t mark items
-  | length items <= maxSeries = map item items
+limitSeries :: Int -> I18n.Translations -> Mark -> [(ChartLabel, [Quantity])] -> [Series]
+limitSeries maxn t mark items
+  | length items <= maxn = map item items
   | otherwise = map (item . snd) kept ++ [other]
   where
-    item (l, qs) = Series l SeriesItem mark (map Just qs)
+    item (l, qs) = Series l SeriesItem mark (map Just qs) 0
     numbered = zip [0 :: Int ..] items
-    largest = S.fromList $ take (maxSeries - 1) $ map fst $ sortOn (Down . sum . map abs . snd . snd) numbered
+    largest = S.fromList $ take (maxn - 1) $ map fst $ sortOn (Down . sum . map abs . snd . snd) numbered
     (kept, rest) = partition ((`S.member` largest) . fst) numbered
     n = length rest
     other = Series
       (plainLabel $ I18n.trn t n "other ({n} account)" "other ({n} accounts)")
       SeriesOther mark
       (map (Just . sum) $ transpose $ map (snd . snd) rest)
+      0
 
 -- | In tree mode, a parent account's row includes the amounts of its displayed subaccounts' rows.
 -- Subtract those, leaving each row with only its own amounts.
