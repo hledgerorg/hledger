@@ -390,7 +390,22 @@ reportTable isTree foldLots mfold header sections footer =
         rows Nothing body
         rows (Just "subtotal") subtotals
     rows mcls = traverse_ $ \r ->
-      maybe id (\cls -> (! A.class_ cls)) mcls H.tr (traverse_ (formatCell . fmap H.toHtml) (stripIndents r)) <> nl
+      maybe id (\cls -> (! A.class_ cls)) mcls H.tr (traverse_ (formatCell . cellHtml) (stripIndents r)) <> nl
+    -- An account cell marked acct-split renders as two spans, the parent
+    -- path and the leaf name, so css can dim the path and shorten it from
+    -- the left (.acct-path in hledger.css). The inner span is a bidi
+    -- isolate there, keeping that css left-shortening trick
+    -- (direction: rtl) from reordering the name.
+    cellHtml c
+      | "acct-split" `elem` T.words (textFromClass (cellClass c))
+      , (path, leaf) <- T.breakOnEnd ":" (cellContent c)
+      , not (T.null path)
+      = (H.toHtml <$> c)
+          { cellContent =
+              (H.span ! A.class_ "acct-path") (H.span $ H.toHtml $ T.init path)
+              <> H.toHtml (":" :: Text)
+              <> (H.span ! A.class_ "acct-leaf") (H.toHtml leaf) }
+      | otherwise = H.toHtml <$> c
     -- The nbsp indent the renderer gives tree-mode account names, as
     -- padding instead (hledger.css indents by the depth class), so the
     -- caret sits at the name.

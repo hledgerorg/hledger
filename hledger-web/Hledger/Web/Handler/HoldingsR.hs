@@ -117,15 +117,35 @@ getHoldingsR = do
             isTree = accountlistmode_ ropts == ALTree
             mfold = mfilter (const isTree) $ dsFlatDepth $ queryDepth q
 
+            -- In list mode, what the account names share above their leaves
+            -- is shown once, as a group heading over the table, and each row
+            -- shows only the rest, with the part before its leaf dimmed
+            -- (acct-split; see reportTable and .acct-path in hledger.css).
+            -- The register links and their tooltips keep the full names.
+            prefix
+              | isTree = []
+              | otherwise = case map (accountNameComponents . prrFullName . fst) (hrRows rpt) of
+                  []    -> []
+                  comps -> foldl1 commonPrefix (map init comps)  -- init: each leaf stays in its row
+            commonPrefix (x:xs) (y:ys) | x == y = x : commonPrefix xs ys
+            commonPrefix _ _ = []
+            mprefixHeading = if null prefix then Nothing else Just (accountNameFromComponents prefix)
+            strippedName = accountNameFromComponents . drop (length prefix) . accountNameComponents
+
             acctcell r =
-              (defaultCell $ T.replicate (prrIndent r * 2) "\160" <> prrDisplayName r)
+              (defaultCell $ if isTree
+                  then T.replicate (prrIndent r * 2) "\160" <> prrDisplayName r
+                  else strippedName (prrFullName r))
                 { cellClass = Class $ T.unwords $
+                    ["account"] ++
                     -- in tree mode the depth class is a fold point (hledger.js)
-                    ["account" <> if isTree then " depth-" <> T.pack (show (prrIndent r)) else ""] ++
+                    ["depth-" <> T.pack (show (prrIndent r)) | isTree] ++
+                    ["acct-split" | not isTree] ++
                     ["lot" | isJust $ lotSubaccountName $ prrFullName r]
                 , cellAnchor = acctlink (prrFullName r)
-                -- TRANSLATORS: the tooltip of a holding's account link.
-                , cellTitle = tr trs "Show this account's register"
+                , cellTitle = (if isTree then "" else prrFullName r <> "\n") <>
+                    -- TRANSLATORS: the tooltip of a holding's account link.
+                    tr trs "Show this account's register"
                 }
 
             -- a sign class for coloring gains, from the amounts' overall sign
@@ -197,4 +217,4 @@ getHoldingsR = do
               , sortLinks trs HoldingsR (qParams ++ removeAttributes ["sort"] pageParams) (sort_amount_ ropts) ]
         Yesod.toWidget $ H.h2 $ H.toHtml $ withFilter title
         Yesod.toWidget controlRows
-        Yesod.toWidget $ reportTable isTree (isTree && lotsShown) mfold header [(Nothing, body, [])] totals
+        Yesod.toWidget $ reportTable isTree (isTree && lotsShown) mfold header [(mprefixHeading, body, [])] totals

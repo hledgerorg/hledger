@@ -347,6 +347,9 @@ hledgerWebTest = do
       bodyContains "$5.00"    -- total RGain includes the closed BBB position
       bodyNotContains "BBB"   -- but its row is hidden without empty=1
       bodyContains "Holdings</a>"  -- and the journal has lots, so the menu links here
+      -- the account names' shared prefix is a group heading, rows show the rest
+      bodyContains "scope=\"rowgroup\">assets</th>"
+      bodyContains ">broker</a>"
 
     yit "shows one row per lot with lots=1" $ do
       request $ do
@@ -355,7 +358,9 @@ hledgerWebTest = do
       statusIs 200
       bodyContains ">Unit cost<"
       bodyContains "{2026-01-01, $10.00}"
-      bodyContains "class=\"account lot\""
+      bodyContains "class=\"account acct-split lot\""
+      -- with every lot under one account, that account is the group heading
+      bodyContains "scope=\"rowgroup\">assets:broker</th>"
 
     yit "shows closed positions with empty=1" $ do
       request $ do

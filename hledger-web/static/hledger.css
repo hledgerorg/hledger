@@ -714,3 +714,26 @@ ul {
 .report-table td.account.depth-10 { padding-left: 14.2em; }
 .report-table td.account.depth-11 { padding-left: 15.6em; }
 .report-table td.account.depth-12 { padding-left: 17.0em; }
+
+/* List-mode account cells marked acct-split (reportTable) show the parent
+   path dimmed and, when long, shortened from its left, keeping the segments
+   nearest the leaf; direction: rtl puts the ellipsis on the left, and the
+   isolated span inside keeps the name's characters in order. The full name
+   stays in the link's tooltip and register link. */
+.report-table td.account .acct-path {
+  color: var(--muted);
+  display: inline-block;
+  max-width: 14em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  vertical-align: bottom;
+}
+.report-table td.account .acct-path > span {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+/* The path is width-capped above, so keeping the cell on one line cannot
+   widen the column much, and the leaf stays glued to its path. */
+.report-table td.account.acct-split { white-space: nowrap; }
