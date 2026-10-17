@@ -303,6 +303,84 @@ hledgerWebTest = do
       bodyContains "id=\"transaction-2-1\""
       bodyContains "id=\"transaction-2-2\""
 
+  -- A journal with lot tracking enabled: two open AAA lots (FIFO), and
+  -- a fully disposed BBB position whose realised gain is $3.
+  let liopts = rawOptsToInputOpts d usecolor $ mkRawOpts []
+  lj <- fmap (either error' id) . runExceptT . journalFinalise liopts "lots.journal" "" =<<
+          readJournal'' (T.pack $ unlines  -- PARTIAL: readJournal'' should not fail
+            ["commodity AAA  ; lots:"
+            ,"commodity BBB  ; lots:"
+            ,"P 2026-01-31 AAA $12.00"
+            ,""
+            ,"2026-01-01 buy aaa"
+            ,"    assets:broker    2 AAA @ $10.00"
+            ,"    assets:cash    $-20.00"
+            ,""
+            ,"2026-01-15 buy more aaa"
+            ,"    assets:broker    2 AAA @ $11.00"
+            ,"    assets:cash    $-22.00"
+            ,""
+            ,"2026-01-16 buy bbb"
+            ,"    assets:broker    1 BBB @ $5.00"
+            ,"    assets:cash     $-5.00"
+            ,""
+            ,"2026-01-20 sell one aaa"
+            ,"    assets:broker   -1 AAA @ $12.00"
+            ,"    assets:cash     $12.00"
+            ,""
+            ,"2026-01-21 sell all bbb"
+            ,"    assets:broker   -1 BBB @ $8.00"
+            ,"    assets:cash      $8.00"
+            ])
+  runTests "hledger-web holdings page" [] lj $ do
+
+    yit "shows the holdings report, hiding closed positions by default" $ do
+      request $ do
+        setMethod "GET"
+        setUrl (HoldingsR, [("period", "2026")])
+      statusIs 200
+      bodyContains "Holdings on 2026-12-31"
+      bodyContains ">Avg cost<"
+      bodyContains "$32.00"   -- total cost: 1@10 + 2@11
+      bodyContains "$36.00"   -- total value: 3 AAA at the $12 market price
+      bodyContains "12.5%"    -- UGain%: 4/32
+      bodyContains "$5.00"    -- total RGain includes the closed BBB position
+      bodyNotContains "BBB"   -- but its row is hidden without empty=1
+      bodyContains "Holdings</a>"  -- and the journal has lots, so the menu links here
+
+    yit "shows one row per lot with lots=1" $ do
+      request $ do
+        setMethod "GET"
+        setUrl (HoldingsR, [("period", "2026"), ("lots", "1")])
+      statusIs 200
+      bodyContains ">Unit cost<"
+      bodyContains "{2026-01-01, $10.00}"
+      bodyContains "class=\"account lot\""
+
+    yit "shows closed positions with empty=1" $ do
+      request $ do
+        setMethod "GET"
+        setUrl (HoldingsR, [("period", "2026"), ("empty", "1")])
+      statusIs 200
+      bodyContains "0 BBB"
+      bodyContains "$3.00"
+
+    yit "rejects value=then" $ do
+      request $ do
+        setMethod "GET"
+        setUrl (HoldingsR, [("value", "then")])
+      statusIs 200
+      bodyContains "value=then does not apply"
+
+  runTests "hledger-web holdings page without lots" [] nulljournal $ do
+
+    yit "hides the Holdings link, but the page still answers" $ do
+      get JournalR
+      statusIs 200
+      bodyNotContains "Holdings</a>"
+      get HoldingsR
+      statusIs 200
+
   -- Submitting an unbalanced transaction produces an error message that
   -- echoes the entry (account names, amounts). Those values must be rendered
   -- as text, not raw html. Note this echo happens on the FormFailure path,

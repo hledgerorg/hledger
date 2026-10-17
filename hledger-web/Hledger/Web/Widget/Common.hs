@@ -23,6 +23,9 @@ module Hledger.Web.Widget.Common
   , percentLinks
   , calcLinks
   , costsLinks
+  , lotsLinks
+  , closedLinks
+  , holdingsValueLinks
   , typeLinks
   , AmountMode(..)
   , accumWord
@@ -122,9 +125,9 @@ balanceReportAsHtml (journalR, registerR) here reports reportParams hideEmpty to
       where isInteresting a = not (all (mixedAmountLooksZero . bdexcludingsubs) . pdperiods $ adata a) || any isInteresting (asubs a)
     matchesAcctSelector acct = Just True == ((`matchesAccount` acct) <$> inAccountQuery qopts)
     -- The journal and register links keep the states those pages read:
-    -- the amounts mode, the accounts mode, inferred prices, and zero
-    -- balances; each link rewrites the search itself.
-    kept = [p | p@(k, _) <- reportParams, k `elem` ["value", "list", "infer", "empty"]]
+    -- the amounts mode, the accounts mode, inferred prices, zero
+    -- balances, and lot detail; each link rewrites the search itself.
+    kept = [p | p@(k, _) <- reportParams, k `elem` ["value", "list", "infer", "empty", "lots"]]
     acctlink acct = (registerR, ("q", replaceInacct qparam $ accountQuery acct) : kept)
     acctonlylink acct = (registerR, ("q", replaceInacct qparam $ accountOnlyQuery acct) : kept)
     -- The journal, and the register of everything, for the sidebar's
@@ -382,6 +385,39 @@ costsLinks trs route kept on =
     , (trc trs "costs" "Shown", tr trs "Show amounts with the costs recorded in the journal", (route, kept ++ [("costs", "1")]), on)
     ]
 
+-- | Links that show or hide lot detail: each holding's individual lots,
+-- shown as lot subaccounts (the lots parameter; 1 shows them).
+lotsLinks :: Translations -> r -> [(Text, Text)] -> Bool -> HtmlUrl r
+lotsLinks trs route kept on =
+  -- TRANSLATORS: the label before a report's lot detail links, and the links' text and tooltips.
+  linksRow (tr trs "Lots:")
+    [ (trc trs "lots" "Hidden", tr trs "Aggregate each account's lots", (route, kept), not on)
+    , (trc trs "lots" "Shown", tr trs "Show each lot separately (--lots)", (route, kept ++ [("lots", "1")]), on)
+    ]
+
+-- | Links that show or hide fully closed positions: commodities no
+-- longer held, whose realized gains still count in the totals (the
+-- empty parameter, as for zero balances; 1 shows them).
+closedLinks :: Translations -> r -> [(Text, Text)] -> Bool -> Bool -> HtmlUrl r
+closedLinks trs route kept dfltHidden hidden =
+  -- TRANSLATORS: the label before the holdings page's closed-position links, and the links' text and tooltips.
+  linksRow (tr trs "Closed positions:")
+    [ (trc trs "closed" "Hidden", tr trs "Show only open positions", link True, hidden)
+    , (trc trs "closed" "Shown", tr trs "Also show fully disposed positions and their realized gains (-E)", link False, not hidden)
+    ]
+  where link h = (route, kept ++ [("empty", if h then "0" else "1") | h /= dfltHidden])
+
+-- | Links choosing how the holdings page values holdings: each lot in
+-- its own cost commodity (the default), or all in the market valuation
+-- commodity, as -V does.
+holdingsValueLinks :: Translations -> r -> [(Text, Text)] -> Bool -> HtmlUrl r
+holdingsValueLinks trs route kept valued =
+  -- TRANSLATORS: the label before the holdings page's valuation links, and the links' text and tooltips.
+  linksRow (tr trs "Values:")
+    [ (tr trs "Per cost commodity", tr trs "Value each holding in its own cost commodity", (route, kept), not valued)
+    , (tr trs "At market value", tr trs "Convert values and costs to the market valuation commodity (-V)", (route, kept ++ [("value", "end")]), valued)
+    ]
+
 -- | Links filtering to accounts of one type: each rewrites the type:
 -- term in the search. Not for the statement pages, which choose their
 -- own types.
@@ -400,10 +436,20 @@ typeLinks trs route kept qparam =
     ]
 
 accountQuery :: AccountName -> Text
-accountQuery = ("inacct:" <>) .  quoteIfSpaced
+accountQuery = ("inacct:" <>) . quoteForQuery
 
 accountOnlyQuery :: AccountName -> Text
-accountOnlyQuery = ("inacctonly:" <>) . quoteIfSpaced
+accountOnlyQuery = ("inacctonly:" <>) . quoteForQuery
+
+-- | Quote an account name for a search term, like quoteIfSpaced - but
+-- a name containing double quotes (eg a labeled lot subaccount,
+-- {2026-04-03, "0001", $304.25}) is wrapped in single quotes instead:
+-- the query parser (words'') reads no escapes inside quoted phrases,
+-- so quoteIfSpaced's backslash-escaped quotes would not round-trip.
+quoteForQuery :: Text -> Text
+quoteForQuery s
+  | T.any (== '"') s, not (T.any (== '\'') s) = "'" <> s <> "'"
+  | otherwise = quoteIfSpaced s
 
 mixedAmountAsHtml :: MixedAmount -> HtmlUrl a
 mixedAmountAsHtml = mixedAmountAsHtmlWith noCostFmt{displayZeroCommodity=True}

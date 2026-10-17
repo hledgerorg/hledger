@@ -162,7 +162,7 @@ instance Yesod App where
 
     master <- getYesod
     here <- fromMaybe RootR <$> getCurrentRoute
-    VD{opts, j, qparam, q, qopts, perms, trs} <- getViewData
+    VD{opts, j, jHasLots, qparam, q, qopts, perms, trs} <- getViewData
     msg <- getMessage
     -- Unless --lang fixes the language: an explicit ?_LANG= choice is
     -- remembered in a cookie, which Yesod's languages reads on later
@@ -229,12 +229,13 @@ instance Yesod App where
     -- The sidebar's report links keep the search, minus any account term,
     -- which the reports ignore, and a report page's period and amount
     -- conversion, as the report pages' own Report row does.
-    let sidebarReports = reportLinkItems $ filter rmInSidebar reportMenu
+    let sidebarReports = reportLinkItems $ filter rmInSidebar $ reportMenuFor jHasLots
         sidebarParams =
           [p | p@("period", _) <- keptParams] ++
           [("q", qt) | let qt = T.unwords $ removeInacct qparam, not (T.null qt)] ++
           [p | p@("value", _) <- keptParams] ++
           [p | p@("empty", _) <- keptParams] ++
+          [p | p@("lots", _) <- keptParams] ++
           [p | p@("list", _) <- keptParams] ++
           [p | p@("infer", _) <- keptParams]
         -- What the sidebar's bottom row is, in the current amounts mode:
@@ -479,7 +480,13 @@ reportMenu =
   , ReportMenuItem IncomestatementR    (i18n "Income statement")          (i18n "Show revenues and expenses")                       (cbcaccum incomestatementSpec)    True
   , ReportMenuItem CashflowR           (i18n "Cashflow statement")        (i18n "Show changes in liquid assets")                    (cbcaccum cashflowSpec)           True
   , ReportMenuItem BalanceR            (i18n "Balance report")            (i18n "Show the balance report: any accounts, by period") PerPeriod                         False
+  , ReportMenuItem HoldingsR           (i18n "Holdings")                  (i18n "Show investment holdings, lots, and gains")        PerPeriod                         True
   ]
+
+-- | The report pages that apply to this journal: a journal with no lot
+-- features gets no Holdings page.
+reportMenuFor :: Bool -> [ReportMenuItem]
+reportMenuFor hasLots = [i | i <- reportMenu, hasLots || rmRoute i /= HoldingsR]
 
 -- | The report pages' routes, labels, and titles, for a row of links.
 reportLinkItems :: [ReportMenuItem] -> [(Route App, Text, Text)]
@@ -501,6 +508,7 @@ keptAccums route =
 -- | The query parameters a page's own links keep.
 keptParamNames :: Route App -> [Text]
 keptParamNames route
+  | route == HoldingsR        = ["period", "value", "list", "sort", "infer", "empty", "lots"]
   | route `elem` reportRoutes = ["period", "accum", "value", "list", "total", "avg", "sort", "pct", "calc", "infer", "date2", "empty"]
   | route == RegisterR        = ["accum", "value", "costs", "infer", "date2", "empty", "list"]
   | route == JournalR         = ["value", "list", "infer", "empty"]

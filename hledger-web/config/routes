@@ -8,6 +8,7 @@
 /journal         JournalR        GET
 /register        RegisterR       GET
 /balance         BalanceR        GET
+/holdings        HoldingsR       GET
 /balancesheet       BalancesheetR       GET
 /balancesheetequity BalancesheetequityR GET
 /incomestatement    IncomestatementR    GET
