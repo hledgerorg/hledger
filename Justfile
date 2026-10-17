@@ -552,7 +552,8 @@ cf                   cf  -V -Q --chart                                          
 areg                 areg assets cur:VACHR -p LASTYEAR --chart                   # An account register shows the balance after each transaction.
 reg-single           reg -V expenses cur:USD -p LASTMONTH --chart                # A posting register with no interval shows the running totals of each account.
 reg-multi            reg -V expenses cur:USD -Q --chart                          # A posting register with an interval shows the amounts posted per period, stacked.
-activity             activity -Q -S                                              # An activity report shows posting counts per period (equivalent to bal --count --chart)
+activity             activity -Q                                                 # An activity report shows transaction counts per period.
+activity-postings    activity -Q --postings -S                                   # Or posting counts by account (equivalent to bal --count --chart).
 '
 
 # The journal used by chartsdemo and chartsdemo-html. Override it by name, eg: just CHARTS_FILE=my.journal chartsdemo

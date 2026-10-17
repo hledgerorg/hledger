@@ -507,7 +507,7 @@ You can list all of a command's options by running `hledger CMD -h`.
 
 **[Chart commands](#chart-commands)**
 
-- [activity](#activity)                            - show posting counts as a bar chart
+- [activity](#activity)                            - show transaction or posting counts as a bar chart
 
 **[Data generation commands](#data-generation-commands)**
 

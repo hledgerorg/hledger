@@ -844,6 +844,7 @@ multiBalanceReportTitle ropts@ReportOpts{..} r = effectiveTitle ropts defaultTit
         (CalcPostingsCount, PerPeriod  ) -> tr "Posting counts"
         (CalcPostingsCount, Cumulative ) -> tr "Cumulative posting counts"
         (CalcPostingsCount, Historical ) -> tr "Historical posting counts"
+        (CalcTransactionsCount, _      ) -> tr "Transaction counts"
         (_,               PerPeriod  ) -> tr "Balance changes"
         (_,               Cumulative ) -> tr "Ending balances (cumulative)"
         (_,               Historical)  -> tr "Ending balances (historical)"

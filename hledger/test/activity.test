@@ -8,9 +8,9 @@
   (a)  1
   (b)  1
 
-# ** 1. activity shows a chart of posting counts per week by default, with each account's postings stacked,
+# ** 1. With --postings, activity shows a chart of posting counts per week by default, with each account's postings stacked,
 # one character per posting.
-$ hledger -f - activity -w 40
+$ hledger -f - activity --postings -w 40
 Posting counts in 2022-12-26..2023-01-08:
 
 ▓ a  ▒ b
@@ -19,7 +19,7 @@ Posting counts in 2022-12-26..2023-01-08:
 2023-W01  2  ▓▒
 
 # ** 2. With a report interval, and -0 to show just the total count.
-$ hledger -f - activity -D -0 -w 40
+$ hledger -f - activity --postings -D -0 -w 40
 Posting counts in 2023-01-01..2023-01-06:
 
 2023-01-01  1  █
@@ -30,13 +30,13 @@ Posting counts in 2023-01-01..2023-01-06:
 2023-01-06  2  ██
 
 # ** 3. A 7-day activity report starting on a date.
-$ hledger -f - activity -W -b2023-01-01 -0 -w 80
+$ hledger -f - activity --postings -W -b2023-01-01 -0 -w 80
 Posting counts in 2023-01-01..2023-01-07:
 
 2023-01-01..2023-01-07  3  ███
 
 # ** 4. Chart data can be shown, like balance --count --chart's.
-$ hledger -f - activity -O csv
+$ hledger -f - activity --postings -O csv
 "commodity","series","role","mark","x","value"
 "","a","item","bar","2022-W52","1"
 "","a","item","bar","2023-W01","1"
@@ -79,7 +79,7 @@ $ hledger -f - activity -O csv
   (a)  1
 
 # ** 5. Larger counts are scaled down to fit the width.
-$ hledger -f - activity -0 -w 30
+$ hledger -f - activity --postings -0 -w 30
 Posting counts in 2022-W52:
 
 W52  30  █████████████████████
@@ -91,7 +91,7 @@ W52  30  █████████████████████
   (b)  1
 
 # ** 6. -S/--sort-amount shows the accounts with most postings first.
-$ hledger -f - activity -S -w 40
+$ hledger -f - activity --postings -S -w 40
 Posting counts in 2022-W52:
 
 ▒ b  ▓ a
@@ -99,6 +99,44 @@ Posting counts in 2022-W52:
 W52  3  ▒▒▓
 
 # ** 7. In SVG, the total isn't marked, since it would be just the top of each stack.
-$ hledger -f - activity -O svg | grep -c 'class="mark'
+$ hledger -f - activity --postings -O svg | grep -c 'class="mark'
 0
 >=1
+
+<
+2023-01-01
+  (a)  1
+
+2023-01-06
+  a  1
+  a  1
+  b  -2
+
+2023-01-07
+  (c)  1
+
+# ** 8. By default (or with --txns), activity counts transactions, showing just the total.
+$ hledger -f - activity -w 40
+Transaction counts in 2022-12-26..2023-01-08:
+
+2022-W52  1  █
+2023-W01  2  ██
+
+# ** 9. With a query, --txns counts the transactions with a matched posting, once each.
+$ hledger -f - activity --txns -D a -w 40
+Transaction counts in 2023-01-01..2023-01-07:
+
+2023-01-01  1  █
+2023-01-02  0
+2023-01-03  0
+2023-01-04  0
+2023-01-05  0
+2023-01-06  1  █
+2023-01-07  0
+
+# ** 10. If both --txns and --postings are given, the last one wins.
+$ hledger -f - activity --postings --txns -w 40
+Transaction counts in 2022-12-26..2023-01-08:
+
+2022-W52  1  █
+2023-W01  2  ██

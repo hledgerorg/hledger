@@ -183,7 +183,7 @@ multiBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, balancecalc_,
           , pnGroupNames = []
           , pnScale = Nothing
           , pnLayout = Diverging
-          , pnCounts = balancecalc_ == CalcPostingsCount
+          , pnCounts = balanceCalcIsCount balancecalc_
           }
       where
         series = limitSeries maxSeries translations_ mark
@@ -215,7 +215,7 @@ balanceReportAsChart accttype ReportOpts{balancecalc_, translations_} title (ite
       , pnGroupNames = []
       , pnScale = Nothing
       , pnLayout = Diverging
-      , pnCounts = balancecalc_ == CalcPostingsCount
+      , pnCounts = balanceCalcIsCount balancecalc_
       }
 
 -- | Chart a compound balance report (balancesheet, incomestatement, cashflow..): its sections' accounts, and the net total.
@@ -272,7 +272,7 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
           , pnGroupNames = [t | (t, _, _) <- subreports]
           , pnScale = Nothing
           , pnLayout = if flow then Grouped else Diverging
-          , pnCounts = balancecalc_ == CalcPostingsCount
+          , pnCounts = balanceCalcIsCount balancecalc_
           }
       where
         series = concat

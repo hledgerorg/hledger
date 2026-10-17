@@ -338,7 +338,7 @@ commandsListSections = [
   ])
     -----------------------------------------80-------------------------------------
  ,("CHARTS",
-  [" activity                 show posting counts as a bar chart"
+  [" activity                 show transaction or posting counts as a bar chart"
   ,"+bar                      show balances or changes as a bar chart"               -- hledger-bar
   ,"+plot                     show advanced matplotlib charts as gui/svg/png/pdf.."  -- hledger-utils
   ])
