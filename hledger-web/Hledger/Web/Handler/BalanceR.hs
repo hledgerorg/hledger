@@ -17,7 +17,7 @@ import Hledger.Utils.I18n (tr, trf)
 import Hledger.Web.Import
 import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
-import Hledger.Web.Widget.Common (accumulationLinks, intervalLinks, removeInacct, reportLinks)
+import Hledger.Web.Widget.Common (removeInacct)
 
 
 -- | The balance or multi-period balance view, with sidebar.

@@ -16,6 +16,10 @@ module Hledger.Web.ReportPage (
   paramError,
   columnHeading,
   headingParams,
+  linksRow,
+  reportLinks,
+  intervalLinks,
+  accumulationLinks,
   relinkDateHeaders,
   reportTable,
 ) where
@@ -27,12 +31,13 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time.Calendar (Day)
 import Data.Set qualified as Set
-import Text.Blaze.Html5 ((!))
+import Text.Blaze.Html5 ((!), (!?))
 import Text.Blaze.Html5 qualified as H
 import Text.Blaze.Html5.Attributes qualified as A
 import Text.Megaparsec.Error (errorBundlePretty)
+import Yesod (HtmlUrl)
 
-import Hledger.Utils.I18n (Translations, tr)
+import Hledger.Utils.I18n (Translations, tr, trc)
 import Hledger
 import Hledger.Cli.Anchor (dateTerm, renderPeriodHeading)
 import Hledger.Web.Widget.Common (removeDates)
@@ -108,6 +113,74 @@ reportParams today rspecOrig qparam q qopts hideEmpty params = do
           _rsReportOpts = rpRopts
         }
   Right ReportParams{..}
+
+
+-- | A row of links above a report: a label, then each link's label,
+-- title, target, and whether it is the one being shown.
+-- Each label and title is a whole phrase, not a word slotted into a
+-- sentence: an adjective that fits one language's sentence does not fit
+-- another's, so a translation cannot be assembled from parts.
+linksRow :: Text -> [(Text, Text, (r, [(Text, Text)]), Bool)] -> HtmlUrl r
+linksRow rowlabel items renderUrl = do
+    H.p ! A.class_ "report-links" $ do
+      H.toHtml rowlabel
+      for_ items $ \(label, title, link, current) -> do
+        H.a !? (current, A.class_ "current")
+            ! A.href (H.toValue $ uncurry renderUrl link)
+            ! A.title (H.toValue title) $
+          H.toHtml label
+
+
+-- | Links to the report pages, given as route, label, and title,
+-- keeping the given parameters; the page being shown is marked.
+reportLinks :: Eq r => Translations -> r -> [(Text, Text)] -> [(r, Text, Text)] -> HtmlUrl r
+reportLinks trs here kept menu =
+  -- TRANSLATORS: the label before a page's report links.
+  linksRow (tr trs "Report:") [ (tr trs label, tr trs title, (route, kept), route == here) | (route, label, title) <- menu ]
+
+
+-- | Links to the same report page for each reporting interval, keeping
+-- the search, the period's date span, and the given parameters; the
+-- interval being shown is marked.
+intervalLinks :: Translations -> r -> [(Text, Text)] -> Text -> DateSpan -> Interval -> HtmlUrl r
+intervalLinks trs route kept qparam spn current =
+  -- TRANSLATORS: the label before a report's interval links.
+  linksRow (tr trs "Interval:")
+    [ (label, title, link mword, ivl == current) | (label, title, mword, ivl) <- intervals ]
+  where
+    -- TRANSLATORS: the interval links above a report: each link's text, and its tooltip.
+    intervals :: [(Text, Text, Maybe Text, Interval)]
+    intervals =
+      [ (trc trs "interval" "None", tr trs "Show one column for the whole period", Nothing,          NoInterval)
+      , (tr trs "Yearly",    tr trs "Show a column per year",               Just "yearly",    Years 1)
+      , (tr trs "Quarterly", tr trs "Show a column per quarter",            Just "quarterly", Quarters 1)
+      , (tr trs "Monthly",   tr trs "Show a column per month",              Just "monthly",   Months 1)
+      , (tr trs "Weekly",    tr trs "Show a column per week",               Just "weekly",    Weeks 1)
+      , (tr trs "Daily",     tr trs "Show a column per day",                Just "daily",     Days 1)
+      ]
+    -- Each link keeps the period's date span, so that changing the
+    -- interval does not silently widen the report to the whole journal.
+    -- "monthly 2025-01-01..2025-12-31" is a period expression like any other.
+    spantext = if spn == nulldatespan then "" else showDateSpanForQuery spn
+    periodparam mword = case (mword, spantext) of
+      (Nothing,   "") -> []
+      (Nothing,   sp) -> [("period", sp)]
+      (Just w,    "") -> [("period", w)]
+      (Just w,    sp) -> [("period", w <> " " <> sp)]
+    link mword =
+      (route, periodparam mword ++ [("q", qparam) | not (T.null qparam)] ++ kept)
+
+-- | Links to the same report page showing balance changes or ending
+-- balances, keeping the given parameters; the one being shown is marked.
+accumulationLinks :: Translations -> r -> [(Text, Text)] -> BalanceAccumulation -> HtmlUrl r
+accumulationLinks trs route kept current =
+  -- TRANSLATORS: the label before a report's accumulation mode links, and the links' text and tooltips.
+  linksRow (tr trs "Show:")
+    [ (tr trs "Balance changes", tr trs "Show how much each balance changed in each period",
+        (route, kept), current /= Historical)
+    , (tr trs "Ending balances", tr trs "Show each balance at the end of each period, including everything before it",
+        (route, kept ++ [("accum", "historical")]), current == Historical)
+    ]
 
 -- | The accum parameter: "historical" for ending balances, "change" for
 -- balance changes, or none for the page's default.

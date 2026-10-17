@@ -31,7 +31,7 @@ import Hledger.Write.Spreadsheet qualified as Spr
 import Hledger.Web.Import
 import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
-import Hledger.Web.Widget.Common (helplink, intervalLinks, removeInacct, reportLinks)
+import Hledger.Web.Widget.Common (helplink, removeInacct)
 
 getBalancesheetR, getBalancesheetequityR, getIncomestatementR, getCashflowR :: Handler Html
 -- TRANSLATORS: the browser tab titles of the statement pages.
