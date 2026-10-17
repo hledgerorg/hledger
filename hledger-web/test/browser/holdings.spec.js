@@ -1,10 +1,11 @@
-// Browser tests for the /holdings page: in tree mode with lots=1, each
-// position's lots start folded into it (data-fold-lots + reportTreeInit)
-// and the caret opens them in place; a lot row's account link reaches
-// that lot's register, quoting the lot subaccount name - including its
-// auto label's double quotes - so the query round-trips; and the flat
-// view shows the account names' shared prefix once, as a group heading,
-// dimming each row's remaining parent path.
+// Browser tests for the /holdings page: in tree mode positions group
+// under account heading rows that subtotal the dollar columns, and with
+// lots=1 each position's lots start folded into it (data-fold-lots +
+// reportTreeInit) and the caret opens them in place; a lot row's account
+// link reaches that lot's register, quoting the lot subaccount name -
+// including its auto label's double quotes - so the query round-trips;
+// and the flat view shows the account names' shared prefix once, as a
+// group heading, dimming each row's remaining parent path.
 //
 // Starts its own hledger-web on a lot-tracking journal, since the shared
 // fixture journal has no lots.
@@ -92,6 +93,26 @@ test.describe('holdings page', () => {
     await page.locator('td.account a', { hasText: 'broker2' }).click();
     await expect(page).toHaveURL(/register/);
     await expect(page.locator('h2')).toContainText('assets:other:broker2');
+    expect(errors).toEqual([]);
+    await expectNoViolations(page, violations);
+  });
+
+  test('tree mode shows account headings with dollar subtotals', async ({ page }) => {
+    const violations = await watchViolations(page);
+    const errors = watchPageErrors(page);
+    await page.goto(URL + '/holdings?list=tree');
+    // the root account heading subtotals its subtree's costs ($53 AAA + $2 BBB)
+    const heading = page.locator('.report-table tr', { has: page.locator('td.account.acctheading') });
+    await expect(heading).toHaveCount(1);
+    await expect(heading).toContainText('assets');
+    await expect(heading).toContainText('$55.00');
+    // a single-commodity account is one combined row carrying its figures
+    const broker = page.locator('.report-table tr', { has: page.locator('td.account.depth-1 a', { hasText: /^broker$/ }) });
+    await expect(broker).toContainText('5 AAA');
+    await expect(broker).toContainText('$60.00'); // 5 AAA at the $12 market price
+    // the heading's caret folds the whole group
+    await heading.locator('.tree-caret').click();
+    await expect(broker).toBeHidden();
     expect(errors).toEqual([]);
     await expectNoViolations(page, violations);
   });

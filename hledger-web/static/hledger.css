@@ -737,3 +737,7 @@ ul {
 /* The path is width-capped above, so keeping the cell on one line cannot
    widen the column much, and the leaf stays glued to its path. */
 .report-table td.account.acct-split { white-space: nowrap; }
+
+/* The holdings page's tree mode: account heading rows stand out from the
+   position rows (named by their commodity) grouped beneath them. */
+.report-table td.account.acctheading { font-weight: bold; }

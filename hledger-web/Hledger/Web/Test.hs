@@ -370,6 +370,33 @@ hledgerWebTest = do
       bodyContains "0 BBB"
       bodyContains "$3.00"
 
+    yit "tree mode shows a single-commodity account as one combined row" $ do
+      request $ do
+        setMethod "GET"
+        setUrl (HoldingsR, [("period", "2026"), ("list", "tree")])
+      statusIs 200
+      -- the boring root is squashed into the one account, which holds one
+      -- commodity and so is a row, not a heading over a commodity row
+      bodyContains "class=\"account depth-0\""
+      bodyContains ">assets:broker</a>"
+      bodyNotContains "acctheading"
+
+    yit "tree mode groups several commodities under an account heading" $ do
+      request $ do
+        setMethod "GET"
+        setUrl (HoldingsR, [("period", "2026"), ("list", "tree"), ("empty", "1")])
+      statusIs 200
+      -- with the closed BBB position shown, the account holds two
+      -- commodities: a heading row subtotaling the dollar columns, then
+      -- a position row per commodity
+      bodyContains "class=\"account depth-0 acctheading\""
+      bodyContains ">assets:broker</a>"
+      bodyContains "class=\"account depth-1 commodity\""
+      bodyContains ">AAA</a>"
+      bodyContains ">BBB</a>"
+      -- the heading's RGain subtotals both commodities' realized gains
+      bodyContains "$5.00"
+
     yit "rejects value=then" $ do
       request $ do
         setMethod "GET"
