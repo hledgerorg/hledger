@@ -97,3 +97,8 @@ Posting counts in 2022-W52:
 ▒ b  ▓ a
 
 W52  3  ▒▒▓
+
+# ** 7. In SVG, the total isn't marked, since it would be just the top of each stack.
+$ hledger -f - activity -O svg | grep -c 'class="mark'
+0
+>=1

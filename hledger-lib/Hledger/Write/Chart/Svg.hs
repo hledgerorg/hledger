@@ -117,7 +117,7 @@ data DrawSeries = DrawSeries
 
 -- | Draw one panel with its top at the given y; return its height and markup.
 panelSvg :: XAxis -> Bool -> Double -> Panel -> (Double, Svg)
-panelSvg xaxis showheading top Panel{pnUnit, pnSeries, pnScale, pnLayout} =
+panelSvg xaxis showheading top Panel{pnUnit, pnSeries, pnGroupNames, pnScale, pnLayout, pnCounts} =
   (headingh + legendh + bodyh, do
     when (headingh > 0) $
       S.text_ ! A.class_ "heading" ! A.x (toValue $ num pad) ! A.y (toValue $ num (top + 14)) $ S.toMarkup (acommodity pnUnit)
@@ -128,14 +128,16 @@ panelSvg xaxis showheading top Panel{pnUnit, pnSeries, pnScale, pnLayout} =
     -- The series drawn as marks: items and "other" (bars or lines), and the total (dots or a line). Other markers are not drawn yet.
     items = [s | s <- pnSeries, seRole s /= SeriesTotal, seMark s /= MarkMarker]
     mtotal = find ((== SeriesTotal) . seRole) pnSeries
+    -- the total, if it's to be marked: not for counts in one stack, since it would be just the top of the stack
+    mtotalmark = if pnCounts && length pnGroupNames <= 1 then Nothing else mtotal
     drawn = zipWith (\c s -> DrawSeries (colourClass c) s (seriesValues s)) (seriesColours items) items
     (legendh, legendm) = legendSvg (top + headingh) [(dsClass d, seMark (dsSeries d), lbFull $ seLabel $ dsSeries d) | d <- drawn]
-                           (if length items > 1 then mtotal else Nothing) hascontra
+                           (if length items > 1 then mtotalmark else Nothing) hascontra
     hascontra = or [isContra s q | s <- items, seMark s == MarkBar, Just q <- seValues s]
     (bodyh, bodym) = case xaxis of
       XCategories ls -> categoriesSvg (top + headingh + legendh) pnScale pnUnit drawn mtotal ls
-      XPeriods ps    -> timeSvg (top + headingh + legendh) pnScale pnLayout pnUnit drawn mtotal (EvenScale $ map snd ps)
-      XDates ds      -> timeSvg (top + headingh + legendh) pnScale pnLayout pnUnit drawn mtotal (DateScale ds)
+      XPeriods ps    -> timeSvg (top + headingh + legendh) pnScale pnLayout pnUnit drawn mtotalmark (EvenScale $ map snd ps)
+      XDates ds      -> timeSvg (top + headingh + legendh) pnScale pnLayout pnUnit drawn mtotalmark (DateScale ds)
 
 -- | A legend: a swatch and label for each series, flowing left to right, when there are several series.
 -- If there are contra amounts, a hatched swatch is shown for them too.

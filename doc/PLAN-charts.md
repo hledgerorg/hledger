@@ -58,6 +58,7 @@ report  -->  adapter (Hledger.Cli.Chart; smart defaults)  -->  Chart (Hledger.Wr
   table-only options are ignored.
 - **Mixed signs**: positive segments stack above (right of) zero, negative below; nothing is silently flipped (except grouped compound charts, below).
 - **Nets and totals**: a thin ink line mark across bars (1.5px in SVG; `┃` in text), or an ink line with lines.
+  Not for counts in one stack (eg activity), where it would be just the top of the stack.
 
 Per report:
 
