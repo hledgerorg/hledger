@@ -749,8 +749,14 @@ journalApplyValuationFromOptsWith rspec@ReportSpec{_rsReportOpts=ropts} j priceo
     postingperiodend = postingPeriodEnd . postingDateOrDate2 (whichDate ropts)
       where
         postingPeriodEnd d = fromMaybe err $ case interval_ ropts of
-          NoInterval -> fmap (snd . dayPartitionStartEnd)    . snd $ reportSpan j rspec
-          _          -> fmap (snd . dayPartitionFind d) . snd $ reportSpanBothDates j rspec
+          NoInterval -> fmap (snd . dayPartitionStartEnd) mwholespan
+          _          -> fmap (snd . dayPartitionFind d) mspans
+        -- The report spans scan the journal, and this function runs per
+        -- posting, so compute them once here: in an unoptimized build
+        -- nothing floats them out of the lambda, and valuing a large
+        -- journal becomes quadratic (eg hledger-web built with --fast).
+        mwholespan = snd $ reportSpan j rspec
+        mspans     = snd $ reportSpanBothDates j rspec
         -- Should never happen, because there are only invalid dayPartitions
         -- when there are no transactions, in which case this function is never called
         err = error' "journalApplyValuationFromOpts: expected all spans to have an end date"
