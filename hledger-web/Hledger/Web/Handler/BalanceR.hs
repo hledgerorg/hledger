@@ -19,7 +19,7 @@ import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Common
   (accumulationLinks, amountLinks, calcLinks, columnsLinks, depthLinks,
-   intervalLinks, listModeLinks,
+   intervalLinks, listModeLinks, lotsLinks,
    percentLinks, realLinks, removeInacct, reportLinks, sortLinks, statusLinks,
    typeLinks, zeroBalanceLinks)
 
@@ -28,7 +28,7 @@ import Hledger.Web.Widget.Common
 getBalanceR :: Handler Html
 getBalanceR = do
   checkServerSideUiEnabled
-  VD{j, q, qopts, qparam, opts, today, trs} <- getViewData
+  VD{j, jHasLots, lotsShown, q, qopts, qparam, opts, today, trs} <- getViewData
   require ViewPermission
   params <- reqGetParams <$> getRequest
   hideEmpty <- hideEmptyAccounts
@@ -68,11 +68,12 @@ getBalanceR = do
             inferParams = [("infer", "1") | infer_prices_ ropts, not (infer_prices_ roptsOrig)]
             date2Params = [("date2", "1") | date2_ ropts, not (date2_ roptsOrig)]
             emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= empty_ roptsOrig]
+            lotsParams  = [("lots", "1") | lotsShown]
             pageParams =
               dbg1 "balance pageParams" $
               periodParams ++ accumParams ++ valParams ++ listParams ++
               totalParams ++ avgParams ++ sortParams ++ pctParams ++ calcParams ++
-              inferParams ++ date2Params ++ emptyParams
+              inferParams ++ date2Params ++ emptyParams ++ lotsParams
             qParams = [("q", qparam) | not (T.null qparam)]
             -- links to the other reports keep the search, minus any account
             -- term, which the reports ignore, and this page's parameters,
@@ -83,7 +84,7 @@ getBalanceR = do
             -- default, the startup options', converts them.
             registerParams =
               [("value", "none") | amountModeOf ropts == Just AsRecorded, amountModeOf roptsOrig /= Just AsRecorded] ++
-              inferParams ++ date2Params ++ emptyParams
+              inferParams ++ date2Params ++ emptyParams ++ lotsParams
             relink = map (map (addLinkParams registerParams))
             headinglink = urlrender BalanceR . headingParams qparam params
             -- The heading, and the report's rows in three parts, for the
@@ -107,7 +108,7 @@ getBalanceR = do
             mfold = mfilter (const isTree) $ dsFlatDepth $ queryDepth q
             -- Every control the page responds to, one row of links each.
             controlRows render = foldMap ($ render) $
-              [ reportLinks trs BalanceR menuParams $ reportLinkItems reportMenu
+              [ reportLinks trs BalanceR menuParams $ reportLinkItems $ reportMenuFor jHasLots
               , accumulationLinks trs BalanceR (qParams ++ removeAttributes ["accum"] pageParams) PerPeriod accum
               , intervalLinks trs BalanceR (removeAttributes ["period"] pageParams) qparam rpSpan rpInterval
               , statusLinks trs BalanceR pageParams qparam
@@ -117,6 +118,7 @@ getBalanceR = do
               [ listModeLinks trs BalanceR (qParams ++ removeAttributes ["list"] pageParams) (accountlistmode_ roptsOrig) (accountlistmode_ ropts)
               , amountLinks trs BalanceR (qParams ++ removeAttributes ["value"] pageParams) (amountModeOf roptsOrig) (amountModeOf ropts)
               , zeroBalanceLinks trs BalanceR (qParams ++ removeAttributes ["empty"] pageParams) (empty_ roptsOrig) hideEmpty ] ++
+              [ lotsLinks trs BalanceR (qParams ++ removeAttributes ["lots"] pageParams) lotsShown | jHasLots ] ++
               [ columnsLinks trs BalanceR (qParams ++ removeAttributes ["total", "avg"] pageParams) (row_total_ ropts) (average_ ropts)
               | rpInterval /= NoInterval ] ++
               [ sortLinks trs BalanceR (qParams ++ removeAttributes ["sort"] pageParams) (sort_amount_ ropts)
@@ -124,7 +126,7 @@ getBalanceR = do
               , calcLinks trs BalanceR (qParams ++ removeAttributes ["calc"] pageParams) (balancecalc_ ropts) ]
         Yesod.toWidget $ H.h2 $ H.toHtml $ withFilter title
         Yesod.toWidget controlRows
-        Yesod.toWidget $ reportTable isTree mfold header [(Nothing, body, [])] totals
+        Yesod.toWidget $ reportTable isTree False mfold header [(Nothing, body, [])] totals
 
 -- | The heading for a report: --title if one was given, otherwise the
 -- given default.

@@ -24,7 +24,7 @@ import Hledger.Web.ReportPage (amountModeOf, deepestDepth, listWord, parseListMo
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Widget.Common
-             (accountQuery, accountOnlyQuery, amountLinks, costsLinks, depthLinks,
+             (accountQuery, accountOnlyQuery, amountLinks, costsLinks, lotsLinks, depthLinks,
               listModeLinks, mixedAmountAsHtml,
               mixedAmountAsHtmlWith, realLinks, statusLinks, typeLinks,
               zeroBalanceLinks, transactionFragment, removeDates, removeInacct, replaceInacct, journalDayQuery)
@@ -33,7 +33,7 @@ import Hledger.Web.Widget.Common
 getRegisterR :: Handler Html
 getRegisterR = do
   checkServerSideUiEnabled
-  VD{perms, j, q, opts, qparam, qopts, today, trs} <- getViewData
+  VD{jHasLots, lotsShown, perms, j, q, opts, qparam, qopts, today, trs} <- getViewData
   require ViewPermission
   -- With accum=historical the running balance is the account's balance,
   -- starting from before the query's start date, rather than a total of
@@ -77,9 +77,10 @@ getRegisterR = do
       emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= dfltHidden]
       elist = fromMaybe (accountlistmode_ $ _rsReportOpts rspec0) mlist
       listParams = [("list", listWord elist) | elist /= accountlistmode_ (_rsReportOpts rspec0)]
+      lotsParams = [("lots", "1") | lotsShown]
       modeParams =
         dbg1 "register modeParams" $
-        accumParams ++ valParams ++ costsParams ++ inferParams ++ date2Params ++ emptyParams ++ listParams
+        accumParams ++ valParams ++ costsParams ++ inferParams ++ date2Params ++ emptyParams ++ listParams ++ lotsParams
       -- the rows of links above the chart: the filters (status,
       -- realness, type, tag, commodity, and depth), and the accounts,
       -- amounts, and costs modes
@@ -97,6 +98,11 @@ getRegisterR = do
         (amountModeOf $ _rsReportOpts rspec0) (amountModeOf ropts)
       costsRow = costsLinks trs RegisterR (qParams qparam ++ filter ((/= "costs") . fst) modeParams) costsOn
       zeroRow = zeroBalanceLinks trs RegisterR (qParams qparam ++ filter ((/= "empty") . fst) modeParams) dfltHidden hideEmpty
+      -- Lot detail shows lot subaccounts and per-lot postings; row
+      -- hidden when the journal has no lots.
+      lotsRow = if jHasLots
+        then lotsLinks trs RegisterR (qParams qparam ++ filter ((/= "lots") . fst) modeParams) lotsShown
+        else const mempty
       -- the amount column's display format: with costs when asked
       amtfmt = noCostFmt{displayZeroCommodity = True, displayCost = costsOn}
       qParams t = [("q", t) | not (T.null t)]

@@ -18,14 +18,14 @@ import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.ReportPage (amountModeOf, deepestDepth, listWord, parseListMode, parseValue, setAmountMode, valueParams)
 import Hledger.Web.Widget.Common
             (accountQuery, amountLinks, depthLinks,
-             listModeLinks, mixedAmountAsHtml, realLinks, statusLinks, typeLinks,
+             listModeLinks, lotsLinks, mixedAmountAsHtml, realLinks, statusLinks, typeLinks,
              transactionFragment, replaceInacct, journalDayQuery, zeroBalanceLinks)
 
 -- | The formatted journal view, with sidebar.
 getJournalR :: Handler Html
 getJournalR = do
   checkServerSideUiEnabled
-  VD{perms, j, q, opts, qparam, qopts, today, trs} <- getViewData
+  VD{perms, j, jHasLots, lotsShown, q, opts, qparam, qopts, today, trs} <- getViewData
   require ViewPermission
   hideEmpty <- hideEmptyAccounts
   mmode <- either (const Nothing) id . parseValue <$> lookupGetParam "value"
@@ -61,7 +61,8 @@ getJournalR = do
       elist = fromMaybe (accountlistmode_ roptsStartup) mlist
       listParams = [("list", listWord elist) | elist /= accountlistmode_ roptsStartup]
       inferParams = [("infer", "1") | inferOn]
-      carried = dbg1 "journal carried params" $ valParams ++ listParams ++ inferParams ++ emptyParams
+      lotsParams = [("lots", "1") | lotsShown]
+      carried = dbg1 "journal carried params" $ valParams ++ listParams ++ inferParams ++ emptyParams ++ lotsParams
       qps = [("q", qparam) | not (T.null qparam)]
       -- the rows of links above the entries: the filters (status,
       -- realness, type, tag, commodity, and depth), and the sidebar's
@@ -78,7 +79,12 @@ getJournalR = do
       listRow = listModeLinks trs JournalR (qps ++ valParams ++ inferParams ++ emptyParams) (accountlistmode_ roptsStartup) elist
       amountsRow = amountLinks trs JournalR (qps ++ listParams ++ inferParams ++ emptyParams)
         (amountModeOf roptsStartup) (amountModeOf $ maybe id setAmountMode mmode roptsStartup)
-      zeroRow = zeroBalanceLinks trs JournalR (qps ++ valParams ++ listParams ++ inferParams) dfltHidden hideEmpty
+      zeroRow = zeroBalanceLinks trs JournalR (qps ++ valParams ++ listParams ++ inferParams ++ lotsParams) dfltHidden hideEmpty
+      -- Lot detail shows in the entries and the sidebar; row hidden
+      -- when the journal has no lots.
+      lotsRow = if jHasLots
+        then lotsLinks trs JournalR (qps ++ valParams ++ listParams ++ inferParams ++ emptyParams) lotsShown
+        else const mempty
 
   defaultLayout $ do
     -- TRANSLATORS: the browser tab title of this page.

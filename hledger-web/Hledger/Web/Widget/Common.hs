@@ -441,16 +441,6 @@ accountQuery = ("inacct:" <>) . quoteForQuery
 accountOnlyQuery :: AccountName -> Text
 accountOnlyQuery = ("inacctonly:" <>) . quoteForQuery
 
--- | Quote an account name for a search term, like quoteIfSpaced - but
--- a name containing double quotes (eg a labeled lot subaccount,
--- {2026-04-03, "0001", $304.25}) is wrapped in single quotes instead:
--- the query parser (words'') reads no escapes inside quoted phrases,
--- so quoteIfSpaced's backslash-escaped quotes would not round-trip.
-quoteForQuery :: Text -> Text
-quoteForQuery s
-  | T.any (== '"') s, not (T.any (== '\'') s) = "'" <> s <> "'"
-  | otherwise = quoteIfSpaced s
-
 mixedAmountAsHtml :: MixedAmount -> HtmlUrl a
 mixedAmountAsHtml = mixedAmountAsHtmlWith noCostFmt{displayZeroCommodity=True}
 

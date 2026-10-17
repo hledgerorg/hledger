@@ -16,6 +16,7 @@ $if deepest > 1
 ^{listRow}
 ^{amountsRow}
 ^{zeroRow}
+^{lotsRow}
 
 ^{pagingLinks trs JournalR qparam carried page}
 

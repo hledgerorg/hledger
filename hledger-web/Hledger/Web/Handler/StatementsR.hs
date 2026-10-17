@@ -34,7 +34,7 @@ import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Common
   (accumulationLinks, amountLinks, calcLinks, columnsLinks, depthLinks,
    helplink, intervalLinks,
-   listModeLinks, percentLinks, realLinks, removeInacct, reportLinks,
+   listModeLinks, lotsLinks, percentLinks, realLinks, removeInacct, reportLinks,
    sortLinks, statusLinks, zeroBalanceLinks)
 
 getBalancesheetR, getBalancesheetequityR, getIncomestatementR, getCashflowR :: Handler Html
@@ -52,7 +52,7 @@ getCashflowR           = statementPage CashflowR           (i18n "cashflow state
 statementPage :: AppRoute -> Text -> CompoundBalanceCommandSpec -> Handler Html
 statementPage here tabtitle spec = do
   checkServerSideUiEnabled
-  VD{j, q, qopts, qparam, opts, today, trs} <- getViewData
+  VD{j, jHasLots, lotsShown, q, qopts, qparam, opts, today, trs} <- getViewData
   require ViewPermission
   params <- reqGetParams <$> getRequest
   hideEmpty <- hideEmptyAccounts
@@ -61,7 +61,7 @@ statementPage here tabtitle spec = do
       withFilter t = if dateless q /= Any then trf trs "{title}, filtered" [("title", t)] else t
       rspecOrig = reportspec_ $ cliopts_ opts
       roptsOrig = _rsReportOpts rspecOrig
-      menu = reportLinkItems reportMenu
+      menu = reportLinkItems $ reportMenuFor jHasLots
       deepest = deepestDepth rspecOrig j
 
   defaultLayout $ do
@@ -97,11 +97,12 @@ statementPage here tabtitle spec = do
             inferParams = [("infer", "1") | infer_prices_ ropts, not (infer_prices_ roptsOrig)]
             date2Params = [("date2", "1") | date2_ ropts, not (date2_ roptsOrig)]
             emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= empty_ roptsOrig]
+            lotsParams  = [("lots", "1") | lotsShown]
             pageParams =
               dbg1 "statement pageParams" $
               periodParams ++ accumParams ++ valParams ++ listParams ++
               totalParams ++ avgParams ++ sortParams ++ pctParams ++ calcParams ++
-              inferParams ++ date2Params ++ emptyParams
+              inferParams ++ date2Params ++ emptyParams ++ lotsParams
             qParams = [("q", qparam) | not (T.null qparam)]
             -- Links to the other reports keep the search, minus any account
             -- term, which the reports ignore, and this page's parameters,
@@ -112,7 +113,7 @@ statementPage here tabtitle spec = do
             -- default, the startup options', converts them.
             registerParams =
               [("value", "none") | amountModeOf ropts == Just AsRecorded, amountModeOf roptsOrig /= Just AsRecorded] ++
-              inferParams ++ date2Params ++ emptyParams
+              inferParams ++ date2Params ++ emptyParams ++ lotsParams
             relink = map (map (addLinkParams registerParams))
             headinglink = urlrender here . headingParams qparam params
             CompoundBalanceReportParts{cbrpLeadingHeaders, cbrpDataHeaders, cbrpSections, cbrpNetRows} =
@@ -142,6 +143,7 @@ statementPage here tabtitle spec = do
               [ listModeLinks trs here (qParams ++ removeAttributes ["list"] pageParams) (accountlistmode_ roptsOrig) (accountlistmode_ ropts)
               , amountLinks trs here (qParams ++ removeAttributes ["value"] pageParams) (amountModeOf roptsOrig) (amountModeOf ropts)
               , zeroBalanceLinks trs here (qParams ++ removeAttributes ["empty"] pageParams) (empty_ roptsOrig) hideEmpty ] ++
+              [ lotsLinks trs here (qParams ++ removeAttributes ["lots"] pageParams) lotsShown | jHasLots ] ++
               [ columnsLinks trs here (qParams ++ removeAttributes ["total", "avg"] pageParams) (row_total_ ropts) (average_ ropts)
               | rpInterval /= NoInterval ] ++
               [ sortLinks trs here (qParams ++ removeAttributes ["sort"] pageParams) (sort_amount_ ropts)
@@ -151,7 +153,7 @@ statementPage here tabtitle spec = do
         Yesod.toWidget controlRows
         if empty
           then Yesod.toWidget $ emptyNotice trs zerosHidden (q == Any && rpSpan == nulldatespan)
-          else Yesod.toWidget $ reportTable isTree mfold [header] sections (relink cbrpNetRows)
+          else Yesod.toWidget $ reportTable isTree False mfold [header] sections (relink cbrpNetRows)
 
 -- | What an empty statement shows instead of a table: that its accounts
 -- all have zero balances, which are hidden; or, for the whole journal,

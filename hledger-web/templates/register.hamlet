@@ -12,6 +12,7 @@ $if deepest > 1
 ^{amountsRow}
 ^{costsRow}
 ^{zeroRow}
+^{lotsRow}
 
 ^{pagingLinks trs RegisterR qparam modeParams page}
 

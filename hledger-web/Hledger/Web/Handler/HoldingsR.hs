@@ -197,4 +197,4 @@ getHoldingsR = do
               , sortLinks trs HoldingsR (qParams ++ removeAttributes ["sort"] pageParams) (sort_amount_ ropts) ]
         Yesod.toWidget $ H.h2 $ H.toHtml $ withFilter title
         Yesod.toWidget controlRows
-        Yesod.toWidget $ reportTable isTree mfold header [(Nothing, body, [])] totals
+        Yesod.toWidget $ reportTable isTree (isTree && lotsShown) mfold header [(Nothing, body, [])] totals

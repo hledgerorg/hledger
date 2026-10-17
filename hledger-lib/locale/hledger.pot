@@ -417,7 +417,8 @@ msgid "Periodic Balance Sheet With Equity"
 msgstr ""
 
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Equity"
 msgstr ""
 
@@ -590,6 +591,30 @@ msgstr ""
 msgid "All accounts"
 msgstr ""
 
+#: hledger-web/Hledger/Web/App.hs
+msgid "Net, at cost:"
+msgstr ""
+
+#: hledger-web/Hledger/Web/App.hs
+msgid "The sum of every account, converted to cost: zero for balanced books; anything left comes from unbalanced virtual postings."
+msgstr ""
+
+#: hledger-web/Hledger/Web/App.hs
+msgid "Unbooked gains:"
+msgstr ""
+
+#: hledger-web/Hledger/Web/App.hs
+msgid "The sum of every account at market value: appreciation not booked by any entry. If realized gains are booked, this is the unrealized gains."
+msgstr ""
+
+#: hledger-web/Hledger/Web/App.hs
+msgid "Net flows:"
+msgstr ""
+
+#: hledger-web/Hledger/Web/App.hs
+msgid "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities."
+msgstr ""
+
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Balance sheet"
@@ -641,6 +666,17 @@ msgstr ""
 msgid "Show the balance report: any accounts, by period"
 msgstr ""
 
+#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
+#. the browser tab title of this page.
+#: hledger-web/Hledger/Web/App.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "Holdings"
+msgstr ""
+
+#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
+#: hledger-web/Hledger/Web/App.hs
+msgid "Show investment holdings, lots, and gains"
+msgstr ""
+
 #: hledger-web/Hledger/Web/Paging.hs
 #, python-brace-format
 msgid "Showing {first} to {last} of {total} transactions"
@@ -670,6 +706,27 @@ msgid "Unknown balance accumulation mode:"
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
+msgid "Unknown amount conversion:"
+msgstr ""
+
+#: hledger-web/Hledger/Web/ReportPage.hs
+#, python-brace-format
+msgid "The {name} parameter has a value this page does not know:"
+msgstr ""
+
+#: hledger-web/Hledger/Web/ReportPage.hs
+msgid "Value changes and gains are figured from period-end market values: leave the value parameter off, or use value=end."
+msgstr ""
+
+#: hledger-web/Hledger/Web/ReportPage.hs
+msgid "Gains compare market value against cost, so they do not combine with value=cost."
+msgstr ""
+
+#: hledger-web/Hledger/Web/ReportPage.hs
+msgid "This report is at a single date, so value=then does not apply: use value=end, value=now, or a date."
+msgstr ""
+
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Show this report for this period"
 msgstr ""
 
@@ -677,7 +734,7 @@ msgstr ""
 msgid "Transaction added."
 msgstr ""
 
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs hledger-web/Hledger/Web/Handler/JournalR.hs hledger-web/Hledger/Web/Handler/RegisterR.hs hledger-web/Hledger/Web/Handler/StatementsR.hs
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs hledger-web/Hledger/Web/Handler/JournalR.hs hledger-web/Hledger/Web/Handler/RegisterR.hs hledger-web/Hledger/Web/Handler/StatementsR.hs
 #, python-brace-format
 msgid "{title}, filtered"
 msgstr ""
@@ -699,6 +756,87 @@ msgstr ""
 
 #: hledger-web/Hledger/Web/Handler/EditR.hs hledger-web/Hledger/Web/Handler/MiscR.hs
 msgid "Edit journal"
+msgstr ""
+
+#. the browser tab title of this page.
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "holdings - hledger-web"
+msgstr ""
+
+#. the holdings page's heading; {date} is the report date.
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#, python-brace-format
+msgid "Holdings on {date}"
+msgstr ""
+
+#. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "Date"
+msgstr ""
+
+#. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "Age"
+msgstr ""
+
+#. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "Units"
+msgstr ""
+
+#. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "Unit price"
+msgstr ""
+
+#. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "Total cost"
+msgstr ""
+
+#. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "Total value"
+msgstr ""
+
+#. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "Weight"
+msgstr ""
+
+#. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "UGain"
+msgstr ""
+
+#. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "UGain%"
+msgstr ""
+
+#. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "RGain"
+msgstr ""
+
+#. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "XIRR"
+msgstr ""
+
+#. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "Account"
+msgstr ""
+
+#. the tooltip of a holding's account link.
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "Show this account's register"
+msgstr ""
+
+#. the heading of the holdings table's totals row.
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+msgid "Total:"
 msgstr ""
 
 #: hledger-web/Hledger/Web/Handler/JournalR.hs
@@ -942,6 +1080,520 @@ msgstr ""
 msgid "Show each balance at the end of each period, including everything before it"
 msgstr ""
 
+#. the label before a report's accumulation mode links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Cumulative totals"
+msgstr ""
+
+#. the label before a report's accumulation mode links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show each balance's change since the start of the report (--cumulative)"
+msgstr ""
+
+#. the label before a report's depth links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Depth:"
+msgstr ""
+
+#. the label before a report's depth links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show accounts at every depth"
+msgstr ""
+
+#. the label before a report's depth links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "depth"
+msgid "All"
+msgstr ""
+
+#. the tooltips of a report's depth links.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#, python-brace-format
+msgid "Show accounts down to depth {depth}"
+msgstr ""
+
+#. the label before a report's amount conversion links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Amounts:"
+msgstr ""
+
+#. the label before a report's amount conversion links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "As recorded"
+msgstr ""
+
+#. the label before a report's amount conversion links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show amounts in the commodities they were recorded in"
+msgstr ""
+
+#. the label before a report's amount conversion links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "At cost"
+msgstr ""
+
+#. the label before a report's amount conversion links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show amounts converted to their cost, as recorded in transactions (-B)"
+msgstr ""
+
+#. the label before a report's amount conversion links, and the links' text and tooltips.
+#. the label before the holdings page's valuation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "At market value"
+msgstr ""
+
+#. the label before a report's amount conversion links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show amounts converted to their market value at the end of each period, using market prices (-V)"
+msgstr ""
+
+#. the label before the links that show or hide zero balances, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Zero balances:"
+msgstr ""
+
+#. the label before the links that show or hide zero balances, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show accounts whose balances are zero"
+msgstr ""
+
+#. the label before the links that show or hide zero balances, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Shown"
+msgstr ""
+
+#. the label before the links that show or hide zero balances, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Hide accounts whose balances are zero"
+msgstr ""
+
+#. the label before the links that show or hide zero balances, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Hidden"
+msgstr ""
+
+#. the label before a report's status filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Status:"
+msgstr ""
+
+#. the label before a report's status filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show transactions of any status"
+msgstr ""
+
+#. the label before a report's status filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "status"
+msgid "All"
+msgstr ""
+
+#. the label before a report's status filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Unmarked"
+msgstr ""
+
+#. the label before a report's status filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only unmarked transactions (status:)"
+msgstr ""
+
+#. the label before a report's status filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Pending"
+msgstr ""
+
+#. the label before a report's status filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only pending transactions (status:!)"
+msgstr ""
+
+#. the label before a report's status filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Cleared"
+msgstr ""
+
+#. the label before a report's status filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only cleared transactions (status:*)"
+msgstr ""
+
+#. the label before a report's real/virtual filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Postings:"
+msgstr ""
+
+#. the label before a report's real/virtual filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show real and virtual postings"
+msgstr ""
+
+#. the label before a report's real/virtual filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "postings"
+msgid "All"
+msgstr ""
+
+#. the label before a report's real/virtual filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Real"
+msgstr ""
+
+#. the label before a report's real/virtual filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only real postings, as -R does (real:1)"
+msgstr ""
+
+#. the label before a report's real/virtual filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Virtual"
+msgstr ""
+
+#. the label before a report's real/virtual filter links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only virtual postings, the parenthesized ones (real:0)"
+msgstr ""
+
+#. the label before a report's list/tree links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Accounts:"
+msgstr ""
+
+#. the label before a report's list/tree links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show accounts as a flat list (--flat)"
+msgstr ""
+
+#. the label before a report's list/tree links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "accounts"
+msgid "List"
+msgstr ""
+
+#. the label before a report's list/tree links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show accounts as a tree (--tree)"
+msgstr ""
+
+#. the label before a report's list/tree links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "accounts"
+msgid "Tree"
+msgstr ""
+
+#. the label before a report's extra-column toggles, and the toggles' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Extra columns:"
+msgstr ""
+
+#. the label before a report's extra-column toggles, and the toggles' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Add a column totaling each row (-T)"
+msgstr ""
+
+#. the label before a report's extra-column toggles, and the toggles' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "column"
+msgid "Total"
+msgstr ""
+
+#. the label before a report's extra-column toggles, and the toggles' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Add a column averaging each row (-A)"
+msgstr ""
+
+#. the label before a report's extra-column toggles, and the toggles' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "column"
+msgid "Average"
+msgstr ""
+
+#. the label before a report's sort links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Sort:"
+msgstr ""
+
+#. the label before a report's sort links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "By account"
+msgstr ""
+
+#. the label before a report's sort links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Sort rows by account name"
+msgstr ""
+
+#. the label before a report's sort links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "By amount"
+msgstr ""
+
+#. the label before a report's sort links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Sort rows by their amounts, largest first (-S)"
+msgstr ""
+
+#. the label before a report's amounts/percentages links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Numbers:"
+msgstr ""
+
+#. the label before a report's amounts/percentages links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show the amounts"
+msgstr ""
+
+#. the label before a report's amounts/percentages links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "numbers"
+msgid "Amounts"
+msgstr ""
+
+#. the label before a report's amounts/percentages links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Percentages"
+msgstr ""
+
+#. the label before a report's amounts/percentages links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show each amount as a percentage of its column's total (-%)"
+msgstr ""
+
+#. the label before a report's calculation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Calculate:"
+msgstr ""
+
+#. the label before a report's calculation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show sums of postings"
+msgstr ""
+
+#. the label before a report's calculation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "calculation"
+msgid "Sums"
+msgstr ""
+
+#. the label before a report's calculation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Value change"
+msgstr ""
+
+#. the label before a report's calculation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show how period-end market values changed (--valuechange)"
+msgstr ""
+
+#. the label before a report's calculation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Unrealized gain"
+msgstr ""
+
+#. the label before a report's calculation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show unrealized capital gains: market value minus cost (--gain)"
+msgstr ""
+
+#. the label before a report's calculation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Posting counts"
+msgstr ""
+
+#. the label before a report's calculation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Count the postings instead of summing them (--count)"
+msgstr ""
+
+#. the label before the register's cost links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Costs:"
+msgstr ""
+
+#. the label before the register's cost links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show amounts without their costs"
+msgstr ""
+
+#. the label before the register's cost links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "costs"
+msgid "Hidden"
+msgstr ""
+
+#. the label before the register's cost links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show amounts with the costs recorded in the journal"
+msgstr ""
+
+#. the label before the register's cost links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "costs"
+msgid "Shown"
+msgstr ""
+
+#. the label before a report's lot detail links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Lots:"
+msgstr ""
+
+#. the label before a report's lot detail links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Aggregate each account's lots"
+msgstr ""
+
+#. the label before a report's lot detail links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "lots"
+msgid "Hidden"
+msgstr ""
+
+#. the label before a report's lot detail links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show each lot separately (--lots)"
+msgstr ""
+
+#. the label before a report's lot detail links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "lots"
+msgid "Shown"
+msgstr ""
+
+#. the label before the holdings page's closed-position links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Closed positions:"
+msgstr ""
+
+#. the label before the holdings page's closed-position links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only open positions"
+msgstr ""
+
+#. the label before the holdings page's closed-position links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "closed"
+msgid "Hidden"
+msgstr ""
+
+#. the label before the holdings page's closed-position links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Also show fully disposed positions and their realized gains (-E)"
+msgstr ""
+
+#. the label before the holdings page's closed-position links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "closed"
+msgid "Shown"
+msgstr ""
+
+#. the label before the holdings page's valuation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Values:"
+msgstr ""
+
+#. the label before the holdings page's valuation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Per cost commodity"
+msgstr ""
+
+#. the label before the holdings page's valuation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Value each holding in its own cost commodity"
+msgstr ""
+
+#. the label before the holdings page's valuation links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Convert values and costs to the market valuation commodity (-V)"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Type:"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show accounts of every type"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgctxt "account type"
+msgid "All"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Asset"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only asset accounts (type:A)"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Liability"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only liability accounts (type:L)"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only equity accounts (type:E)"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Revenue"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only revenue accounts (type:R)"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Expense"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only expense accounts (type:X)"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Cash"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only cash accounts (type:C)"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Conversion"
+msgstr ""
+
+#. the label before the balance report's account type links, and the links' text and tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show only conversion accounts (type:V)"
+msgstr ""
+
+#. the sidebar's note for a balance with more commodities than it shows.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#, python-brace-format
+msgid "… and {n} more"
+msgstr ""
+
 #: hledger-web/templates/add-form.hamlet
 msgid "Pick a date"
 msgstr ""
@@ -1061,6 +1713,10 @@ msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "The sidebar's report links show the balance sheet, income statement, and cashflow statement, each linking to the other reports"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet
+msgid "For journals using lots, a Holdings report shows investments and their performance, and a Lots link above each report shows the individual lots"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet
