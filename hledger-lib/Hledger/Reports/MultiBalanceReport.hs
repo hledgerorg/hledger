@@ -24,6 +24,7 @@ module Hledger.Reports.MultiBalanceReport (
 
   -- * Helper functions
   makeReportQuery,
+  balanceReportStyles,
   getPostings,
   generateMultiBalanceAccount,
   generatePeriodicReport,
@@ -381,7 +382,21 @@ markAccountBoring ReportSpec{_rsQuery=query,_rsReportOpts=ropts}
 -- Calculate the column totals. These are always the sum of column amounts.
 generateMultiBalanceReport :: ReportOpts -> Maybe DayPartition -> Account BalanceData -> MultiBalanceReport
 generateMultiBalanceReport ropts colspans =
-    reportPercent ropts . generatePeriodicReport makeMultiBalanceReportRow bdincludingsubs id ropts colspans
+    countAveragesPrecision . reportPercent ropts . generatePeriodicReport makeMultiBalanceReportRow bdincludingsubs id ropts colspans
+  where
+    -- Counts are whole numbers, but their averages are shown with one decimal place.
+    countAveragesPrecision
+      | balanceCalcIsCount (balancecalc_ ropts) && not (percent_ ropts) = \(PeriodicReport spans rows totals) ->
+          PeriodicReport spans (map setAvgPrecision rows) (setAvgPrecision totals)
+      | otherwise = id
+    setAvgPrecision r = r{prrAverage = mixedAmountSetPrecision (Precision 1) $ prrAverage r}
+
+-- | The display styles to apply to a balance report's amounts: the journal's commodity styles, hard-rounded,
+-- except for counts, which keep their own (see generateMultiBalanceReport).
+balanceReportStyles :: ReportOpts -> Journal -> M.Map CommoditySymbol AmountStyle
+balanceReportStyles ropts j
+  | balanceCalcIsCount (balancecalc_ ropts) = M.empty
+  | otherwise = journalCommodityStylesWith HardRounding j
 
 -- | Lay out a set of postings grouped by date span into a regular matrix with rows
 -- given by AccountName and columns by DateSpan, then generate a MultiBalanceReport

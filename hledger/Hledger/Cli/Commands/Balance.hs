@@ -439,7 +439,7 @@ balance opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
               _      -> error' $ unsupportedOutputFormatError fmt  -- PARTIAL:
         writeOutputLazyText opts $ render report
   where
-    styles = journalCommodityStylesWith HardRounding j
+    styles = balanceReportStyles ropts j
     tr = I18n.tr (translations_ ropts)
     ropts =
         let ropts0 = _rsReportOpts rspec in
@@ -467,7 +467,7 @@ balanceChart opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
         balanceReportAsChart (journalAccountType j) ropts (effectiveTitle ropts "") report
   where
     ropts  = _rsReportOpts rspec
-    styles = journalCommodityStylesWith HardRounding j
+    styles = balanceReportStyles ropts j
 
 -- Rendering
 

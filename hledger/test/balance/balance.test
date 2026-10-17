@@ -283,3 +283,25 @@ $ hledger -f - balance --empty --declared
     equity:start
 $ hledger -f- bal -c '1,000. USD' -O html
 > /1,000 USD/
+
+# ** 23. Counts are whole numbers, whatever the journal's display style for amounts with no commodity,
+# and their averages have one decimal place.
+<
+2023-01-01
+  (a)  1.00
+
+2023-01-06
+  (a)  1
+  (b)  1
+
+2023-01-20
+  (b)  1
+$ hledger -f- bal --count -W -T -A
+Posting counts in 2022-12-26..2023-01-22:
+
+   || 2022-W52  2023-W01  2023-W02  2023-W03    Total  Average 
+===++==========================================================
+ a ||        1         1         0         0        2      0.5 
+ b ||        0         1         0         1        2      0.5 
+---++----------------------------------------------------------
+   ||        1         2         0         1        4      1.0 

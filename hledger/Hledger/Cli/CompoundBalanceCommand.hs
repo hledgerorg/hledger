@@ -152,7 +152,7 @@ compoundBalanceCommand spec@CompoundBalanceCommandSpec{..} opts@CliOpts{reportsp
     then writeChart opts (Just $ render $ styleAmounts styles cbr) $ compoundBalanceReportAsChart (journalAccountType j) sectiontypes ropts' $ styleAmounts styles cbr
     else writeOutputLazyText opts $ render $ styleAmounts styles cbr
   where
-    styles = journalCommodityStylesWith HardRounding j
+    styles = balanceReportStyles ropts j
     ropts = _rsReportOpts rspec
     -- use the default balance type for this report, unless the user overrides
     mbalanceAccumulationOverride = balanceAccumulationOverride rawopts
