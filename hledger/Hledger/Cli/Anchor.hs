@@ -40,7 +40,7 @@ import Text.URI.QQ qualified as UriQQ
 import Hledger.Write.Spreadsheet qualified as Spr
 import Hledger.Write.Spreadsheet (headerCell)
 import Hledger.Utils.IO (error')
-import Hledger.Utils.Text (quoteIfSpaced)
+import Hledger.Utils.Text (quoteForQuery)
 import Hledger.Data.Dates (showDateSpan, showDateSpanFull, showDateSpanForQuery, showDate, nulldatespan)
 import Hledger.Data.Types (DateSpan(..))
 import Hledger.Data.Valuation (ConversionOp(..), ValuationType(..))
@@ -121,7 +121,7 @@ registerQueryUrl params query =
     [UriQQ.uri|register|] {
         Uri.uriQuery =
             Uri.QueryParam [UriQQ.queryKey|q|]
-                (queryValue $ Text.unwords $ map quoteIfSpaced $ filter (not . Text.null) query)
+                (queryValue $ Text.unwords $ map quoteForQuery $ filter (not . Text.null) query)
             : [Uri.QueryParam (queryKey k) (queryValue v) | (k, v) <- params]
     }
   where
