@@ -61,7 +61,15 @@ getHoldingsR = do
         H.h2 $ H.toHtml $ withFilter $ reportTitle roptsOrig $ tr trs "Holdings"
         paramError trs err
       Right ReportParams{rpRopts, rpRspec, rpPeriod, rpValue} -> do
-        let ropts = rpRopts{empty_ = closedShown}
+        let ropts = rpRopts
+              { empty_ = closedShown
+              -- Unlike the balance reports, keep the command line's boring
+              -- parent squashing in tree mode: holdings rows are per account
+              -- and commodity, so every boring parent kept as a fold point
+              -- would repeat all the commodities below it, multiplying the
+              -- rows on a many-commodity journal.
+              , no_elide_ = no_elide_ roptsOrig
+              }
             rspec = rpRspec{_rsReportOpts = ropts}
             rpt = holdingsReport
                     HoldingsReportOpts{hroLots = lotsShown, hroRounding = HardRounding}
