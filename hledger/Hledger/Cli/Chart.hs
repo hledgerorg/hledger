@@ -490,8 +490,10 @@ quantityIn :: CommoditySymbol -> MixedAmount -> Quantity
 quantityIn c ma = sum [aquantity a | a <- amountsRaw ma, acommodity a == c]
 
 -- | A label for an account (or accounts, eg a depth-clipped one), from a report row's name.
+-- A "..." row (all accounts, eg with depth 0) is labelled as not an account, like a total, so that alone it is drawn neutral.
 accountLabel :: (AccountName -> Maybe AccountType) -> DisplayName -> ChartLabel
-accountLabel accttype DisplayName{displayFull, displayName, displayIndent} = ChartLabel displayFull displayName displayIndent (accttype displayFull) True
+accountLabel accttype DisplayName{displayFull, displayName, displayIndent} =
+  ChartLabel displayFull displayName displayIndent (accttype displayFull) (displayFull /= "...")
 
 -- | A label for something other than an account, eg a total.
 plainLabel :: Text -> ChartLabel

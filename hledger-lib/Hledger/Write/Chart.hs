@@ -199,7 +199,7 @@ categoricalColours = 8
 -- | Colours for a panel's series, in order. When the panel's accounts are of several known types, each gets its main type's hue,
 -- in one of several tints (repeating when there are more than 'maxTints' of a type). Otherwise (when their types are all the same,
 -- so the type's hue would tell nothing, or unknown) they get categorical colours.
--- A lone series which is not an account (eg a total) gets a neutral colour.
+-- A lone series which is not an account (eg a total, or "..." for all accounts) gets a neutral colour.
 --
 -- The tints and categorical colours are chosen by the series' names, not their positions or number (see 'stableSlots'),
 -- so that an account keeps its colour in other charts: eg after removing other accounts (even down to just one), or sorting differently.

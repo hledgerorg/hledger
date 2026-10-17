@@ -153,3 +153,7 @@ Total 3, Average 1.5
 # ** 12. In SVG, the average is also drawn as a line across the chart.
 $ hledger -f - activity -A -O svg | grep -c 'class="average"'
 1
+
+# ** 13. A single "..." series (all accounts, eg the transaction count) is drawn in a neutral colour, like a total.
+$ hledger -f - activity -O svg | grep -o 'class="fill [a-z0-9]*"' | sort -u
+class="fill neutral"
