@@ -779,7 +779,7 @@ roi \- show return on investments
 .PP
 \f[B]Chart commands\f[R]
 .IP \(bu 2
-activity \- show posting counts as a bar chart
+activity \- show transaction or posting counts as a bar chart
 .PP
 \f[B]Data generation commands\f[R]
 .IP \(bu 2
@@ -1898,11 +1898,15 @@ With \-\-infer\-market\-prices, also show any additional prices inferred
 from costs.
 With \-\-show\-reverse, also show additional prices inferred by
 reversing known prices.
+With \-\-show\-aliases, also show the exchange rates provided by
+commodity aliases.
 .IP
 .EX
 Flags:
      \-\-show\-reverse         also show the prices inferred by reversing known
                             prices
+     \-\-show\-aliases         also show the exchange rates provided by
+                            commodity aliases
      \-\-summary              summarise declared prices per commodity instead
                             of listing them
      \-\-locations            also show where prices where declared
@@ -1915,14 +1919,22 @@ point at the parent transaction\(aqs first line.
 Reversed prices keep the source position of the directive they were
 derived from.
 .PP
+With \f[CR]\-\-show\-aliases\f[R], each commodity alias which provides
+an exchange rate (between a commodity and its alias, when there are no
+market prices between them) is shown as a price dated 0000\-01\-01 with
+a \f[CR]; commodity alias\f[R] comment.
+Its location is the commodity directive which declared the alias.
+These are used only when market prices can\(aqt provide a conversion,
+see Finding market price.
+.PP
 Price amounts are always displayed with their full precision, except for
 reverse prices which are limited to 8 decimal digits.
 .PP
 Prices can be filtered by a date:, cur: or amt: query.
 .PP
 Generally if you run this command with \-\-infer\-market\-prices
-\-\-show\-reverse, it will show the same prices used internally to
-calculate value reports.
+\-\-show\-reverse \-\-show\-aliases, it will show the same prices used
+internally to calculate value reports.
 But if in doubt, you can inspect those directly by running the value
 report with \-\-debug=2.
 .PP
@@ -2529,9 +2541,22 @@ Flags:
                             sets description width as well.
      \-\-align\-all            guarantee alignment across all lines (slower)
   \-O \-\-output\-format=FMT    select the output format. Supported formats:
-                            txt, html, csv, tsv, json.
+                            txt, html, csv, tsv, json, svg.
   \-o \-\-output\-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
+     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
+                            txt output), a chart above the table (with html
+                            output), or the chart\(aqs data (with csv, tsv or json
+                            output). svg output always shows a chart. KIND can
+                            be: auto (the default), or for compound reports
+                            grouped (sections side by side; the default for
+                            changes) or diverging (sections in one bar, above
+                            and below zero; the default for end balances).
+                            SCALE fixes the chart\(aqs scale, so that charts can
+                            be compared: it is the amount that fills the chart
+                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
+                            chart; several can be given). Larger amounts are
+                            clipped.
 .EE
 .PP
 \f[CR]aregister\f[R] shows the overall transactions affecting a
@@ -2631,6 +2656,16 @@ This command also supports the output destination and output format
 options.
 The output formats supported are \f[CR]txt\f[R], \f[CR]csv\f[R],
 \f[CR]tsv\f[R], \f[CR]html\f[R], \f[CR]fods\f[R] and \f[CR]json\f[R].
+.PP
+With \f[CR]\-\-chart\f[R], or with \f[CR]svg\f[R] output
+(\f[CR]\-o FILE.svg\f[R]), it shows a chart of the account\(aqs balance
+(or running total or average) over time instead.
+A text chart has a row per transaction (for a row per period instead,
+use a balance report with a report interval and \f[CR]\-H\f[R]).
+An SVG chart draws the balance as a line on a time scale.
+With \f[CR]\-\-chart \-O csv\f[R] (or tsv or json) it shows the
+chart\(aqs data.
+See also Balance charts.
 .SS aregister and posting dates
 aregister always shows one entry (and one date and amount) per
 transaction.
@@ -2679,9 +2714,22 @@ Flags:
                             with this prefix. (Usually the base url shown by
                             hledger\-web; can also be relative.)
   \-O \-\-output\-format=FMT    select the output format. Supported formats:
-                            txt, csv, tsv, html, fods, json.
+                            txt, csv, tsv, html, fods, json, svg.
   \-o \-\-output\-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
+     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
+                            txt output), a chart above the table (with html
+                            output), or the chart\(aqs data (with csv, tsv or json
+                            output). svg output always shows a chart. KIND can
+                            be: auto (the default), or for compound reports
+                            grouped (sections side by side; the default for
+                            changes) or diverging (sections in one bar, above
+                            and below zero; the default for end balances).
+                            SCALE fixes the chart\(aqs scale, so that charts can
+                            be compared: it is the amount that fills the chart
+                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
+                            chart; several can be given). Larger amounts are
+                            clipped.
 .EE
 .PP
 The register command displays matched postings, across all accounts, in
@@ -2850,7 +2898,24 @@ $ hledger reg \-w 100,40           # set overall width 100, description width 40
 .PP
 This command also supports the output destination and output format
 options The output formats supported are \f[CR]txt\f[R], \f[CR]csv\f[R],
-\f[CR]tsv\f[R], and \f[CR]json\f[R].
+\f[CR]tsv\f[R], \f[CR]html\f[R], \f[CR]fods\f[R], \f[CR]json\f[R], and
+\f[CR]svg\f[R].
+.PP
+With \f[CR]\-\-chart\f[R], or with \f[CR]svg\f[R] output
+(\f[CR]\-o FILE.svg\f[R]), it shows a chart instead.
+Without a report interval, this is the running total (or average) after
+each posting, as a line over time; with postings to several accounts,
+each account\(aqs own running total is shown too, in its account
+type\(aqs colour (starting from its balance before the report period,
+with \f[CR]\-H\f[R]), at most eight of them, the smallest combined into
+\(dqother\(dq.
+A text chart has a row per posting, with the accounts\(aq running totals
+stacked.
+With a report interval, it is each account\(aqs amount in each period,
+as stacked bars, with the period\(aqs total.
+With \f[CR]\-\-chart \-O csv\f[R] (or tsv or json) it shows the
+chart\(aqs data.
+See also Balance charts.
 .SS balancesheet
 (bs)
 .PP
@@ -2907,9 +2972,24 @@ Flags:
                             hledger\-web, with this prefix. (Usually the base
                             url shown by hledger\-web; can also be relative.)
   \-O \-\-output\-format=FMT    select the output format. Supported formats:
-                            txt, html, csv, tsv, json.
+                            txt, html, csv, tsv, json, svg.
   \-o \-\-output\-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
+     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
+                            txt output), a chart above the table (with html
+                            output), or the chart\(aqs data (with csv, tsv or json
+                            output). svg output always shows a chart. KIND can
+                            be: auto (the default), or for compound reports
+                            grouped (sections side by side; the default for
+                            changes) or diverging (sections in one bar, above
+                            and below zero; the default for end balances).
+                            SCALE fixes the chart\(aqs scale, so that charts can
+                            be compared: it is the amount that fills the chart
+                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
+                            chart; several can be given). Larger amounts are
+                            clipped.
+  \-w \-\-width=N              with \-\-chart: draw the chart N characters wide
+                            (default: the terminal width)
 .EE
 .PP
 This command displays a balance sheet, showing historical ending
@@ -2955,7 +3035,8 @@ sign flipped.
 .PP
 This command also supports the output destination and output format
 options The output formats supported are \f[CR]txt\f[R], \f[CR]csv\f[R],
-\f[CR]tsv\f[R], \f[CR]html\f[R], and \f[CR]json\f[R].
+\f[CR]tsv\f[R], \f[CR]html\f[R], \f[CR]json\f[R], and \f[CR]svg\f[R] (a
+chart; see Balance charts).
 .SS balancesheetequity
 (bse)
 .PP
@@ -3013,9 +3094,24 @@ Flags:
                             hledger\-web, with this prefix. (Usually the base
                             url shown by hledger\-web; can also be relative.)
   \-O \-\-output\-format=FMT    select the output format. Supported formats:
-                            txt, html, csv, tsv, json.
+                            txt, html, csv, tsv, json, svg.
   \-o \-\-output\-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
+     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
+                            txt output), a chart above the table (with html
+                            output), or the chart\(aqs data (with csv, tsv or json
+                            output). svg output always shows a chart. KIND can
+                            be: auto (the default), or for compound reports
+                            grouped (sections side by side; the default for
+                            changes) or diverging (sections in one bar, above
+                            and below zero; the default for end balances).
+                            SCALE fixes the chart\(aqs scale, so that charts can
+                            be compared: it is the amount that fills the chart
+                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
+                            chart; several can be given). Larger amounts are
+                            clipped.
+  \-w \-\-width=N              with \-\-chart: draw the chart N characters wide
+                            (default: the terminal width)
 .EE
 .PP
 This report shows accounts declared with the \f[CR]Asset\f[R],
@@ -3069,7 +3165,8 @@ merge revenues and expenses with equity, and perhaps added
 .PP
 This command also supports the output destination and output format
 options The output formats supported are \f[CR]txt\f[R], \f[CR]csv\f[R],
-\f[CR]tsv\f[R], \f[CR]html\f[R], and \f[CR]json\f[R].
+\f[CR]tsv\f[R], \f[CR]html\f[R], \f[CR]json\f[R], and \f[CR]svg\f[R] (a
+chart; see Balance charts).
 .SS cashflow
 (cf)
 .PP
@@ -3128,9 +3225,24 @@ Flags:
                             hledger\-web, with this prefix. (Usually the base
                             url shown by hledger\-web; can also be relative.)
   \-O \-\-output\-format=FMT    select the output format. Supported formats:
-                            txt, html, csv, tsv, json.
+                            txt, html, csv, tsv, json, svg.
   \-o \-\-output\-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
+     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
+                            txt output), a chart above the table (with html
+                            output), or the chart\(aqs data (with csv, tsv or json
+                            output). svg output always shows a chart. KIND can
+                            be: auto (the default), or for compound reports
+                            grouped (sections side by side; the default for
+                            changes) or diverging (sections in one bar, above
+                            and below zero; the default for end balances).
+                            SCALE fixes the chart\(aqs scale, so that charts can
+                            be compared: it is the amount that fills the chart
+                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
+                            chart; several can be given). Larger amounts are
+                            clipped.
+  \-w \-\-width=N              with \-\-chart: draw the chart N characters wide
+                            (default: the terminal width)
 .EE
 .PP
 This report shows accounts declared with the \f[CR]Cash\f[R] type (see
@@ -3175,7 +3287,8 @@ but with smarter account detection.
 .PP
 This command also supports the output destination and output format
 options The output formats supported are \f[CR]txt\f[R], \f[CR]csv\f[R],
-\f[CR]tsv\f[R], \f[CR]html\f[R], and \f[CR]json\f[R].
+\f[CR]tsv\f[R], \f[CR]html\f[R], \f[CR]json\f[R], and \f[CR]svg\f[R] (a
+chart; see Balance charts).
 .SS incomestatement
 (is)
 .PP
@@ -3233,9 +3346,24 @@ Flags:
                             hledger\-web, with this prefix. (Usually the base
                             url shown by hledger\-web; can also be relative.)
   \-O \-\-output\-format=FMT    select the output format. Supported formats:
-                            txt, html, csv, tsv, json.
+                            txt, html, csv, tsv, json, svg.
   \-o \-\-output\-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
+     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
+                            txt output), a chart above the table (with html
+                            output), or the chart\(aqs data (with csv, tsv or json
+                            output). svg output always shows a chart. KIND can
+                            be: auto (the default), or for compound reports
+                            grouped (sections side by side; the default for
+                            changes) or diverging (sections in one bar, above
+                            and below zero; the default for end balances).
+                            SCALE fixes the chart\(aqs scale, so that charts can
+                            be compared: it is the amount that fills the chart
+                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
+                            chart; several can be given). Larger amounts are
+                            clipped.
+  \-w \-\-width=N              with \-\-chart: draw the chart N characters wide
+                            (default: the terminal width)
 .EE
 .PP
 This command displays an income statement, showing revenues and expenses
@@ -3282,7 +3410,8 @@ flipped.
 .PP
 This command also supports the output destination and output format
 options The output formats supported are \f[CR]txt\f[R], \f[CR]csv\f[R],
-\f[CR]tsv\f[R], \f[CR]html\f[R], and \f[CR]json\f[R].
+\f[CR]tsv\f[R], \f[CR]html\f[R], \f[CR]json\f[R], and \f[CR]svg\f[R] (a
+chart; see Balance charts).
 .SH Advanced report commands
 .SS balance
 (bal)
@@ -3356,9 +3485,24 @@ Flags:
                             with this prefix. (Usually the base url shown by
                             hledger\-web; can also be relative.)
   \-O \-\-output\-format=FMT    select the output format. Supported formats:
-                            txt, html, csv, tsv, json, fods.
+                            txt, html, csv, tsv, json, fods, svg.
   \-o \-\-output\-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
+     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
+                            txt output), a chart above the table (with html
+                            output), or the chart\(aqs data (with csv, tsv or json
+                            output). svg output always shows a chart. KIND can
+                            be: auto (the default), or for compound reports
+                            grouped (sections side by side; the default for
+                            changes) or diverging (sections in one bar, above
+                            and below zero; the default for end balances).
+                            SCALE fixes the chart\(aqs scale, so that charts can
+                            be compared: it is the amount that fills the chart
+                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
+                            chart; several can be given). Larger amounts are
+                            clipped.
+  \-w \-\-width=N              with \-\-chart: draw the chart N characters wide
+                            (default: the terminal width)
 .EE
 .PP
 \f[CR]balance\f[R] is one of hledger\(aqs oldest and most versatile
@@ -3446,10 +3590,12 @@ custom\-formatted line items (single\-period reports only)
 .IP \(bu 2
 commodities displayed on the same line or multiple lines
 (\f[CR]\-\-layout\f[R])
+.IP \(bu 2
+a chart instead of a table (\f[CR]\-\-chart\f[R])
 .PP
 This command supports the output destination and output format options,
 with output formats \f[CR]txt\f[R], \f[CR]csv\f[R], \f[CR]tsv\f[R],
-\f[CR]json\f[R], \f[CR]html\f[R], and \f[CR]fods\f[R].
+\f[CR]json\f[R], \f[CR]html\f[R], \f[CR]fods\f[R], and \f[CR]svg\f[R].
 In \f[CR]txt\f[R] output in a colour\-supporting terminal, negative
 amounts are shown in red.
 .SS Simple balance report
@@ -4610,6 +4756,171 @@ if your \f[CR]hledger\-web\f[R] server is reachable at
 You can also produce relative links, like
 \f[CR]\-\-base\-url=\(dqsome/path\(dq\f[R] or
 \f[CR]\-\-base\-url=\(dq\(dq\f[R].)
+.SS Balance charts
+With \f[CR]\-\-chart\f[R], \f[CR]balance\f[R] shows a chart of the
+report instead of a table, choosing a useful kind of chart
+automatically.
+In the terminal, this is a bar chart drawn with text characters:
+.IP
+.EX
+$ hledger \-f examples/bcexample.journal bal \-M expenses:food \-b 2013 \-e 2013\-04 cur:USD \-\-chart \-w 70
+Balance changes in 2013Q1:
+
+█ Expenses:Food:Groceries  ▓ Expenses:Food:Restaurant
+
+Jan  396.46 USD  █████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+Feb  481.48 USD  ████████████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+Mar  603.32 USD  ██████████████████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+.EE
+.IP \(bu 2
+A multi\-period report of balance changes is charted as stacked bars per
+period, showing the net total as the value (and in graphical charts, as
+a line mark).
+.IP \(bu 2
+A multi\-period report of end balances (\f[CR]\-\-cumulative\f[R],
+\f[CR]\-H\f[R]) is charted the same way in text (and as lines in
+graphical charts).
+.IP \(bu 2
+A single\-period report is charted as one bar per account.
+.PP
+Negative amounts grow left from an axis, positive amounts right.
+Each account has its own colour (when colour is enabled) and fill
+character; fill characters repeat after four accounts.
+The legend lists the accounts visible in the chart (an account too small
+to fill a character cell is left out).
+When a chart shows accounts of several account types, they are coloured
+by type, with conventional colours: assets blue, liabilities amber,
+equity violet, revenues green, expenses red; several accounts of one
+type get different shades of its colour.
+(In terminals which advertise 24\-bit colour support, by setting
+\f[CR]COLORTERM=truecolor\f[R], these are the same exact colours as in
+SVG charts; otherwise they are the terminal\(aqs basic blue, yellow,
+magenta, green and red, whose shades depend on its colour theme.)
+When a chart\(aqs accounts are all of one type, or of unknown type, they
+get distinct colours instead.
+Colours and fill characters are chosen by account name, not by position,
+so an account usually keeps its colour in other charts: with or without
+\f[CR]\-S\f[R], or when you exclude other accounts to see more detail.
+(Not always, since there are only a few colours: an account may get a
+different one when some accounts are added or removed.)
+The chart fills the terminal width, or the width set by
+\f[CR]\-w\f[R]/\f[CR]\-\-width\f[R] (except for posting counts, with
+\f[CR]\-\-count\f[R], which use at most one character per posting).
+It is drawn with unicode block characters, or with ASCII characters if
+the system\(aqs text encoding is not UTF\-8.
+.PP
+There is one chart panel per commodity.
+You can reduce this by converting to one commodity (eg
+\f[CR]\-X USD\f[R]) or selecting some (eg \f[CR]cur:USD\f[R]); hledger
+suggests this when there are more than 8 panels.
+In tree mode, each account\(aqs own amounts are stacked, excluding its
+subaccounts\(aq, so that nothing is counted twice.
+At most 8 accounts are shown per panel; the smallest are combined into
+\(dqother\(dq series, one for each account type (so eg assets and
+liabilities are never combined), and each type keeps at least its
+largest account.
+The total is omitted with \f[CR]\-N\f[R] or \f[CR]\-\-percent\f[R].
+.PP
+In a chart of balance changes per period,
+\f[CR]\-T\f[R]/\f[CR]\-\-row\-total\f[R] and
+\f[CR]\-A\f[R]/\f[CR]\-\-average\f[R] show the net total\(aqs total and
+average per period on a line below the chart, eg
+\f[CR]Total 11, Average 0.9\f[R]; and in graphical charts, the average
+is also drawn as a dashed line across the chart.
+.PP
+Each chart is scaled to fit its values.
+To draw charts at a fixed scale instead, so that you can compare them
+(eg this month\(aqs chart with last month\(aqs), add a SCALE amount:
+\f[CR]\-\-chart=SCALE\f[R].
+This is the amount that the chart spans; eg with
+\f[CR]\-\-chart=5000\f[R], a bar of 5000 fills the chart.
+If the chart also has negative values, they take the room they need and
+positive values get the rest.
+Bars that don\(aqt fit are clipped, with a mark at the edge
+(\f[CR]▸\f[R] or \f[CR]◂\f[R] in text, a small triangle in SVG); lines
+go off the edge.
+A SCALE with a commodity symbol (eg
+\f[CR]\-\-chart=\(aq5000 USD\(aq\f[R]) applies to that commodity\(aqs
+panel, and one without, to the others.
+SCALE can follow KIND, and several SCALEs can be given, separated by
+commas (eg \f[CR]\-\-chart=\(aqauto,5000 USD,4000 EUR\(aq\f[R]); so
+write SCALE without digit group marks.
+For the same scale in text charts, use the same width too
+(\f[CR]\-w\f[R]).
+.PP
+With SVG output (\f[CR]\-o FILE.svg\f[R] or \f[CR]\-O svg\f[R]),
+\f[CR]balance\f[R] always shows a chart, as a graphical image.
+Time runs along the x axis, and end balances are drawn as lines.
+A single\-period report is drawn as vertical bars, one per account, with
+the account names below (angled if needed) and values above the bars
+(where they fit); or with more than 30 accounts, as horizontal bars.
+.PP
+With HTML output, \f[CR]\-\-chart\f[R] shows the chart (as SVG) above
+the report\(aqs table.
+.PP
+With \f[CR]\-O csv\f[R], \f[CR]\-O tsv\f[R] or \f[CR]\-O json\f[R],
+\f[CR]\-\-chart\f[R] shows the chart\(aqs data, eg to inspect it or
+chart it with other tools.
+.PP
+The compound balance commands (\f[CR]balancesheet\f[R],
+\f[CR]balancesheetequity\f[R], \f[CR]cashflow\f[R],
+\f[CR]incomestatement\f[R]) can show charts in the same ways.
+They chart their sections\(aq accounts, with the net total as a mark (or
+as a line, with end balances), in one of two layouts:
+.IP \(bu 2
+\f[B]grouped\f[R] (the default for changes, eg
+\f[CR]incomestatement\f[R]\(aqs, or with \f[CR]\-\-chart=grouped\f[R]):
+at each period, each section\(aqs accounts are stacked in a bar of their
+own, side by side, so that the sections\(aq sizes can be compared.
+Amounts are shown as the tables show them, eg expenses as well as
+revenues are positive.
+In text charts, each period has a row for each section, showing its
+total, and a row marking the net total.
+.IP \(bu 2
+\f[B]diverging\f[R] (the default for end balances, eg
+\f[CR]balancesheet\f[R]\(aqs, or with \f[CR]\-\-chart=diverging\f[R]):
+at each period, all accounts are stacked in one bar, showing each amount
+as its contribution to the net total: sections that add to it (eg
+assets, revenues) above zero, and sections that subtract from it (eg
+liabilities, expenses) below zero.
+(This is also why a diverging \f[CR]is\f[R] chart draws expenses below
+zero while \f[CR]bal\f[R] draws them above, as their raw amounts are
+positive; \f[CR]bal \-\-invert\f[R] gives the same signs.)
+In text charts, each period is a row showing the net total, the totals
+of the sections on each side at the ends of the bar (as the report\(aqs
+table shows them; headed by the sections\(aq names), and a mark at the
+net total\(aqs position.
+.PP
+Contra amounts \- those with the opposite sign to their section\(aqs
+usual sign, like a refund recorded as a negative expense, or a contra
+account like accumulated depreciation \- are drawn next to the zero
+line, hatched in their account\(aqs colour (below zero in the grouped
+layout, and on the other side from their section in the diverging
+layout).
+They are included in their section\(aqs totals.
+(Cash flows, in \f[CR]cf\f[R], have no usual sign: decreases are drawn
+like increases, below zero.)
+Each section shows at most five accounts, combining the smallest into
+\(dqother\(dq; use a depth limit (eg \f[CR]\-1\f[R] or \f[CR]\-2\f[R])
+for less detail.
+A single\-period report is charted the same way, with one period.
+The chart data has one record per value, with fields: commodity, series
+(usually an account name), role (\f[CR]item\f[R], \f[CR]other\f[R] or
+\f[CR]total\f[R]), mark (\f[CR]bar\f[R], \f[CR]line\f[R] or
+\f[CR]marker\f[R]), x (a period heading, period end date, or account
+name), and value.
+With \f[CR]\-T\f[R] or \f[CR]\-A\f[R], each commodity\(aqs total or
+average follows, with role \f[CR]rowtotal\f[R] or \f[CR]average\f[R],
+and an empty mark and x.
+Eg:
+.IP
+.EX
+$ hledger \-f examples/sample.journal bal \-M expenses \-N \-\-chart \-O csv
+\(dqcommodity\(dq,\(dqseries\(dq,\(dqrole\(dq,\(dqmark\(dq,\(dqx\(dq,\(dqvalue\(dq
+\(dq$\(dq,\(dqexpenses:food\(dq,\(dqitem\(dq,\(dqbar\(dq,\(dqJan\(dq,\(dq0\(dq
+\(dq$\(dq,\(dqexpenses:food\(dq,\(dqitem\(dq,\(dqbar\(dq,\(dqFeb\(dq,\(dq0\(dq
+\&...
+.EE
 .SS Some useful balance reports
 Some frequently used \f[CR]balance\f[R] options/reports are:
 .IP \(bu 2
@@ -5031,26 +5342,100 @@ Examples of computing IRR and TWR and discussion of the limitations of
 both metrics
 .SH Chart commands
 .SS activity
-Show an ascii barchart of posting counts per interval.
+Show a bar chart of transaction counts per week, or other report
+interval.
 .IP
 .EX
 Flags:
-no command\-specific flags
+  \-O \-\-output\-format=FMT    select the output format. Supported formats:
+                            txt, svg, html, csv, tsv, json.
+  \-o \-\-output\-file=FILE     write output to FILE. A file extension matching
+                            one of the above formats selects that format.
+  \-w \-\-width=N              with \-\-chart: draw the chart N characters wide
+                            (default: the terminal width)
+     \-\-txns                 count transactions, showing just the total
+                            (default)
+     \-\-postings             count postings, showing each account\(aqs count
+  \-S \-\-sort\-amount          with \-\-postings, sort accounts by posting count,
+                            largest first
+  \-T \-\-total                show the total count, below the chart
+  \-A \-\-average              show the average count per period, below the
+                            chart (and as a line in SVG charts)
 .EE
 .PP
-The activity command displays an ascii histogram showing transaction
-counts by day, week, month or other reporting interval (by day is the
-default).
-With query arguments, it counts only matched transactions.
+The activity command shows how many transactions there are in each week
+(or with a report interval, each day, month, quarter etc.), as a bar
+chart.
+Each transaction is one character, unless there are too many to fit,
+when the bars are scaled down.
+With query arguments, it counts only the transactions which have at
+least one matched posting.
+.PP
+Or with \f[CR]\-\-postings\f[R], it shows how many postings there are in
+each period, with each account\(aqs postings stacked in its own colour.
+With query arguments, it counts only the matched postings.
+This is a shortcut for \f[CR]balance \-\-count \-\-chart\f[R], with a
+weekly interval by default, so it can show charts in all the same ways:
+eg with \f[CR]\-1\f[R] or other depth limit to show less detail,
+\f[CR]\-0\f[R] to show just the total count, without the accounts\(aq
+detail, \f[CR]\-S\f[R]/\f[CR]\-\-sort\-amount\f[R] to show the accounts
+with most postings first.
+(Transaction counts show just the total, since a transaction\(aqs
+postings can be in several accounts.)
+.PP
+\f[CR]\-\-txns\f[R] selects transaction counts explicitly; if both
+\f[CR]\-\-txns\f[R] and \f[CR]\-\-postings\f[R] are given, the last one
+wins.
+.PP
+Both kinds of chart can be shown in the usual ways, eg with
+\f[CR]\-w\f[R]/\f[CR]\-\-width\f[R] to set the width,
+\f[CR]\-T\f[R]/\f[CR]\-\-total\f[R] and
+\f[CR]\-A\f[R]/\f[CR]\-\-average\f[R] to show the total count and the
+average count per period below the chart (in graphical charts, the
+average is also drawn as a dashed line), or \f[CR]\-o FILE.svg\f[R] (or
+\f[CR]\-O svg\f[R]) for a graphical chart.
 .PP
 Examples:
 .IP
 .EX
-$ hledger activity \-\-quarterly
-2008\-01\-01 **
-2008\-04\-01 *******
-2008\-07\-01 
-2008\-10\-01 **
+$ hledger activity \-M \-T \-A \-w 40
+Transaction counts in 2008:
+
+Jan  1  █
+Feb  0
+Mar  0
+Apr  0
+May  0
+Jun  3  ███
+Jul  0
+Aug  0
+Sep  0
+Oct  0
+Nov  0
+Dec  1  █
+
+Total 5, Average 0.4
+.EE
+.IP
+.EX
+$ hledger activity \-M \-\-postings \-1 \-w 40
+Posting counts in 2008:
+
+▓ assets  █ expenses  ░ income
+▒ liabilities
+
+Jan  2  ▓░
+Feb  0
+Mar  0
+Apr  0
+May  0
+Jun  7  ▓▓▓▓██░
+Jul  0
+Aug  0
+Sep  0
+Oct  0
+Nov  0
+Dec  2  ▓▒
 .EE
 .SH Data generation commands
 .SS close
@@ -5417,6 +5802,8 @@ file.
 .PP
 It should download zero or more transaction data files into its current
 directory.
+Anything it prints (on stdout or stderr) is shown on stderr, as progress
+output.
 These are typically bank/brokerage CSV/TSV/SSV files, but could be
 anything that your hledger rules files can read.
 The hledger repo\(aqs bin/getdata is a stub you can start from, with
@@ -7206,6 +7593,37 @@ tree, declare them at the start of the main file, before any
 \f[CR]include\f[R]s.
 (Or to affect all file trees specified at runtime, use
 \f[CR]\-\-alias\f[R] options.)
+.SS Combining file trees
+When you read several file trees (with several \f[CR]\-f\f[R] options),
+hledger reads and processes each one separately, then combines them.
+So one file tree can\(aqt change how another\(aqs entries are read:
+account and commodity aliases, decimal marks, transaction balancing,
+balance assertions, auto postings, forecast transactions and lot
+tracking all work within each file tree.
+.PP
+But a few declarations reach all file trees (\(dqall files\(dq in the
+table below):
+.IP \(bu 2
+Account declarations, including account types and display order.
+.IP \(bu 2
+Commodity declarations, including display styles.
+If file trees declare a commodity\(aqs display style differently, the
+last one is used, with a warning.
+.IP \(bu 2
+Payee and tag declarations.
+.IP \(bu 2
+\f[CR]P\f[R] market prices, used for valuation.
+.IP \(bu 2
+Commodity aliases, but only for valuation, and only as a last resort:
+when market prices can\(aqt convert an amount, eg if it\(aqs in an alias
+declared by another file tree.
+If file trees declare an alias differently (for a different commodity,
+or with a different quantity), converting to or from it this way is an
+error.
+.PP
+So you can combine file trees that weren\(aqt designed to work together.
+The interactions to watch for are conflicting display styles, account
+types, and market prices.
 .SS Directives summary
 .PP
 .TS
@@ -8108,6 +8526,17 @@ commodity INR
   format INR 1,00,00,000.00
   other subdirective  ; ignored
 .EE
+.PP
+A commodity can be declared more than once, eg in a main file and an
+included file, or in several files read with \f[CR]\-f\f[R].
+The later declaration will override or add to the earlier one, as
+follows: its display style (if it has one) replaces the earlier style,
+its tags take precedence over the earlier tags, and its aliases are
+added to the earlier aliases.
+(\(dqLater\(dq means later in the order hledger reads them: through each
+file and its included files, then the next \f[CR]\-f\f[R] file.)
+hledger warns if files read with \f[CR]\-f\f[R] declare different
+display styles.
 .SS Commodity tags
 A commodity directive\(aqs comment may contain tags.
 These will be inherited by all postings using that commodity in their
@@ -8134,6 +8563,19 @@ them.
 This is useful eg if your bank data, manual entries and downloaded
 market prices use different symbols for the same currency.
 Choose the symbol you want to see in reports as the commodity.
+.PP
+Commodity aliases and \f[CR]P\f[R] market prices both allow converting
+between commodity symbols.
+When should you use one or the other ?
+.IP \(bu 2
+Use an alias when two symbols are the same thing in different names or
+units (like \f[CR]$\f[R] and \f[CR]USD\f[R], or \f[CR]megabytes\f[R] and
+\f[CR]kilobytes\f[R]); amounts written with an alias are converted
+automatically to the commodity\(aqs canonical symbol.
+.IP \(bu 2
+Use a P directive when they are different things with an exchange rate,
+even a fixed rate (like AI tokens and kWh); amounts with these
+commodities are converted only on request, by valuation.
 .PP
 \f[CR]print\f[R] still shows the amounts as they were written;
 \f[CR]print \-x\f[R] shows them converted, in the commodity\(aqs display
@@ -8172,8 +8614,11 @@ instead, eg \f[CR]alias: 1E\-3 kilobucks\f[R].
 .PP
 You can also show amounts in an alias, with \f[CR]\-X\f[R], eg
 \f[CR]\-X min\f[R] or \f[CR]\-X kilobucks\f[R].
-They will be shown with the commodity\(aqs display style, or the
-alias\(aqs own, if you add a \f[CR]commodity\f[R] directive for it:
+An alias is displayed with its commodity\(aqs number format (precision,
+decimal mark and digit groups), and with its symbol placed as in the
+amounts written with it (or as its commodity\(aqs, if there are none).
+To give an alias a different display style, add a \f[CR]commodity\f[R]
+directive for it too:
 .IP
 .EX
 commodity USD 1.00    ; alias: 0.001 kilobucks
@@ -8184,8 +8629,11 @@ An alias can\(aqt have aliases of its own, and if the same alias is
 declared on two different commodities, hledger reports an error.
 .PP
 To use the same commodity aliases with several journals, put the
-\f[CR]commodity\f[R] directives in a file which they \f[CR]include\f[R],
-or which you add with an extra \f[CR]\-f\f[R] option.
+\f[CR]commodity\f[R] directives in a file which they \f[CR]include\f[R].
+(Aliases convert only the amounts in their own file tree, so a file
+added with an extra \f[CR]\-f\f[R] option won\(aqt convert the other
+files\(aq amounts.
+Its aliases can still be used for valuation, eg with \f[CR]\-X\f[R].)
 .SS Commodity error checking
 In strict mode (\f[CR]\-s\f[R]/\f[CR]\-\-strict\f[R]) (or when you run
 \f[CR]hledger check commodities\f[R]), hledger will report an error if
@@ -8670,6 +9118,39 @@ that cost attached:
 $ hledger print \-\-explicit
 2019\-01\-01
     (a)         $1 \(at €2 = $1 \(at €2
+.EE
+.SS Balance assignments and subaccounts
+Subaccount\-inclusive balance assignments (\f[CR]=*\f[R] or
+\f[CR]==*\f[R]) are also supported.
+The calculated amount is posted to the account named, making its balance
+including subaccounts equal the assigned balance; the subaccounts\(aq
+balances are not changed.
+\f[CR]=*\f[R] sets the balance in just the assigned commodity, while
+\f[CR]==*\f[R] also clears any other commodities.
+.IP
+.EX
+2026\-01\-01
+  liabilities:card    $\-30
+  liabilities:loan   $\-200
+  expenses
+
+2026\-01\-15 a windfall pays off all liabilities
+  liabilities        ==* $0
+  income:windfall
+.EE
+.IP
+.EX
+$ hledger print \-\-explicit date:2026\-01\-15
+2026\-01\-15 a windfall pays off all liabilities
+    liabilities                                 $230 ==* $0
+    income:windfall                            $\-230
+
+$ hledger bal liabilities
+                $230  liabilities
+                $\-30  liabilities:card
+               $\-200  liabilities:loan
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
+                   0  
 .EE
 .SS Balance assignments and multiple files
 Balance assignments handle multiple files like balance assertions.
@@ -12348,9 +12829,9 @@ file\(aqs general options:
 \-\-lang de
 .EE
 .PP
-Currently German (\f[CR]de\f[R]), Spanish (\f[CR]es\f[R]) and Simplified
-Chinese (\f[CR]zh\f[R], also selected by \f[CR]zh_CN\f[R] or
-\f[CR]zh\-Hans\f[R]) catalogs are built in.
+Currently German (\f[CR]de\f[R]), Spanish (\f[CR]es\f[R]), Russian
+(\f[CR]ru\f[R]) and Simplified Chinese (\f[CR]zh\f[R], also selected by
+\f[CR]zh_CN\f[R] or \f[CR]zh\-Hans\f[R]) catalogs are built in.
 Catalogs are gettext PO files, which the usual translation tools can
 edit.
 hledger also looks for catalogs in the \f[CR]locale\f[R] subdirectory of
@@ -13260,6 +13741,17 @@ prices, leading from A to B.
 \f[I]Any chain of market prices\f[R]: a chain of any market prices,
 including both forward and reverse prices (1 and 2 above), leading from
 A to B.
+.IP "5." 3
+\f[I]Commodity alias rates\f[R]: if none of the above is found, the same
+search is repeated, also using commodity aliases as fixed exchange rates
+(between a commodity and its alias, when there are no market prices
+between them).
+This lets you value amounts in an alias declared by another file, or
+show amounts in an alias with \f[CR]\-X\f[R], but aliases never change a
+conversion that market prices can provide.
+To see these rates and where their aliases were declared, use
+\f[CR]prices \-\-show\-aliases \-\-locations\f[R];
+\f[CR]\-\-debug=2\f[R] output shows when they are tried.
 .PP
 There is a limit to the length of these price chains; if hledger reaches
 that length without finding a complete chain or exhausting all
@@ -13269,6 +13761,9 @@ That limit is currently 1000.
 .PP
 Amounts for which no suitable market price can be found, are not
 converted.
+.PP
+Commodity alias rates are used only for converting, never as a default
+valuation commodity for \f[CR]\-V\f[R].
 .SS \-\-infer\-market\-prices: market prices from transactions
 Normally, market value in hledger is fully controlled by, and requires,
 P directives in your journal.
@@ -13967,6 +14462,8 @@ notation, or where lots are inferred.
 If you have hledger 1 journal files that you want to migrate, or use
 with both hledger 1 and hledger 2, see hledger 1 and hledger 2.
 .PP
+For practical advice on turning on lot tracking in an existing journal,
+see Start tracking lots.
 For a more technical version of what\(aqs in this manual, see
 SPEC\-lots.
 .SS First lots example
@@ -14487,7 +14984,7 @@ still an error, since it is usually a mistake.
 Other real\-world events \- a gift received with a carryover cost basis,
 bonus shares, a stock split, capitalising an in\-kind transfer fee \-
 can be recorded as combinations of acquires, transfers and disposals.
-Track investments on hledger.org has worked examples.
+Other lot events on hledger.org has worked examples.
 The right treatment varies by jurisdiction, so check your local tax
 rules.
 .SS Cost basis methods
@@ -15382,7 +15879,7 @@ Here are those commands and the formats currently supported:
 .PP
 .TS
 tab(@);
-lw(18.4n) lw(4.6n) lw(5.5n) lw(8.3n) lw(5.5n) lw(7.4n) lw(10.1n) lw(4.6n) lw(5.5n).
+lw(17.3n) lw(4.3n) lw(5.2n) lw(7.8n) lw(5.2n) lw(6.9n) lw(9.5n) lw(4.3n) lw(5.2n) lw(4.3n).
 T{
 command
 T}@T{
@@ -15401,6 +15898,8 @@ T}@T{
 sql
 T}@T{
 json
+T}@T{
+svg
 T}
 _
 T{
@@ -15416,6 +15915,8 @@ Y
 T}@T{
 T}@T{
 T}@T{
+T}@T{
+Y
 T}@T{
 Y
 T}
@@ -15434,6 +15935,8 @@ T}@T{
 T}@T{
 T}@T{
 Y
+T}@T{
+Y
 T}
 T{
 balancesheet
@@ -15448,6 +15951,8 @@ Y
 T}@T{
 T}@T{
 T}@T{
+T}@T{
+Y
 T}@T{
 Y
 T}
@@ -15466,6 +15971,8 @@ T}@T{
 T}@T{
 T}@T{
 Y
+T}@T{
+Y
 T}
 T{
 cashflow
@@ -15480,6 +15987,8 @@ Y
 T}@T{
 T}@T{
 T}@T{
+T}@T{
+Y
 T}@T{
 Y
 T}
@@ -15498,6 +16007,7 @@ T}@T{
 T}@T{
 T}@T{
 Y
+T}@T{
 T}
 T{
 incomestatement
@@ -15512,6 +16022,8 @@ Y
 T}@T{
 T}@T{
 T}@T{
+T}@T{
+Y
 T}@T{
 Y
 T}
@@ -15533,6 +16045,7 @@ T}@T{
 Y
 T}@T{
 Y
+T}@T{
 T}
 T{
 register
@@ -15547,6 +16060,8 @@ Y
 T}@T{
 T}@T{
 T}@T{
+T}@T{
+Y
 T}@T{
 Y
 T}
@@ -15671,6 +16186,9 @@ within dates and individual commodity amounts.
 It can be customised (or overridden) by an optional
 \f[CR]hledger.css\f[R] file in the same directory (there is a sample in
 the hledger repo).
+.PP
+With \f[CR]\-\-chart\f[R], commands that can show charts add one (as
+inline SVG) above the table (see Balance charts).
 .PP
 HTML output will be a HTML fragment, not a complete HTML document.
 It has a newline after each table row, for readability.
@@ -15837,6 +16355,23 @@ This is too many digits for most JSON consumers, so in JSON output we
 round numbers to at most 10 decimal places.
 (We don\(aqt limit the number of integer digits.)
 Related: #1195
+.SS SVG output
+SVG output shows a chart of the report, rather than the report\(aqs
+table (as the \f[CR]\-\-chart\f[R] flag does with text output; see
+Balance charts).
+It is a self\-contained image file, viewable in web browsers and many
+image viewers.
+It has a light and a dark colour scheme, chosen by the viewer\(aqs
+preference, and tooltips showing each bar\(aqs or point\(aqs values.
+Currently the \f[CR]aregister\f[R], \f[CR]balance\f[R],
+\f[CR]balancesheet\f[R], \f[CR]balancesheetequity\f[R],
+\f[CR]cashflow\f[R], \f[CR]incomestatement\f[R] and \f[CR]register\f[R]
+commands can produce it.
+Eg:
+.IP
+.EX
+$ hledger bal \-M expenses \-o expenses.svg
+.EE
 .SS Debug output
 We intend hledger to be relatively easy to troubleshoot, introspect and
 develop.
@@ -16426,6 +16961,17 @@ On Microsoft Windows, depending what kind of terminal window you use,
 non\-ascii characters, ANSI text formatting, and/or the add command\(aqs
 TAB key, may not be fully supported.
 (For best results, try a powershell window.)
+.PP
+When showing colour, hledger sometimes asks the terminal for its
+background colour, to choose colours that suit it (for headings, and for
+charts in terminals advertising 24\-bit colour).
+Occasionally this can misbehave: a terminal that doesn\(aqt answer (eg
+some tmux setups) can delay the output by up to half a second; over a
+slow connection, a late answer may appear as stray characters at your
+shell prompt; on macOS, hledger can hang if its input is explicitly
+redirected from \f[CR]/dev/tty\f[R]; and hledger may be stopped if it is
+run in the background.
+\f[CR]\-\-color=no\f[R] avoids these.
 .PP
 When processing large data files, hledger uses more memory than Ledger.
 You can cap its memory use with GHC runtime system options, eg
