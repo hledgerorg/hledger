@@ -141,6 +141,10 @@ Count charts (`pnCounts`) instead cap text at one cell per unit when no SCALE is
 - Fixed scale as a per-direction maximum was tried first: one small negative value halved the resolution, defeating comparison.
   KIND and SCALE in any order was allowed at first, then KIND first, as less surprising.
 - One cell per unit for all charts was rejected: amounts' units are arbitrary (eg 0.5 BTC would be half a cell). Counts only.
+- A narrower block (`▉`) for count charts, leaving a gap after each cell so they could be counted, was tried and dropped:
+  terminals draw block characters differently (Ghostty and Terminal draw them filling the cell, but tile the shaded fills `▓▒░` seamlessly;
+  VS Code with `customGlyphs` off uses the font's glyphs, with gaps around every block), so the gaps were an inconsistent cue.
+  Shorter (`▇`) or square (`■`) characters vary similarly. A text note of the scale (eg "One character per transaction") would be reliable.
 - Automatic date grouping of long text register charts (by day/week/.. to fit 50 rows) was dropped as unpredictable.
 - activity was reimplemented on `balance --count --chart` rather than removed; its old `*` output and daily default are gone.
 - Repeatable `-o` (several outputs, eg table on stdout plus an SVG file) is deferred: useful independently of charts,
