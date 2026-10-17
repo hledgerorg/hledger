@@ -30,9 +30,22 @@ Flags:
                             sets description width as well.
      --align-all            guarantee alignment across all lines (slower)
   -O --output-format=FMT    select the output format. Supported formats:
-                            txt, html, csv, tsv, json.
+                            txt, html, csv, tsv, json, svg.
   -o --output-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
+     --chart[=KIND,SCALE]   show a chart instead of the report table (with
+                            txt output), a chart above the table (with html
+                            output), or the chart's data (with csv, tsv or json
+                            output). svg output always shows a chart. KIND can
+                            be: auto (the default), or for compound reports
+                            grouped (sections side by side; the default for
+                            changes) or diverging (sections in one bar, above
+                            and below zero; the default for end balances).
+                            SCALE fixes the chart's scale, so that charts can
+                            be compared: it is the amount that fills the chart
+                            (eg 1000, or 1000 USD to set it for one commodity's
+                            chart; several can be given). Larger amounts are
+                            clipped.
 ```
 
 `aregister` shows the overall transactions affecting a particular account (and

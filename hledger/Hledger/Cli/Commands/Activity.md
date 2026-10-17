@@ -4,7 +4,20 @@ Show a bar chart of transaction counts per week, or other report interval.
 
 ```flags
 Flags:
-no command-specific flags
+  -O --output-format=FMT    select the output format. Supported formats:
+                            txt, svg, html, csv, tsv, json.
+  -o --output-file=FILE     write output to FILE. A file extension matching
+                            one of the above formats selects that format.
+  -w --width=N              with --chart: draw the chart N characters wide
+                            (default: the terminal width)
+     --txns                 count transactions, showing just the total
+                            (default)
+     --postings             count postings, showing each account's count
+  -S --sort-amount          with --postings, sort accounts by posting count,
+                            largest first
+  -T --total                show the total count, below the chart
+  -A --average              show the average count per period, below the
+                            chart (and as a line in SVG charts)
 ```
 
 The activity command shows how many transactions there are in each week

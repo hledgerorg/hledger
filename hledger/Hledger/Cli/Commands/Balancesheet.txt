@@ -53,9 +53,24 @@ Flags:
                             hledger-web, with this prefix. (Usually the base
                             url shown by hledger-web; can also be relative.)
   -O --output-format=FMT    select the output format. Supported formats:
-                            txt, html, csv, tsv, json.
+                            txt, html, csv, tsv, json, svg.
   -o --output-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
+     --chart[=KIND,SCALE]   show a chart instead of the report table (with
+                            txt output), a chart above the table (with html
+                            output), or the chart's data (with csv, tsv or json
+                            output). svg output always shows a chart. KIND can
+                            be: auto (the default), or for compound reports
+                            grouped (sections side by side; the default for
+                            changes) or diverging (sections in one bar, above
+                            and below zero; the default for end balances).
+                            SCALE fixes the chart's scale, so that charts can
+                            be compared: it is the amount that fills the chart
+                            (eg 1000, or 1000 USD to set it for one commodity's
+                            chart; several can be given). Larger amounts are
+                            clipped.
+  -w --width=N              with --chart: draw the chart N characters wide
+                            (default: the terminal width)
 
 This command displays a balance sheet, showing historical ending
 balances of asset and liability accounts. (To see equity as well, use
@@ -94,4 +109,5 @@ It is similar to hledger balance -H assets liabilities, but with smarter
 account detection, and liabilities displayed with their sign flipped.
 
 This command also supports the output destination and output format
-options The output formats supported are txt, csv, tsv, html, and json.
+options The output formats supported are txt, csv, tsv, html, json, and
+svg (a chart; see Balance charts).

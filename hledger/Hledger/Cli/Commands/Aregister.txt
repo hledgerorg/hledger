@@ -29,9 +29,22 @@ Flags:
                             sets description width as well.
      --align-all            guarantee alignment across all lines (slower)
   -O --output-format=FMT    select the output format. Supported formats:
-                            txt, html, csv, tsv, json.
+                            txt, html, csv, tsv, json, svg.
   -o --output-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
+     --chart[=KIND,SCALE]   show a chart instead of the report table (with
+                            txt output), a chart above the table (with html
+                            output), or the chart's data (with csv, tsv or json
+                            output). svg output always shows a chart. KIND can
+                            be: auto (the default), or for compound reports
+                            grouped (sections side by side; the default for
+                            changes) or diverging (sections in one bar, above
+                            and below zero; the default for end balances).
+                            SCALE fixes the chart's scale, so that charts can
+                            be compared: it is the amount that fills the chart
+                            (eg 1000, or 1000 USD to set it for one commodity's
+                            chart; several can be given). Larger amounts are
+                            clipped.
 
 aregister shows the overall transactions affecting a particular account
 (and any subaccounts). Each report line represents one transaction in
@@ -114,6 +127,13 @@ this heading and prepend your own one. For this purpose, use the
 This command also supports the output destination and output format
 options. The output formats supported are txt, csv, tsv, html, fods and
 json.
+
+With --chart, or with svg output (-o FILE.svg), it shows a chart of the
+account's balance (or running total or average) over time instead. A
+text chart has a row per transaction (for a row per period instead, use
+a balance report with a report interval and -H). An SVG chart draws the
+balance as a line on a time scale. With --chart -O csv (or tsv or json)
+it shows the chart's data. See also Balance charts.
 
 aregister and posting dates
 
