@@ -100,7 +100,7 @@ Sections take an account type from their query, which their accounts inherit if 
 
 - Accounts of several types: conventional type hues (assets blue, liabilities amber, equity violet, revenues green, expenses red),
   with up to 4 tints per type. Accounts all of one type, or untyped: 8 categorical colours (the type hue would tell nothing).
-  "other" is grey, totals ink; a lone series that isn't an account (eg a total, or "..." for all accounts) is neutral.
+  "other" is grey, totals ink; a lone series that isn't an account (eg a total, or "..." for all accounts) is cyan, a hue no account type uses.
 - Chosen by account name, not position or count (`stableSlots`): each name has a hashed order of preference, names choose largest first.
   So -S changes nothing, and removing the largest account (drilling down) disturbs only accounts it had displaced. Text fill characters likewise.
 - Palette: the dataviz skill's validated reference palette; type hues validated on the pairs that co-occur (green/red is in the CVD warn band,

@@ -58,6 +58,7 @@ data Style
   | StyleSeries Int  -- ^ the colour of the Nth ordinary series in a panel
   | StyleType AccountType Int  -- ^ the colour of a main account type, in its Nth variant
   | StyleOther       -- ^ the colour of a series combining several items ("other")
+  | StyleLone        -- ^ the colour of a chart's only series, when it is not an account
   | StyleNegative    -- ^ a negative value
   deriving (Show, Eq)
 
@@ -82,12 +83,14 @@ styledLinesAsText mode = TL.fromChunks . concatMap (\l -> map piece l ++ ["\n"])
         StyleSeries n -> T.pack $ uncurry color (cyclicAt (Dull, Blue) indexColours n) $ T.unpack t
         StyleType at n -> T.pack $ color (if even n then Dull else Vivid) (typeColour at) $ T.unpack t
         StyleOther    -> T.pack $ faint' $ T.unpack t
+        StyleLone     -> T.pack $ color Dull Cyan $ T.unpack t
         StyleNegative -> negative t
       RgbColour dark -> case st of
         StylePlain    -> t
         StyleSeries n -> rgb (colourHex dark $ IndexColour n) t
         StyleType at n -> rgb (colourHex dark $ TypeColour at n) t
         StyleOther    -> rgb (colourHex dark OtherColour) t
+        StyleLone     -> rgb (colourHex dark LoneColour) t
         StyleNegative -> negative t
     -- negative values are red, as elsewhere in hledger's output
     negative t = T.pack $ color Dull Red $ T.unpack t
@@ -159,6 +162,7 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnS
     colourStyle colour = case colour of
       TypeColour at k -> StyleType at k
       IndexColour k   -> StyleSeries k
+      LoneColour      -> StyleLone
       NeutralColour   -> StylePlain
       OtherColour     -> StyleOther
       TotalColour     -> StylePlain

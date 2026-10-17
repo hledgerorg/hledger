@@ -80,6 +80,8 @@
 .hledger-chart .line.s7{stroke:#e34948}
 .hledger-chart .fill.other{fill:#898781}
 .hledger-chart .line.other{stroke:#898781}
+.hledger-chart .fill.lone{fill:#1597b0}
+.hledger-chart .line.lone{stroke:#1597b0}
 .hledger-chart .fill.neutral{fill:#52514e}
 .hledger-chart .line.neutral{stroke:#52514e}
 @media (prefers-color-scheme:dark){
@@ -154,6 +156,8 @@
 .hledger-chart .line.s7{stroke:#e66767}
 .hledger-chart .fill.other{fill:#898781}
 .hledger-chart .line.other{stroke:#898781}
+.hledger-chart .fill.lone{fill:#22a6be}
+.hledger-chart .line.lone{stroke:#22a6be}
 .hledger-chart .fill.neutral{fill:#c3c2b7}
 .hledger-chart .line.neutral{stroke:#c3c2b7}
 }

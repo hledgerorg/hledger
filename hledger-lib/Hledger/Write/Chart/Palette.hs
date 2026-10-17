@@ -32,6 +32,7 @@ colourHex dark c = case c of
   TypeColour at k -> tint (tintFraction k) $ pick $ typeColour $ mainAccountType at
   IndexColour k   -> pick $ fromMaybe ("#2a78d6", "#3987e5") $ categorical `atMay` (k `mod` length categorical)
   OtherColour     -> "#898781"
+  LoneColour      -> pick ("#1597b0", "#22a6be")  -- cyan
   NeutralColour   -> pick ("#52514e", "#c3c2b7")
   TotalColour     -> pick ("#0b0b0b", "#ffffff")
   where

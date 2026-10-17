@@ -154,6 +154,6 @@ Total 3, Average 1.5
 $ hledger -f - activity -A -O svg | grep -c 'class="average"'
 1
 
-# ** 13. A single "..." series (all accounts, eg the transaction count) is drawn in a neutral colour, like a total.
+# ** 13. A single "..." series (all accounts, eg the transaction count) is drawn in the lone series colour (cyan), not an account colour.
 $ hledger -f - activity -O svg | grep -o 'class="fill [a-z0-9]*"' | sort -u
-class="fill neutral"
+class="fill lone"

@@ -183,7 +183,8 @@ mainAccountType t = fromMaybe t $ find (t `isAccountSubtypeOf`) [Asset, Liabilit
 data Colour
   = TypeColour AccountType Int  -- ^ the conventional hue of this main account type, in its Nth tint (to distinguish several of that type)
   | IndexColour Int             -- ^ the Nth categorical colour, for series with no account type
-  | NeutralColour               -- ^ a neutral colour, for a chart's only series when it has no account type
+  | LoneColour                  -- ^ a hue that no account type uses, for a chart's only series when it is not an account
+  | NeutralColour               -- ^ a neutral colour, eg for the contra amounts legend swatch
   | OtherColour                 -- ^ a muted colour, for a series combining several items
   | TotalColour                 -- ^ the ink (text) colour, for a total
   deriving (Show, Eq)
@@ -199,7 +200,7 @@ categoricalColours = 8
 -- | Colours for a panel's series, in order. When the panel's accounts are of several known types, each gets its main type's hue,
 -- in one of several tints (repeating when there are more than 'maxTints' of a type). Otherwise (when their types are all the same,
 -- so the type's hue would tell nothing, or unknown) they get categorical colours.
--- A lone series which is not an account (eg a total, or "..." for all accounts) gets a neutral colour.
+-- A lone series which is not an account (eg a total, or "..." for all accounts) gets a hue that no account type uses.
 --
 -- The tints and categorical colours are chosen by the series' names, not their positions or number (see 'stableSlots'),
 -- so that an account keeps its colour in other charts: eg after removing other accounts (even down to just one), or sorting differently.
@@ -224,7 +225,7 @@ seriesColours series = zipWith colour series' slots
       (SeriesOther, _) -> OtherColour
       (_, Just t)      -> TypeColour t k
       (_, Nothing)
-        | onlyone && not (lbAccount $ seLabel s) -> NeutralColour
+        | onlyone && not (lbAccount $ seLabel s) -> LoneColour
         | otherwise    -> IndexColour k
 
 -- | A series' size, for ranking: the sum of its absolute values.
@@ -354,8 +355,8 @@ tests_Hledger_Write_Chart = testGroup "Write.Chart" [
      length (nub [k | IndexColour k <- rs]) @?= maxTints + 1
      -- and keep them when fewer are shown, down to one
      seriesColours (take 1 [ser (T.pack $ show i) (Just Revenue) | i <- [0 .. maxTints]]) @?= take 1 rs
-     -- a lone series which is not an account gets a neutral colour; others and totals get theirs
-     seriesColours [(ser "u" Nothing){seLabel = ChartLabel "u" "u" 0 Nothing False}] @?= [NeutralColour]
+     -- a lone series which is not an account gets the lone colour; others and totals get theirs
+     seriesColours [(ser "u" Nothing){seLabel = ChartLabel "u" "u" 0 Nothing False}] @?= [LoneColour]
      seriesColours [(ser "o" Nothing){seRole = SeriesOther}, (ser "t" Nothing){seRole = SeriesTotal}]
        @?= [OtherColour, TotalColour]
   ,testCase "stableSlots" $ do

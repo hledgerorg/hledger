@@ -1050,6 +1050,7 @@ several accounts of one type get different shades of its colour.
 (In terminals which advertise 24-bit colour support, by setting `COLORTERM=truecolor`, these are the same exact colours as in SVG charts;
 otherwise they are the terminal's basic blue, yellow, magenta, green and red, whose shades depend on its colour theme.)
 When a chart's accounts are all of one type, or of unknown type, they get distinct colours instead.
+A chart showing just a total (eg with `-0`, or of all accounts' transaction counts) is cyan, a colour no account type uses.
 Colours and fill characters are chosen by account name, not by position, so an account usually keeps its colour in other charts:
 with or without `-S`, or when you exclude other accounts to see more detail.
 (Not always, since there are only a few colours: an account may get a different one when some accounts are added or removed.)

@@ -603,6 +603,7 @@ colourClass :: Colour -> Text
 colourClass c = case c of
   TypeColour at k -> "t" <> typeCode (mainAccountType at) <> T.pack (show (k `mod` maxTints))
   IndexColour k   -> "s" <> T.pack (show (k `mod` 8))
+  LoneColour      -> "lone"
   NeutralColour   -> "neutral"
   OtherColour     -> "other"
   TotalColour     -> "total"
@@ -645,7 +646,7 @@ stylesheet dark = T.unlines $
                 | c <- seriescolours, let cls = colourClass c, let hex = colourHex isdark c ]
     seriescolours =
       [TypeColour at k | at <- [Asset, Liability, Equity, Revenue, Expense], k <- [0 .. maxTints - 1]]
-      ++ map IndexColour [0 .. 7] ++ [OtherColour, NeutralColour]
+      ++ map IndexColour [0 .. 7] ++ [OtherColour, LoneColour, NeutralColour]
     rules =
       [ (".bg", "fill", "surface"), (".title", "fill", "ink"), (".heading", "fill", "ink")
       , (".label", "fill", "ink2"), (".value", "fill", "ink2"), (".tick", "fill", "muted")
