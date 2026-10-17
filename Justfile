@@ -535,6 +535,121 @@ hlinttest hlint:
 installtest:
     cd; {{ justfile_directory() }}/hledger-install/hledger-install.sh
 
+# A representative selection of charts, for testing and demos (see just chartsdemo, chartsdemo-html).
+# Each line is a name, some hledger arguments, and after # what the chart shows (no apostrophes, which would end the list).
+# LASTYEAR and LASTMONTH are replaced by those of the journal's last transaction, keeping long charts to a manageable size.
+CHARTS := '
+bal-single           bal expenses -2 --chart                                     # A single-period balance report shows a bar per account, coloured by account type. Each commodity gets its own chart.
+bal-multi            bal -V -Q expenses --chart                                  # A multi-period balance report shows stacked bars per period, and a legend. Accounts get distinct, name-based colours if they are of one type.
+bal-types            bal -V -Q not:cur:IRAUSD not:cur:VACHR assets liabilities --chart      # With more than one account type, accounts use tints of the account type colour. (A blue, L amber, E violet, R green, X red)
+bal-balances         bal -V -Q not:cur:IRAUSD not:cur:VACHR assets liabilities --chart -H   # The same chart as above, but showing end balances instead of balance changes.
+is-grouped           is  -V -Q not:cur:IRAUSD not:cur:VACHR --chart              # An income statement shows revenues and expenses grouped side by side by default.
+is-diverging         is  -V -Q not:cur:IRAUSD not:cur:VACHR --chart=diverging    # Or as diverging bars. = is required between --chart and its value.
+bs-grouped           bs  -V -Q not:cur:IRAUSD not:cur:VACHR --chart              # A balance sheet shows diverging bars by default.
+bs-diverging         bs  -V -Q not:cur:IRAUSD not:cur:VACHR --chart=grouped      # Or grouped bars.
+bs-diverging1        bs  -V -Q not:cur:IRAUSD not:cur:VACHR -1 --chart=grouped,200000 -w80   # For less detail, limit the depth. You can also set a fixed scale, or (in terminal output) limit the display width.
+cf                   cf  -V -Q --chart                                           # A cash flow report shows the changes in cash-type accounts.
+areg                 areg assets cur:VACHR -p LASTYEAR --chart                   # An account register shows the balance after each transaction.
+reg-single           reg -V expenses cur:USD -p LASTMONTH --chart                # A posting register with no interval shows the running totals of each account.
+reg-multi            reg -V expenses cur:USD -Q --chart                          # A posting register with an interval shows the amounts posted per period, stacked.
+activity             activity -Q -S                                              # An activity report shows posting counts per period (equivalent to bal --count --chart)
+'
+
+# The journal used by chartsdemo and chartsdemo-html. Override it by name, eg: just CHARTS_FILE=my.journal chartsdemo
+# (or in the environment).
+CHARTS_FILE := env('CHARTS_FILE', 'examples/bcexample.journal')
+
+# (The list is read on fd 3, so that hledger keeps the terminal as stdin, for its background colour query.)
+# show the representative charts in the terminal, using the current build, adding any hledger ARGS to each command
+@chartsdemo *ARGS:
+    hl=$({{ STACK }} exec -- which hledger); \
+    if [ -t 1 ]; then bold=$'\033[1m'; plain=$'\033[0m'; else bold=; plain=; fi; \
+    while read -r name rest <&3; do \
+        args=$(echo ${rest%% #*}); shows=${rest#*# }; \
+        echo; echo; echo; echo "$bold$shows$plain"; echo; echo "$ $(echo hledger -f $CHARTS_FILE $args {{ ARGS }})"; \
+        $hl -f "$CHARTS_FILE" $args --pager=no {{ ARGS }}; \
+    done 3< <(just _charts-list "$hl" "$CHARTS_FILE")
+
+# (The page is replaced on each run. Each chart's SVG ids get a suffix, so the charts don't share eg hatch patterns.)
+# write the representative charts to .tmp/charts/index.html, each in a collapsible section, and open it, adding any hledger ARGS to each command
+chartsdemo-html *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    hl=$({{ STACK }} exec -- which hledger)
+    rm -rf .tmp/charts; mkdir -p .tmp/charts
+    out=.tmp/charts/index.html
+    esc() { sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g' <<<"$1"; }
+    cat > $out <<HTML
+    <!doctype html>
+    <html lang=en>
+    <meta charset=utf-8>
+    <meta name=viewport content="width=device-width,initial-scale=1">
+    <title>hledger charts demo</title>
+    <style>
+    :root { color-scheme: light; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781; --line: #e1e0d9; --surface: #fcfcfb; --page: #f3f2ee; }
+    body { margin: 0 auto; max-width: 980px; padding: 28px 16px 48px; background: var(--page); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    h1 { margin: 0; font-size: 24px; font-weight: 650; }
+    .intro { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; margin: 4px 0 20px; color: var(--ink2); }
+    code, pre { font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    button { font: inherit; font-size: 13px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); cursor: pointer; }
+    details { margin: 0 0 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+    summary { display: flex; gap: 12px; padding: 10px 14px; cursor: pointer; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::before { content: "\25B6"; flex: none; align-self: flex-start; width: 1em; height: 22px; font-size: 11px; line-height: 22px; text-align: center; color: var(--muted); transition: transform .15s; }
+    details[open] > summary::before { transform: rotate(90deg); }
+    summary .n { min-width: 1.5em; color: var(--muted); font-variant-numeric: tabular-nums; }
+    summary .cmd { display: block; margin-top: 2px; color: var(--ink2); overflow-wrap: anywhere; }
+    .report { padding: 8px 14px 14px; border-top: 1px solid var(--line); overflow-x: auto; }
+    .report svg { max-width: 100%; height: auto; }
+    .report details { margin: 8px 0 0; background: none; border: none; }
+    .report summary { padding: 4px 0; color: var(--ink2); font-size: 14px; }
+    .report table { font-size: 13px; font-variant-numeric: tabular-nums; }
+    .report .report-title { display: none; }
+    .error { color: #b3261e; white-space: pre-wrap; }
+    </style>
+    <h1>hledger charts demo</h1>
+    <div class=intro>
+    <span>
+        A selection of charts and the corresponding reports, using <code>$(esc "$(echo $CHARTS_FILE {{ ARGS }})")</code> and HTML output.
+        You can also run this with your own journal, or in the terminal, or with extra options: <code>just CHARTS_FILE=FILE chartsdemo[-html] [HLEDGEROPTS]</code>.
+    </span>
+    <button id=toggle>Expand all</button>
+    </div>
+    HTML
+    n=0
+    while read -r name rest <&3; do
+        args=$(echo ${rest%% #*}); shows=${rest#*# }; n=$((n+1))
+        cmd=$(echo hledger -f $CHARTS_FILE $args {{ ARGS }})
+        {
+            echo "<details id=\"$name\"><summary><span class=n>$n</span><span><span>$(esc "$shows")</span><code class=cmd>$(esc "$cmd")</code></span></summary><div class=report>"
+            if report=$($hl -f "$CHARTS_FILE" $args {{ ARGS }} -O html </dev/null 2>&1); then
+                # the chart, then the report's table (and its styles) in a nested collapsed section
+                sed "s/hledger-chart-hatch/&-$n/g; s/hledger-chart-clip-/&$n-/g" <<<"$report" |
+                    awk '{print} /<\/svg>/ && !t {print "<details class=table><summary>Report</summary>"; t=1} END {if (t) print "</details>"}'
+            else
+                echo "<pre class=error>$(esc "$report")</pre>"
+            fi
+            echo "</div></details>"
+        } >> $out
+    done 3< <(just _charts-list "$hl" "$CHARTS_FILE")
+    cat >> $out <<HTML
+    <script>
+    const toggle = document.getElementById('toggle');
+    toggle.onclick = () => {
+      const all = [...document.querySelectorAll('body > details')], open = !all.every(d => d.open);
+      all.forEach(d => d.open = open);
+      toggle.textContent = open ? 'Collapse all' : 'Expand all';
+    };
+    </script>
+    HTML
+    {{ BROWSE }} $out
+
+# list the chart commands, with LASTYEAR and LASTMONTH filled in from FILE's last transaction (using the given HLEDGER)
+@_charts-list HLEDGER FILE:
+    last=$({{ HLEDGER }} -f '{{ FILE }}' print </dev/null | grep -o '^[0-9]\{4\}-[0-9][0-9]' | sort | tail -1); \
+    if [ -z "$last" ]; then echo "{{ FILE }} has no transactions" >&2; exit 1; fi; \
+    echo "$CHARTS" | grep . | sed -e "s/LASTMONTH/$last/g; s/LASTYEAR/${last%-*}/g"
+
 # ** Benchmarking ------------------------------------------------------------
 BENCHMARKING:
 
