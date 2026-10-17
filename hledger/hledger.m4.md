@@ -37,7 +37,7 @@ You can also open a built-in copy, at a point of interest, by running\
 The main function of the hledger CLI is
 to read plain text files describing financial transactions,
 crunch the numbers,
-and print a useful report on the terminal (or save it as HTML, CSV, JSON or SQL).
+and print a useful report or chart on the terminal (or save it as HTML, CSV, JSON, SQL or SVG).
 Many reports are available, as subcommands.
 hledger will also detect other `hledger-*` executables as extra subcommands.
 
@@ -91,6 +91,7 @@ $ hledger aregister assets
 $ hledger balance
 $ hledger balancesheet
 $ hledger incomestatement
+$ hledger incomestatement -M --chart
 ```
 Run `hledger` to list the commands.
 
@@ -8066,6 +8067,34 @@ To capture debug output in a log file instead, you can usually redirect stderr, 
 hledger bal --debug=3 2>hledger.log
 ```
 (This option doesn't work in a config file yet.)
+
+# Charts
+
+hledger can show many reports as a chart: add `--chart` to a
+`balance`, `balancesheet`, `balancesheetequity`, `cashflow`, `incomestatement`, `aregister` or `register` report.
+(The `activity` command always shows one.)
+A suitable kind of chart is chosen for the report: eg stacked bars per period for balance changes,
+lines for balances over time, or a bar per account for a single period.
+In the terminal the chart is drawn with text characters, filling the terminal's width (or the width set by `-w`):
+
+```cli
+$ hledger bal -Q expenses income --chart -w 50
+Balance changes in 2008:
+
+░ expenses:food  ▒ expenses:supplies
+█ income:gifts  ▓ income:salary
+
+2008Q1  $-1  ▓▓▓▓▓▓▓▓▓▓▓▓│
+2008Q2   $1  ████████████│░░░░░░░░░░░░▒▒▒▒▒▒▒▒▒▒▒▒
+2008Q3    0              │
+2008Q4    0              │
+```
+
+With [SVG output](#svg-output) (eg `-o chart.svg`) it is a graphical chart;
+with [HTML output](#html-output) it is shown above the report's table;
+and with CSV, TSV or JSON output you get the chart's data.
+`--chart` also accepts a chart kind and a fixed scale, eg to compare charts.
+For the details, see [Balance charts](#balance-charts), [aregister](#aregister) and [Register charts](#register-charts).
 
 # Command line tips
 

@@ -199,6 +199,8 @@ This command also supports the
 The output formats supported are
 `txt`, `csv`, `tsv`, `html`, `fods`, `json`, and `svg`.
 
+### Register charts
+
 With `--chart`, or with `svg` output (`-o FILE.svg`), it shows a chart instead.
 Without a report interval, this is the running total (or average) after each posting, as a line over time;
 with postings to several accounts, each account's own running total is shown too, in its account type's colour
