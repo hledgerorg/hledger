@@ -355,16 +355,16 @@ function entryTooltipPlace(tip, x, y) {
 //
 // The register page's balance chart, drawn with flot. chart.hamlet renders
 // only the markup, with the data as JSON on #register-chart, so that pages
-// carry no inline scripts beyond the nonced ones (#2703). flot needs jquery,
-// so this section uses it too.
+// carry no inline scripts beyond the nonced ones (#2703). flot's own api
+// needs jquery; its calls are the only ones left here.
 
 // Draw the register chart, if this page has one.
 function registerChartInit() {
-  var $chartdiv = $('#register-chart');
+  var chartdiv = document.getElementById('register-chart');
   // flot needs a container with a size, so do nothing while it is hidden.
-  if (!$chartdiv.length || !$chartdiv.is(':visible')) { return; }
-  var $label = $('#register-chart-label');
-  var commodities = JSON.parse($chartdiv.attr('data-series'));
+  if (!chartdiv || chartdiv.offsetParent === null) { return; }
+  var label = document.getElementById('register-chart-label');
+  var commodities = JSON.parse(chartdiv.getAttribute('data-series'));
   // Each commodity is drawn as two flot series over the same points: a
   // stepped line for the running balance, and one clickable, hoverable point
   // per transaction. A point is [timestamp, balance, amount text, balance
@@ -385,23 +385,25 @@ function registerChartInit() {
   // The page follows a change of color scheme by itself, and prints in the
   // light one, but the chart is drawn on a canvas; draw it again for those.
   var draw = function() {
-    $label.text($chartdiv.attr('data-title'));
-    registerChartLegend($label, registerChart($chartdiv, series));
+    label.textContent = chartdiv.getAttribute('data-title');
+    registerChartLegend(label, registerChart(chartdiv, series));
   };
   draw();
   ['(prefers-color-scheme: dark)', 'print'].forEach(function(query) {
     window.matchMedia(query).addEventListener('change', draw);
   });
-  $chartdiv.bind('plotclick', registerChartClick);
-  $chartdiv.bind('plotselected', registerChartSelect);
+  // plotclick and plotselected are flot's events, fired through jquery.
+  jQuery(chartdiv).on('plotclick', registerChartClick);
+  jQuery(chartdiv).on('plotselected', registerChartSelect);
 }
 
-function registerChart($container, series) {
+function registerChart(chartdiv, series) {
   // The colors come from the palette in hledger.css, for the current scheme.
   var style = getComputedStyle(document.documentElement);
   var color = function(name) { return style.getPropertyValue(name).trim(); };
   // https://github.com/flot/flot/blob/master/API.md
-  return $container.plot(
+  return jQuery.plot(
+    chartdiv,
     series,
     {
       series: {
@@ -463,26 +465,34 @@ function registerChart($container, series) {
             // The plugin renders this as html. Build it from text nodes and
             // let the browser serialize it, so the journal text cannot be
             // parsed as markup.
-            return $('<div>')
-              .append(document.createTextNode(data[3] + " balance on %x after " + data[2] + " posted by transaction:"))
-              .append($('<pre>').text(data[4]))
-              .html();
+            var tip = document.createElement('div');
+            tip.appendChild(document.createTextNode(data[3] + " balance on %x after " + data[2] + " posted by transaction:"));
+            var txn = document.createElement('pre');
+            txn.textContent = data[4];
+            tip.appendChild(txn);
+            return tip.innerHTML;
           },
-        onHover: function(flotitem, $tooltipel) {
-          $tooltipel.css('border-color', flotitem.series.color);
+        onHover: function(flotitem, tooltipel) {
+          tooltipel[0].style.borderColor = flotitem.series.color;
         },
       },
     }
-  ).data("plot");
+  );
 }
 
 // Add the legend to the label line: a color swatch and the commodity for
 // each balance line.
-function registerChartLegend($label, plot) {
+function registerChartLegend(label, plot) {
   plot.getData().forEach(function(s) {
     if (typeof s.label !== 'string') { return; }
-    var $swatch = $('<span class="legend-swatch">').css('background-color', s.color);
-    $('<span class="legend-item">').append($swatch, document.createTextNode(s.label)).appendTo($label);
+    var swatch = document.createElement('span');
+    swatch.className = 'legend-swatch';
+    swatch.style.backgroundColor = s.color;
+    var item = document.createElement('span');
+    item.className = 'legend-item';
+    item.appendChild(swatch);
+    item.appendChild(document.createTextNode(s.label));
+    label.appendChild(item);
   });
 }
 
@@ -493,7 +503,7 @@ function registerChartClick(ev, pos, item) {
   var target = document.getElementById(id);
   if (target) {
     window.location.hash = '#' + id;
-    $('html, body').animate({ scrollTop: $(target).offset().top }, 1000);
+    window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY, behavior: 'smooth' });
   }
 }
 
@@ -512,7 +522,7 @@ function registerChartSelect(ev, ranges) {
   };
   var range = iso(from) + '..' + iso(to);
   // The base link is this register's url without its date terms; add ours.
-  var url = new URL($('#register-chart').attr('data-baselink'), document.baseURI);
+  var url = new URL(document.getElementById('register-chart').getAttribute('data-baselink'), document.baseURI);
   var q = url.searchParams.get('q');
   url.searchParams.set('q', (q ? q + ' ' : '') + 'date:' + range);
   document.location = url.href;
