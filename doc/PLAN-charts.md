@@ -151,10 +151,21 @@ Count charts (`pnCounts`) instead cap text at one cell per unit when no SCALE is
   and better than comma-separated `-o` (commas are legal in file names).
 - A `--view`/`--open` flag (temp file, open-browser) could make SVG nearly as quick as text; inline terminal images need raster output.
 
-## Next
+## Next?
 
-- Phase 4: SVG charts on hledger-web's report pages (could eventually replace the flot register chart); a chart toggle in hledger-ui.
-- Phase 5: more KINDs (eg line, hbar); budget (goal marks), prices, roi, holdings; a sparkline column for tables; `--view`; Vega-Lite.
-- Loose ends: dark-mode SVG unchecked in a browser; Commands/*.md flags blocks need `./Shake cmddocs`;
-  new strings untranslated ("contra" and "No data" are hard-coded in the renderers); charts.md at release.
-- Open: whether html output should include the chart by default, once proven.
+- get translations updated
+- html: with --chart, collapse the text report by default ?
+- html: include the chart by default ?
+- html/svg: easy opening/display with --view/--open ?
+- Phase 4: hledger-web integration, could eventually replace the flot register chart
+- hledger-ui integration, a chart toggle ?
+- bigger friendlier bars / lines / text ?
+- test dark-mode SVG in a browser
+- update hledger-bar doc, charts page
+- improve/publish charts demo
+    - use it in docs
+    - explore this style of report, make it available to users
+- png output
+- clickable chart ?
+- more charts (budget (goal marks), prices, roi, holdings)
+- more kinds of chart (line, hbar, pie); a sparkline column for tables ? Vega-Lite.
