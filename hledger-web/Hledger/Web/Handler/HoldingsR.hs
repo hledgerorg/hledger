@@ -24,7 +24,8 @@ import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Common
   (accountQuery, closedLinks, depthLinks, holdingsValueLinks, listModeLinks,
-   lotsLinks, removeInacct, replaceInacct, reportLinks, sortLinks)
+   lotsLinks, removeInacct, replaceInacct, reportLinks, sortLinks,
+   zeroBalanceLinks)
 
 -- | The holdings view: investment holdings and their performance at the
 -- report end date, as the holdings command shows them. In tree mode the
@@ -39,14 +40,16 @@ getHoldingsR = do
   hideEmpty <- hideEmptyAccounts
   params <- reqGetParams <$> getRequest
   urlrender <- getUrlRenderParams
-  memptyparam <- lookupGetParam "empty"
+  mclosedparam <- lookupGetParam "closed"
   let withFilter t = if q /= Any then trf trs "{title}, filtered" [("title", t)] else t
       rspecOrig = reportspec_ $ cliopts_ opts
       roptsOrig = _rsReportOpts rspecOrig
       deepest = deepestDepth rspecOrig jfull
       -- Fully closed positions are hidden by default, as on the command
-      -- line; the empty parameter (or startup -E) shows them.
-      closedShown = case memptyparam of
+      -- line; the closed parameter (or startup -E) shows them. They have
+      -- their own parameter because the empty parameter keeps its usual
+      -- meaning here: the sidebar's zero-balance accounts.
+      closedShown = case mclosedparam of
         Just "1" -> True
         Just "0" -> False
         _        -> empty_ roptsOrig
@@ -96,12 +99,13 @@ getHoldingsR = do
             listParams  = [("list", listWord (accountlistmode_ ropts)) | accountlistmode_ ropts /= accountlistmode_ roptsOrig]
             sortParams  = [("sort", "amount") | sort_amount_ ropts]
             inferParams = [("infer", "1") | infer_prices_ ropts, not (infer_prices_ roptsOrig)]
-            emptyParams = [("empty", if closedShown then "1" else "0") | closedShown /= empty_ roptsOrig]
+            closedParams = [("closed", if closedShown then "1" else "0") | closedShown /= empty_ roptsOrig]
+            emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= empty_ roptsOrig]
             lotsParams  = [("lots", "1") | lotsShown]
             pageParams =
               dbg1 "holdings pageParams" $
               periodParams ++ valParams ++ listParams ++ sortParams ++
-              inferParams ++ emptyParams ++ lotsParams
+              inferParams ++ closedParams ++ emptyParams ++ lotsParams
             qParams = [("q", qparam) | not (T.null qparam)]
             -- Links to the other reports keep the search, minus any
             -- account term, which the reports ignore, and this page's
@@ -109,7 +113,7 @@ getHoldingsR = do
             menuParams = [("q", qt) | let qt = T.unwords $ removeInacct qparam, not (T.null qt)] ++ pageParams
             -- An account cell links to the account's register, keeping
             -- the states that page reads.
-            registerKept = removeAttributes ["period", "sort"] pageParams
+            registerKept = removeAttributes ["period", "sort", "closed"] pageParams
             acctlink acct = urlrender RegisterR $
               ("q", replaceInacct qparam $ accountQuery acct) : registerKept
 
@@ -318,7 +322,8 @@ getHoldingsR = do
             controlRows render = foldMap ($ render) $
               [ reportLinks trs HoldingsR menuParams $ reportLinkItems $ reportMenuFor jHasLots
               , lotsLinks trs HoldingsR (qParams ++ removeAttributes ["lots"] pageParams) lotsShown
-              , closedLinks trs HoldingsR (qParams ++ removeAttributes ["empty"] pageParams) (not $ empty_ roptsOrig) (not closedShown) ] ++
+              , closedLinks trs HoldingsR (qParams ++ removeAttributes ["closed"] pageParams) (not $ empty_ roptsOrig) (not closedShown)
+              , zeroBalanceLinks trs HoldingsR (qParams ++ removeAttributes ["empty"] pageParams) (empty_ roptsOrig) hideEmpty ] ++
               [ depthLinks trs HoldingsR pageParams qparam deepest | deepest > 1 ] ++
               [ listModeLinks trs HoldingsR (qParams ++ removeAttributes ["list"] pageParams) (accountlistmode_ roptsOrig) (accountlistmode_ ropts)
               , holdingsValueLinks trs HoldingsR (qParams ++ removeAttributes ["value"] pageParams) (isJust $ value_ ropts)

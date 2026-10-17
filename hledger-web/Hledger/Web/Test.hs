@@ -362,13 +362,16 @@ hledgerWebTest = do
       -- with every lot under one account, that account is the group heading
       bodyContains "scope=\"rowgroup\">assets:broker</th>"
 
-    yit "shows closed positions with empty=1" $ do
+    yit "shows closed positions with closed=1" $ do
       request $ do
         setMethod "GET"
-        setUrl (HoldingsR, [("period", "2026"), ("empty", "1")])
+        setUrl (HoldingsR, [("period", "2026"), ("closed", "1")])
       statusIs 200
       bodyContains "0 BBB"
       bodyContains "$3.00"
+      -- the page also has the usual zero-balances control, which the
+      -- empty parameter drives, so the e key keeps working here
+      bodyContains "Zero balances:"
 
     yit "tree mode shows a single-commodity account as one combined row" $ do
       request $ do
@@ -384,7 +387,7 @@ hledgerWebTest = do
     yit "tree mode groups several commodities under an account heading" $ do
       request $ do
         setMethod "GET"
-        setUrl (HoldingsR, [("period", "2026"), ("list", "tree"), ("empty", "1")])
+        setUrl (HoldingsR, [("period", "2026"), ("list", "tree"), ("closed", "1")])
       statusIs 200
       -- with the closed BBB position shown, the account holds two
       -- commodities: a heading row subtotaling the dollar columns, then

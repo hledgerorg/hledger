@@ -245,10 +245,13 @@ For journals that use [lots](hledger.md#lots-and-capital-gains), the
 [holdings](hledger.md#holdings) report is at `/holdings`, and appears
 in the sidebar and the report links. It shows one row per account and
 held commodity by default; its links can show each individual lot (a
-`lots=1` parameter), fully disposed positions (`empty=1`), accounts as
-a tree (in which each position's lots fold into it, opened in place by
-a caret), values converted to the market valuation commodity
-(`value=end`, like `-V`), and rows sorted by value. On such journals
+`lots=1` parameter), fully disposed positions (a `closed=1` parameter;
+`empty` keeps meaning zero-balance accounts, as on the other pages),
+accounts as a tree (positions grouped under account headings that
+subtotal the dollar columns, with each position's lots folding into
+it, opened in place by a caret), values converted to the market
+valuation commodity (`value=end`, like `-V`), and rows sorted by
+value. On such journals
 every page also gains a Lots link, showing lot subaccounts and per-lot
 postings everywhere with the same `lots` parameter.
 

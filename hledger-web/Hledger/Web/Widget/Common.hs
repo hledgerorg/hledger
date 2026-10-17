@@ -122,7 +122,11 @@ balanceReportAsHtml (journalR, registerR) here reports reportParams hideEmpty to
     indent a = preEscapedString $ concat $ replicate (2 + 2 * a) "&nbsp;"
     hasSubAccounts acct = maybe True (not . null . asubs) $ ledgerAccount l acct
     isInterestingAccount acct = maybe False isInteresting $ ledgerAccount l acct
-      where isInteresting a = not (all (mixedAmountLooksZero . bdexcludingsubs) . pdperiods $ adata a) || any isInteresting (asubs a)
+      -- Costs and cost bases are stripped before the zero test, since they
+      -- keep bought-and-fully-sold amounts from cancelling (eg a disposed
+      -- lot, +10 A @ one cost and -10 A at another), and the sidebar
+      -- displays such balances as zero.
+      where isInteresting a = not (all (mixedAmountLooksZero . mixedAmountStripCosts . bdexcludingsubs) . pdperiods $ adata a) || any isInteresting (asubs a)
     matchesAcctSelector acct = Just True == ((`matchesAccount` acct) <$> inAccountQuery qopts)
     -- The journal and register links keep the states those pages read:
     -- the amounts mode, the accounts mode, inferred prices, zero
@@ -396,8 +400,8 @@ lotsLinks trs route kept on =
     ]
 
 -- | Links that show or hide fully closed positions: commodities no
--- longer held, whose realized gains still count in the totals (the
--- empty parameter, as for zero balances; 1 shows them).
+-- longer held, with realized gains to show (the closed parameter;
+-- 1 shows them - the empty parameter keeps meaning zero balances).
 closedLinks :: Translations -> r -> [(Text, Text)] -> Bool -> Bool -> HtmlUrl r
 closedLinks trs route kept dfltHidden hidden =
   -- TRANSLATORS: the label before the holdings page's closed-position links, and the links' text and tooltips.
@@ -405,7 +409,7 @@ closedLinks trs route kept dfltHidden hidden =
     [ (trc trs "closed" "Hidden", tr trs "Show only open positions", link True, hidden)
     , (trc trs "closed" "Shown", tr trs "Also show fully disposed positions and their realized gains (-E)", link False, not hidden)
     ]
-  where link h = (route, kept ++ [("empty", if h then "0" else "1") | h /= dfltHidden])
+  where link h = (route, kept ++ [("closed", if h then "0" else "1") | h /= dfltHidden])
 
 -- | Links choosing how the holdings page values holdings: each lot in
 -- its own cost commodity (the default), or all in the market valuation

@@ -508,7 +508,7 @@ keptAccums route =
 -- | The query parameters a page's own links keep.
 keptParamNames :: Route App -> [Text]
 keptParamNames route
-  | route == HoldingsR        = ["period", "value", "list", "sort", "infer", "empty", "lots"]
+  | route == HoldingsR        = ["period", "value", "list", "sort", "infer", "empty", "lots", "closed"]
   | route `elem` reportRoutes = ["period", "accum", "value", "list", "total", "avg", "sort", "pct", "calc", "infer", "date2", "empty", "lots"]
   | route == RegisterR        = ["accum", "value", "costs", "infer", "date2", "empty", "list", "lots"]
   | route == JournalR         = ["value", "list", "infer", "empty", "lots"]
