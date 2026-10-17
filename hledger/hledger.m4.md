@@ -37,7 +37,7 @@ You can also open a built-in copy, at a point of interest, by running\
 The main function of the hledger CLI is
 to read plain text files describing financial transactions,
 crunch the numbers,
-and print a useful report on the terminal (or save it as HTML, CSV, JSON or SQL).
+and print a useful report or chart on the terminal (or save it as HTML, CSV, JSON, SQL or SVG).
 Many reports are available, as subcommands.
 hledger will also detect other `hledger-*` executables as extra subcommands.
 
@@ -91,6 +91,7 @@ $ hledger aregister assets
 $ hledger balance
 $ hledger balancesheet
 $ hledger incomestatement
+$ hledger incomestatement -M --chart
 ```
 Run `hledger` to list the commands.
 
@@ -507,7 +508,7 @@ You can list all of a command's options by running `hledger CMD -h`.
 
 **[Chart commands](#chart-commands)**
 
-- [activity](#activity)                            - show posting counts as a bar chart
+- [activity](#activity)                            - show transaction or posting counts as a bar chart
 
 **[Data generation commands](#data-generation-commands)**
 
@@ -7751,17 +7752,17 @@ $ hledger print -o -        # write to stdout (the default)
 Some commands offer other kinds of output, not just text on the terminal.
 Here are those commands and the formats currently supported:
 
-|  command           | txt | html | csv/tsv | fods | ledger | beancount | sql | json |
-|--------------------|-----|------|---------|------|--------|-----------|-----|------|
-| aregister          | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| balance            | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| balancesheet       | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| balancesheetequity | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| cashflow           | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| holdings           | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| incomestatement    | Y   | Y    | Y       | Y    |        |           |     | Y    |
-| print              | Y   | Y    | Y       | Y    | Y      | Y         | Y   | Y    |
-| register           | Y   | Y    | Y       | Y    |        |           |     | Y    |
+|  command           | txt | html | csv/tsv | fods | ledger | beancount | sql | json | svg |
+|--------------------|-----|------|---------|------|--------|-----------|-----|------|-----|
+| aregister          | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
+| balance            | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
+| balancesheet       | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
+| balancesheetequity | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
+| cashflow           | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
+| holdings           | Y   | Y    | Y       | Y    |        |           |     | Y    |     |
+| incomestatement    | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
+| print              | Y   | Y    | Y       | Y    | Y      | Y         | Y   | Y    |     |
+| register           | Y   | Y    | Y       | Y    |        |           |     | Y    | Y   |
 
 <!--
 | accounts              |     |     |      |      |     |
@@ -7889,6 +7890,9 @@ HTML output has some default styling built in; eg, it prevents wrapping
 within dates and individual commodity amounts.
 It can be customised (or overridden) by an optional `hledger.css` file in the
 same directory (there is a sample in the hledger repo).
+
+With `--chart`, commands that can show charts add one (as inline SVG) above the table
+(see [Balance charts](#balance-charts)).
 
 HTML output will be a HTML fragment, not a complete HTML document.
 It has a newline after each table row, for readability.
@@ -8035,6 +8039,18 @@ so in JSON output we round numbers to at most 10 decimal places.
 (We don't limit the number of integer digits.)
 Related: [#1195](https://github.com/hledgerorg/hledger/issues/1195)
 
+### SVG output
+
+SVG output shows a chart of the report, rather than the report's table
+(as the `--chart` flag does with text output; see [Balance charts](#balance-charts)).
+It is a self-contained image file, viewable in web browsers and many image viewers.
+It has a light and a dark colour scheme, chosen by the viewer's preference,
+and tooltips showing each bar's or point's values.
+Currently the `aregister`, `balance`, `balancesheet`, `balancesheetequity`, `cashflow`, `incomestatement` and `register` commands can produce it. Eg:
+```cli
+$ hledger bal -M expenses -o expenses.svg
+```
+
 ## Debug output
 
 We intend hledger to be relatively easy to troubleshoot, introspect and develop.
@@ -8051,6 +8067,34 @@ To capture debug output in a log file instead, you can usually redirect stderr, 
 hledger bal --debug=3 2>hledger.log
 ```
 (This option doesn't work in a config file yet.)
+
+# Charts
+
+hledger can show many reports as a chart: add `--chart` to a
+`balance`, `balancesheet`, `balancesheetequity`, `cashflow`, `incomestatement`, `aregister` or `register` report.
+(The `activity` command always shows one.)
+A suitable kind of chart is chosen for the report: eg stacked bars per period for balance changes,
+lines for balances over time, or a bar per account for a single period.
+In the terminal the chart is drawn with text characters, filling the terminal's width (or the width set by `-w`):
+
+```cli
+$ hledger bal -Q expenses income --chart -w 50
+Balance changes in 2008:
+
+░ expenses:food  ▒ expenses:supplies
+█ income:gifts  ▓ income:salary
+
+2008Q1  $-1  ▓▓▓▓▓▓▓▓▓▓▓▓│
+2008Q2   $1  ████████████│░░░░░░░░░░░░▒▒▒▒▒▒▒▒▒▒▒▒
+2008Q3    0              │
+2008Q4    0              │
+```
+
+With [SVG output](#svg-output) (eg `-o chart.svg`) it is a graphical chart;
+with [HTML output](#html-output) it is shown above the report's table;
+and with CSV, TSV or JSON output you get the chart's data.
+`--chart` also accepts a chart kind and a fixed scale, eg to compare charts.
+For the details, see [Balance charts](#balance-charts), [aregister](#aregister) and [Register charts](#register-charts).
 
 # Command line tips
 
@@ -8511,6 +8555,14 @@ hledger will give an error.
 On Microsoft Windows, depending what kind of terminal window you use,
 non-ascii characters, ANSI text formatting, and/or the add command's TAB key, may not be fully supported.
 (For best results, try a powershell window.)
+
+When showing colour, hledger sometimes asks the terminal for its background colour,
+to choose colours that suit it (for headings, and for charts in terminals advertising 24-bit colour).
+Occasionally this can misbehave: a terminal that doesn't answer (eg some tmux setups) can delay the output by up to half a second;
+over a slow connection, a late answer may appear as stray characters at your shell prompt;
+on macOS, hledger can hang if its input is explicitly redirected from `/dev/tty`;
+and hledger may be stopped if it is run in the background.
+`--color=no` avoids these.
 
 When processing large data files, hledger uses more memory than Ledger.
 You can cap its memory use with GHC runtime system options, eg `hledger +RTS -M2G -RTS ...`

@@ -156,6 +156,32 @@ msgctxt "month abbrev"
 msgid "Dec"
 msgstr ""
 
+#: hledger/Hledger/Cli/Chart.hs
+msgid "Total"
+msgstr ""
+
+#: hledger/Hledger/Cli/Chart.hs
+msgid "Balance"
+msgstr ""
+
+#: hledger/Hledger/Cli/Chart.hs hledger/Hledger/Cli/CompoundBalanceCommand.hs
+msgid "Net:"
+msgstr ""
+
+#: hledger/Hledger/Cli/Chart.hs
+#, python-brace-format
+msgid "other {parent} ({n} account)"
+msgid_plural "other {parent} ({n} accounts)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: hledger/Hledger/Cli/Chart.hs
+#, python-brace-format
+msgid "other ({n} account)"
+msgid_plural "other ({n} accounts)"
+msgstr[0] ""
+msgstr[1] ""
+
 #. the report title, eg "Monthly Balance Sheet 2024 (Historical Ending Balances), valued at period ends". {clarification} brings its own leading space when present.
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #, python-brace-format
@@ -220,10 +246,6 @@ msgstr ""
 msgid ", valued at {date}"
 msgstr ""
 
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
-msgid "Net:"
-msgstr ""
-
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Budget Report"
 msgstr ""
@@ -260,6 +282,22 @@ msgstr ""
 
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Historical gain"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs
+msgid "Posting counts"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs
+msgid "Cumulative posting counts"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs
+msgid "Historical posting counts"
+msgstr ""
+
+#: hledger/Hledger/Cli/Commands/Balance.hs
+msgid "Transaction counts"
 msgstr ""
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.

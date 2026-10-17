@@ -24,6 +24,7 @@ module Hledger.Reports.MultiBalanceReport (
 
   -- * Helper functions
   makeReportQuery,
+  balanceReportStyles,
   getPostings,
   generateMultiBalanceAccount,
   generatePeriodicReport,
@@ -38,6 +39,7 @@ where
 import Control.Applicative (liftA2)
 #endif
 import Control.Monad (guard)
+import Data.Containers.ListUtils (nubOrdOn)
 import Data.Foldable (toList)
 import Data.HashSet qualified as HS
 import Data.List (sortOn)
@@ -168,7 +170,7 @@ compoundBalanceReportWith rspec' j priceoracle subreportspecs = cbr
         subreportTotal (_, sr, increasestotal) =
             (if increasestotal || counting then id else fmap maNegate) $ prTotals sr
 
-    counting = balancecalc_ (_rsReportOpts rspec) == CalcPostingsCount
+    counting = balanceCalcIsCount $ balancecalc_ (_rsReportOpts rspec)
 
     cbr = CompoundPeriodicReport "" (maybeDayPartitionToDateSpans colspans) subreports overalltotals
 
@@ -195,10 +197,10 @@ getPostings rspec@ReportSpec{_rsQuery=query, _rsReportOpts=ropts} j priceoracle 
     . journalPostings
     $ journalValueAndFilterPostingsWith rspec' j priceoracle
   where
-    -- If doing --count, set all posting amounts to "1".
-    setPostingsCount = case balancecalc_ ropts of
-        CalcPostingsCount -> map (postingTransformAmount (const $ mixed [num 1]))
-        _                 -> id
+    -- If counting postings or transactions, set all posting amounts to "1".
+    setPostingsCount
+      | balanceCalcIsCount (balancecalc_ ropts) = map (postingTransformAmount (const $ mixed [num 1]))
+      | otherwise = id
 
     rspec' = rspec{_rsQuery=fullreportq,_rsReportOpts=ropts'}
     -- If we're re-valuing every period, we need to have the unvalued start
@@ -237,9 +239,12 @@ generateMultiBalanceAccount rspec@ReportSpec{_rsReportOpts=ropts} j priceoracle 
     . markAccountBoring rspec
     -- Process changes into normal, cumulative, or historical amounts, plus value them
     . calculateReportAccount rspec j priceoracle colspans
+    -- If counting transactions, keep just one posting per transaction and (clipped) account
+    . (if balancecalc_ ropts == CalcTransactionsCount then nubOrdOn txnAndAccount else id)
     -- Clip account names
     . map clipPosting
   where
+    txnAndAccount p = (tindex <$> ptransaction p, paccount p)
     -- Clip postings to the requested depth according to the query
     clipPosting p = p{paccount = clipOrEllipsifyAccountName depthSpec $ paccount p}
     depthSpec = dbg3 "generateMultiBalanceAccount depthSpec"
@@ -294,6 +299,7 @@ calculateReportAccount rspec@ReportSpec{_rsReportOpts=ropts} j priceoracle (Just
             CalcValueChange   -> periodChanges historical
             CalcGain          -> periodChanges historical
             CalcPostingsCount -> avalue unvaluedChanges
+            CalcTransactionsCount -> avalue unvaluedChanges
         -- the historical balance is the valued cumulative sum of all unvalued changes
         historical = avalue $ cumulativeSum unvaluedChanges
         -- since this is a cumulative sum of valued amounts, it should not be valued again
@@ -376,7 +382,21 @@ markAccountBoring ReportSpec{_rsQuery=query,_rsReportOpts=ropts}
 -- Calculate the column totals. These are always the sum of column amounts.
 generateMultiBalanceReport :: ReportOpts -> Maybe DayPartition -> Account BalanceData -> MultiBalanceReport
 generateMultiBalanceReport ropts colspans =
-    reportPercent ropts . generatePeriodicReport makeMultiBalanceReportRow bdincludingsubs id ropts colspans
+    countAveragesPrecision . reportPercent ropts . generatePeriodicReport makeMultiBalanceReportRow bdincludingsubs id ropts colspans
+  where
+    -- Counts are whole numbers, but their averages are shown with one decimal place.
+    countAveragesPrecision
+      | balanceCalcIsCount (balancecalc_ ropts) && not (percent_ ropts) = \(PeriodicReport spans rows totals) ->
+          PeriodicReport spans (map setAvgPrecision rows) (setAvgPrecision totals)
+      | otherwise = id
+    setAvgPrecision r = r{prrAverage = mixedAmountSetPrecision (Precision 1) $ prrAverage r}
+
+-- | The display styles to apply to a balance report's amounts: the journal's commodity styles, hard-rounded,
+-- except for counts, which keep their own (see generateMultiBalanceReport).
+balanceReportStyles :: ReportOpts -> Journal -> M.Map CommoditySymbol AmountStyle
+balanceReportStyles ropts j
+  | balanceCalcIsCount (balancecalc_ ropts) = M.empty
+  | otherwise = journalCommodityStylesWith HardRounding j
 
 -- | Lay out a set of postings grouped by date span into a regular matrix with rows
 -- given by AccountName and columns by DateSpan, then generate a MultiBalanceReport

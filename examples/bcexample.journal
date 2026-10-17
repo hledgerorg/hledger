@@ -5605,1745 +5605,1747 @@ account Expenses
 
 * Prices
 
-; 2012-01-06 price VBMPX                                    98.73 USD
+; (Converted from beancount price comments to P directives, so that -V etc. can value the investments.)
 
-; 2012-01-06 price RGAGX                                   114.78 USD
+P 2012-01-06 VBMPX 98.73 USD
 
-; 2012-01-06 price ITOT                                    136.67 USD
+P 2012-01-06 RGAGX 114.78 USD
 
-; 2012-01-06 price VEA                                     108.55 USD
+P 2012-01-06 ITOT 136.67 USD
 
-; 2012-01-06 price VHT                                      35.63 USD
+P 2012-01-06 VEA 108.55 USD
 
-; 2012-01-06 price GLD                                      61.75 USD
+P 2012-01-06 VHT 35.63 USD
 
-; 2012-01-13 price VBMPX                                    96.27 USD
+P 2012-01-06 GLD 61.75 USD
 
-; 2012-01-13 price RGAGX                                   116.43 USD
+P 2012-01-13 VBMPX 96.27 USD
 
-; 2012-01-13 price ITOT                                    136.44 USD
+P 2012-01-13 RGAGX 116.43 USD
 
-; 2012-01-13 price VEA                                     108.64 USD
+P 2012-01-13 ITOT 136.44 USD
 
-; 2012-01-13 price VHT                                      35.21 USD
+P 2012-01-13 VEA 108.64 USD
 
-; 2012-01-13 price GLD                                      62.28 USD
+P 2012-01-13 VHT 35.21 USD
 
-; 2012-01-20 price VBMPX                                    94.40 USD
+P 2012-01-13 GLD 62.28 USD
 
-; 2012-01-20 price RGAGX                                   114.90 USD
+P 2012-01-20 VBMPX 94.40 USD
 
-; 2012-01-20 price ITOT                                    136.87 USD
+P 2012-01-20 RGAGX 114.90 USD
 
-; 2012-01-20 price VEA                                     108.83 USD
+P 2012-01-20 ITOT 136.87 USD
 
-; 2012-01-20 price VHT                                      35.95 USD
+P 2012-01-20 VEA 108.83 USD
 
-; 2012-01-20 price GLD                                      63.10 USD
+P 2012-01-20 VHT 35.95 USD
 
-; 2012-01-27 price VBMPX                                    96.60 USD
+P 2012-01-20 GLD 63.10 USD
 
-; 2012-01-27 price RGAGX                                   113.97 USD
+P 2012-01-27 VBMPX 96.60 USD
 
-; 2012-01-27 price ITOT                                    135.33 USD
+P 2012-01-27 RGAGX 113.97 USD
 
-; 2012-01-27 price VEA                                     107.90 USD
+P 2012-01-27 ITOT 135.33 USD
 
-; 2012-01-27 price VHT                                      35.38 USD
+P 2012-01-27 VEA 107.90 USD
 
-; 2012-01-27 price GLD                                      62.93 USD
+P 2012-01-27 VHT 35.38 USD
 
-; 2012-02-03 price VBMPX                                    95.61 USD
+P 2012-01-27 GLD 62.93 USD
 
-; 2012-02-03 price RGAGX                                   112.81 USD
+P 2012-02-03 VBMPX 95.61 USD
 
-; 2012-02-03 price ITOT                                    133.81 USD
+P 2012-02-03 RGAGX 112.81 USD
 
-; 2012-02-03 price VEA                                     109.95 USD
+P 2012-02-03 ITOT 133.81 USD
 
-; 2012-02-03 price VHT                                      36.03 USD
+P 2012-02-03 VEA 109.95 USD
 
-; 2012-02-03 price GLD                                      62.92 USD
+P 2012-02-03 VHT 36.03 USD
 
-; 2012-02-10 price VBMPX                                    95.84 USD
+P 2012-02-03 GLD 62.92 USD
 
-; 2012-02-10 price RGAGX                                   108.29 USD
+P 2012-02-10 VBMPX 95.84 USD
 
-; 2012-02-10 price ITOT                                    135.03 USD
+P 2012-02-10 RGAGX 108.29 USD
 
-; 2012-02-10 price VEA                                     109.41 USD
+P 2012-02-10 ITOT 135.03 USD
 
-; 2012-02-10 price VHT                                      35.97 USD
+P 2012-02-10 VEA 109.41 USD
 
-; 2012-02-10 price GLD                                      63.39 USD
+P 2012-02-10 VHT 35.97 USD
 
-; 2012-02-17 price VBMPX                                    94.18 USD
+P 2012-02-10 GLD 63.39 USD
 
-; 2012-02-17 price RGAGX                                   108.84 USD
+P 2012-02-17 VBMPX 94.18 USD
 
-; 2012-02-17 price ITOT                                    136.01 USD
+P 2012-02-17 RGAGX 108.84 USD
 
-; 2012-02-17 price VEA                                     109.75 USD
+P 2012-02-17 ITOT 136.01 USD
 
-; 2012-02-17 price VHT                                      36.88 USD
+P 2012-02-17 VEA 109.75 USD
 
-; 2012-02-17 price GLD                                      63.84 USD
+P 2012-02-17 VHT 36.88 USD
 
-; 2012-02-24 price VBMPX                                    92.43 USD
+P 2012-02-17 GLD 63.84 USD
 
-; 2012-02-24 price RGAGX                                   107.68 USD
+P 2012-02-24 VBMPX 92.43 USD
 
-; 2012-02-24 price ITOT                                    134.74 USD
+P 2012-02-24 RGAGX 107.68 USD
 
-; 2012-02-24 price VEA                                     108.34 USD
+P 2012-02-24 ITOT 134.74 USD
 
-; 2012-02-24 price VHT                                      37.51 USD
+P 2012-02-24 VEA 108.34 USD
 
-; 2012-02-24 price GLD                                      64.82 USD
+P 2012-02-24 VHT 37.51 USD
 
-; 2012-03-02 price VBMPX                                    92.68 USD
+P 2012-02-24 GLD 64.82 USD
 
-; 2012-03-02 price RGAGX                                   106.20 USD
+P 2012-03-02 VBMPX 92.68 USD
 
-; 2012-03-02 price ITOT                                    135.04 USD
+P 2012-03-02 RGAGX 106.20 USD
 
-; 2012-03-02 price VEA                                     108.76 USD
+P 2012-03-02 ITOT 135.04 USD
 
-; 2012-03-02 price VHT                                      38.54 USD
+P 2012-03-02 VEA 108.76 USD
 
-; 2012-03-02 price GLD                                      64.03 USD
+P 2012-03-02 VHT 38.54 USD
 
-; 2012-03-09 price VBMPX                                    90.91 USD
+P 2012-03-02 GLD 64.03 USD
 
-; 2012-03-09 price RGAGX                                   108.90 USD
+P 2012-03-09 VBMPX 90.91 USD
 
-; 2012-03-09 price ITOT                                    135.28 USD
+P 2012-03-09 RGAGX 108.90 USD
 
-; 2012-03-09 price VEA                                     108.80 USD
+P 2012-03-09 ITOT 135.28 USD
 
-; 2012-03-09 price VHT                                      39.00 USD
+P 2012-03-09 VEA 108.80 USD
 
-; 2012-03-09 price GLD                                      64.58 USD
+P 2012-03-09 VHT 39.00 USD
 
-; 2012-03-16 price VBMPX                                    91.24 USD
+P 2012-03-09 GLD 64.58 USD
 
-; 2012-03-16 price RGAGX                                   108.55 USD
+P 2012-03-16 VBMPX 91.24 USD
 
-; 2012-03-16 price ITOT                                    134.99 USD
+P 2012-03-16 RGAGX 108.55 USD
 
-; 2012-03-16 price VEA                                     108.42 USD
+P 2012-03-16 ITOT 134.99 USD
 
-; 2012-03-16 price VHT                                      39.79 USD
+P 2012-03-16 VEA 108.42 USD
 
-; 2012-03-16 price GLD                                      64.34 USD
+P 2012-03-16 VHT 39.79 USD
 
-; 2012-03-23 price VBMPX                                    92.64 USD
+P 2012-03-16 GLD 64.34 USD
 
-; 2012-03-23 price RGAGX                                   109.43 USD
+P 2012-03-23 VBMPX 92.64 USD
 
-; 2012-03-23 price ITOT                                    134.36 USD
+P 2012-03-23 RGAGX 109.43 USD
 
-; 2012-03-23 price VEA                                     108.27 USD
+P 2012-03-23 ITOT 134.36 USD
 
-; 2012-03-23 price VHT                                      39.74 USD
+P 2012-03-23 VEA 108.27 USD
 
-; 2012-03-23 price GLD                                      65.16 USD
+P 2012-03-23 VHT 39.74 USD
 
-; 2012-03-30 price VBMPX                                    91.12 USD
+P 2012-03-23 GLD 65.16 USD
 
-; 2012-03-30 price RGAGX                                   108.56 USD
+P 2012-03-30 VBMPX 91.12 USD
 
-; 2012-03-30 price ITOT                                    133.78 USD
+P 2012-03-30 RGAGX 108.56 USD
 
-; 2012-03-30 price VEA                                     108.63 USD
+P 2012-03-30 ITOT 133.78 USD
 
-; 2012-03-30 price VHT                                      39.99 USD
+P 2012-03-30 VEA 108.63 USD
 
-; 2012-03-30 price GLD                                      65.65 USD
+P 2012-03-30 VHT 39.99 USD
 
-; 2012-04-06 price VBMPX                                    89.93 USD
+P 2012-03-30 GLD 65.65 USD
 
-; 2012-04-06 price RGAGX                                   109.15 USD
+P 2012-04-06 VBMPX 89.93 USD
 
-; 2012-04-06 price ITOT                                    132.49 USD
+P 2012-04-06 RGAGX 109.15 USD
 
-; 2012-04-06 price VEA                                     110.03 USD
+P 2012-04-06 ITOT 132.49 USD
 
-; 2012-04-06 price VHT                                      40.77 USD
+P 2012-04-06 VEA 110.03 USD
 
-; 2012-04-06 price GLD                                      65.05 USD
+P 2012-04-06 VHT 40.77 USD
 
-; 2012-04-13 price VBMPX                                    88.96 USD
+P 2012-04-06 GLD 65.05 USD
 
-; 2012-04-13 price RGAGX                                   106.77 USD
+P 2012-04-13 VBMPX 88.96 USD
 
-; 2012-04-13 price ITOT                                    131.99 USD
+P 2012-04-13 RGAGX 106.77 USD
 
-; 2012-04-13 price VEA                                     110.28 USD
+P 2012-04-13 ITOT 131.99 USD
 
-; 2012-04-13 price VHT                                      40.82 USD
+P 2012-04-13 VEA 110.28 USD
 
-; 2012-04-13 price GLD                                      66.63 USD
+P 2012-04-13 VHT 40.82 USD
 
-; 2012-04-20 price VBMPX                                    90.22 USD
+P 2012-04-13 GLD 66.63 USD
 
-; 2012-04-20 price RGAGX                                   106.36 USD
+P 2012-04-20 VBMPX 90.22 USD
 
-; 2012-04-20 price ITOT                                    131.01 USD
+P 2012-04-20 RGAGX 106.36 USD
 
-; 2012-04-20 price VEA                                     109.16 USD
+P 2012-04-20 ITOT 131.01 USD
 
-; 2012-04-20 price VHT                                      41.11 USD
+P 2012-04-20 VEA 109.16 USD
 
-; 2012-04-20 price GLD                                      67.37 USD
+P 2012-04-20 VHT 41.11 USD
 
-; 2012-04-27 price VBMPX                                    88.14 USD
+P 2012-04-20 GLD 67.37 USD
 
-; 2012-04-27 price RGAGX                                   104.49 USD
+P 2012-04-27 VBMPX 88.14 USD
 
-; 2012-04-27 price ITOT                                    130.49 USD
+P 2012-04-27 RGAGX 104.49 USD
 
-; 2012-04-27 price VEA                                     108.79 USD
+P 2012-04-27 ITOT 130.49 USD
 
-; 2012-04-27 price VHT                                      42.71 USD
+P 2012-04-27 VEA 108.79 USD
 
-; 2012-04-27 price GLD                                      68.07 USD
+P 2012-04-27 VHT 42.71 USD
 
-; 2012-05-04 price VBMPX                                    87.90 USD
+P 2012-04-27 GLD 68.07 USD
 
-; 2012-05-04 price RGAGX                                   105.84 USD
+P 2012-05-04 VBMPX 87.90 USD
 
-; 2012-05-04 price ITOT                                    130.35 USD
+P 2012-05-04 RGAGX 105.84 USD
 
-; 2012-05-04 price VEA                                     109.14 USD
+P 2012-05-04 ITOT 130.35 USD
 
-; 2012-05-04 price VHT                                      42.77 USD
+P 2012-05-04 VEA 109.14 USD
 
-; 2012-05-04 price GLD                                      69.32 USD
+P 2012-05-04 VHT 42.77 USD
 
-; 2012-05-11 price VBMPX                                    89.50 USD
+P 2012-05-04 GLD 69.32 USD
 
-; 2012-05-11 price RGAGX                                   105.12 USD
+P 2012-05-11 VBMPX 89.50 USD
 
-; 2012-05-11 price ITOT                                    129.60 USD
+P 2012-05-11 RGAGX 105.12 USD
 
-; 2012-05-11 price VEA                                     108.55 USD
+P 2012-05-11 ITOT 129.60 USD
 
-; 2012-05-11 price VHT                                      42.71 USD
+P 2012-05-11 VEA 108.55 USD
 
-; 2012-05-11 price GLD                                      69.00 USD
+P 2012-05-11 VHT 42.71 USD
 
-; 2012-05-18 price VBMPX                                    89.50 USD
+P 2012-05-11 GLD 69.00 USD
 
-; 2012-05-18 price RGAGX                                   107.85 USD
+P 2012-05-18 VBMPX 89.50 USD
 
-; 2012-05-18 price ITOT                                    128.45 USD
+P 2012-05-18 RGAGX 107.85 USD
 
-; 2012-05-18 price VEA                                     110.40 USD
+P 2012-05-18 ITOT 128.45 USD
 
-; 2012-05-18 price VHT                                      43.49 USD
+P 2012-05-18 VEA 110.40 USD
 
-; 2012-05-18 price GLD                                      70.29 USD
+P 2012-05-18 VHT 43.49 USD
 
-; 2012-05-25 price VBMPX                                    89.21 USD
+P 2012-05-18 GLD 70.29 USD
 
-; 2012-05-25 price RGAGX                                   110.99 USD
+P 2012-05-25 VBMPX 89.21 USD
 
-; 2012-05-25 price ITOT                                    129.22 USD
+P 2012-05-25 RGAGX 110.99 USD
 
-; 2012-05-25 price VEA                                     111.39 USD
+P 2012-05-25 ITOT 129.22 USD
 
-; 2012-05-25 price VHT                                      44.27 USD
+P 2012-05-25 VEA 111.39 USD
 
-; 2012-05-25 price GLD                                      69.84 USD
+P 2012-05-25 VHT 44.27 USD
 
-; 2012-06-01 price VBMPX                                    88.93 USD
+P 2012-05-25 GLD 69.84 USD
 
-; 2012-06-01 price RGAGX                                   110.45 USD
+P 2012-06-01 VBMPX 88.93 USD
 
-; 2012-06-01 price ITOT                                    130.39 USD
+P 2012-06-01 RGAGX 110.45 USD
 
-; 2012-06-01 price VEA                                     110.44 USD
+P 2012-06-01 ITOT 130.39 USD
 
-; 2012-06-01 price VHT                                      43.69 USD
+P 2012-06-01 VEA 110.44 USD
 
-; 2012-06-01 price GLD                                      71.69 USD
+P 2012-06-01 VHT 43.69 USD
 
-; 2012-06-08 price VBMPX                                    88.86 USD
+P 2012-06-01 GLD 71.69 USD
 
-; 2012-06-08 price RGAGX                                   113.16 USD
+P 2012-06-08 VBMPX 88.86 USD
 
-; 2012-06-08 price ITOT                                    131.09 USD
+P 2012-06-08 RGAGX 113.16 USD
 
-; 2012-06-08 price VEA                                     111.21 USD
+P 2012-06-08 ITOT 131.09 USD
 
-; 2012-06-08 price VHT                                      44.62 USD
+P 2012-06-08 VEA 111.21 USD
 
-; 2012-06-08 price GLD                                      72.13 USD
+P 2012-06-08 VHT 44.62 USD
 
-; 2012-06-15 price VBMPX                                    87.21 USD
+P 2012-06-08 GLD 72.13 USD
 
-; 2012-06-15 price RGAGX                                   106.39 USD
+P 2012-06-15 VBMPX 87.21 USD
 
-; 2012-06-15 price ITOT                                    131.87 USD
+P 2012-06-15 RGAGX 106.39 USD
 
-; 2012-06-15 price VEA                                     112.15 USD
+P 2012-06-15 ITOT 131.87 USD
 
-; 2012-06-15 price VHT                                      45.24 USD
+P 2012-06-15 VEA 112.15 USD
 
-; 2012-06-15 price GLD                                      72.96 USD
+P 2012-06-15 VHT 45.24 USD
 
-; 2012-06-22 price VBMPX                                    86.88 USD
+P 2012-06-15 GLD 72.96 USD
 
-; 2012-06-22 price RGAGX                                   107.38 USD
+P 2012-06-22 VBMPX 86.88 USD
 
-; 2012-06-22 price ITOT                                    131.29 USD
+P 2012-06-22 RGAGX 107.38 USD
 
-; 2012-06-22 price VEA                                     114.23 USD
+P 2012-06-22 ITOT 131.29 USD
 
-; 2012-06-22 price VHT                                      45.96 USD
+P 2012-06-22 VEA 114.23 USD
 
-; 2012-06-22 price GLD                                      73.30 USD
+P 2012-06-22 VHT 45.96 USD
 
-; 2012-06-29 price VBMPX                                    87.44 USD
+P 2012-06-22 GLD 73.30 USD
 
-; 2012-06-29 price RGAGX                                   107.76 USD
+P 2012-06-29 VBMPX 87.44 USD
 
-; 2012-06-29 price ITOT                                    130.94 USD
+P 2012-06-29 RGAGX 107.76 USD
 
-; 2012-06-29 price VEA                                     115.35 USD
+P 2012-06-29 ITOT 130.94 USD
 
-; 2012-06-29 price VHT                                      46.01 USD
+P 2012-06-29 VEA 115.35 USD
 
-; 2012-06-29 price GLD                                      73.49 USD
+P 2012-06-29 VHT 46.01 USD
 
-; 2012-07-06 price VBMPX                                    88.14 USD
+P 2012-06-29 GLD 73.49 USD
 
-; 2012-07-06 price RGAGX                                   108.78 USD
+P 2012-07-06 VBMPX 88.14 USD
 
-; 2012-07-06 price ITOT                                    130.32 USD
+P 2012-07-06 RGAGX 108.78 USD
 
-; 2012-07-06 price VEA                                     116.41 USD
+P 2012-07-06 ITOT 130.32 USD
 
-; 2012-07-06 price VHT                                      45.13 USD
+P 2012-07-06 VEA 116.41 USD
 
-; 2012-07-06 price GLD                                      73.81 USD
+P 2012-07-06 VHT 45.13 USD
 
-; 2012-07-13 price VBMPX                                    88.79 USD
+P 2012-07-06 GLD 73.81 USD
 
-; 2012-07-13 price RGAGX                                   113.21 USD
+P 2012-07-13 VBMPX 88.79 USD
 
-; 2012-07-13 price ITOT                                    130.71 USD
+P 2012-07-13 RGAGX 113.21 USD
 
-; 2012-07-13 price VEA                                     117.51 USD
+P 2012-07-13 ITOT 130.71 USD
 
-; 2012-07-13 price VHT                                      45.97 USD
+P 2012-07-13 VEA 117.51 USD
 
-; 2012-07-13 price GLD                                      74.53 USD
+P 2012-07-13 VHT 45.97 USD
 
-; 2012-07-20 price VBMPX                                    89.67 USD
+P 2012-07-13 GLD 74.53 USD
 
-; 2012-07-20 price RGAGX                                   111.42 USD
+P 2012-07-20 VBMPX 89.67 USD
 
-; 2012-07-20 price ITOT                                    131.55 USD
+P 2012-07-20 RGAGX 111.42 USD
 
-; 2012-07-20 price VEA                                     117.46 USD
+P 2012-07-20 ITOT 131.55 USD
 
-; 2012-07-20 price VHT                                      45.21 USD
+P 2012-07-20 VEA 117.46 USD
 
-; 2012-07-20 price GLD                                      76.00 USD
+P 2012-07-20 VHT 45.21 USD
 
-; 2012-07-27 price VBMPX                                    88.09 USD
+P 2012-07-20 GLD 76.00 USD
 
-; 2012-07-27 price RGAGX                                   112.40 USD
+P 2012-07-27 VBMPX 88.09 USD
 
-; 2012-07-27 price ITOT                                    133.70 USD
+P 2012-07-27 RGAGX 112.40 USD
 
-; 2012-07-27 price VEA                                     116.89 USD
+P 2012-07-27 ITOT 133.70 USD
 
-; 2012-07-27 price VHT                                      45.00 USD
+P 2012-07-27 VEA 116.89 USD
 
-; 2012-07-27 price GLD                                      76.03 USD
+P 2012-07-27 VHT 45.00 USD
 
-; 2012-08-03 price VBMPX                                    88.67 USD
+P 2012-07-27 GLD 76.03 USD
 
-; 2012-08-03 price RGAGX                                   111.29 USD
+P 2012-08-03 VBMPX 88.67 USD
 
-; 2012-08-03 price ITOT                                    134.03 USD
+P 2012-08-03 RGAGX 111.29 USD
 
-; 2012-08-03 price VEA                                     116.37 USD
+P 2012-08-03 ITOT 134.03 USD
 
-; 2012-08-03 price VHT                                      45.04 USD
+P 2012-08-03 VEA 116.37 USD
 
-; 2012-08-03 price GLD                                      75.66 USD
+P 2012-08-03 VHT 45.04 USD
 
-; 2012-08-10 price VBMPX                                    90.42 USD
+P 2012-08-03 GLD 75.66 USD
 
-; 2012-08-10 price RGAGX                                   109.62 USD
+P 2012-08-10 VBMPX 90.42 USD
 
-; 2012-08-10 price ITOT                                    133.65 USD
+P 2012-08-10 RGAGX 109.62 USD
 
-; 2012-08-10 price VEA                                     116.76 USD
+P 2012-08-10 ITOT 133.65 USD
 
-; 2012-08-10 price VHT                                      46.38 USD
+P 2012-08-10 VEA 116.76 USD
 
-; 2012-08-10 price GLD                                      77.72 USD
+P 2012-08-10 VHT 46.38 USD
 
-; 2012-08-17 price VBMPX                                    92.04 USD
+P 2012-08-10 GLD 77.72 USD
 
-; 2012-08-17 price RGAGX                                   108.05 USD
+P 2012-08-17 VBMPX 92.04 USD
 
-; 2012-08-17 price ITOT                                    134.63 USD
+P 2012-08-17 RGAGX 108.05 USD
 
-; 2012-08-17 price VEA                                     117.44 USD
+P 2012-08-17 ITOT 134.63 USD
 
-; 2012-08-17 price VHT                                      45.77 USD
+P 2012-08-17 VEA 117.44 USD
 
-; 2012-08-17 price GLD                                      79.03 USD
+P 2012-08-17 VHT 45.77 USD
 
-; 2012-08-24 price VBMPX                                    90.40 USD
+P 2012-08-17 GLD 79.03 USD
 
-; 2012-08-24 price RGAGX                                   106.77 USD
+P 2012-08-24 VBMPX 90.40 USD
 
-; 2012-08-24 price ITOT                                    135.26 USD
+P 2012-08-24 RGAGX 106.77 USD
 
-; 2012-08-24 price VEA                                     117.99 USD
+P 2012-08-24 ITOT 135.26 USD
 
-; 2012-08-24 price VHT                                      45.93 USD
+P 2012-08-24 VEA 117.99 USD
 
-; 2012-08-24 price GLD                                      80.04 USD
+P 2012-08-24 VHT 45.93 USD
 
-; 2012-08-31 price VBMPX                                    91.59 USD
+P 2012-08-24 GLD 80.04 USD
 
-; 2012-08-31 price RGAGX                                   108.35 USD
+P 2012-08-31 VBMPX 91.59 USD
 
-; 2012-08-31 price ITOT                                    135.65 USD
+P 2012-08-31 RGAGX 108.35 USD
 
-; 2012-08-31 price VEA                                     118.86 USD
+P 2012-08-31 ITOT 135.65 USD
 
-; 2012-08-31 price VHT                                      46.37 USD
+P 2012-08-31 VEA 118.86 USD
 
-; 2012-08-31 price GLD                                      80.43 USD
+P 2012-08-31 VHT 46.37 USD
 
-; 2012-09-07 price VBMPX                                    91.69 USD
+P 2012-08-31 GLD 80.43 USD
 
-; 2012-09-07 price RGAGX                                   108.48 USD
+P 2012-09-07 VBMPX 91.69 USD
 
-; 2012-09-07 price ITOT                                    133.70 USD
+P 2012-09-07 RGAGX 108.48 USD
 
-; 2012-09-07 price VEA                                     120.96 USD
+P 2012-09-07 ITOT 133.70 USD
 
-; 2012-09-07 price VHT                                      46.73 USD
+P 2012-09-07 VEA 120.96 USD
 
-; 2012-09-07 price GLD                                      79.84 USD
+P 2012-09-07 VHT 46.73 USD
 
-; 2012-09-14 price VBMPX                                    91.95 USD
+P 2012-09-07 GLD 79.84 USD
 
-; 2012-09-14 price RGAGX                                   106.05 USD
+P 2012-09-14 VBMPX 91.95 USD
 
-; 2012-09-14 price ITOT                                    134.78 USD
+P 2012-09-14 RGAGX 106.05 USD
 
-; 2012-09-14 price VEA                                     120.66 USD
+P 2012-09-14 ITOT 134.78 USD
 
-; 2012-09-14 price VHT                                      46.42 USD
+P 2012-09-14 VEA 120.66 USD
 
-; 2012-09-14 price GLD                                      80.03 USD
+P 2012-09-14 VHT 46.42 USD
 
-; 2012-09-21 price VBMPX                                    91.37 USD
+P 2012-09-14 GLD 80.03 USD
 
-; 2012-09-21 price RGAGX                                   105.48 USD
+P 2012-09-21 VBMPX 91.37 USD
 
-; 2012-09-21 price ITOT                                    136.83 USD
+P 2012-09-21 RGAGX 105.48 USD
 
-; 2012-09-21 price VEA                                     120.14 USD
+P 2012-09-21 ITOT 136.83 USD
 
-; 2012-09-21 price VHT                                      45.60 USD
+P 2012-09-21 VEA 120.14 USD
 
-; 2012-09-21 price GLD                                      79.97 USD
+P 2012-09-21 VHT 45.60 USD
 
-; 2012-09-28 price VBMPX                                    91.84 USD
+P 2012-09-21 GLD 79.97 USD
 
-; 2012-09-28 price RGAGX                                   101.19 USD
+P 2012-09-28 VBMPX 91.84 USD
 
-; 2012-09-28 price ITOT                                    136.85 USD
+P 2012-09-28 RGAGX 101.19 USD
 
-; 2012-09-28 price VEA                                     120.93 USD
+P 2012-09-28 ITOT 136.85 USD
 
-; 2012-09-28 price VHT                                      45.12 USD
+P 2012-09-28 VEA 120.93 USD
 
-; 2012-09-28 price GLD                                      80.43 USD
+P 2012-09-28 VHT 45.12 USD
 
-; 2012-10-05 price VBMPX                                    93.21 USD
+P 2012-09-28 GLD 80.43 USD
 
-; 2012-10-05 price RGAGX                                   100.87 USD
+P 2012-10-05 VBMPX 93.21 USD
 
-; 2012-10-05 price ITOT                                    137.55 USD
+P 2012-10-05 RGAGX 100.87 USD
 
-; 2012-10-05 price VEA                                     120.92 USD
+P 2012-10-05 ITOT 137.55 USD
 
-; 2012-10-05 price VHT                                      44.72 USD
+P 2012-10-05 VEA 120.92 USD
 
-; 2012-10-05 price GLD                                      80.57 USD
+P 2012-10-05 VHT 44.72 USD
 
-; 2012-10-12 price VBMPX                                    93.22 USD
+P 2012-10-05 GLD 80.57 USD
 
-; 2012-10-12 price RGAGX                                   100.30 USD
+P 2012-10-12 VBMPX 93.22 USD
 
-; 2012-10-12 price ITOT                                    137.66 USD
+P 2012-10-12 RGAGX 100.30 USD
 
-; 2012-10-12 price VEA                                     117.65 USD
+P 2012-10-12 ITOT 137.66 USD
 
-; 2012-10-12 price VHT                                      44.14 USD
+P 2012-10-12 VEA 117.65 USD
 
-; 2012-10-12 price GLD                                      82.19 USD
+P 2012-10-12 VHT 44.14 USD
 
-; 2012-10-19 price VBMPX                                    94.14 USD
+P 2012-10-12 GLD 82.19 USD
 
-; 2012-10-19 price RGAGX                                    96.07 USD
+P 2012-10-19 VBMPX 94.14 USD
 
-; 2012-10-19 price ITOT                                    136.49 USD
+P 2012-10-19 RGAGX 96.07 USD
 
-; 2012-10-19 price VEA                                     117.63 USD
+P 2012-10-19 ITOT 136.49 USD
 
-; 2012-10-19 price VHT                                      44.30 USD
+P 2012-10-19 VEA 117.63 USD
 
-; 2012-10-19 price GLD                                      81.58 USD
+P 2012-10-19 VHT 44.30 USD
 
-; 2012-10-26 price VBMPX                                    92.78 USD
+P 2012-10-19 GLD 81.58 USD
 
-; 2012-10-26 price RGAGX                                    93.39 USD
+P 2012-10-26 VBMPX 92.78 USD
 
-; 2012-10-26 price ITOT                                    137.66 USD
+P 2012-10-26 RGAGX 93.39 USD
 
-; 2012-10-26 price VEA                                     117.46 USD
+P 2012-10-26 ITOT 137.66 USD
 
-; 2012-10-26 price VHT                                      43.21 USD
+P 2012-10-26 VEA 117.46 USD
 
-; 2012-10-26 price GLD                                      81.46 USD
+P 2012-10-26 VHT 43.21 USD
 
-; 2012-11-02 price VBMPX                                    93.30 USD
+P 2012-10-26 GLD 81.46 USD
 
-; 2012-11-02 price RGAGX                                    93.79 USD
+P 2012-11-02 VBMPX 93.30 USD
 
-; 2012-11-02 price ITOT                                    138.29 USD
+P 2012-11-02 RGAGX 93.79 USD
 
-; 2012-11-02 price VEA                                     117.52 USD
+P 2012-11-02 ITOT 138.29 USD
 
-; 2012-11-02 price VHT                                      43.39 USD
+P 2012-11-02 VEA 117.52 USD
 
-; 2012-11-02 price GLD                                      82.50 USD
+P 2012-11-02 VHT 43.39 USD
 
-; 2012-11-09 price VBMPX                                    94.29 USD
+P 2012-11-02 GLD 82.50 USD
 
-; 2012-11-09 price RGAGX                                    91.75 USD
+P 2012-11-09 VBMPX 94.29 USD
 
-; 2012-11-09 price ITOT                                    139.73 USD
+P 2012-11-09 RGAGX 91.75 USD
 
-; 2012-11-09 price VEA                                     117.51 USD
+P 2012-11-09 ITOT 139.73 USD
 
-; 2012-11-09 price VHT                                      44.42 USD
+P 2012-11-09 VEA 117.51 USD
 
-; 2012-11-09 price GLD                                      83.45 USD
+P 2012-11-09 VHT 44.42 USD
 
-; 2012-11-16 price VBMPX                                    94.27 USD
+P 2012-11-09 GLD 83.45 USD
 
-; 2012-11-16 price RGAGX                                    90.33 USD
+P 2012-11-16 VBMPX 94.27 USD
 
-; 2012-11-16 price ITOT                                    139.79 USD
+P 2012-11-16 RGAGX 90.33 USD
 
-; 2012-11-16 price VEA                                     117.75 USD
+P 2012-11-16 ITOT 139.79 USD
 
-; 2012-11-16 price VHT                                      43.70 USD
+P 2012-11-16 VEA 117.75 USD
 
-; 2012-11-16 price GLD                                      82.58 USD
+P 2012-11-16 VHT 43.70 USD
 
-; 2012-11-23 price VBMPX                                    95.66 USD
+P 2012-11-16 GLD 82.58 USD
 
-; 2012-11-23 price RGAGX                                    89.30 USD
+P 2012-11-23 VBMPX 95.66 USD
 
-; 2012-11-23 price ITOT                                    139.86 USD
+P 2012-11-23 RGAGX 89.30 USD
 
-; 2012-11-23 price VEA                                     117.27 USD
+P 2012-11-23 ITOT 139.86 USD
 
-; 2012-11-23 price VHT                                      42.90 USD
+P 2012-11-23 VEA 117.27 USD
 
-; 2012-11-23 price GLD                                      82.63 USD
+P 2012-11-23 VHT 42.90 USD
 
-; 2012-11-30 price VBMPX                                    97.15 USD
+P 2012-11-23 GLD 82.63 USD
 
-; 2012-11-30 price RGAGX                                    86.81 USD
+P 2012-11-30 VBMPX 97.15 USD
 
-; 2012-11-30 price ITOT                                    138.91 USD
+P 2012-11-30 RGAGX 86.81 USD
 
-; 2012-11-30 price VEA                                     116.63 USD
+P 2012-11-30 ITOT 138.91 USD
 
-; 2012-11-30 price VHT                                      43.40 USD
+P 2012-11-30 VEA 116.63 USD
 
-; 2012-11-30 price GLD                                      82.62 USD
+P 2012-11-30 VHT 43.40 USD
 
-; 2012-12-07 price VBMPX                                    98.95 USD
+P 2012-11-30 GLD 82.62 USD
 
-; 2012-12-07 price RGAGX                                    85.56 USD
+P 2012-12-07 VBMPX 98.95 USD
 
-; 2012-12-07 price ITOT                                    138.53 USD
+P 2012-12-07 RGAGX 85.56 USD
 
-; 2012-12-07 price VEA                                     116.64 USD
+P 2012-12-07 ITOT 138.53 USD
 
-; 2012-12-07 price VHT                                      44.14 USD
+P 2012-12-07 VEA 116.64 USD
 
-; 2012-12-07 price GLD                                      82.80 USD
+P 2012-12-07 VHT 44.14 USD
 
-; 2012-12-14 price VBMPX                                    99.20 USD
+P 2012-12-07 GLD 82.80 USD
 
-; 2012-12-14 price RGAGX                                    88.36 USD
+P 2012-12-14 VBMPX 99.20 USD
 
-; 2012-12-14 price ITOT                                    139.18 USD
+P 2012-12-14 RGAGX 88.36 USD
 
-; 2012-12-14 price VEA                                     116.58 USD
+P 2012-12-14 ITOT 139.18 USD
 
-; 2012-12-14 price VHT                                      44.66 USD
+P 2012-12-14 VEA 116.58 USD
 
-; 2012-12-14 price GLD                                      83.05 USD
+P 2012-12-14 VHT 44.66 USD
 
-; 2012-12-21 price VBMPX                                    97.29 USD
+P 2012-12-14 GLD 83.05 USD
 
-; 2012-12-21 price RGAGX                                    90.32 USD
+P 2012-12-21 VBMPX 97.29 USD
 
-; 2012-12-21 price ITOT                                    139.32 USD
+P 2012-12-21 RGAGX 90.32 USD
 
-; 2012-12-21 price VEA                                     116.85 USD
+P 2012-12-21 ITOT 139.32 USD
 
-; 2012-12-21 price VHT                                      45.22 USD
+P 2012-12-21 VEA 116.85 USD
 
-; 2012-12-21 price GLD                                      83.35 USD
+P 2012-12-21 VHT 45.22 USD
 
-; 2012-12-28 price VBMPX                                    96.18 USD
+P 2012-12-21 GLD 83.35 USD
 
-; 2012-12-28 price RGAGX                                    89.91 USD
+P 2012-12-28 VBMPX 96.18 USD
 
-; 2012-12-28 price ITOT                                    140.78 USD
+P 2012-12-28 RGAGX 89.91 USD
 
-; 2012-12-28 price VEA                                     114.66 USD
+P 2012-12-28 ITOT 140.78 USD
 
-; 2012-12-28 price VHT                                      44.74 USD
+P 2012-12-28 VEA 114.66 USD
 
-; 2012-12-28 price GLD                                      82.88 USD
+P 2012-12-28 VHT 44.74 USD
 
-; 2013-01-04 price VBMPX                                    99.79 USD
+P 2012-12-28 GLD 82.88 USD
 
-; 2013-01-04 price RGAGX                                    89.63 USD
+P 2013-01-04 VBMPX 99.79 USD
 
-; 2013-01-04 price ITOT                                    140.47 USD
+P 2013-01-04 RGAGX 89.63 USD
 
-; 2013-01-04 price VEA                                     116.06 USD
+P 2013-01-04 ITOT 140.47 USD
 
-; 2013-01-04 price VHT                                      45.51 USD
+P 2013-01-04 VEA 116.06 USD
 
-; 2013-01-04 price GLD                                      83.58 USD
+P 2013-01-04 VHT 45.51 USD
 
-; 2013-01-11 price VBMPX                                   102.79 USD
+P 2013-01-04 GLD 83.58 USD
 
-; 2013-01-11 price RGAGX                                    90.32 USD
+P 2013-01-11 VBMPX 102.79 USD
 
-; 2013-01-11 price ITOT                                    139.47 USD
+P 2013-01-11 RGAGX 90.32 USD
 
-; 2013-01-11 price VEA                                     116.16 USD
+P 2013-01-11 ITOT 139.47 USD
 
-; 2013-01-11 price VHT                                      45.17 USD
+P 2013-01-11 VEA 116.16 USD
 
-; 2013-01-11 price GLD                                      83.96 USD
+P 2013-01-11 VHT 45.17 USD
 
-; 2013-01-18 price VBMPX                                   102.05 USD
+P 2013-01-11 GLD 83.96 USD
 
-; 2013-01-18 price RGAGX                                    92.78 USD
+P 2013-01-18 VBMPX 102.05 USD
 
-; 2013-01-18 price ITOT                                    139.52 USD
+P 2013-01-18 RGAGX 92.78 USD
 
-; 2013-01-18 price VEA                                     116.56 USD
+P 2013-01-18 ITOT 139.52 USD
 
-; 2013-01-18 price VHT                                      45.48 USD
+P 2013-01-18 VEA 116.56 USD
 
-; 2013-01-18 price GLD                                      83.92 USD
+P 2013-01-18 VHT 45.48 USD
 
-; 2013-01-25 price VBMPX                                   102.55 USD
+P 2013-01-18 GLD 83.92 USD
 
-; 2013-01-25 price RGAGX                                    89.41 USD
+P 2013-01-25 VBMPX 102.55 USD
 
-; 2013-01-25 price ITOT                                    137.56 USD
+P 2013-01-25 RGAGX 89.41 USD
 
-; 2013-01-25 price VEA                                     115.11 USD
+P 2013-01-25 ITOT 137.56 USD
 
-; 2013-01-25 price VHT                                      45.49 USD
+P 2013-01-25 VEA 115.11 USD
 
-; 2013-01-25 price GLD                                      85.11 USD
+P 2013-01-25 VHT 45.49 USD
 
-; 2013-02-01 price VBMPX                                   101.17 USD
+P 2013-01-25 GLD 85.11 USD
 
-; 2013-02-01 price RGAGX                                    88.53 USD
+P 2013-02-01 VBMPX 101.17 USD
 
-; 2013-02-01 price ITOT                                    138.06 USD
+P 2013-02-01 RGAGX 88.53 USD
 
-; 2013-02-01 price VEA                                     114.17 USD
+P 2013-02-01 ITOT 138.06 USD
 
-; 2013-02-01 price VHT                                      44.66 USD
+P 2013-02-01 VEA 114.17 USD
 
-; 2013-02-01 price GLD                                      83.63 USD
+P 2013-02-01 VHT 44.66 USD
 
-; 2013-02-08 price VBMPX                                   101.20 USD
+P 2013-02-01 GLD 83.63 USD
 
-; 2013-02-08 price RGAGX                                    87.51 USD
+P 2013-02-08 VBMPX 101.20 USD
 
-; 2013-02-08 price ITOT                                    136.22 USD
+P 2013-02-08 RGAGX 87.51 USD
 
-; 2013-02-08 price VEA                                     113.77 USD
+P 2013-02-08 ITOT 136.22 USD
 
-; 2013-02-08 price VHT                                      44.82 USD
+P 2013-02-08 VEA 113.77 USD
 
-; 2013-02-08 price GLD                                      83.23 USD
+P 2013-02-08 VHT 44.82 USD
 
-; 2013-02-15 price VBMPX                                   103.21 USD
+P 2013-02-08 GLD 83.23 USD
 
-; 2013-02-15 price RGAGX                                    87.86 USD
+P 2013-02-15 VBMPX 103.21 USD
 
-; 2013-02-15 price ITOT                                    135.96 USD
+P 2013-02-15 RGAGX 87.86 USD
 
-; 2013-02-15 price VEA                                     113.53 USD
+P 2013-02-15 ITOT 135.96 USD
 
-; 2013-02-15 price VHT                                      44.39 USD
+P 2013-02-15 VEA 113.53 USD
 
-; 2013-02-15 price GLD                                      83.60 USD
+P 2013-02-15 VHT 44.39 USD
 
-; 2013-02-22 price VBMPX                                   103.56 USD
+P 2013-02-15 GLD 83.60 USD
 
-; 2013-02-22 price RGAGX                                    89.62 USD
+P 2013-02-22 VBMPX 103.56 USD
 
-; 2013-02-22 price ITOT                                    136.78 USD
+P 2013-02-22 RGAGX 89.62 USD
 
-; 2013-02-22 price VEA                                     113.06 USD
+P 2013-02-22 ITOT 136.78 USD
 
-; 2013-02-22 price VHT                                      44.29 USD
+P 2013-02-22 VEA 113.06 USD
 
-; 2013-02-22 price GLD                                      84.36 USD
+P 2013-02-22 VHT 44.29 USD
 
-; 2013-03-01 price VBMPX                                   103.36 USD
+P 2013-02-22 GLD 84.36 USD
 
-; 2013-03-01 price RGAGX                                    91.73 USD
+P 2013-03-01 VBMPX 103.36 USD
 
-; 2013-03-01 price ITOT                                    137.70 USD
+P 2013-03-01 RGAGX 91.73 USD
 
-; 2013-03-01 price VEA                                     112.88 USD
+P 2013-03-01 ITOT 137.70 USD
 
-; 2013-03-01 price VHT                                      43.72 USD
+P 2013-03-01 VEA 112.88 USD
 
-; 2013-03-01 price GLD                                      84.00 USD
+P 2013-03-01 VHT 43.72 USD
 
-; 2013-03-08 price VBMPX                                   103.48 USD
+P 2013-03-01 GLD 84.00 USD
 
-; 2013-03-08 price RGAGX                                    91.07 USD
+P 2013-03-08 VBMPX 103.48 USD
 
-; 2013-03-08 price ITOT                                    137.68 USD
+P 2013-03-08 RGAGX 91.07 USD
 
-; 2013-03-08 price VEA                                     111.67 USD
+P 2013-03-08 ITOT 137.68 USD
 
-; 2013-03-08 price VHT                                      44.32 USD
+P 2013-03-08 VEA 111.67 USD
 
-; 2013-03-08 price GLD                                      83.94 USD
+P 2013-03-08 VHT 44.32 USD
 
-; 2013-03-15 price VBMPX                                   105.08 USD
+P 2013-03-08 GLD 83.94 USD
 
-; 2013-03-15 price RGAGX                                    90.77 USD
+P 2013-03-15 VBMPX 105.08 USD
 
-; 2013-03-15 price ITOT                                    140.46 USD
+P 2013-03-15 RGAGX 90.77 USD
 
-; 2013-03-15 price VEA                                     112.02 USD
+P 2013-03-15 ITOT 140.46 USD
 
-; 2013-03-15 price VHT                                      43.96 USD
+P 2013-03-15 VEA 112.02 USD
 
-; 2013-03-15 price GLD                                      84.76 USD
+P 2013-03-15 VHT 43.96 USD
 
-; 2013-03-22 price VBMPX                                   105.88 USD
+P 2013-03-15 GLD 84.76 USD
 
-; 2013-03-22 price RGAGX                                    92.89 USD
+P 2013-03-22 VBMPX 105.88 USD
 
-; 2013-03-22 price ITOT                                    140.14 USD
+P 2013-03-22 RGAGX 92.89 USD
 
-; 2013-03-22 price VEA                                     112.03 USD
+P 2013-03-22 ITOT 140.14 USD
 
-; 2013-03-22 price VHT                                      45.09 USD
+P 2013-03-22 VEA 112.03 USD
 
-; 2013-03-22 price GLD                                      85.64 USD
+P 2013-03-22 VHT 45.09 USD
 
-; 2013-03-29 price VBMPX                                   105.36 USD
+P 2013-03-22 GLD 85.64 USD
 
-; 2013-03-29 price RGAGX                                    91.78 USD
+P 2013-03-29 VBMPX 105.36 USD
 
-; 2013-03-29 price ITOT                                    140.69 USD
+P 2013-03-29 RGAGX 91.78 USD
 
-; 2013-03-29 price VEA                                     112.27 USD
+P 2013-03-29 ITOT 140.69 USD
 
-; 2013-03-29 price VHT                                      45.73 USD
+P 2013-03-29 VEA 112.27 USD
 
-; 2013-03-29 price GLD                                      84.15 USD
+P 2013-03-29 VHT 45.73 USD
 
-; 2013-04-05 price VBMPX                                   104.02 USD
+P 2013-03-29 GLD 84.15 USD
 
-; 2013-04-05 price RGAGX                                    89.72 USD
+P 2013-04-05 VBMPX 104.02 USD
 
-; 2013-04-05 price ITOT                                    138.81 USD
+P 2013-04-05 RGAGX 89.72 USD
 
-; 2013-04-05 price VEA                                     111.94 USD
+P 2013-04-05 ITOT 138.81 USD
 
-; 2013-04-05 price VHT                                      46.65 USD
+P 2013-04-05 VEA 111.94 USD
 
-; 2013-04-05 price GLD                                      83.93 USD
+P 2013-04-05 VHT 46.65 USD
 
-; 2013-04-12 price VBMPX                                   103.38 USD
+P 2013-04-05 GLD 83.93 USD
 
-; 2013-04-12 price RGAGX                                    91.42 USD
+P 2013-04-12 VBMPX 103.38 USD
 
-; 2013-04-12 price ITOT                                    139.27 USD
+P 2013-04-12 RGAGX 91.42 USD
 
-; 2013-04-12 price VEA                                     112.41 USD
+P 2013-04-12 ITOT 139.27 USD
 
-; 2013-04-12 price VHT                                      47.32 USD
+P 2013-04-12 VEA 112.41 USD
 
-; 2013-04-12 price GLD                                      84.81 USD
+P 2013-04-12 VHT 47.32 USD
 
-; 2013-04-19 price VBMPX                                   104.49 USD
+P 2013-04-12 GLD 84.81 USD
 
-; 2013-04-19 price RGAGX                                    93.02 USD
+P 2013-04-19 VBMPX 104.49 USD
 
-; 2013-04-19 price ITOT                                    138.86 USD
+P 2013-04-19 RGAGX 93.02 USD
 
-; 2013-04-19 price VEA                                     113.04 USD
+P 2013-04-19 ITOT 138.86 USD
 
-; 2013-04-19 price VHT                                      46.63 USD
+P 2013-04-19 VEA 113.04 USD
 
-; 2013-04-19 price GLD                                      85.03 USD
+P 2013-04-19 VHT 46.63 USD
 
-; 2013-04-26 price VBMPX                                   105.43 USD
+P 2013-04-19 GLD 85.03 USD
 
-; 2013-04-26 price RGAGX                                    95.64 USD
+P 2013-04-26 VBMPX 105.43 USD
 
-; 2013-04-26 price ITOT                                    137.49 USD
+P 2013-04-26 RGAGX 95.64 USD
 
-; 2013-04-26 price VEA                                     111.96 USD
+P 2013-04-26 ITOT 137.49 USD
 
-; 2013-04-26 price VHT                                      46.89 USD
+P 2013-04-26 VEA 111.96 USD
 
-; 2013-04-26 price GLD                                      84.82 USD
+P 2013-04-26 VHT 46.89 USD
 
-; 2013-05-03 price VBMPX                                   105.48 USD
+P 2013-04-26 GLD 84.82 USD
 
-; 2013-05-03 price RGAGX                                    96.26 USD
+P 2013-05-03 VBMPX 105.48 USD
 
-; 2013-05-03 price ITOT                                    136.59 USD
+P 2013-05-03 RGAGX 96.26 USD
 
-; 2013-05-03 price VEA                                     111.33 USD
+P 2013-05-03 ITOT 136.59 USD
 
-; 2013-05-03 price VHT                                      47.07 USD
+P 2013-05-03 VEA 111.33 USD
 
-; 2013-05-03 price GLD                                      84.69 USD
+P 2013-05-03 VHT 47.07 USD
 
-; 2013-05-10 price VBMPX                                   105.28 USD
+P 2013-05-03 GLD 84.69 USD
 
-; 2013-05-10 price RGAGX                                    95.57 USD
+P 2013-05-10 VBMPX 105.28 USD
 
-; 2013-05-10 price ITOT                                    135.32 USD
+P 2013-05-10 RGAGX 95.57 USD
 
-; 2013-05-10 price VEA                                     109.79 USD
+P 2013-05-10 ITOT 135.32 USD
 
-; 2013-05-10 price VHT                                      45.50 USD
+P 2013-05-10 VEA 109.79 USD
 
-; 2013-05-10 price GLD                                      85.32 USD
+P 2013-05-10 VHT 45.50 USD
 
-; 2013-05-17 price VBMPX                                   105.96 USD
+P 2013-05-10 GLD 85.32 USD
 
-; 2013-05-17 price RGAGX                                    94.22 USD
+P 2013-05-17 VBMPX 105.96 USD
 
-; 2013-05-17 price ITOT                                    137.63 USD
+P 2013-05-17 RGAGX 94.22 USD
 
-; 2013-05-17 price VEA                                     111.71 USD
+P 2013-05-17 ITOT 137.63 USD
 
-; 2013-05-17 price VHT                                      45.56 USD
+P 2013-05-17 VEA 111.71 USD
 
-; 2013-05-17 price GLD                                      86.44 USD
+P 2013-05-17 VHT 45.56 USD
 
-; 2013-05-24 price VBMPX                                   105.21 USD
+P 2013-05-17 GLD 86.44 USD
 
-; 2013-05-24 price RGAGX                                    92.71 USD
+P 2013-05-24 VBMPX 105.21 USD
 
-; 2013-05-24 price ITOT                                    136.34 USD
+P 2013-05-24 RGAGX 92.71 USD
 
-; 2013-05-24 price VEA                                     111.50 USD
+P 2013-05-24 ITOT 136.34 USD
 
-; 2013-05-24 price VHT                                      45.12 USD
+P 2013-05-24 VEA 111.50 USD
 
-; 2013-05-24 price GLD                                      86.48 USD
+P 2013-05-24 VHT 45.12 USD
 
-; 2013-05-31 price VBMPX                                   105.55 USD
+P 2013-05-24 GLD 86.48 USD
 
-; 2013-05-31 price RGAGX                                    93.27 USD
+P 2013-05-31 VBMPX 105.55 USD
 
-; 2013-05-31 price ITOT                                    135.64 USD
+P 2013-05-31 RGAGX 93.27 USD
 
-; 2013-05-31 price VEA                                     110.96 USD
+P 2013-05-31 ITOT 135.64 USD
 
-; 2013-05-31 price VHT                                      45.29 USD
+P 2013-05-31 VEA 110.96 USD
 
-; 2013-05-31 price GLD                                      87.31 USD
+P 2013-05-31 VHT 45.29 USD
 
-; 2013-06-07 price VBMPX                                   106.07 USD
+P 2013-05-31 GLD 87.31 USD
 
-; 2013-06-07 price RGAGX                                    91.41 USD
+P 2013-06-07 VBMPX 106.07 USD
 
-; 2013-06-07 price ITOT                                    136.46 USD
+P 2013-06-07 RGAGX 91.41 USD
 
-; 2013-06-07 price VEA                                     110.00 USD
+P 2013-06-07 ITOT 136.46 USD
 
-; 2013-06-07 price VHT                                      46.04 USD
+P 2013-06-07 VEA 110.00 USD
 
-; 2013-06-07 price GLD                                      86.13 USD
+P 2013-06-07 VHT 46.04 USD
 
-; 2013-06-14 price VBMPX                                   105.62 USD
+P 2013-06-07 GLD 86.13 USD
 
-; 2013-06-14 price RGAGX                                    91.48 USD
+P 2013-06-14 VBMPX 105.62 USD
 
-; 2013-06-14 price ITOT                                    138.39 USD
+P 2013-06-14 RGAGX 91.48 USD
 
-; 2013-06-14 price VEA                                     107.56 USD
+P 2013-06-14 ITOT 138.39 USD
 
-; 2013-06-14 price VHT                                      46.00 USD
+P 2013-06-14 VEA 107.56 USD
 
-; 2013-06-14 price GLD                                      87.53 USD
+P 2013-06-14 VHT 46.00 USD
 
-; 2013-06-21 price VBMPX                                   105.37 USD
+P 2013-06-14 GLD 87.53 USD
 
-; 2013-06-21 price RGAGX                                    90.19 USD
+P 2013-06-21 VBMPX 105.37 USD
 
-; 2013-06-21 price ITOT                                    140.12 USD
+P 2013-06-21 RGAGX 90.19 USD
 
-; 2013-06-21 price VEA                                     106.12 USD
+P 2013-06-21 ITOT 140.12 USD
 
-; 2013-06-21 price VHT                                      45.14 USD
+P 2013-06-21 VEA 106.12 USD
 
-; 2013-06-21 price GLD                                      87.44 USD
+P 2013-06-21 VHT 45.14 USD
 
-; 2013-06-28 price VBMPX                                   105.37 USD
+P 2013-06-21 GLD 87.44 USD
 
-; 2013-06-28 price RGAGX                                    92.77 USD
+P 2013-06-28 VBMPX 105.37 USD
 
-; 2013-06-28 price ITOT                                    143.00 USD
+P 2013-06-28 RGAGX 92.77 USD
 
-; 2013-06-28 price VEA                                     107.31 USD
+P 2013-06-28 ITOT 143.00 USD
 
-; 2013-06-28 price VHT                                      45.12 USD
+P 2013-06-28 VEA 107.31 USD
 
-; 2013-06-28 price GLD                                      86.46 USD
+P 2013-06-28 VHT 45.12 USD
 
-; 2013-07-05 price VBMPX                                   104.31 USD
+P 2013-06-28 GLD 86.46 USD
 
-; 2013-07-05 price RGAGX                                    95.21 USD
+P 2013-07-05 VBMPX 104.31 USD
 
-; 2013-07-05 price ITOT                                    143.46 USD
+P 2013-07-05 RGAGX 95.21 USD
 
-; 2013-07-05 price VEA                                     107.61 USD
+P 2013-07-05 ITOT 143.46 USD
 
-; 2013-07-05 price VHT                                      44.44 USD
+P 2013-07-05 VEA 107.61 USD
 
-; 2013-07-05 price GLD                                      86.56 USD
+P 2013-07-05 VHT 44.44 USD
 
-; 2013-07-12 price VBMPX                                   104.38 USD
+P 2013-07-05 GLD 86.56 USD
 
-; 2013-07-12 price RGAGX                                    91.10 USD
+P 2013-07-12 VBMPX 104.38 USD
 
-; 2013-07-12 price ITOT                                    143.67 USD
+P 2013-07-12 RGAGX 91.10 USD
 
-; 2013-07-12 price VEA                                     106.71 USD
+P 2013-07-12 ITOT 143.67 USD
 
-; 2013-07-12 price VHT                                      44.79 USD
+P 2013-07-12 VEA 106.71 USD
 
-; 2013-07-12 price GLD                                      86.05 USD
+P 2013-07-12 VHT 44.79 USD
 
-; 2013-07-19 price VBMPX                                   105.43 USD
+P 2013-07-12 GLD 86.05 USD
 
-; 2013-07-19 price RGAGX                                    91.55 USD
+P 2013-07-19 VBMPX 105.43 USD
 
-; 2013-07-19 price ITOT                                    143.25 USD
+P 2013-07-19 RGAGX 91.55 USD
 
-; 2013-07-19 price VEA                                     106.99 USD
+P 2013-07-19 ITOT 143.25 USD
 
-; 2013-07-19 price VHT                                      44.40 USD
+P 2013-07-19 VEA 106.99 USD
 
-; 2013-07-19 price GLD                                      85.12 USD
+P 2013-07-19 VHT 44.40 USD
 
-; 2013-07-26 price VBMPX                                   107.37 USD
+P 2013-07-19 GLD 85.12 USD
 
-; 2013-07-26 price RGAGX                                    92.68 USD
+P 2013-07-26 VBMPX 107.37 USD
 
-; 2013-07-26 price ITOT                                    142.27 USD
+P 2013-07-26 RGAGX 92.68 USD
 
-; 2013-07-26 price VEA                                     107.22 USD
+P 2013-07-26 ITOT 142.27 USD
 
-; 2013-07-26 price VHT                                      44.36 USD
+P 2013-07-26 VEA 107.22 USD
 
-; 2013-07-26 price GLD                                      86.09 USD
+P 2013-07-26 VHT 44.36 USD
 
-; 2013-08-02 price VBMPX                                   107.78 USD
+P 2013-07-26 GLD 86.09 USD
 
-; 2013-08-02 price RGAGX                                    95.25 USD
+P 2013-08-02 VBMPX 107.78 USD
 
-; 2013-08-02 price ITOT                                    143.89 USD
+P 2013-08-02 RGAGX 95.25 USD
 
-; 2013-08-02 price VEA                                     108.04 USD
+P 2013-08-02 ITOT 143.89 USD
 
-; 2013-08-02 price VHT                                      43.91 USD
+P 2013-08-02 VEA 108.04 USD
 
-; 2013-08-02 price GLD                                      85.70 USD
+P 2013-08-02 VHT 43.91 USD
 
-; 2013-08-09 price VBMPX                                   107.45 USD
+P 2013-08-02 GLD 85.70 USD
 
-; 2013-08-09 price RGAGX                                    93.86 USD
+P 2013-08-09 VBMPX 107.45 USD
 
-; 2013-08-09 price ITOT                                    144.13 USD
+P 2013-08-09 RGAGX 93.86 USD
 
-; 2013-08-09 price VEA                                     108.14 USD
+P 2013-08-09 ITOT 144.13 USD
 
-; 2013-08-09 price VHT                                      44.67 USD
+P 2013-08-09 VEA 108.14 USD
 
-; 2013-08-09 price GLD                                      86.09 USD
+P 2013-08-09 VHT 44.67 USD
 
-; 2013-08-16 price VBMPX                                   108.75 USD
+P 2013-08-09 GLD 86.09 USD
 
-; 2013-08-16 price RGAGX                                    95.29 USD
+P 2013-08-16 VBMPX 108.75 USD
 
-; 2013-08-16 price ITOT                                    143.06 USD
+P 2013-08-16 RGAGX 95.29 USD
 
-; 2013-08-16 price VEA                                     107.97 USD
+P 2013-08-16 ITOT 143.06 USD
 
-; 2013-08-16 price VHT                                      44.39 USD
+P 2013-08-16 VEA 107.97 USD
 
-; 2013-08-16 price GLD                                      86.08 USD
+P 2013-08-16 VHT 44.39 USD
 
-; 2013-08-23 price VBMPX                                   106.96 USD
+P 2013-08-16 GLD 86.08 USD
 
-; 2013-08-23 price RGAGX                                    96.89 USD
+P 2013-08-23 VBMPX 106.96 USD
 
-; 2013-08-23 price ITOT                                    143.94 USD
+P 2013-08-23 RGAGX 96.89 USD
 
-; 2013-08-23 price VEA                                     108.76 USD
+P 2013-08-23 ITOT 143.94 USD
 
-; 2013-08-23 price VHT                                      44.70 USD
+P 2013-08-23 VEA 108.76 USD
 
-; 2013-08-23 price GLD                                      88.15 USD
+P 2013-08-23 VHT 44.70 USD
 
-; 2013-08-30 price VBMPX                                   106.60 USD
+P 2013-08-23 GLD 88.15 USD
 
-; 2013-08-30 price RGAGX                                    98.00 USD
+P 2013-08-30 VBMPX 106.60 USD
 
-; 2013-08-30 price ITOT                                    144.76 USD
+P 2013-08-30 RGAGX 98.00 USD
 
-; 2013-08-30 price VEA                                     109.08 USD
+P 2013-08-30 ITOT 144.76 USD
 
-; 2013-08-30 price VHT                                      44.25 USD
+P 2013-08-30 VEA 109.08 USD
 
-; 2013-08-30 price GLD                                      88.83 USD
+P 2013-08-30 VHT 44.25 USD
 
-; 2013-09-06 price VBMPX                                   104.59 USD
+P 2013-08-30 GLD 88.83 USD
 
-; 2013-09-06 price RGAGX                                    99.76 USD
+P 2013-09-06 VBMPX 104.59 USD
 
-; 2013-09-06 price ITOT                                    145.45 USD
+P 2013-09-06 RGAGX 99.76 USD
 
-; 2013-09-06 price VEA                                     110.05 USD
+P 2013-09-06 ITOT 145.45 USD
 
-; 2013-09-06 price VHT                                      43.73 USD
+P 2013-09-06 VEA 110.05 USD
 
-; 2013-09-06 price GLD                                      87.73 USD
+P 2013-09-06 VHT 43.73 USD
 
-; 2013-09-13 price VBMPX                                   104.33 USD
+P 2013-09-06 GLD 87.73 USD
 
-; 2013-09-13 price RGAGX                                   100.04 USD
+P 2013-09-13 VBMPX 104.33 USD
 
-; 2013-09-13 price ITOT                                    146.34 USD
+P 2013-09-13 RGAGX 100.04 USD
 
-; 2013-09-13 price VEA                                     109.90 USD
+P 2013-09-13 ITOT 146.34 USD
 
-; 2013-09-13 price VHT                                      44.80 USD
+P 2013-09-13 VEA 109.90 USD
 
-; 2013-09-13 price GLD                                      87.30 USD
+P 2013-09-13 VHT 44.80 USD
 
-; 2013-09-20 price VBMPX                                   105.20 USD
+P 2013-09-13 GLD 87.30 USD
 
-; 2013-09-20 price RGAGX                                    95.27 USD
+P 2013-09-20 VBMPX 105.20 USD
 
-; 2013-09-20 price ITOT                                    146.01 USD
+P 2013-09-20 RGAGX 95.27 USD
 
-; 2013-09-20 price VEA                                     109.74 USD
+P 2013-09-20 ITOT 146.01 USD
 
-; 2013-09-20 price VHT                                      44.60 USD
+P 2013-09-20 VEA 109.74 USD
 
-; 2013-09-20 price GLD                                      87.34 USD
+P 2013-09-20 VHT 44.60 USD
 
-; 2013-09-27 price VBMPX                                   102.77 USD
+P 2013-09-20 GLD 87.34 USD
 
-; 2013-09-27 price RGAGX                                    95.08 USD
+P 2013-09-27 VBMPX 102.77 USD
 
-; 2013-09-27 price ITOT                                    147.07 USD
+P 2013-09-27 RGAGX 95.08 USD
 
-; 2013-09-27 price VEA                                     110.63 USD
+P 2013-09-27 ITOT 147.07 USD
 
-; 2013-09-27 price VHT                                      44.66 USD
+P 2013-09-27 VEA 110.63 USD
 
-; 2013-09-27 price GLD                                      88.16 USD
+P 2013-09-27 VHT 44.66 USD
 
-; 2013-10-04 price VBMPX                                   103.11 USD
+P 2013-09-27 GLD 88.16 USD
 
-; 2013-10-04 price RGAGX                                    93.68 USD
+P 2013-10-04 VBMPX 103.11 USD
 
-; 2013-10-04 price ITOT                                    147.64 USD
+P 2013-10-04 RGAGX 93.68 USD
 
-; 2013-10-04 price VEA                                     110.85 USD
+P 2013-10-04 ITOT 147.64 USD
 
-; 2013-10-04 price VHT                                      44.00 USD
+P 2013-10-04 VEA 110.85 USD
 
-; 2013-10-04 price GLD                                      89.09 USD
+P 2013-10-04 VHT 44.00 USD
 
-; 2013-10-11 price VBMPX                                   100.51 USD
+P 2013-10-04 GLD 89.09 USD
 
-; 2013-10-11 price RGAGX                                    95.38 USD
+P 2013-10-11 VBMPX 100.51 USD
 
-; 2013-10-11 price ITOT                                    146.53 USD
+P 2013-10-11 RGAGX 95.38 USD
 
-; 2013-10-11 price VEA                                     110.92 USD
+P 2013-10-11 ITOT 146.53 USD
 
-; 2013-10-11 price VHT                                      44.73 USD
+P 2013-10-11 VEA 110.92 USD
 
-; 2013-10-11 price GLD                                      89.02 USD
+P 2013-10-11 VHT 44.73 USD
 
-; 2013-10-18 price VBMPX                                   101.06 USD
+P 2013-10-11 GLD 89.02 USD
 
-; 2013-10-18 price RGAGX                                    94.18 USD
+P 2013-10-18 VBMPX 101.06 USD
 
-; 2013-10-18 price ITOT                                    143.64 USD
+P 2013-10-18 RGAGX 94.18 USD
 
-; 2013-10-18 price VEA                                     111.65 USD
+P 2013-10-18 ITOT 143.64 USD
 
-; 2013-10-18 price VHT                                      44.50 USD
+P 2013-10-18 VEA 111.65 USD
 
-; 2013-10-18 price GLD                                      88.77 USD
+P 2013-10-18 VHT 44.50 USD
 
-; 2013-10-25 price VBMPX                                   100.99 USD
+P 2013-10-18 GLD 88.77 USD
 
-; 2013-10-25 price RGAGX                                    89.81 USD
+P 2013-10-25 VBMPX 100.99 USD
 
-; 2013-10-25 price ITOT                                    144.61 USD
+P 2013-10-25 RGAGX 89.81 USD
 
-; 2013-10-25 price VEA                                     112.01 USD
+P 2013-10-25 ITOT 144.61 USD
 
-; 2013-10-25 price VHT                                      45.43 USD
+P 2013-10-25 VEA 112.01 USD
 
-; 2013-10-25 price GLD                                      88.42 USD
+P 2013-10-25 VHT 45.43 USD
 
-; 2013-11-01 price VBMPX                                   100.04 USD
+P 2013-10-25 GLD 88.42 USD
 
-; 2013-11-01 price RGAGX                                    91.41 USD
+P 2013-11-01 VBMPX 100.04 USD
 
-; 2013-11-01 price ITOT                                    144.38 USD
+P 2013-11-01 RGAGX 91.41 USD
 
-; 2013-11-01 price VEA                                     109.96 USD
+P 2013-11-01 ITOT 144.38 USD
 
-; 2013-11-01 price VHT                                      46.95 USD
+P 2013-11-01 VEA 109.96 USD
 
-; 2013-11-01 price GLD                                      88.33 USD
+P 2013-11-01 VHT 46.95 USD
 
-; 2013-11-08 price VBMPX                                   102.80 USD
+P 2013-11-01 GLD 88.33 USD
 
-; 2013-11-08 price RGAGX                                    91.64 USD
+P 2013-11-08 VBMPX 102.80 USD
 
-; 2013-11-08 price ITOT                                    144.24 USD
+P 2013-11-08 RGAGX 91.64 USD
 
-; 2013-11-08 price VEA                                     109.91 USD
+P 2013-11-08 ITOT 144.24 USD
 
-; 2013-11-08 price VHT                                      46.52 USD
+P 2013-11-08 VEA 109.91 USD
 
-; 2013-11-08 price GLD                                      88.92 USD
+P 2013-11-08 VHT 46.52 USD
 
-; 2013-11-15 price VBMPX                                   104.43 USD
+P 2013-11-08 GLD 88.92 USD
 
-; 2013-11-15 price RGAGX                                    94.49 USD
+P 2013-11-15 VBMPX 104.43 USD
 
-; 2013-11-15 price ITOT                                    145.84 USD
+P 2013-11-15 RGAGX 94.49 USD
 
-; 2013-11-15 price VEA                                     110.24 USD
+P 2013-11-15 ITOT 145.84 USD
 
-; 2013-11-15 price VHT                                      47.85 USD
+P 2013-11-15 VEA 110.24 USD
 
-; 2013-11-15 price GLD                                      89.52 USD
+P 2013-11-15 VHT 47.85 USD
 
-; 2013-11-22 price VBMPX                                   106.27 USD
+P 2013-11-15 GLD 89.52 USD
 
-; 2013-11-22 price RGAGX                                    94.37 USD
+P 2013-11-22 VBMPX 106.27 USD
 
-; 2013-11-22 price ITOT                                    146.02 USD
+P 2013-11-22 RGAGX 94.37 USD
 
-; 2013-11-22 price VEA                                     110.74 USD
+P 2013-11-22 ITOT 146.02 USD
 
-; 2013-11-22 price VHT                                      48.43 USD
+P 2013-11-22 VEA 110.74 USD
 
-; 2013-11-22 price GLD                                      89.84 USD
+P 2013-11-22 VHT 48.43 USD
 
-; 2013-11-29 price VBMPX                                   106.62 USD
+P 2013-11-22 GLD 89.84 USD
 
-; 2013-11-29 price RGAGX                                    93.24 USD
+P 2013-11-29 VBMPX 106.62 USD
 
-; 2013-11-29 price ITOT                                    144.86 USD
+P 2013-11-29 RGAGX 93.24 USD
 
-; 2013-11-29 price VEA                                     111.54 USD
+P 2013-11-29 ITOT 144.86 USD
 
-; 2013-11-29 price VHT                                      48.66 USD
+P 2013-11-29 VEA 111.54 USD
 
-; 2013-11-29 price GLD                                      90.37 USD
+P 2013-11-29 VHT 48.66 USD
 
-; 2013-12-06 price VBMPX                                   104.96 USD
+P 2013-11-29 GLD 90.37 USD
 
-; 2013-12-06 price RGAGX                                    90.93 USD
+P 2013-12-06 VBMPX 104.96 USD
 
-; 2013-12-06 price ITOT                                    144.86 USD
+P 2013-12-06 RGAGX 90.93 USD
 
-; 2013-12-06 price VEA                                     111.24 USD
+P 2013-12-06 ITOT 144.86 USD
 
-; 2013-12-06 price VHT                                      47.70 USD
+P 2013-12-06 VEA 111.24 USD
 
-; 2013-12-06 price GLD                                      89.60 USD
+P 2013-12-06 VHT 47.70 USD
 
-; 2013-12-13 price VBMPX                                   104.94 USD
+P 2013-12-06 GLD 89.60 USD
 
-; 2013-12-13 price RGAGX                                    92.57 USD
+P 2013-12-13 VBMPX 104.94 USD
 
-; 2013-12-13 price ITOT                                    146.84 USD
+P 2013-12-13 RGAGX 92.57 USD
 
-; 2013-12-13 price VEA                                     112.18 USD
+P 2013-12-13 ITOT 146.84 USD
 
-; 2013-12-13 price VHT                                      47.73 USD
+P 2013-12-13 VEA 112.18 USD
 
-; 2013-12-13 price GLD                                      89.94 USD
+P 2013-12-13 VHT 47.73 USD
 
-; 2013-12-20 price VBMPX                                   102.93 USD
+P 2013-12-13 GLD 89.94 USD
 
-; 2013-12-20 price RGAGX                                    91.76 USD
+P 2013-12-20 VBMPX 102.93 USD
 
-; 2013-12-20 price ITOT                                    148.20 USD
+P 2013-12-20 RGAGX 91.76 USD
 
-; 2013-12-20 price VEA                                     112.64 USD
+P 2013-12-20 ITOT 148.20 USD
 
-; 2013-12-20 price VHT                                      48.04 USD
+P 2013-12-20 VEA 112.64 USD
 
-; 2013-12-20 price GLD                                      90.17 USD
+P 2013-12-20 VHT 48.04 USD
 
-; 2013-12-27 price VBMPX                                   103.92 USD
+P 2013-12-20 GLD 90.17 USD
 
-; 2013-12-27 price RGAGX                                    92.60 USD
+P 2013-12-27 VBMPX 103.92 USD
 
-; 2013-12-27 price ITOT                                    149.44 USD
+P 2013-12-27 RGAGX 92.60 USD
 
-; 2013-12-27 price VEA                                     112.79 USD
+P 2013-12-27 ITOT 149.44 USD
 
-; 2013-12-27 price VHT                                      47.63 USD
+P 2013-12-27 VEA 112.79 USD
 
-; 2013-12-27 price GLD                                      90.59 USD
+P 2013-12-27 VHT 47.63 USD
 
-; 2014-01-03 price VBMPX                                   105.64 USD
+P 2013-12-27 GLD 90.59 USD
 
-; 2014-01-03 price RGAGX                                    92.94 USD
+P 2014-01-03 VBMPX 105.64 USD
 
-; 2014-01-03 price ITOT                                    151.05 USD
+P 2014-01-03 RGAGX 92.94 USD
 
-; 2014-01-03 price VEA                                     113.01 USD
+P 2014-01-03 ITOT 151.05 USD
 
-; 2014-01-03 price VHT                                      46.79 USD
+P 2014-01-03 VEA 113.01 USD
 
-; 2014-01-03 price GLD                                      90.31 USD
+P 2014-01-03 VHT 46.79 USD
 
-; 2014-01-10 price VBMPX                                   106.80 USD
+P 2014-01-03 GLD 90.31 USD
 
-; 2014-01-10 price RGAGX                                    93.90 USD
+P 2014-01-10 VBMPX 106.80 USD
 
-; 2014-01-10 price ITOT                                    153.29 USD
+P 2014-01-10 RGAGX 93.90 USD
 
-; 2014-01-10 price VEA                                     114.88 USD
+P 2014-01-10 ITOT 153.29 USD
 
-; 2014-01-10 price VHT                                      46.51 USD
+P 2014-01-10 VEA 114.88 USD
 
-; 2014-01-10 price GLD                                      90.80 USD
+P 2014-01-10 VHT 46.51 USD
 
-; 2014-01-17 price VBMPX                                   106.69 USD
+P 2014-01-10 GLD 90.80 USD
 
-; 2014-01-17 price RGAGX                                    93.38 USD
+P 2014-01-17 VBMPX 106.69 USD
 
-; 2014-01-17 price ITOT                                    152.11 USD
+P 2014-01-17 RGAGX 93.38 USD
 
-; 2014-01-17 price VEA                                     116.30 USD
+P 2014-01-17 ITOT 152.11 USD
 
-; 2014-01-17 price VHT                                      46.34 USD
+P 2014-01-17 VEA 116.30 USD
 
-; 2014-01-17 price GLD                                      90.60 USD
+P 2014-01-17 VHT 46.34 USD
 
-; 2014-01-24 price VBMPX                                   107.78 USD
+P 2014-01-17 GLD 90.60 USD
 
-; 2014-01-24 price RGAGX                                    90.83 USD
+P 2014-01-24 VBMPX 107.78 USD
 
-; 2014-01-24 price ITOT                                    152.97 USD
+P 2014-01-24 RGAGX 90.83 USD
 
-; 2014-01-24 price VEA                                     117.65 USD
+P 2014-01-24 ITOT 152.97 USD
 
-; 2014-01-24 price VHT                                      46.16 USD
+P 2014-01-24 VEA 117.65 USD
 
-; 2014-01-24 price GLD                                      90.21 USD
+P 2014-01-24 VHT 46.16 USD
 
-; 2014-01-31 price VBMPX                                   106.55 USD
+P 2014-01-24 GLD 90.21 USD
 
-; 2014-01-31 price RGAGX                                    90.82 USD
+P 2014-01-31 VBMPX 106.55 USD
 
-; 2014-01-31 price ITOT                                    152.95 USD
+P 2014-01-31 RGAGX 90.82 USD
 
-; 2014-01-31 price VEA                                     117.80 USD
+P 2014-01-31 ITOT 152.95 USD
 
-; 2014-01-31 price VHT                                      46.28 USD
+P 2014-01-31 VEA 117.80 USD
 
-; 2014-01-31 price GLD                                      90.14 USD
+P 2014-01-31 VHT 46.28 USD
 
-; 2014-02-07 price VBMPX                                   110.62 USD
+P 2014-01-31 GLD 90.14 USD
 
-; 2014-02-07 price RGAGX                                    89.05 USD
+P 2014-02-07 VBMPX 110.62 USD
 
-; 2014-02-07 price ITOT                                    154.27 USD
+P 2014-02-07 RGAGX 89.05 USD
 
-; 2014-02-07 price VEA                                     119.45 USD
+P 2014-02-07 ITOT 154.27 USD
 
-; 2014-02-07 price VHT                                      46.06 USD
+P 2014-02-07 VEA 119.45 USD
 
-; 2014-02-07 price GLD                                      90.59 USD
+P 2014-02-07 VHT 46.06 USD
 
-; 2014-02-14 price VBMPX                                   111.02 USD
+P 2014-02-07 GLD 90.59 USD
 
-; 2014-02-14 price RGAGX                                    90.34 USD
+P 2014-02-14 VBMPX 111.02 USD
 
-; 2014-02-14 price ITOT                                    154.03 USD
+P 2014-02-14 RGAGX 90.34 USD
 
-; 2014-02-14 price VEA                                     119.38 USD
+P 2014-02-14 ITOT 154.03 USD
 
-; 2014-02-14 price VHT                                      46.84 USD
+P 2014-02-14 VEA 119.38 USD
 
-; 2014-02-14 price GLD                                      91.87 USD
+P 2014-02-14 VHT 46.84 USD
 
-; 2014-02-21 price VBMPX                                   110.17 USD
+P 2014-02-14 GLD 91.87 USD
 
-; 2014-02-21 price RGAGX                                    89.16 USD
+P 2014-02-21 VBMPX 110.17 USD
 
-; 2014-02-21 price ITOT                                    154.39 USD
+P 2014-02-21 RGAGX 89.16 USD
 
-; 2014-02-21 price VEA                                     119.96 USD
+P 2014-02-21 ITOT 154.39 USD
 
-; 2014-02-21 price VHT                                      46.64 USD
+P 2014-02-21 VEA 119.96 USD
 
-; 2014-02-21 price GLD                                      91.17 USD
+P 2014-02-21 VHT 46.64 USD
 
-; 2014-02-28 price VBMPX                                   110.72 USD
+P 2014-02-21 GLD 91.17 USD
 
-; 2014-02-28 price RGAGX                                    87.38 USD
+P 2014-02-28 VBMPX 110.72 USD
 
-; 2014-02-28 price ITOT                                    156.56 USD
+P 2014-02-28 RGAGX 87.38 USD
 
-; 2014-02-28 price VEA                                     119.53 USD
+P 2014-02-28 ITOT 156.56 USD
 
-; 2014-02-28 price VHT                                      45.77 USD
+P 2014-02-28 VEA 119.53 USD
 
-; 2014-02-28 price GLD                                      90.82 USD
+P 2014-02-28 VHT 45.77 USD
 
-; 2014-03-07 price VBMPX                                   109.84 USD
+P 2014-02-28 GLD 90.82 USD
 
-; 2014-03-07 price RGAGX                                    85.04 USD
+P 2014-03-07 VBMPX 109.84 USD
 
-; 2014-03-07 price ITOT                                    156.42 USD
+P 2014-03-07 RGAGX 85.04 USD
 
-; 2014-03-07 price VEA                                     118.66 USD
+P 2014-03-07 ITOT 156.42 USD
 
-; 2014-03-07 price VHT                                      45.21 USD
+P 2014-03-07 VEA 118.66 USD
 
-; 2014-03-07 price GLD                                      89.65 USD
+P 2014-03-07 VHT 45.21 USD
 
-; 2014-03-14 price VBMPX                                   109.35 USD
+P 2014-03-07 GLD 89.65 USD
 
-; 2014-03-14 price RGAGX                                    84.92 USD
+P 2014-03-14 VBMPX 109.35 USD
 
-; 2014-03-14 price ITOT                                    155.64 USD
+P 2014-03-14 RGAGX 84.92 USD
 
-; 2014-03-14 price VEA                                     119.41 USD
+P 2014-03-14 ITOT 155.64 USD
 
-; 2014-03-14 price VHT                                      44.23 USD
+P 2014-03-14 VEA 119.41 USD
 
-; 2014-03-14 price GLD                                      89.32 USD
+P 2014-03-14 VHT 44.23 USD
 
-; 2014-03-21 price VBMPX                                   109.34 USD
+P 2014-03-14 GLD 89.32 USD
 
-; 2014-03-21 price RGAGX                                    83.90 USD
+P 2014-03-21 VBMPX 109.34 USD
 
-; 2014-03-21 price ITOT                                    157.00 USD
+P 2014-03-21 RGAGX 83.90 USD
 
-; 2014-03-21 price VEA                                     118.81 USD
+P 2014-03-21 ITOT 157.00 USD
 
-; 2014-03-21 price VHT                                      45.01 USD
+P 2014-03-21 VEA 118.81 USD
 
-; 2014-03-21 price GLD                                      90.31 USD
+P 2014-03-21 VHT 45.01 USD
 
-; 2014-03-28 price VBMPX                                   108.16 USD
+P 2014-03-21 GLD 90.31 USD
 
-; 2014-03-28 price RGAGX                                    83.65 USD
+P 2014-03-28 VBMPX 108.16 USD
 
-; 2014-03-28 price ITOT                                    158.52 USD
+P 2014-03-28 RGAGX 83.65 USD
 
-; 2014-03-28 price VEA                                     120.14 USD
+P 2014-03-28 ITOT 158.52 USD
 
-; 2014-03-28 price VHT                                      45.20 USD
+P 2014-03-28 VEA 120.14 USD
 
-; 2014-03-28 price GLD                                      90.69 USD
+P 2014-03-28 VHT 45.20 USD
 
-; 2014-04-04 price VBMPX                                   106.73 USD
+P 2014-03-28 GLD 90.69 USD
 
-; 2014-04-04 price RGAGX                                    83.56 USD
+P 2014-04-04 VBMPX 106.73 USD
 
-; 2014-04-04 price ITOT                                    158.19 USD
+P 2014-04-04 RGAGX 83.56 USD
 
-; 2014-04-04 price VEA                                     120.92 USD
+P 2014-04-04 ITOT 158.19 USD
 
-; 2014-04-04 price VHT                                      46.89 USD
+P 2014-04-04 VEA 120.92 USD
 
-; 2014-04-04 price GLD                                      90.45 USD
+P 2014-04-04 VHT 46.89 USD
 
-; 2014-04-11 price VBMPX                                   108.22 USD
+P 2014-04-04 GLD 90.45 USD
 
-; 2014-04-11 price RGAGX                                    86.34 USD
+P 2014-04-11 VBMPX 108.22 USD
 
-; 2014-04-11 price ITOT                                    156.57 USD
+P 2014-04-11 RGAGX 86.34 USD
 
-; 2014-04-11 price VEA                                     121.80 USD
+P 2014-04-11 ITOT 156.57 USD
 
-; 2014-04-11 price VHT                                      46.11 USD
+P 2014-04-11 VEA 121.80 USD
 
-; 2014-04-11 price GLD                                      90.51 USD
+P 2014-04-11 VHT 46.11 USD
 
-; 2014-04-18 price VBMPX                                   107.60 USD
+P 2014-04-11 GLD 90.51 USD
 
-; 2014-04-18 price RGAGX                                    86.54 USD
+P 2014-04-18 VBMPX 107.60 USD
 
-; 2014-04-18 price ITOT                                    158.46 USD
+P 2014-04-18 RGAGX 86.54 USD
 
-; 2014-04-18 price VEA                                     120.93 USD
+P 2014-04-18 ITOT 158.46 USD
 
-; 2014-04-18 price VHT                                      45.91 USD
+P 2014-04-18 VEA 120.93 USD
 
-; 2014-04-18 price GLD                                      89.60 USD
+P 2014-04-18 VHT 45.91 USD
 
-; 2014-04-25 price VBMPX                                   107.57 USD
+P 2014-04-18 GLD 89.60 USD
 
-; 2014-04-25 price RGAGX                                    87.97 USD
+P 2014-04-25 VBMPX 107.57 USD
 
-; 2014-04-25 price ITOT                                    157.38 USD
+P 2014-04-25 RGAGX 87.97 USD
 
-; 2014-04-25 price VEA                                     119.90 USD
+P 2014-04-25 ITOT 157.38 USD
 
-; 2014-04-25 price VHT                                      44.94 USD
+P 2014-04-25 VEA 119.90 USD
 
-; 2014-04-25 price GLD                                      89.28 USD
+P 2014-04-25 VHT 44.94 USD
 
-; 2014-05-02 price VBMPX                                   108.70 USD
+P 2014-04-25 GLD 89.28 USD
 
-; 2014-05-02 price RGAGX                                    89.68 USD
+P 2014-05-02 VBMPX 108.70 USD
 
-; 2014-05-02 price ITOT                                    156.15 USD
+P 2014-05-02 RGAGX 89.68 USD
 
-; 2014-05-02 price VEA                                     120.30 USD
+P 2014-05-02 ITOT 156.15 USD
 
-; 2014-05-02 price VHT                                      45.62 USD
+P 2014-05-02 VEA 120.30 USD
 
-; 2014-05-02 price GLD                                      88.74 USD
+P 2014-05-02 VHT 45.62 USD
 
-; 2014-05-09 price VBMPX                                   107.35 USD
+P 2014-05-02 GLD 88.74 USD
 
-; 2014-05-09 price RGAGX                                    89.36 USD
+P 2014-05-09 VBMPX 107.35 USD
 
-; 2014-05-09 price ITOT                                    155.98 USD
+P 2014-05-09 RGAGX 89.36 USD
 
-; 2014-05-09 price VEA                                     119.05 USD
+P 2014-05-09 ITOT 155.98 USD
 
-; 2014-05-09 price VHT                                      46.51 USD
+P 2014-05-09 VEA 119.05 USD
 
-; 2014-05-09 price GLD                                      88.40 USD
+P 2014-05-09 VHT 46.51 USD
 
-; 2014-05-16 price VBMPX                                   108.35 USD
+P 2014-05-09 GLD 88.40 USD
 
-; 2014-05-16 price RGAGX                                    90.24 USD
+P 2014-05-16 VBMPX 108.35 USD
 
-; 2014-05-16 price ITOT                                    156.77 USD
+P 2014-05-16 RGAGX 90.24 USD
 
-; 2014-05-16 price VEA                                     117.69 USD
+P 2014-05-16 ITOT 156.77 USD
 
-; 2014-05-16 price VHT                                      48.12 USD
+P 2014-05-16 VEA 117.69 USD
 
-; 2014-05-16 price GLD                                      90.02 USD
+P 2014-05-16 VHT 48.12 USD
 
-; 2014-05-23 price VBMPX                                   110.85 USD
+P 2014-05-16 GLD 90.02 USD
 
-; 2014-05-23 price RGAGX                                    91.63 USD
+P 2014-05-23 VBMPX 110.85 USD
 
-; 2014-05-23 price ITOT                                    154.81 USD
+P 2014-05-23 RGAGX 91.63 USD
 
-; 2014-05-23 price VEA                                     118.69 USD
+P 2014-05-23 ITOT 154.81 USD
 
-; 2014-05-23 price VHT                                      47.79 USD
+P 2014-05-23 VEA 118.69 USD
 
-; 2014-05-23 price GLD                                      90.01 USD
+P 2014-05-23 VHT 47.79 USD
 
-; 2014-05-30 price VBMPX                                   106.93 USD
+P 2014-05-23 GLD 90.01 USD
 
-; 2014-05-30 price RGAGX                                    91.61 USD
+P 2014-05-30 VBMPX 106.93 USD
 
-; 2014-05-30 price ITOT                                    153.86 USD
+P 2014-05-30 RGAGX 91.61 USD
 
-; 2014-05-30 price VEA                                     118.06 USD
+P 2014-05-30 ITOT 153.86 USD
 
-; 2014-05-30 price VHT                                      47.19 USD
+P 2014-05-30 VEA 118.06 USD
 
-; 2014-05-30 price GLD                                      90.39 USD
+P 2014-05-30 VHT 47.19 USD
 
-; 2014-06-06 price VBMPX                                   108.73 USD
+P 2014-05-30 GLD 90.39 USD
 
-; 2014-06-06 price RGAGX                                    90.91 USD
+P 2014-06-06 VBMPX 108.73 USD
 
-; 2014-06-06 price ITOT                                    152.56 USD
+P 2014-06-06 RGAGX 90.91 USD
 
-; 2014-06-06 price VEA                                     119.89 USD
+P 2014-06-06 ITOT 152.56 USD
 
-; 2014-06-06 price VHT                                      47.37 USD
+P 2014-06-06 VEA 119.89 USD
 
-; 2014-06-06 price GLD                                      89.85 USD
+P 2014-06-06 VHT 47.37 USD
 
-; 2014-06-13 price VBMPX                                   108.64 USD
+P 2014-06-06 GLD 89.85 USD
 
-; 2014-06-13 price RGAGX                                    87.48 USD
+P 2014-06-13 VBMPX 108.64 USD
 
-; 2014-06-13 price ITOT                                    153.36 USD
+P 2014-06-13 RGAGX 87.48 USD
 
-; 2014-06-13 price VEA                                     119.08 USD
+P 2014-06-13 ITOT 153.36 USD
 
-; 2014-06-13 price VHT                                      46.81 USD
+P 2014-06-13 VEA 119.08 USD
 
-; 2014-06-13 price GLD                                      91.14 USD
+P 2014-06-13 VHT 46.81 USD
 
-; 2014-06-20 price VBMPX                                   108.52 USD
+P 2014-06-13 GLD 91.14 USD
 
-; 2014-06-20 price RGAGX                                    86.43 USD
+P 2014-06-20 VBMPX 108.52 USD
 
-; 2014-06-20 price ITOT                                    153.91 USD
+P 2014-06-20 RGAGX 86.43 USD
 
-; 2014-06-20 price VEA                                     120.41 USD
+P 2014-06-20 ITOT 153.91 USD
 
-; 2014-06-20 price VHT                                      47.67 USD
+P 2014-06-20 VEA 120.41 USD
 
-; 2014-06-20 price GLD                                      92.25 USD
+P 2014-06-20 VHT 47.67 USD
 
-; 2014-06-27 price VBMPX                                   106.33 USD
+P 2014-06-20 GLD 92.25 USD
 
-; 2014-06-27 price RGAGX                                    84.28 USD
+P 2014-06-27 VBMPX 106.33 USD
 
-; 2014-06-27 price ITOT                                    153.99 USD
+P 2014-06-27 RGAGX 84.28 USD
 
-; 2014-06-27 price VEA                                     119.88 USD
+P 2014-06-27 ITOT 153.99 USD
 
-; 2014-06-27 price VHT                                      46.87 USD
+P 2014-06-27 VEA 119.88 USD
 
-; 2014-06-27 price GLD                                      93.19 USD
+P 2014-06-27 VHT 46.87 USD
 
-; 2014-07-04 price VBMPX                                   105.81 USD
+P 2014-06-27 GLD 93.19 USD
 
-; 2014-07-04 price RGAGX                                    84.48 USD
+P 2014-07-04 VBMPX 105.81 USD
 
-; 2014-07-04 price ITOT                                    153.08 USD
+P 2014-07-04 RGAGX 84.48 USD
 
-; 2014-07-04 price VEA                                     119.96 USD
+P 2014-07-04 ITOT 153.08 USD
 
-; 2014-07-04 price VHT                                      47.21 USD
+P 2014-07-04 VEA 119.96 USD
 
-; 2014-07-04 price GLD                                      92.91 USD
+P 2014-07-04 VHT 47.21 USD
 
-; 2014-07-11 price VBMPX                                   107.00 USD
+P 2014-07-04 GLD 92.91 USD
 
-; 2014-07-11 price RGAGX                                    82.76 USD
+P 2014-07-11 VBMPX 107.00 USD
 
-; 2014-07-11 price ITOT                                    154.73 USD
+P 2014-07-11 RGAGX 82.76 USD
 
-; 2014-07-11 price VEA                                     120.90 USD
+P 2014-07-11 ITOT 154.73 USD
 
-; 2014-07-11 price VHT                                      46.63 USD
+P 2014-07-11 VEA 120.90 USD
 
-; 2014-07-11 price GLD                                      93.82 USD
+P 2014-07-11 VHT 46.63 USD
 
-; 2014-07-18 price VBMPX                                   108.95 USD
+P 2014-07-11 GLD 93.82 USD
 
-; 2014-07-18 price RGAGX                                    84.48 USD
+P 2014-07-18 VBMPX 108.95 USD
 
-; 2014-07-18 price ITOT                                    155.23 USD
+P 2014-07-18 RGAGX 84.48 USD
 
-; 2014-07-18 price VEA                                     119.39 USD
+P 2014-07-18 ITOT 155.23 USD
 
-; 2014-07-18 price VHT                                      46.70 USD
+P 2014-07-18 VEA 119.39 USD
 
-; 2014-07-18 price GLD                                      93.91 USD
+P 2014-07-18 VHT 46.70 USD
 
-; 2014-07-25 price VBMPX                                   107.61 USD
+P 2014-07-18 GLD 93.91 USD
 
-; 2014-07-25 price RGAGX                                    83.63 USD
+P 2014-07-25 VBMPX 107.61 USD
 
-; 2014-07-25 price ITOT                                    155.78 USD
+P 2014-07-25 RGAGX 83.63 USD
 
-; 2014-07-25 price VEA                                     119.20 USD
+P 2014-07-25 ITOT 155.78 USD
 
-; 2014-07-25 price VHT                                      47.52 USD
+P 2014-07-25 VEA 119.20 USD
 
-; 2014-07-25 price GLD                                      94.18 USD
+P 2014-07-25 VHT 47.52 USD
 
-; 2014-08-01 price VBMPX                                   106.95 USD
+P 2014-07-25 GLD 94.18 USD
 
-; 2014-08-01 price RGAGX                                    83.32 USD
+P 2014-08-01 VBMPX 106.95 USD
 
-; 2014-08-01 price ITOT                                    155.28 USD
+P 2014-08-01 RGAGX 83.32 USD
 
-; 2014-08-01 price VEA                                     119.66 USD
+P 2014-08-01 ITOT 155.28 USD
 
-; 2014-08-01 price VHT                                      48.82 USD
+P 2014-08-01 VEA 119.66 USD
 
-; 2014-08-01 price GLD                                      93.54 USD
+P 2014-08-01 VHT 48.82 USD
 
-; 2014-08-08 price VBMPX                                   109.43 USD
+P 2014-08-01 GLD 93.54 USD
 
-; 2014-08-08 price RGAGX                                    84.30 USD
+P 2014-08-08 VBMPX 109.43 USD
 
-; 2014-08-08 price ITOT                                    155.15 USD
+P 2014-08-08 RGAGX 84.30 USD
 
-; 2014-08-08 price VEA                                     118.90 USD
+P 2014-08-08 ITOT 155.15 USD
 
-; 2014-08-08 price VHT                                      48.11 USD
+P 2014-08-08 VEA 118.90 USD
 
-; 2014-08-08 price GLD                                      93.26 USD
+P 2014-08-08 VHT 48.11 USD
 
-; 2014-08-15 price VBMPX                                   109.95 USD
+P 2014-08-08 GLD 93.26 USD
 
-; 2014-08-15 price RGAGX                                    85.44 USD
+P 2014-08-15 VBMPX 109.95 USD
 
-; 2014-08-15 price ITOT                                    156.51 USD
+P 2014-08-15 RGAGX 85.44 USD
 
-; 2014-08-15 price VEA                                     119.19 USD
+P 2014-08-15 ITOT 156.51 USD
 
-; 2014-08-15 price VHT                                      47.90 USD
+P 2014-08-15 VEA 119.19 USD
 
-; 2014-08-15 price GLD                                      93.14 USD
+P 2014-08-15 VHT 47.90 USD
 
-; 2014-08-22 price VBMPX                                   110.58 USD
+P 2014-08-15 GLD 93.14 USD
 
-; 2014-08-22 price RGAGX                                    84.01 USD
+P 2014-08-22 VBMPX 110.58 USD
 
-; 2014-08-22 price ITOT                                    156.59 USD
+P 2014-08-22 RGAGX 84.01 USD
 
-; 2014-08-22 price VEA                                     119.62 USD
+P 2014-08-22 ITOT 156.59 USD
 
-; 2014-08-22 price VHT                                      47.92 USD
+P 2014-08-22 VEA 119.62 USD
 
-; 2014-08-22 price GLD                                      93.65 USD
+P 2014-08-22 VHT 47.92 USD
 
-; 2014-08-29 price VBMPX                                   109.27 USD
+P 2014-08-22 GLD 93.65 USD
 
-; 2014-08-29 price RGAGX                                    83.03 USD
+P 2014-08-29 VBMPX 109.27 USD
 
-; 2014-08-29 price ITOT                                    154.92 USD
+P 2014-08-29 RGAGX 83.03 USD
 
-; 2014-08-29 price VEA                                     120.04 USD
+P 2014-08-29 ITOT 154.92 USD
 
-; 2014-08-29 price VHT                                      48.18 USD
+P 2014-08-29 VEA 120.04 USD
 
-; 2014-08-29 price GLD                                      94.75 USD
+P 2014-08-29 VHT 48.18 USD
 
-; 2014-09-05 price VBMPX                                   109.04 USD
+P 2014-08-29 GLD 94.75 USD
 
-; 2014-09-05 price RGAGX                                    82.48 USD
+P 2014-09-05 VBMPX 109.04 USD
 
-; 2014-09-05 price ITOT                                    155.27 USD
+P 2014-09-05 RGAGX 82.48 USD
 
-; 2014-09-05 price VEA                                     119.72 USD
+P 2014-09-05 ITOT 155.27 USD
 
-; 2014-09-05 price VHT                                      49.63 USD
+P 2014-09-05 VEA 119.72 USD
 
-; 2014-09-05 price GLD                                      94.26 USD
+P 2014-09-05 VHT 49.63 USD
 
-; 2014-09-12 price VBMPX                                   110.72 USD
+P 2014-09-05 GLD 94.26 USD
 
-; 2014-09-12 price RGAGX                                    82.66 USD
+P 2014-09-12 VBMPX 110.72 USD
 
-; 2014-09-12 price ITOT                                    153.98 USD
+P 2014-09-12 RGAGX 82.66 USD
 
-; 2014-09-12 price VEA                                     119.99 USD
+P 2014-09-12 ITOT 153.98 USD
 
-; 2014-09-12 price VHT                                      50.28 USD
+P 2014-09-12 VEA 119.99 USD
 
-; 2014-09-12 price GLD                                      96.37 USD
+P 2014-09-12 VHT 50.28 USD
 
-; 2014-09-19 price VBMPX                                   111.55 USD
+P 2014-09-12 GLD 96.37 USD
 
-; 2014-09-19 price RGAGX                                    83.28 USD
+P 2014-09-19 VBMPX 111.55 USD
 
-; 2014-09-19 price ITOT                                    154.36 USD
+P 2014-09-19 RGAGX 83.28 USD
 
-; 2014-09-19 price VEA                                     120.38 USD
+P 2014-09-19 ITOT 154.36 USD
 
-; 2014-09-19 price VHT                                      50.07 USD
+P 2014-09-19 VEA 120.38 USD
 
-; 2014-09-19 price GLD                                      97.62 USD
+P 2014-09-19 VHT 50.07 USD
 
-; 2014-09-26 price VBMPX                                   112.77 USD
+P 2014-09-19 GLD 97.62 USD
 
-; 2014-09-26 price RGAGX                                    84.13 USD
+P 2014-09-26 VBMPX 112.77 USD
 
-; 2014-09-26 price ITOT                                    152.75 USD
+P 2014-09-26 RGAGX 84.13 USD
 
-; 2014-09-26 price VEA                                     121.04 USD
+P 2014-09-26 ITOT 152.75 USD
 
-; 2014-09-26 price VHT                                      50.12 USD
+P 2014-09-26 VEA 121.04 USD
 
-; 2014-09-26 price GLD                                      96.46 USD
+P 2014-09-26 VHT 50.12 USD
 
-; 2014-10-03 price VBMPX                                   114.23 USD
+P 2014-09-26 GLD 96.46 USD
 
-; 2014-10-03 price RGAGX                                    84.10 USD
+P 2014-10-03 VBMPX 114.23 USD
 
-; 2014-10-03 price ITOT                                    153.08 USD
+P 2014-10-03 RGAGX 84.10 USD
 
-; 2014-10-03 price VEA                                     121.73 USD
+P 2014-10-03 ITOT 153.08 USD
 
-; 2014-10-03 price VHT                                      50.07 USD
+P 2014-10-03 VEA 121.73 USD
 
-; 2014-10-03 price GLD                                      97.09 USD
+P 2014-10-03 VHT 50.07 USD
 
-; 2014-10-10 price VBMPX                                   115.51 USD
+P 2014-10-03 GLD 97.09 USD
 
-; 2014-10-10 price RGAGX                                    82.09 USD
+P 2014-10-10 VBMPX 115.51 USD
 
-; 2014-10-10 price ITOT                                    155.42 USD
+P 2014-10-10 RGAGX 82.09 USD
 
-; 2014-10-10 price VEA                                     122.33 USD
+P 2014-10-10 ITOT 155.42 USD
 
-; 2014-10-10 price VHT                                      50.10 USD
+P 2014-10-10 VEA 122.33 USD
 
-; 2014-10-10 price GLD                                      97.00 USD
+P 2014-10-10 VHT 50.10 USD
+
+P 2014-10-10 GLD 97.00 USD
 
 * Cash
 

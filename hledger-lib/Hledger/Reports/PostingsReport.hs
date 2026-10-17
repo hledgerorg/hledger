@@ -14,6 +14,7 @@ module Hledger.Reports.PostingsReport (
   PostingsReport,
   PostingsReportItem,
   postingsReport,
+  postingsReportStartBalances,
   mkpostingsReportItem,
   registerRunningCalculationFn,
   SortSpec,
@@ -110,6 +111,18 @@ postingsReport rspec@ReportSpec{_rsReportOpts=ropts@ReportOpts{..}} j = items
                         then error' "--historical and --sort should not be used together" 
                         else sortedps
                    | otherwise = sortedps
+
+-- | The account balances making up a postings report's starting balance: with --historical (and not --average),
+-- the sums of the matched postings before the report period, by account (depth-clipped as in the report).
+-- Otherwise, there is no starting balance, and this is empty.
+-- Useful for showing each account's historical running total, eg in charts.
+postingsReportStartBalances :: ReportSpec -> Journal -> M.Map AccountName MixedAmount
+postingsReportStartBalances rspec@ReportSpec{_rsReportOpts=ropts, _rsQuery=q} j
+  | balanceaccum_ ropts /= Historical || average_ ropts = M.empty
+  | otherwise = M.fromListWith maPlus [(clipOrEllipsifyAccountName (queryDepth q) $ paccount p, pamount p) | p <- precedingps]
+  where
+    (reportspan, _) = reportSpanBothDatesLazy j rspec
+    (precedingps, _) = matchedPostingsBeforeAndDuring rspec j reportspan
 
 -- | Based on the given report options, return a function that does the appropriate
 -- running calculation for the register report, ie a running average or running total.

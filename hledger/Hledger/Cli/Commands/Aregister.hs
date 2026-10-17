@@ -38,6 +38,7 @@ import Text.Blaze.Html5.Attributes qualified as A
 import Text.Tabular.AsciiWide hiding (render)
 
 import Hledger
+import Hledger.Cli.Chart (accountTransactionsReportAsChart, chartFlag, chartRequested, writeChart)
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils
 import Hledger.Write.Csv (CSV, printCSV, printTSV)
@@ -74,8 +75,9 @@ aregistermode = hledgerCommandMode
       ++ "). -wN,M sets description width as well."
      )
   ,flagNone ["align-all"] (setboolopt "align-all") "guarantee alignment across all lines (slower)"
-  ,outputFormatFlag ["txt","html","csv","tsv","json"]
+  ,outputFormatFlag ["txt","html","csv","tsv","json","svg"]
   ,outputFileFlag
+  ,chartFlag
   ])
   cligeneralflagsgroups1
   hiddenflags
@@ -143,7 +145,11 @@ aregister opts@CliOpts{rawopts_=rawopts,reportspec_=rspec} j = do
         hd = headingopt opts
         fmt = outputFormatFromOpts opts
 
-  writeOutputLazyText opts $ render items'
+  if chartRequested opts
+  then writeChart opts (Just $ render items') $
+       accountTransactionsReportAsChart (journalAccountType j) (accountTransactionsReportTitle opts (_rsQuery rspec') thisacctq) acct
+         (transactionRegisterDate wd (_rsQuery rspec') thisacctq) items'
+  else writeOutputLazyText opts $ render items'
 
 accountTransactionsReportAsCsv ::
   CliOpts -> Bool -> WhichDate -> Query -> Query -> AccountTransactionsReport -> CSV

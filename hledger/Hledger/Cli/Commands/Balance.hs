@@ -308,6 +308,7 @@ import Hledger.Cli.Utils
 import Hledger.Cli.Anchor (linkParams, composeAnchorWith, dateTerm, removeInacct,
   withLink, setAccountAnchor, setAccountAnchorWith, renderPeriodHeading, amountPhrase)
 import Hledger.Cli.Commands.Balance.Internal
+import Hledger.Cli.Chart (chartFlag, chartWidthFlag, chartRequested, writeChart, multiBalanceReportAsChart, balanceReportAsChart)
 import Hledger.Write.Csv (CSV, printCSV, printTSV)
 import Hledger.Write.Ods (printFods)
 import Hledger.Write.Html (Html, titledTableHtml, htmlAsLazyText, toHtml)
@@ -375,8 +376,10 @@ balancemode = hledgerCommandMode
      ,flagReq  ["base-url"] (\s opts -> Right $ setopt "base-url" s opts) "URLPREFIX" "in html output, generate links to hledger-web, with this prefix. (Usually the base url shown by hledger-web; can also be relative.)"
 
     -- output:
-    ,outputFormatFlag ["txt","html","csv","tsv","json","fods"]
+    ,outputFormatFlag ["txt","html","csv","tsv","json","fods","svg"]
     ,outputFileFlag
+    ,chartFlag
+    ,chartWidthFlag
 
     ]
   )
@@ -393,6 +396,7 @@ balancemode = hledgerCommandMode
 
 -- | The balance command, prints a balance report.
 balance :: CliOpts -> Journal -> IO ()
+balance opts j | chartRequested opts = balanceChart opts j
 balance opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
     CalcBudget -> do  -- single or multi period budget report
       warnIfLargeMultiPeriodReport rspec j
@@ -435,7 +439,7 @@ balance opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
               _      -> error' $ unsupportedOutputFormatError fmt  -- PARTIAL:
         writeOutputLazyText opts $ render report
   where
-    styles = journalCommodityStylesWith HardRounding j
+    styles = balanceReportStyles ropts j
     tr = I18n.tr (translations_ ropts)
     ropts =
         let ropts0 = _rsReportOpts rspec in
@@ -447,6 +451,23 @@ balance opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
     multiperiod = interval_ ropts /= NoInterval || (layout_ ropts == LayoutTidy && delimited)
     delimited   = fmt == "csv" || fmt == "tsv"
     fmt         = outputFormatFromOpts opts
+
+-- | The balance command with --chart (or svg output): shows a chart of the balance report, or the chart's data.
+balanceChart :: CliOpts -> Journal -> IO ()
+balanceChart opts@CliOpts{reportspec_=rspec} j = case balancecalc_ ropts of
+    CalcBudget -> error' "--chart does not yet support --budget"  -- PARTIAL:
+    _ | interval_ ropts /= NoInterval -> do
+      warnIfLargeMultiPeriodReport rspec j
+      let report = styleAmounts styles $ multiBalanceReport rspec j
+      writeChart opts (Just $ (<>"\n") $ htmlAsLazyText $ multiBalanceReportAsHtml ropts report) $
+        multiBalanceReportAsChart (journalAccountType j) ropts (multiBalanceReportTitle ropts report) report
+    _ -> do
+      let report = styleAmounts styles $ balanceReport rspec j
+      writeChart opts (Just $ (<>"\n") $ htmlAsLazyText $ balanceReportAsHtml ropts report) $
+        balanceReportAsChart (journalAccountType j) ropts (effectiveTitle ropts "") report
+  where
+    ropts  = _rsReportOpts rspec
+    styles = balanceReportStyles ropts j
 
 -- Rendering
 
@@ -820,6 +841,10 @@ multiBalanceReportTitle ropts@ReportOpts{..} r = effectiveTitle ropts defaultTit
         (CalcGain,        PerPeriod  ) -> tr "Incremental gain"
         (CalcGain,        Cumulative ) -> tr "Cumulative gain"
         (CalcGain,        Historical ) -> tr "Historical gain"
+        (CalcPostingsCount, PerPeriod  ) -> tr "Posting counts"
+        (CalcPostingsCount, Cumulative ) -> tr "Cumulative posting counts"
+        (CalcPostingsCount, Historical ) -> tr "Historical posting counts"
+        (CalcTransactionsCount, _      ) -> tr "Transaction counts"
         (_,               PerPeriod  ) -> tr "Balance changes"
         (_,               Cumulative ) -> tr "Ending balances (cumulative)"
         (_,               Historical)  -> tr "Ending balances (historical)"

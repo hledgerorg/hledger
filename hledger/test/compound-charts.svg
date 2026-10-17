@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="hledger-chart" width="760" height="340" viewBox="0 0 760 340" role="img" aria-label="Monthly Income Statement 2024-01-01..2024-02-29">
+<title>Monthly Income Statement 2024-01-01..2024-02-29</title>
+<style>.hledger-chart{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px}
+.hledger-chart .title{font-size:14px;font-weight:600}
+.hledger-chart .heading{font-size:13px;font-weight:600}
+.hledger-chart .value,.hledger-chart .tick{font-variant-numeric:tabular-nums}
+.hledger-chart .grid,.hledger-chart .axis{stroke-width:1}
+.hledger-chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.hledger-chart .mark{stroke-width:1.5}
+.hledger-chart .average{stroke-width:1.5;stroke-dasharray:5 4}
+.hledger-chart .hit{fill:transparent}
+.hledger-chart .hatch{stroke-width:2.5}
+.hledger-chart .bg{fill:#fcfcfb}
+.hledger-chart .title{fill:#0b0b0b}
+.hledger-chart .heading{fill:#0b0b0b}
+.hledger-chart .label{fill:#52514e}
+.hledger-chart .value{fill:#52514e}
+.hledger-chart .tick{fill:#898781}
+.hledger-chart .grid{stroke:#e1e0d9}
+.hledger-chart .axis{stroke:#c3c2b7}
+.hledger-chart .line.total{stroke:#0b0b0b}
+.hledger-chart .mark.total{stroke:#0b0b0b}
+.hledger-chart .average{stroke:#0b0b0b}
+.hledger-chart .clip{fill:#0b0b0b}
+.hledger-chart .hatch{stroke:#fcfcfb}
+.hledger-chart .fill.ta0{fill:#2a78d6}
+.hledger-chart .line.ta0{stroke:#2a78d6}
+.hledger-chart .fill.ta1{fill:#7faee6}
+.hledger-chart .line.ta1{stroke:#7faee6}
+.hledger-chart .fill.ta2{fill:#1d5496}
+.hledger-chart .line.ta2{stroke:#1d5496}
+.hledger-chart .fill.ta3{fill:#b4d0f1}
+.hledger-chart .line.ta3{stroke:#b4d0f1}
+.hledger-chart .fill.tl0{fill:#eda100}
+.hledger-chart .line.tl0{stroke:#eda100}
+.hledger-chart .fill.tl1{fill:#f4c766}
+.hledger-chart .line.tl1{stroke:#f4c766}
+.hledger-chart .fill.tl2{fill:#a67100}
+.hledger-chart .line.tl2{stroke:#a67100}
+.hledger-chart .fill.tl3{fill:#f9dea6}
+.hledger-chart .line.tl3{stroke:#f9dea6}
+.hledger-chart .fill.te0{fill:#4a3aa7}
+.hledger-chart .line.te0{stroke:#4a3aa7}
+.hledger-chart .fill.te1{fill:#9289ca}
+.hledger-chart .line.te1{stroke:#9289ca}
+.hledger-chart .fill.te2{fill:#342975}
+.hledger-chart .line.te2{stroke:#342975}
+.hledger-chart .fill.te3{fill:#c0bae0}
+.hledger-chart .line.te3{stroke:#c0bae0}
+.hledger-chart .fill.tr0{fill:#008300}
+.hledger-chart .line.tr0{stroke:#008300}
+.hledger-chart .fill.tr1{fill:#66b566}
+.hledger-chart .line.tr1{stroke:#66b566}
+.hledger-chart .fill.tr2{fill:#005c00}
+.hledger-chart .line.tr2{stroke:#005c00}
+.hledger-chart .fill.tr3{fill:#a6d4a6}
+.hledger-chart .line.tr3{stroke:#a6d4a6}
+.hledger-chart .fill.tx0{fill:#e34948}
+.hledger-chart .line.tx0{stroke:#e34948}
+.hledger-chart .fill.tx1{fill:#ee9291}
+.hledger-chart .line.tx1{stroke:#ee9291}
+.hledger-chart .fill.tx2{fill:#9f3332}
+.hledger-chart .line.tx2{stroke:#9f3332}
+.hledger-chart .fill.tx3{fill:#f5bfbf}
+.hledger-chart .line.tx3{stroke:#f5bfbf}
+.hledger-chart .fill.s0{fill:#2a78d6}
+.hledger-chart .line.s0{stroke:#2a78d6}
+.hledger-chart .fill.s1{fill:#eb6834}
+.hledger-chart .line.s1{stroke:#eb6834}
+.hledger-chart .fill.s2{fill:#1baf7a}
+.hledger-chart .line.s2{stroke:#1baf7a}
+.hledger-chart .fill.s3{fill:#eda100}
+.hledger-chart .line.s3{stroke:#eda100}
+.hledger-chart .fill.s4{fill:#e87ba4}
+.hledger-chart .line.s4{stroke:#e87ba4}
+.hledger-chart .fill.s5{fill:#008300}
+.hledger-chart .line.s5{stroke:#008300}
+.hledger-chart .fill.s6{fill:#4a3aa7}
+.hledger-chart .line.s6{stroke:#4a3aa7}
+.hledger-chart .fill.s7{fill:#e34948}
+.hledger-chart .line.s7{stroke:#e34948}
+.hledger-chart .fill.other{fill:#898781}
+.hledger-chart .line.other{stroke:#898781}
+.hledger-chart .fill.lone{fill:#1597b0}
+.hledger-chart .line.lone{stroke:#1597b0}
+.hledger-chart .fill.neutral{fill:#52514e}
+.hledger-chart .line.neutral{stroke:#52514e}
+@media (prefers-color-scheme:dark){
+.hledger-chart .bg{fill:#1a1a19}
+.hledger-chart .title{fill:#ffffff}
+.hledger-chart .heading{fill:#ffffff}
+.hledger-chart .label{fill:#c3c2b7}
+.hledger-chart .value{fill:#c3c2b7}
+.hledger-chart .tick{fill:#898781}
+.hledger-chart .grid{stroke:#2c2c2a}
+.hledger-chart .axis{stroke:#383835}
+.hledger-chart .line.total{stroke:#ffffff}
+.hledger-chart .mark.total{stroke:#ffffff}
+.hledger-chart .average{stroke:#ffffff}
+.hledger-chart .clip{fill:#ffffff}
+.hledger-chart .hatch{stroke:#1a1a19}
+.hledger-chart .fill.ta0{fill:#3987e5}
+.hledger-chart .line.ta0{stroke:#3987e5}
+.hledger-chart .fill.ta1{fill:#88b7ef}
+.hledger-chart .line.ta1{stroke:#88b7ef}
+.hledger-chart .fill.ta2{fill:#285ea0}
+.hledger-chart .line.ta2{stroke:#285ea0}
+.hledger-chart .fill.ta3{fill:#bad5f6}
+.hledger-chart .line.ta3{stroke:#bad5f6}
+.hledger-chart .fill.tl0{fill:#c98500}
+.hledger-chart .line.tl0{stroke:#c98500}
+.hledger-chart .fill.tl1{fill:#dfb666}
+.hledger-chart .line.tl1{stroke:#dfb666}
+.hledger-chart .fill.tl2{fill:#8d5d00}
+.hledger-chart .line.tl2{stroke:#8d5d00}
+.hledger-chart .fill.tl3{fill:#ecd4a6}
+.hledger-chart .line.tl3{stroke:#ecd4a6}
+.hledger-chart .fill.te0{fill:#9085e9}
+.hledger-chart .line.te0{stroke:#9085e9}
+.hledger-chart .fill.te1{fill:#bcb6f2}
+.hledger-chart .line.te1{stroke:#bcb6f2}
+.hledger-chart .fill.te2{fill:#655da3}
+.hledger-chart .line.te2{stroke:#655da3}
+.hledger-chart .fill.te3{fill:#d8d4f7}
+.hledger-chart .line.te3{stroke:#d8d4f7}
+.hledger-chart .fill.tr0{fill:#008300}
+.hledger-chart .line.tr0{stroke:#008300}
+.hledger-chart .fill.tr1{fill:#66b566}
+.hledger-chart .line.tr1{stroke:#66b566}
+.hledger-chart .fill.tr2{fill:#005c00}
+.hledger-chart .line.tr2{stroke:#005c00}
+.hledger-chart .fill.tr3{fill:#a6d4a6}
+.hledger-chart .line.tr3{stroke:#a6d4a6}
+.hledger-chart .fill.tx0{fill:#e66767}
+.hledger-chart .line.tx0{stroke:#e66767}
+.hledger-chart .fill.tx1{fill:#f0a4a4}
+.hledger-chart .line.tx1{stroke:#f0a4a4}
+.hledger-chart .fill.tx2{fill:#a14848}
+.hledger-chart .line.tx2{stroke:#a14848}
+.hledger-chart .fill.tx3{fill:#f6caca}
+.hledger-chart .line.tx3{stroke:#f6caca}
+.hledger-chart .fill.s0{fill:#3987e5}
+.hledger-chart .line.s0{stroke:#3987e5}
+.hledger-chart .fill.s1{fill:#d95926}
+.hledger-chart .line.s1{stroke:#d95926}
+.hledger-chart .fill.s2{fill:#199e70}
+.hledger-chart .line.s2{stroke:#199e70}
+.hledger-chart .fill.s3{fill:#c98500}
+.hledger-chart .line.s3{stroke:#c98500}
+.hledger-chart .fill.s4{fill:#d55181}
+.hledger-chart .line.s4{stroke:#d55181}
+.hledger-chart .fill.s5{fill:#008300}
+.hledger-chart .line.s5{stroke:#008300}
+.hledger-chart .fill.s6{fill:#9085e9}
+.hledger-chart .line.s6{stroke:#9085e9}
+.hledger-chart .fill.s7{fill:#e66767}
+.hledger-chart .line.s7{stroke:#e66767}
+.hledger-chart .fill.other{fill:#898781}
+.hledger-chart .line.other{stroke:#898781}
+.hledger-chart .fill.lone{fill:#22a6be}
+.hledger-chart .line.lone{stroke:#22a6be}
+.hledger-chart .fill.neutral{fill:#c3c2b7}
+.hledger-chart .line.neutral{stroke:#c3c2b7}
+}
+</style>
+<rect class="bg" width="100%" height="100%" />
+<text class="title" x="16" y="30">Monthly Income Statement 2024-01-01..2024-02-29</text>
+<rect x="16" y="53" width="10" height="10" rx="2" class="fill tr1" />
+<text class="label" x="34" y="62">revenues:salary</text>
+<rect x="155" y="53" width="10" height="10" rx="2" class="fill tx3" />
+<text class="label" x="173" y="62">expenses:food</text>
+<rect x="280" y="53" width="10" height="10" rx="2" class="fill tx2" />
+<text class="label" x="298" y="62">expenses:rent</text>
+<line class="mark total" x1="405" x2="417" y1="58" y2="58" />
+<text class="label" x="423" y="62">Net</text>
+<line class="axis" x1="49" x2="744" y1="302" y2="302" />
+<text class="tick" x="41" y="306" text-anchor="end">0</text>
+<line class="grid" x1="49" x2="744" y1="258" y2="258" />
+<text class="tick" x="41" y="262" text-anchor="end">20</text>
+<line class="grid" x1="49" x2="744" y1="214" y2="214" />
+<text class="tick" x="41" y="218" text-anchor="end">40</text>
+<line class="grid" x1="49" x2="744" y1="170" y2="170" />
+<text class="tick" x="41" y="174" text-anchor="end">60</text>
+<line class="grid" x1="49" x2="744" y1="126" y2="126" />
+<text class="tick" x="41" y="130" text-anchor="end">80</text>
+<line class="grid" x1="49" x2="744" y1="82" y2="82" />
+<text class="tick" x="41" y="86" text-anchor="end">100</text>
+<text class="tick" x="222.8" y="320" text-anchor="middle">Jan</text>
+<text class="tick" x="570.2" y="320" text-anchor="middle">Feb</text>
+<g>
+<title>Jan · revenues:salary · 100</title>
+<path class="fill tr1" d="M 197.8 302 V 86 Q 197.8 82 201.8 82 H 217.8 Q 221.8 82 221.8 86 V 302 Z" />
+</g>
+<g>
+<title>Jan · expenses:food · 30</title>
+<path class="fill tx3" d="M 223.8 302 V 240 Q 223.8 236 227.8 236 H 243.8 Q 247.8 236 247.8 240 V 302 Z" />
+</g>
+<g>
+<title>Feb · revenues:salary · 100</title>
+<path class="fill tr1" d="M 545.2 302 V 86 Q 545.2 82 549.2 82 H 565.2 Q 569.2 82 569.2 86 V 302 Z" />
+</g>
+<g>
+<title>Feb · expenses:rent · 80</title>
+<path class="fill tx2" d="M 571.2 302 V 130 Q 571.2 126 575.2 126 H 591.2 Q 595.2 126 595.2 130 V 302 Z" />
+</g>
+<g>
+<title>Jan · Net · 70</title>
+<line class="mark total" x1="193.8" x2="251.8" y1="148" y2="148" />
+</g>
+<g>
+<title>Feb · Net · 20</title>
+<line class="mark total" x1="541.2" x2="599.2" y1="258" y2="258" />
+</g>
+</svg>

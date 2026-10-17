@@ -1,0 +1,324 @@
+# * balance command --chart flag and svg output: charts, and chart data with -O csv/tsv
+
+<
+2024-01-01
+    expenses:food            10
+    assets:cash
+
+2024-01-15
+    expenses:food:dining      5
+    assets:cash
+
+2024-02-01
+    expenses:rent           100
+    assets:cash
+
+# ** 1. Period changes are stacked bars, with the net total as a marker.
+$ hledger -f - bal -M expenses --chart -O csv
+"commodity","series","role","mark","x","value"
+"","expenses:food","item","bar","Jan","10"
+"","expenses:food","item","bar","Feb","0"
+"","expenses:food:dining","item","bar","Jan","5"
+"","expenses:food:dining","item","bar","Feb","0"
+"","expenses:rent","item","bar","Jan","0"
+"","expenses:rent","item","bar","Feb","100"
+"","Total","total","marker","Jan","15"
+"","Total","total","marker","Feb","100"
+
+# ** 2. In tree mode, each account's own amounts are charted, so nothing is counted twice
+# (expenses:food is 10, not 15; expenses, with no amounts of its own, is omitted).
+$ hledger -f - bal -M expenses --tree --chart -O csv
+"commodity","series","role","mark","x","value"
+"","expenses:food","item","bar","Jan","10"
+"","expenses:food","item","bar","Feb","0"
+"","expenses:food:dining","item","bar","Jan","5"
+"","expenses:food:dining","item","bar","Feb","0"
+"","expenses:rent","item","bar","Jan","0"
+"","expenses:rent","item","bar","Feb","100"
+"","Total","total","marker","Jan","15"
+"","Total","total","marker","Feb","100"
+
+# ** 3. End balances are lines, labelled by period end date. A single series has no total.
+$ hledger -f - bal -M -H assets --chart -O csv
+"commodity","series","role","mark","x","value"
+"","assets:cash","item","line","2024-01-31","-15"
+"","assets:cash","item","line","2024-02-29","-115"
+
+# ** 4. -N omits the total.
+$ hledger -f - bal -M expenses -N --chart -O csv
+"commodity","series","role","mark","x","value"
+"","expenses:food","item","bar","Jan","10"
+"","expenses:food","item","bar","Feb","0"
+"","expenses:food:dining","item","bar","Jan","5"
+"","expenses:food:dining","item","bar","Feb","0"
+"","expenses:rent","item","bar","Jan","0"
+"","expenses:rent","item","bar","Feb","100"
+
+# ** 5. Only chart kinds that exist are accepted.
+$ hledger -f - bal --chart=nosuchkind
+>2 /--chart's value should be a chart KIND \(auto, diverging, grouped\)/
+>= 1
+
+<
+2024-01-01
+    a    1
+    b    2
+    c    3
+    d    4
+    e    5
+    f    6
+    g    7
+    h    8
+    i    9
+    j   10
+    k  -55
+
+2024-01-02
+    x    5 EUR
+    y   -5 EUR
+
+2024-02-02
+    x    3 EUR
+    y   -3 EUR
+
+# ** 6. There is one panel per commodity, the one in most report cells first.
+# Beyond 8 series, the smallest are combined into "other".
+$ hledger -f - bal -M --chart -O csv
+"commodity","series","role","mark","x","value"
+"","e","item","bar","Jan","5"
+"","e","item","bar","Feb","0"
+"","f","item","bar","Jan","6"
+"","f","item","bar","Feb","0"
+"","g","item","bar","Jan","7"
+"","g","item","bar","Feb","0"
+"","h","item","bar","Jan","8"
+"","h","item","bar","Feb","0"
+"","i","item","bar","Jan","9"
+"","i","item","bar","Feb","0"
+"","j","item","bar","Jan","10"
+"","j","item","bar","Feb","0"
+"","k","item","bar","Jan","-55"
+"","k","item","bar","Feb","0"
+"","other (4 accounts)","other","bar","Jan","10"
+"","other (4 accounts)","other","bar","Feb","0"
+"","Total","total","marker","Jan","0"
+"","Total","total","marker","Feb","0"
+"EUR","x","item","bar","Jan","5"
+"EUR","x","item","bar","Feb","3"
+"EUR","y","item","bar","Jan","-5"
+"EUR","y","item","bar","Feb","-3"
+"EUR","Total","total","marker","Jan","0"
+"EUR","Total","total","marker","Feb","0"
+
+# ** 7. A single-period report charts one bar per account.
+# An account with no amount in a panel's commodity has no value there.
+$ hledger -f - bal x a --chart -O csv
+"commodity","series","role","mark","x","value"
+"","Balance","item","bar","a","1"
+"","Balance","item","bar","x",""
+"EUR","Balance","item","bar","a",""
+"EUR","Balance","item","bar","x","8"
+
+# ** 8. TSV works too.
+$ hledger -f - bal x a --chart -O tsv
+commodity	series	role	mark	x	value
+	Balance	item	bar	a	1
+	Balance	item	bar	x	
+EUR	Balance	item	bar	a	
+EUR	Balance	item	bar	x	8
+
+# ** 9. A text chart has a panel per commodity, with a heading for those with a commodity symbol.
+$ hledger -f - bal x a --chart -w 30
+a  1  ████████████████████████
+
+EUR
+x  8 EUR  ████████████████████
+
+<
+2024-01-01
+    expenses:food            10
+    assets:cash
+
+2024-01-15
+    expenses:food:dining      5
+    assets:cash
+
+2024-02-01
+    expenses:rent           100
+    assets:cash
+
+# ** 10. A single series is drawn with eighth-block characters, with its values before the bars.
+$ hledger -f - bal -M expenses:rent --chart -w 40
+Balance changes in 2024-01-01..2024-02-29:
+
+Jan    0
+Feb  100  ██████████████████████████████
+
+# ** 11. Several series are stacked, with a legend, and the net total as the value.
+$ hledger -f - bal -M expenses --chart -w 50
+Balance changes in 2024-01-01..2024-02-29:
+
+░ expenses:food  █ expenses:food:dining
+▒ expenses:rent
+
+Jan   15  ░░░░██
+Feb  100  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
+# ** 12. Negative values grow left from an axis.
+$ hledger -f - bal -M --chart -w 50
+Balance changes in 2024-01-01..2024-02-29:
+
+▒ assets:cash  ▓ expenses:food
+█ expenses:food:dining  ░ expenses:rent
+
+Jan  0                   ▒▒▒│▓▓█
+Feb  0  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│░░░░░░░░░░░░░░░░░░░░
+
+# ** 13. A single-period chart has a bar per account, indented in tree mode.
+$ hledger -f - bal --tree --chart -w 40
+assets:cash  -115  ██████████│
+expenses      115            │██████████
+  food         15            │█▎
+    dining      5            │▍
+  rent        100            │████████▊
+
+# ** 14. With -N there is no total, and several series, so no value column.
+$ hledger -f - bal -M expenses -N --chart -w 50
+Balance changes in 2024-01-01..2024-02-29:
+
+░ expenses:food  █ expenses:food:dining
+▒ expenses:rent
+
+Jan  ░░░░███
+Feb  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
+# ** 15. --width must be a positive number.
+$ hledger -f - bal --chart -w 0
+>2 /--width should be a positive whole number/
+>= 1
+
+# ** 16. svg output always shows a chart (here, of a single-period report: a vertical bar per account, coloured by account type).
+# The expected output is in chart.svg.
+$ hledger -f - bal expenses -O svg | diff - chart.svg
+
+# ** 17. --chart with an output format that can't show charts gives an error.
+$ hledger -f - bal --chart -O fods
+>2 /--chart does not yet support fods output/
+>= 1
+
+# ** 18. A file name given to -O by mistake is reported as an unrecognised format, with a hint to use -o.
+$ hledger -f - bal --chart -O a.svg
+>2 /To write to a file named a.svg, use -o/
+>= 1
+
+# ** 19. With html output, --chart shows the chart (as SVG, always light, like the table) above the report's table.
+$ hledger -f - bal --chart -O html | grep -o -e '<svg' -e '<table' -e 'prefers-color-scheme' | tr -d '<'
+svg
+table
+
+<
+2024-01-01
+    a      1
+    b   1000
+    c
+
+# ** 20. A text chart's legend leaves out series too small to see (here, a).
+$ hledger -f - bal -M a b --chart -w 40
+Balance changes in 2024-01:
+
+▒ b
+
+Jan  1001  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+
+<
+2024-01-01
+    expenses:food     10
+    expenses:rent    100
+    assets:cash
+
+2024-02-01
+    expenses:food     20
+    assets:cash
+
+2024-02-02
+    assets:euro       30 EUR
+    equity
+
+# ** 21. --chart=SCALE draws the chart at a fixed scale, where SCALE fills the chart, so that charts can be compared.
+# Bars that don't fit are clipped, with a mark at the edge.
+$ hledger -f - bal -M expenses --chart=50 -w 40
+Balance changes in 2024-01-01..2024-02-29:
+
+░ expenses:food  ▒ expenses:rent
+
+Jan  110  ░░░░░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▸
+Feb   20  ░░░░░░░░░░░░
+
+# ** 22. KIND and SCALE can be given together, KIND first.
+$ hledger -f - bal -M expenses --chart=auto,200 -w 40
+Balance changes in 2024-01-01..2024-02-29:
+
+░ expenses:food  ▒ expenses:rent
+
+Jan  110  ░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+Feb   20  ░░░
+
+# ** 23. A SCALE with a commodity symbol applies to that commodity's chart; one without, to the others.
+$ hledger -f - bal cash euro --chart='100,10 EUR' -w 30
+assets:c..  -130  ◂██████████│
+
+EUR
+assets:e..  30 EUR  █████████▸
+
+# ** 24. In SVG charts, SCALE fixes the axis, and clipped bars are marked with a triangle.
+$ hledger -f - bal -M expenses --chart=50 -O svg | grep -c '<polygon class="clip"'
+1
+
+# ** 25. SCALE must be a non-zero amount, written without digit group marks.
+$ hledger -f - bal --chart=1,000
+>2 /but this part was not: 000/
+>= 1
+
+# ** 26. KIND must come before SCALE.
+$ hledger -f - bal --chart=200,auto
+>2 /--chart's KIND \(auto\) should come before any SCALE amounts/
+>= 1
+
+<
+2024-01-01
+    assets:a1        10
+    assets:a2        20
+    assets:a3        30
+    assets:a4        40
+    assets:a5        50
+    assets:a6        60
+    assets:a7        70
+    assets:a8        80
+    assets:a9        90
+    liabilities:l1   -1
+    liabilities:l2   -2
+    equity
+
+# ** 27. When accounts are combined into "other", accounts of different types are never combined,
+# and each type keeps at least its largest account (here, the small liabilities are still shown).
+$ hledger -f - bal -M assets liabilities --chart -O csv
+"commodity","series","role","mark","x","value"
+"","assets:a5","item","bar","Jan","50"
+"","assets:a6","item","bar","Jan","60"
+"","assets:a7","item","bar","Jan","70"
+"","assets:a8","item","bar","Jan","80"
+"","assets:a9","item","bar","Jan","90"
+"","liabilities:l1","item","bar","Jan","-1"
+"","liabilities:l2","item","bar","Jan","-2"
+"","other (4 accounts)","other","bar","Jan","100"
+"","Total","total","marker","Jan","447"
+
+# ** 28. A chart with nothing to show, eg of an empty period, says so.
+$ hledger -f - bal -M -p 2099 --chart
+Balance changes in 2099:
+
+No data
+
+# ** 29. Likewise in SVG.
+$ hledger -f - bal -M -p 2099 -O svg | sed -n 's/.*class="label".*>\(.*\)<.*/\1/p'
+No data

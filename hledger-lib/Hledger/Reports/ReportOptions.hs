@@ -28,6 +28,7 @@ module Hledger.Reports.ReportOptions (
   overEither,
   setEither,
   BalanceCalculation(..),
+  balanceCalcIsCount,
   BalanceAccumulation(..),
   AccountListMode(..),
   ValuationType(..),
@@ -104,9 +105,14 @@ data BalanceCalculation =
   | CalcValueChange   -- ^ Change from previous period's historical end value to this period's historical end value.
   | CalcGain          -- ^ Change from previous period's gain, i.e. valuation minus cost basis.
   | CalcPostingsCount -- ^ Number of postings in the period.
+  | CalcTransactionsCount -- ^ Number of transactions in the period (exact only for a single account row, eg at depth 0).
   deriving (Eq, Show)
 
 instance Default BalanceCalculation where def = CalcChange
+
+-- | Does this calculation count postings or transactions, rather than summing amounts ?
+balanceCalcIsCount :: BalanceCalculation -> Bool
+balanceCalcIsCount c = c == CalcPostingsCount || c == CalcTransactionsCount
 
 -- | How to accumulate calculated values across periods (columns) in a balance report.
 -- "Balance report types -> Accumulation type" in the hledger manual.

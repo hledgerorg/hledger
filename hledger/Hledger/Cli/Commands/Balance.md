@@ -71,9 +71,24 @@ Flags:
                             with this prefix. (Usually the base url shown by
                             hledger-web; can also be relative.)
   -O --output-format=FMT    select the output format. Supported formats:
-                            txt, html, csv, tsv, json, fods.
+                            txt, html, csv, tsv, json, fods, svg.
   -o --output-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
+     --chart[=KIND,SCALE]   show a chart instead of the report table (with
+                            txt output), a chart above the table (with html
+                            output), or the chart's data (with csv, tsv or json
+                            output). svg output always shows a chart. KIND can
+                            be: auto (the default), or for compound reports
+                            grouped (sections side by side; the default for
+                            changes) or diverging (sections in one bar, above
+                            and below zero; the default for end balances).
+                            SCALE fixes the chart's scale, so that charts can
+                            be compared: it is the amount that fills the chart
+                            (eg 1000, or 1000 USD to set it for one commodity's
+                            chart; several can be given). Larger amounts are
+                            clipped.
+  -w --width=N              with --chart: draw the chart N characters wide
+                            (default: the terminal width)
 ```
 
 `balance` is one of hledger's oldest and most versatile commands,
@@ -140,11 +155,12 @@ Many of these work with the other balance-like commands as well (`bs`, `cf`, `is
 - another field used as account name ([`--pivot`](#multi-period-balance-report))
 - custom-formatted line items (single-period reports only) ([`--format`](#balance-report-line-format))
 - commodities displayed on the same line or multiple lines ([`--layout`](#balance-report-layout))
+- a chart instead of a table ([`--chart`](#balance-charts))
 
 This command supports the
 [output destination](#output-destination) and
 [output format](#output-format) options,
-with output formats `txt`, `csv`, `tsv`, `json`, `html`, and `fods`.
+with output formats `txt`, `csv`, `tsv`, `json`, `html`, `fods`, and `svg`.
 In `txt` output in a colour-supporting terminal, negative amounts are shown in red.
 
 ### Simple balance report
@@ -1005,6 +1021,108 @@ E.g. if your `hledger-web` server is reachable at `http://localhost:5000`
 then you might run the `balance` command with the extra option `--base-url=http://localhost:5000`.
 You can also produce relative links, like `--base-url="some/path"` or `--base-url=""`.)
 
+### Balance charts
+
+With `--chart`, `balance` shows a chart of the report instead of a table, choosing a useful kind of chart automatically.
+In the terminal, this is a bar chart drawn with text characters:
+
+```cli
+$ hledger -f examples/bcexample.journal bal -M expenses:food -b 2013 -e 2013-04 cur:USD --chart -w 70
+Balance changes in 2013Q1:
+
+█ Expenses:Food:Groceries  ▓ Expenses:Food:Restaurant
+
+Jan  396.46 USD  █████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+Feb  481.48 USD  ████████████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+Mar  603.32 USD  ██████████████████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+```
+
+- A multi-period report of balance changes is charted as stacked bars per period, showing the net total as the value (and in graphical charts, as a line mark).
+- A multi-period report of end balances (`--cumulative`, `-H`) is charted the same way in text (and as lines in graphical charts).
+- A single-period report is charted as one bar per account.
+
+Negative amounts grow left from an axis, positive amounts right.
+Each account has its own colour (when colour is enabled) and fill character; fill characters repeat after four accounts.
+The legend lists the accounts visible in the chart (an account too small to fill a character cell is left out).
+When a chart shows accounts of several [account types](#account-types), they are coloured by type, with conventional colours:
+assets blue, liabilities amber, equity violet, revenues green, expenses red;
+several accounts of one type get different shades of its colour.
+(In terminals which advertise 24-bit colour support, by setting `COLORTERM=truecolor`, these are the same exact colours as in SVG charts;
+otherwise they are the terminal's basic blue, yellow, magenta, green and red, whose shades depend on its colour theme.)
+When a chart's accounts are all of one type, or of unknown type, they get distinct colours instead.
+A chart showing just a total (eg with `-0`, or of all accounts' transaction counts) is cyan, a colour no account type uses.
+Colours and fill characters are chosen by account name, not by position, so an account usually keeps its colour in other charts:
+with or without `-S`, or when you exclude other accounts to see more detail.
+(Not always, since there are only a few colours: an account may get a different one when some accounts are added or removed.)
+The chart fills the terminal width, or the width set by `-w`/`--width`
+(except for posting counts, with `--count`, which use at most one character per posting).
+It is drawn with unicode block characters, or with ASCII characters if the system's text encoding is not UTF-8.
+
+There is one chart panel per commodity. You can reduce this by converting to one commodity (eg `-X USD`) or selecting some (eg `cur:USD`);
+hledger suggests this when there are more than 8 panels.
+In tree mode, each account's own amounts are stacked, excluding its subaccounts', so that nothing is counted twice.
+At most 8 accounts are shown per panel; the smallest are combined into "other" series,
+one for each account type (so eg assets and liabilities are never combined), and each type keeps at least its largest account.
+The total is omitted with `-N` or `--percent`.
+
+In a chart of balance changes per period, `-T`/`--row-total` and `-A`/`--average` show the net total's total and average per period
+on a line below the chart, eg `Total 11, Average 0.9`; and in graphical charts, the average is also drawn as a dashed line across the chart.
+
+Each chart is scaled to fit its values. To draw charts at a fixed scale instead,
+so that you can compare them (eg this month's chart with last month's), add a SCALE amount: `--chart=SCALE`.
+This is the amount that the chart spans; eg with `--chart=5000`, a bar of 5000 fills the chart.
+If the chart also has negative values, they take the room they need and positive values get the rest.
+Bars that don't fit are clipped, with a mark at the edge (`▸` or `◂` in text, a small triangle in SVG); lines go off the edge.
+A SCALE with a commodity symbol (eg `--chart='5000 USD'`) applies to that commodity's panel, and one without, to the others.
+SCALE can follow KIND, and several SCALEs can be given, separated by commas (eg `--chart='auto,5000 USD,4000 EUR'`);
+so write SCALE without digit group marks.
+For the same scale in text charts, use the same width too (`-w`).
+
+With [SVG output](#svg-output) (`-o FILE.svg` or `-O svg`), `balance` always shows a chart, as a graphical image.
+Time runs along the x axis, and end balances are drawn as lines.
+A single-period report is drawn as vertical bars, one per account, with the account names below (angled if needed)
+and values above the bars (where they fit); or with more than 30 accounts, as horizontal bars.
+
+With [HTML output](#html-output), `--chart` shows the chart (as SVG) above the report's table.
+
+With `-O csv`, `-O tsv` or `-O json`, `--chart` shows the chart's data, eg to inspect it or chart it with other tools.
+
+The compound balance commands ([`balancesheet`](#balancesheet), [`balancesheetequity`](#balancesheetequity),
+[`cashflow`](#cashflow), [`incomestatement`](#incomestatement)) can show charts in the same ways.
+They chart their sections' accounts, with the net total as a mark (or as a line, with end balances), in one of two layouts:
+
+- **grouped** (the default for changes, eg `incomestatement`'s, or with `--chart=grouped`): at each period, each section's accounts
+  are stacked in a bar of their own, side by side, so that the sections' sizes can be compared.
+  Amounts are shown as the tables show them, eg expenses as well as revenues are positive.
+  In text charts, each period has a row for each section, showing its total, and a row marking the net total.
+
+- **diverging** (the default for end balances, eg `balancesheet`'s, or with `--chart=diverging`): at each period, all accounts
+  are stacked in one bar, showing each amount as its contribution to the net total: sections that add to it (eg assets, revenues)
+  above zero, and sections that subtract from it (eg liabilities, expenses) below zero.
+  (This is also why a diverging `is` chart draws expenses below zero while `bal` draws them above, as their raw amounts are positive;
+  `bal --invert` gives the same signs.)
+  In text charts, each period is a row showing the net total, the totals of the sections on each side at the ends of the bar
+  (as the report's table shows them; headed by the sections' names), and a mark at the net total's position.
+
+Contra amounts - those with the opposite sign to their section's usual sign, like a refund recorded as a negative expense,
+or a contra account like accumulated depreciation - are drawn next to the zero line, hatched in their account's colour
+(below zero in the grouped layout, and on the other side from their section in the diverging layout).
+They are included in their section's totals.
+(Cash flows, in `cf`, have no usual sign: decreases are drawn like increases, below zero.)
+Each section shows at most five accounts, combining the smallest into "other"; use a depth limit (eg `-1` or `-2`) for less detail.
+A single-period report is charted the same way, with one period.
+The chart data has one record per value, with fields:
+commodity, series (usually an account name), role (`item`, `other` or `total`), mark (`bar`, `line` or `marker`),
+x (a period heading, period end date, or account name), and value.
+With `-T` or `-A`, each commodity's total or average follows, with role `rowtotal` or `average`, and an empty mark and x. Eg:
+
+```cli
+$ hledger -f examples/sample.journal bal -M expenses -N --chart -O csv
+"commodity","series","role","mark","x","value"
+"$","expenses:food","item","bar","Jan","0"
+"$","expenses:food","item","bar","Feb","0"
+...
+```
 
 ### Some useful balance reports
 

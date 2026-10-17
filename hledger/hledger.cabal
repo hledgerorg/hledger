@@ -103,6 +103,7 @@ library
       Hledger.Cli
       Hledger.Cli.Anchor
       Hledger.Cli.Anon
+      Hledger.Cli.Chart
       Hledger.Cli.CliOptions
       Hledger.Cli.Commands
       Hledger.Cli.Commands.Accounts

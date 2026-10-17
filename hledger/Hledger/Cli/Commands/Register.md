@@ -28,9 +28,22 @@ Flags:
                             with this prefix. (Usually the base url shown by
                             hledger-web; can also be relative.)
   -O --output-format=FMT    select the output format. Supported formats:
-                            txt, csv, tsv, html, fods, json.
+                            txt, csv, tsv, html, fods, json, svg.
   -o --output-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
+     --chart[=KIND,SCALE]   show a chart instead of the report table (with
+                            txt output), a chart above the table (with html
+                            output), or the chart's data (with csv, tsv or json
+                            output). svg output always shows a chart. KIND can
+                            be: auto (the default), or for compound reports
+                            grouped (sections side by side; the default for
+                            changes) or diverging (sections in one bar, above
+                            and below zero; the default for end balances).
+                            SCALE fixes the chart's scale, so that charts can
+                            be compared: it is the amount that fills the chart
+                            (eg 1000, or 1000 USD to set it for one commodity's
+                            chart; several can be given). Larger amounts are
+                            clipped.
 ```
 
 The register command displays matched postings, across all accounts,
@@ -184,4 +197,15 @@ This command also supports the
 [output destination](hledger.html#output-destination) and
 [output format](hledger.html#output-format) options
 The output formats supported are
-`txt`, `csv`, `tsv`, and `json`.
+`txt`, `csv`, `tsv`, `html`, `fods`, `json`, and `svg`.
+
+### Register charts
+
+With `--chart`, or with `svg` output (`-o FILE.svg`), it shows a chart instead.
+Without a report interval, this is the running total (or average) after each posting, as a line over time;
+with postings to several accounts, each account's own running total is shown too, in its account type's colour
+(starting from its balance before the report period, with `-H`), at most eight of them, the smallest combined into "other".
+A text chart has a row per posting, with the accounts' running totals stacked.
+With a report interval, it is each account's amount in each period, as stacked bars, with the period's total.
+With `--chart -O csv` (or tsv or json) it shows the chart's data.
+See also [Balance charts](#balance-charts).
