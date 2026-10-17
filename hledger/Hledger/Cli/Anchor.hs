@@ -10,6 +10,7 @@ module Hledger.Cli.Anchor (
     LinkOpts(..),
     defaultLinkOpts,
     linkParams,
+    valueParam,
     composeAnchor,
     composeAnchorWith,
     accountTerm,
@@ -42,6 +43,7 @@ import Hledger.Utils.IO (error')
 import Hledger.Utils.Text (quoteIfSpaced)
 import Hledger.Data.Dates (showDateSpan, showDateSpanFull, showDateSpanForQuery, showDate, nulldatespan)
 import Hledger.Data.Types (DateSpan(..))
+import Hledger.Data.Valuation (ConversionOp(..), ValuationType(..))
 import Hledger.Reports.ReportOptions (PeriodTitles(..), BalanceAccumulation(..))
 
 
@@ -57,17 +59,42 @@ data LinkOpts = LinkOpts {
       -- ^ Does the report use secondary dates ? Then so must the register.
     loIncludesSubs :: Bool,
       -- ^ Does the row's figure include subaccounts (inacct:) or not (inacctonly:) ?
-    loNegated      :: Bool
+    loNegated      :: Bool,
       -- ^ Are the figures shown with the opposite sign to the register's ?
+    loValue        :: Maybe Text
+      -- ^ The register's value parameter, for figures converted to cost
+      --   or to market value (see 'valueParam').
 }
 
 defaultLinkOpts :: LinkOpts
-defaultLinkOpts = LinkOpts PerPeriod nulldatespan False True False
+defaultLinkOpts = LinkOpts PerPeriod nulldatespan False True False Nothing
 
 -- | The query parameters a link carries besides q: the register's
--- accumulation mode, when it is not the register's default.
+-- accumulation mode, when it is not the register's default, and how it
+-- converts amounts, when the report converts them.
 linkParams :: LinkOpts -> [(Text, Text)]
-linkParams lo = [("accum", "historical") | loAccum lo == Historical]
+linkParams lo =
+    [("accum", "historical") | loAccum lo == Historical] ++
+    [("value", v) | Just v <- [loValue lo]]
+
+-- | The value parameter that asks hledger-web's register to convert
+-- amounts as a report does, mirroring --value's WHEN[,COMM] syntax:
+-- "cost" for -B, "end" for -V, "end,COMM" for -X COMM, "then", "now",
+-- or a date for the other valuations. A register converting them the
+-- same way ends on the figure a link was clicked on. Cost combined
+-- with a valuation has none, and such links open the register as it is.
+valueParam :: Maybe ConversionOp -> Maybe ValuationType -> Maybe Text
+valueParam conv val =
+    case (conv == Just ToCost, val) of
+        (True,  Nothing) -> Just "cost"
+        (True,  Just _)  -> Nothing
+        (False, Nothing) -> Nothing
+        (False, Just vt) -> Just $ case vt of
+            AtEnd  mc   -> "end"  <> comm mc
+            AtThen mc   -> "then" <> comm mc
+            AtNow  mc   -> "now"  <> comm mc
+            AtDate d mc -> showDate d <> comm mc
+  where comm = maybe "" ("," <>)
 
 -- | The span a figure's register covers: the period, or, for a
 -- cumulative figure, the report's start to the period's end.

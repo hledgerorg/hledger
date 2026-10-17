@@ -100,15 +100,15 @@ pageNumbers current count = [start .. min count (start + 9)]
 -- | The line saying which of the matching transactions this page shows,
 -- and under it the row of pages: links to the newer and older pages and
 -- to the pages by number, the current one marked. Nothing when they all
--- fit on one page. The links keep the search.
-pagingLinks :: Translations -> r -> Text -> Page -> HtmlUrl r
-pagingLinks trs here qparam Page{..} = $(hamletFile "templates/paging.hamlet")
+-- fit on one page. The links keep the search and the given parameters.
+pagingLinks :: Translations -> r -> Text -> [(Text, Text)] -> Page -> HtmlUrl r
+pagingLinks trs here qparam kept Page{..} = $(hamletFile "templates/paging.hamlet")
   where
     showing = trf trs "Showing {first} to {last} of {total} transactions"
       [("first", withCommas pgFirst), ("last", withCommas pgLast), ("total", withCommas pgTotal)]
     pageTitle n = trf trs "Show page {n}" [("n", T.pack (show n))]
     pageLabel n = trf trs "Page {n}" [("n", T.pack (show n))]
-    link n = (here, [("q", qparam) | not (T.null qparam)] ++ [("page", T.pack (show n)) | n > 1])
+    link n = (here, [("q", qparam) | not (T.null qparam)] ++ kept ++ [("page", T.pack (show n)) | n > 1])
     mnewer = if pgNumber > 1       then Just (pgNumber - 1) else Nothing
     molder = if pgNumber < pgCount then Just (pgNumber + 1) else Nothing
     numbers = pageNumbers pgNumber pgCount
@@ -131,9 +131,10 @@ datelessQuery today qparam
 -- | The years in which a search matches transactions, each a link to the
 -- search narrowed to that year, after an All link that widens it again.
 -- Nothing when there is only one year, which has nowhere to go. More than
--- twenty years are grouped by decade, a row each.
-yearsRow :: Translations -> r -> Text -> [Day] -> HtmlUrl r
-yearsRow trs here qparam days = $(hamletFile "templates/years.hamlet")
+-- twenty years are grouped by decade, a row each. The links keep the
+-- given parameters.
+yearsRow :: Translations -> r -> Text -> [(Text, Text)] -> [Day] -> HtmlUrl r
+yearsRow trs here qparam kept days = $(hamletFile "templates/years.hamlet")
   where
     showOnly y = trf trs "Show only {year}" [("year", T.pack (show y))]
     years :: [Integer]
@@ -151,8 +152,8 @@ yearsRow trs here qparam days = $(hamletFile "templates/years.hamlet")
     -- the year links use; a year written another way is not recognized.
     isCurrent y = ("date:" <> T.pack (show y)) `elem` terms
     allCurrent = not $ any isDateTerm terms
-    yearlink y = (here, [("q", T.unwords $ ("date:" <> T.pack (show y)) : rest)])
-    alllink = (here, [("q", T.unwords rest) | not (null rest)])
+    yearlink y = (here, ("q", T.unwords $ ("date:" <> T.pack (show y)) : rest) : kept)
+    alllink = (here, [("q", T.unwords rest) | not (null rest)] ++ kept)
 
 -- | A count with thousands separators, as English prose has it: 1,234.
 withCommas :: Int -> Text
