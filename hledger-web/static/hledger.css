@@ -465,6 +465,9 @@ ul {
     white-space:nowrap;
     text-overflow:ellipsis;
     font-size: 16px;
+    /* a multi-commodity balance makes the row several lines tall; the
+       account name stays pegged to the first line */
+    vertical-align: top;
 }
 
 #sidebar-menu .main-menu .ff-wrapper { /* This wrapper is needed because firefox won't apply overflow to a td-tag */
@@ -513,7 +516,7 @@ ul {
 
 #sidebar-menu .main-menu .acct {
     width:60%;
-    vertical-align:bottom;
+    vertical-align:top;
 }
 
 .transactionsreport .posting td {
