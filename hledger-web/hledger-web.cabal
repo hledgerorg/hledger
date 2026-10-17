@@ -104,6 +104,7 @@ library
       Hledger.Web.Handler.AddR
       Hledger.Web.Handler.BalanceR
       Hledger.Web.Handler.EditR
+      Hledger.Web.Handler.HoldingsR
       Hledger.Web.Handler.JournalR
       Hledger.Web.Handler.MiscR
       Hledger.Web.Handler.RegisterR

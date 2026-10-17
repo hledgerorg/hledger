@@ -14,6 +14,7 @@ module Hledger.Utils.Text
   textChomp,
   -- quoting
   quoteIfSpaced,
+  quoteForQuery,
   textQuoteIfNeeded,
   -- singleQuoteIfNeeded,
   -- quotechars,
@@ -111,6 +112,18 @@ quoteIfSpaced :: T.Text -> T.Text
 quoteIfSpaced s | textIsSingleQuoted s || textIsDoubleQuoted s = s
                 | not $ any (\c -> T.any (==c) s) whitespacechars = s
                 | otherwise = textQuoteIfNeeded s
+
+-- | Quote this text for a hledger query, if needed: like quoteIfSpaced,
+-- except text containing double quotes (and no single quotes) is
+-- wrapped in single quotes, unescaped. The query parser (words'')
+-- reads no backslash escapes inside quoted phrases, so the escaped
+-- quotes textQuoteIfNeeded writes would not round-trip - eg in a
+-- labeled lot subaccount name, {2026-04-03, "0001", $304.25}.
+quoteForQuery :: T.Text -> T.Text
+quoteForQuery s
+  | textIsSingleQuoted s || textIsDoubleQuoted s = s
+  | T.any (== '"') s, not (T.any (== '\'') s) = "'" <> s <> "'"
+  | otherwise = quoteIfSpaced s
 
 -- -- | Wrap a string in double quotes, and \-prefix any embedded single
 -- -- quotes, if it contains whitespace and is not already single- or

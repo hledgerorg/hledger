@@ -239,7 +239,21 @@ reports of the command line's
 `/balancesheetequity`, `/incomestatement`, and `/cashflow`, and the
 general [balance report](hledger.md#balance) at `/balance`.
 The sidebar links to the balance sheet, income statement, and cashflow
-statement, and each report page links to all five.
+statement, and each report page links to the others.
+
+For journals that use [lots](hledger.md#lots-and-capital-gains), the
+[holdings](hledger.md#holdings) report is at `/holdings`, and appears
+in the sidebar and the report links. It shows one row per account and
+held commodity by default; its links can show each individual lot (a
+`lots=1` parameter), fully disposed positions (a `closed=1` parameter;
+`empty` keeps meaning zero-balance accounts, as on the other pages),
+accounts as a tree (positions grouped under account headings that
+subtotal the dollar columns, with each position's lots folding into
+it, opened in place by a caret), values converted to the market
+valuation commodity (`value=end`, like `-V`), and rows sorted by
+value. On such journals
+every page also gains a Lots link, showing lot subaccounts and per-lot
+postings everywhere with the same `lots` parameter.
 
 A `period` parameter, like the command line's `-p/--period`, selects
 the interval and/or the period, eg `/balancesheet?period=monthly` or
@@ -251,6 +265,14 @@ The search box filters the reports like the other pages, including
 as `--depth`, `-B`, or `-V`, apply. A `date:` term can set the interval
 too, as on the command line (`date:monthly`, or
 `"date:quarterly in 2025"`), and wins over the `period` parameter.
+
+The links above each report also set its depth, which they write as a
+`depth:` term in the search; how amounts are shown, as recorded, at
+cost (like `-B`), or at market value at the end of each period (like
+`-V`), with a `value` parameter (`none`, `cost`, or `end`) that
+overrides the startup options and is carried to the other reports; and
+whether accounts with zero balances are shown, with an `empty`
+parameter that the `e` key toggles and the pages' links carry.
 
 The balance sheets show ending balances and the income statement and
 cashflow statement show changes, as their commands do; an `accum`
@@ -273,6 +295,8 @@ An ending balance's register runs in historical mode (its own
 `accum=historical`): its running balance starts from the balance
 brought forward from before the period, shown as its oldest row, and
 its balance column's heading switches between the two modes.
+A figure at cost or at market value links to a register showing its
+amounts the same way (with the same `value` parameter).
 
 # RELOADING
 
