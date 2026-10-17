@@ -27,6 +27,8 @@ module Hledger.Write.Chart (
   Series(..),
   SeriesRole(..),
   Mark(..),
+  Summary(..),
+  SummaryKind(..),
   Colour(..),
   seriesColours,
   stableSlots,
@@ -119,7 +121,20 @@ data Panel = Panel
   , pnLayout    :: BarLayout  -- ^ how to draw bars of several groups
   , pnCounts    :: Bool       -- ^ are the values counts of whole things (eg postings) ? Then text charts draw at most one cell per unit,
                               --   so that small counts are not magnified (unless a fixed scale is set).
+  , pnSummary   :: [Summary]  -- ^ values summarising the whole chart, shown below it (eg with -T and -A, the total and the average per period)
   } deriving (Show, Eq, Generic, ToJSON)
+
+-- | A value summarising a panel's values over the whole x axis, such as their total or their average.
+data Summary = Summary
+  { suKind  :: SummaryKind
+  , suLabel :: Text    -- ^ its name, as the report's table would show it (eg "Total", "Average")
+  , suValue :: Amount  -- ^ its value, with its own display style (eg an average of counts has a decimal place)
+  } deriving (Show, Eq, Generic, ToJSON)
+
+data SummaryKind
+  = SummaryTotal    -- ^ the total of all x positions' values
+  | SummaryAverage  -- ^ the average per x position, which SVG charts also draw as a line across the plot
+  deriving (Show, Eq, Generic, ToJSON)
 
 -- | How to draw the bars of a panel whose series are in several groups (eg a compound report's sections).
 data BarLayout
@@ -286,13 +301,17 @@ scaleSpans scale maxpos maxneg
 --
 -- Values are shown with the panel unit's display precision, without commodity symbol or digit group marks.
 -- A gap (no value) is shown as an empty field.
+-- Each panel's summary values (see 'pnSummary') follow its series, with role "rowtotal" or "average", and no mark or x.
 chartAsCsv :: Chart -> CSV
 chartAsCsv Chart{chXAxis, chPanels} =
   ["commodity", "series", "role", "mark", "x", "value"]
-  : [ [acommodity pnUnit, lbFull (seLabel s), roleName (seRole s), markName (seMark s), x, maybe "" (showValue pnUnit) mq]
-    | Panel{pnUnit, pnSeries} <- chPanels
-    , s <- pnSeries
-    , (x, mq) <- zip xlabels (seValues s)
+  : concat
+    [ [ [acommodity pnUnit, lbFull (seLabel s), roleName (seRole s), markName (seMark s), x, maybe "" (showValue pnUnit) mq]
+      | s <- pnSeries
+      , (x, mq) <- zip xlabels (seValues s)
+      ]
+      ++ [ [acommodity pnUnit, suLabel, summaryName suKind, "", "", showValue suValue (aquantity suValue)] | Summary{suKind, suLabel, suValue} <- pnSummary ]
+    | Panel{pnUnit, pnSeries, pnSummary} <- chPanels
     ]
   where
     xlabels = case chXAxis of
@@ -308,6 +327,9 @@ chartAsCsv Chart{chXAxis, chPanels} =
       MarkBar    -> "bar"
       MarkLine   -> "line"
       MarkMarker -> "marker"
+    summaryName k = case k of
+      SummaryTotal   -> "rowtotal"
+      SummaryAverage -> "average"
 
 tests_Hledger_Write_Chart :: TestTree
 tests_Hledger_Write_Chart = testGroup "Write.Chart" [

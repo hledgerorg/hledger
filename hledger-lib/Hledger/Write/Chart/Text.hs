@@ -126,12 +126,15 @@ data Row = Row
   }
 
 panelLines :: TextChartOpts -> XAxis -> Bool -> Panel -> [StyledLine]
-panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries, pnGroupNames, pnScale, pnLayout, pnCounts} =
+panelLines TextChartOpts{tcWidth, tcUnicode} xaxis showheading Panel{pnUnit, pnSeries, pnGroupNames, pnScale, pnLayout, pnCounts, pnSummary} =
   [[(StylePlain, acommodity pnUnit)] | showheading, not $ T.null $ acommodity pnUnit]
   ++ legend
   ++ [trimEnd headerline | diverging, not $ all T.null [posname, negname, netname]]
   ++ map trimEnd rowlines
+  ++ (if null pnSummary then [] else [[], [(StylePlain, summaryline)]])
   where
+    -- the summary values, eg "Total 11, Average 0.9"
+    summaryline = T.intercalate ", " [suLabel su <> " " <> T.pack (showAmountWith oneLineNoCostFmt $ suValue su) | su <- pnSummary]
     -- The series drawn as bars: all but totals (shown as the value) and markers (not drawn in text).
     drawn = [s | s <- pnSeries, seRole s /= SeriesTotal, seMark s /= MarkMarker]
     mtotal = find ((== SeriesTotal) . seRole) pnSeries
@@ -359,13 +362,13 @@ tests_Hledger_Write_Chart_Text = testGroup "Write.Chart.Text" [
   ,testCase "single series, scaled to the width" $ do
      let lbl t = ChartLabel t t 0 Nothing True
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0 0] [] Nothing Diverging False]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just 1, Just 2] 0 0] [] Nothing Diverging False []]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 20 True) chart)
        @?= ["a  1  ███████", "b  2  ██████████████"]
   ,testCase "mixed signs grow from an axis" $ do
      let lbl t = ChartLabel t t 0 Nothing True
          chart = Chart "" (XCategories [lbl "a", lbl "b"])
-                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0 0] [] Nothing Diverging False]
+                   [Panel nullamt [Series (lbl "s") SeriesItem MarkBar [Just (-1), Just 2] 0 0] [] Nothing Diverging False []]
      map (T.concat . map snd) (chartAsStyledLines (TextChartOpts 21 False) chart)
        @?= ["a  -1  ####|", "b   2      |#########"]
   ]

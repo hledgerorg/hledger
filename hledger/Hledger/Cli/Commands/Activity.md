@@ -24,11 +24,13 @@ so it can show charts in all the same ways: eg with `-1` or other depth limit to
 `--txns` selects transaction counts explicitly; if both `--txns` and `--postings` are given, the last one wins.
 
 Both kinds of chart can be shown in the usual ways, eg with `-w`/`--width` to set the width,
+`-T`/`--total` and `-A`/`--average` to show the total count and the average count per period below the chart
+(in graphical charts, the average is also drawn as a dashed line),
 or `-o FILE.svg` (or `-O svg`) for a graphical chart.
 
 Examples:
 ```cli
-$ hledger activity -M -w 40
+$ hledger activity -M -T -A -w 40
 Transaction counts in 2008:
 
 Jan  1  █
@@ -43,6 +45,8 @@ Sep  0
 Oct  0
 Nov  0
 Dec  1  █
+
+Total 5, Average 0.4
 ```
 
 ```cli

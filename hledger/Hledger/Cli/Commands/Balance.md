@@ -1049,6 +1049,9 @@ At most 8 accounts are shown per panel; the smallest are combined into "other" s
 one for each account type (so eg assets and liabilities are never combined), and each type keeps at least its largest account.
 The total is omitted with `-N` or `--percent`.
 
+In a chart of balance changes per period, `-T`/`--row-total` and `-A`/`--average` show the net total's total and average per period
+on a line below the chart, eg `Total 11, Average 0.9`; and in graphical charts, the average is also drawn as a dashed line across the chart.
+
 Each chart is scaled to fit its values. To draw charts at a fixed scale instead,
 so that you can compare them (eg this month's chart with last month's), add a SCALE amount: `--chart=SCALE`.
 This is the amount that the chart spans; eg with `--chart=5000`, a bar of 5000 fills the chart.
@@ -1094,7 +1097,8 @@ Each section shows at most five accounts, combining the smallest into "other"; u
 A single-period report is charted the same way, with one period.
 The chart data has one record per value, with fields:
 commodity, series (usually an account name), role (`item`, `other` or `total`), mark (`bar`, `line` or `marker`),
-x (a period heading, period end date, or account name), and value. Eg:
+x (a period heading, period end date, or account name), and value.
+With `-T` or `-A`, each commodity's total or average follows, with role `rowtotal` or `average`, and an empty mark and x. Eg:
 
 ```cli
 $ hledger -f examples/sample.journal bal -M expenses -N --chart -O csv

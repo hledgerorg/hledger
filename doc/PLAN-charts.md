@@ -23,7 +23,8 @@ hledger-web's flot register chart, and site/src/charts.md's "export CSV and char
 - SCALE: amounts, eg `5000` or `5000 USD`, fixing the scale so successive charts are comparable (see Fixed scale).
   Written without digit group marks, since commas separate the parts.
 - `-w/--width N` sets a text chart's width (default: the terminal width).
-- `activity` is a shortcut for `balance --count --chart`, weekly by default.
+- `activity` charts transaction counts per week (or other interval) as a single total; with `--postings`,
+  it is a shortcut for `balance --count --chart`, weekly by default.
 
 ## Architecture
 
@@ -34,8 +35,8 @@ report  -->  adapter (Hledger.Cli.Chart; smart defaults)  -->  Chart (Hledger.Wr
 ```
 
 - **Model** (`Hledger.Write.Chart`): a title, an x axis (categories, periods or dates), and one panel per commodity.
-  A panel has a unit (an amount template, for display styles), series, group names, an optional fixed scale, a bar layout
-  and a counts flag. A series has a label (with account type, and whether it's an account), a role (item, other, total),
+  A panel has a unit (an amount template, for display styles), series, group names, an optional fixed scale, a bar layout,
+  a counts flag, and summary values (eg total, average; each with its own display style). A series has a label (with account type, and whether it's an account), a role (item, other, total),
   a mark (bar, line, marker), values, a group (eg a compound report's section) and a usual sign (for contra amounts).
   Values stay exact (Quantity) until renderers convert them for drawing.
 - **Adapters** (hledger package, so hledger-web/ui can use them): multiBalanceReportAsChart, balanceReportAsChart,
@@ -59,6 +60,10 @@ report  -->  adapter (Hledger.Cli.Chart; smart defaults)  -->  Chart (Hledger.Wr
 - **Mixed signs**: positive segments stack above (right of) zero, negative below; nothing is silently flipped (except grouped compound charts, below).
 - **Nets and totals**: a thin ink line mark across bars (1.5px in SVG; `┃` in text), or an ink line with lines.
   Not for counts in one stack (eg activity), where it would be just the top of the stack.
+- **Row total and average** (`-T`, `-A`), for changes per period: the net total's total and average per period, on a summary line
+  below the chart (eg `Total 11, Average 0.9`; labels are the table's column headings); the average also as a dashed line in SVG;
+  `rowtotal` and `average` records in chart data. Not drawn as bars, since a total would be off the scale.
+  Averages of counts have one decimal place (counts themselves are whole numbers, ignoring the journal's no-commodity style).
 
 Per report:
 
@@ -70,7 +75,8 @@ Per report:
 | `bs`, `bse` (end balances) | diverging layout by default, net as a line |
 | `aregister` | the balance after each transaction, a stepped line on a time scale |
 | `register` | each account's running total as a line (with -H, from its start balance), plus the overall total; with an interval, stacked bars per period |
-| `activity`, `bal --count` | posting counts by account, at most one text cell per posting |
+| `activity` | transaction counts as a single total (counting each transaction once per depth-clipped account, at depth 0); with `--postings`, as `bal --count` |
+| `bal --count` | posting counts by account, at most one text cell per posting |
 
 Text register charts have a row per posting (or transaction); a report interval gives a row per period.
 

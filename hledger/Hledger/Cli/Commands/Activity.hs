@@ -27,6 +27,8 @@ activitymode = hledgerCommandMode
   , flagNone ["txns"] (setboolopt "txns") "count transactions, showing just the total (default)"
   , flagNone ["postings"] (setboolopt "postings") "count postings, showing each account's count"
   , flagNone ["sort-amount","S"] (setboolopt "sort-amount") "with --postings, sort accounts by posting count, largest first"
+  , flagNone ["total","T"] (setboolopt "row-total") "show the total count, below the chart"
+  , flagNone ["average","A"] (setboolopt "average") "show the average count per period, below the chart (and as a line in SVG charts)"
   ]
   cligeneralflagsgroups1
   hiddenflags

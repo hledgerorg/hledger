@@ -6,6 +6,7 @@
 .hledger-chart .grid,.hledger-chart .axis{stroke-width:1}
 .hledger-chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .hledger-chart .mark{stroke-width:1.5}
+.hledger-chart .average{stroke-width:1.5;stroke-dasharray:5 4}
 .hledger-chart .hit{fill:transparent}
 .hledger-chart .hatch{stroke-width:2.5}
 .hledger-chart .bg{fill:#fcfcfb}
@@ -18,6 +19,7 @@
 .hledger-chart .axis{stroke:#c3c2b7}
 .hledger-chart .line.total{stroke:#0b0b0b}
 .hledger-chart .mark.total{stroke:#0b0b0b}
+.hledger-chart .average{stroke:#0b0b0b}
 .hledger-chart .clip{fill:#0b0b0b}
 .hledger-chart .hatch{stroke:#fcfcfb}
 .hledger-chart .fill.ta0{fill:#2a78d6}
@@ -91,6 +93,7 @@
 .hledger-chart .axis{stroke:#383835}
 .hledger-chart .line.total{stroke:#ffffff}
 .hledger-chart .mark.total{stroke:#ffffff}
+.hledger-chart .average{stroke:#ffffff}
 .hledger-chart .clip{fill:#ffffff}
 .hledger-chart .hatch{stroke:#1a1a19}
 .hledger-chart .fill.ta0{fill:#3987e5}

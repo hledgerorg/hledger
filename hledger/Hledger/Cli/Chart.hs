@@ -178,14 +178,16 @@ multiBalanceReportAsChart accttype ropts@ReportOpts{balanceaccum_, balancecalc_,
     panel c
       | null series = Nothing
       | otherwise = Just Panel
-          { pnUnit      = unitAmount c allamts
+          { pnUnit      = unit
           , pnSeries    = series ++ total
           , pnGroupNames = []
           , pnScale = Nothing
           , pnLayout = Diverging
           , pnCounts = balanceCalcIsCount balancecalc_
+          , pnSummary = rowSummaries ropts unit totals
           }
       where
+        unit = unitAmount c allamts
         series = limitSeries maxSeries translations_ mark
           [ (accountLabel accttype $ prrName r, qs) | r <- rows', let qs = map (quantityIn c) (prrAmounts r), any (/= 0) qs ]
         total =
@@ -216,6 +218,7 @@ balanceReportAsChart accttype ReportOpts{balancecalc_, translations_} title (ite
       , pnScale = Nothing
       , pnLayout = Diverging
       , pnCounts = balanceCalcIsCount balancecalc_
+      , pnSummary = []
       }
 
 -- | Chart a compound balance report (balancesheet, incomestatement, cashflow..): its sections' accounts, and the net total.
@@ -265,7 +268,7 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
     panel c
       | null series = Nothing
       | otherwise = Just Panel
-          { pnUnit   = unitAmount c allamts
+          { pnUnit   = unit
           , pnSeries = series ++
               [ Series (plainLabel netlabel) SeriesTotal (if flow then MarkMarker else MarkLine) (map (Just . quantityIn c) nettotals) 0 0
               | showtotal ]
@@ -273,8 +276,10 @@ compoundBalanceReportAsChart accttype sectiontypes ropts@ReportOpts{balanceaccum
           , pnScale = Nothing
           , pnLayout = if flow then Grouped else Diverging
           , pnCounts = balanceCalcIsCount balancecalc_
+          , pnSummary = rowSummaries ropts unit totals
           }
       where
+        unit = unitAmount c allamts
         series = concat
           [ [ s{seGroup = k, seSign = usualSign section sign} | s <- limitSeries maxSectionSeries translations_ MarkBar accts ]
           | (k, (section, sign, rows)) <- zip [0 ..] sections
@@ -302,6 +307,7 @@ accountTransactionsReportAsChart accttype title acct txndate items =
       , pnScale = Nothing
       , pnLayout = Diverging
       , pnCounts = False
+      , pnSummary = []
       }
 
 -- | Chart a postings report (register).
@@ -323,10 +329,10 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
           -- with postings to several accounts (and not --average), each account's running total as a line, and the overall running total;
           -- otherwise just the running total (labelled with the account, if there's one, so that it has the account's colour)
           linespanel c
-            | average_ = Panel (unitAmount c totalamts) [totalseries c SeriesItem] [] Nothing Diverging False
-            | [a] <- runningTotalAccounts c = Panel (unitAmount c totalamts) [(totalseries c SeriesItem){seLabel = ChartLabel a a 0 (accttype a) True}] [] Nothing Diverging False
-            | length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] [] Nothing Diverging False
-            | otherwise = Panel (unitAmount c totalamts) (accountRunningTotals c ++ [totalseries c SeriesTotal]) [] Nothing Diverging False
+            | average_ = Panel (unitAmount c totalamts) [totalseries c SeriesItem] [] Nothing Diverging False []
+            | [a] <- runningTotalAccounts c = Panel (unitAmount c totalamts) [(totalseries c SeriesItem){seLabel = ChartLabel a a 0 (accttype a) True}] [] Nothing Diverging False []
+            | length (runningTotalAccounts c) < 2 = Panel (unitAmount c totalamts) [totalseries c SeriesItem] [] Nothing Diverging False []
+            | otherwise = Panel (unitAmount c totalamts) (accountRunningTotals c ++ [totalseries c SeriesTotal]) [] Nothing Diverging False []
       in Chart
         { chTitle  = title
         , chXAxis  = XDates [postingDateOrDate2 (whichDate ropts) p | p <- postings]
@@ -378,7 +384,7 @@ postingsReportAsChart accttype startbals ropts@ReportOpts{average_, translations
     allamts = concatMap amountsRaw cells
     panel c
       | null series = Nothing
-      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total, pnGroupNames = [], pnScale = Nothing, pnLayout = Diverging, pnCounts = False}
+      | otherwise = Just Panel{pnUnit = unitAmount c allamts, pnSeries = series ++ total, pnGroupNames = [], pnScale = Nothing, pnLayout = Diverging, pnCounts = False, pnSummary = []}
       where
         series = limitSeries maxSeries translations_ MarkBar
           [ (ChartLabel a a 0 (accttype a) True, qs) | (a, amts) <- rows, let qs = map (quantityIn c) amts, any (/= 0) qs ]
@@ -462,6 +468,22 @@ unitAmount :: CommoditySymbol -> [Amount] -> Amount
 unitAmount c as = case find ((== c) . acommodity) as of
   Just a  -> a{aquantity = 0, acost = Nothing, acostbasis = Nothing}
   Nothing -> nullamt{acommodity = c}
+
+-- | With -T or -A, in a chart of changes per period: the total and the average per period of the report's totals row,
+-- in the given unit's commodity, labelled like the report table's columns.
+-- Each keeps its own display style, eg an average of counts has a decimal place.
+rowSummaries :: ReportOpts -> Amount -> PeriodicReportRow a MixedAmount -> [Summary]
+rowSummaries ReportOpts{balanceaccum_, row_total_, average_, percent_, translations_} unit totals
+  | balanceaccum_ /= PerPeriod || percent_ = []
+  | otherwise =
+      [Summary SummaryTotal (heading "Total") (amountIn $ prrTotal totals) | row_total_]
+      ++ [Summary SummaryAverage (heading "Average") (amountIn $ prrAverage totals) | average_]
+  where
+    heading = I18n.trc translations_ "column heading"
+    c = acommodity unit
+    amountIn ma = case [a | a <- amountsRaw ma, acommodity a == c] of
+      a:_ -> unit{aquantity = quantityIn c ma, astyle = astyle a}
+      []  -> unit
 
 -- | The total quantity of this commodity in a mixed amount, ignoring costs.
 quantityIn :: CommoditySymbol -> MixedAmount -> Quantity

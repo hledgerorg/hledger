@@ -140,3 +140,16 @@ Transaction counts in 2022-12-26..2023-01-08:
 
 2022-W52  1  █
 2023-W01  2  ██
+
+# ** 11. -T and -A show the total and the average count per period, below the chart.
+$ hledger -f - activity -T -A -w 40
+Transaction counts in 2022-12-26..2023-01-08:
+
+2022-W52  1  █
+2023-W01  2  ██
+
+Total 3, Average 1.5
+
+# ** 12. In SVG, the average is also drawn as a line across the chart.
+$ hledger -f - activity -A -O svg | grep -c 'class="average"'
+1

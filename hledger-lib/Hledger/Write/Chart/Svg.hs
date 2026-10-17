@@ -33,7 +33,7 @@ import Data.List (foldl')
 import Data.Map qualified as M
 import Data.Array qualified as Arr
 import Data.Decimal (realFracToDecimal)
-import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe)
 import Data.Time (Day, addDays, diffDays, fromGregorian, toGregorian)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -117,14 +117,22 @@ data DrawSeries = DrawSeries
 
 -- | Draw one panel with its top at the given y; return its height and markup.
 panelSvg :: XAxis -> Bool -> Double -> Panel -> (Double, Svg)
-panelSvg xaxis showheading top Panel{pnUnit, pnSeries, pnGroupNames, pnScale, pnLayout, pnCounts} =
-  (headingh + legendh + bodyh, do
+panelSvg xaxis showheading top Panel{pnUnit, pnSeries, pnGroupNames, pnScale, pnLayout, pnCounts, pnSummary} =
+  (headingh + legendh + bodyh + summaryh, do
     when (headingh > 0) $
       S.text_ ! A.class_ "heading" ! A.x (toValue $ num pad) ! A.y (toValue $ num (top + 14)) $ S.toMarkup (acommodity pnUnit)
     legendm
-    bodym)
+    bodym
+    when (summaryh > 0) $
+      S.text_ ! A.class_ "label" ! A.x (toValue $ num pad) ! A.y (toValue $ num (top + headingh + legendh + bodyh + 14)) $ S.toMarkup summarytext)
   where
     headingh = if showheading && not (T.null $ acommodity pnUnit) then 24 else 0
+    -- the summary values, on a line below the plot, eg "Total 11, Average 0.9"
+    summaryh = if null pnSummary then 0 else 22
+    summarytext = T.intercalate ", " [suLabel su <> " " <> showSummary su | su <- pnSummary]
+    showSummary = T.pack . showAmountWith oneLineNoCostFmt . suValue
+    -- the average, drawn as a line across a chart of periods
+    maverage = listToMaybe [(suLabel su <> " · " <> showSummary su, aquantity $ suValue su) | su <- pnSummary, suKind su == SummaryAverage]
     -- The series drawn as marks: items and "other" (bars or lines), and the total (dots or a line). Other markers are not drawn yet.
     items = [s | s <- pnSeries, seRole s /= SeriesTotal, seMark s /= MarkMarker]
     mtotal = find ((== SeriesTotal) . seRole) pnSeries
@@ -136,8 +144,8 @@ panelSvg xaxis showheading top Panel{pnUnit, pnSeries, pnGroupNames, pnScale, pn
     hascontra = or [isContra s q | s <- items, seMark s == MarkBar, Just q <- seValues s]
     (bodyh, bodym) = case xaxis of
       XCategories ls -> categoriesSvg (top + headingh + legendh) pnScale pnUnit drawn mtotal ls
-      XPeriods ps    -> timeSvg (top + headingh + legendh) pnScale pnLayout pnUnit drawn mtotalmark (EvenScale $ map snd ps)
-      XDates ds      -> timeSvg (top + headingh + legendh) pnScale pnLayout pnUnit drawn mtotalmark (DateScale ds)
+      XPeriods ps    -> timeSvg (top + headingh + legendh) pnScale pnLayout pnUnit drawn mtotalmark maverage (EvenScale $ map snd ps)
+      XDates ds      -> timeSvg (top + headingh + legendh) pnScale pnLayout pnUnit drawn mtotalmark Nothing (DateScale ds)
 
 -- | A legend: a swatch and label for each series, flowing left to right, when there are several series.
 -- If there are contra amounts, a hatched swatch is shown for them too.
@@ -178,8 +186,8 @@ data XScale = EvenScale [Text] | DateScale [Day]
 
 -- | Draw series over time, along the given x scale:
 -- vertical stacked bars (with the grouped layout, a stack per group, side by side), lines, and total marks or lines.
-timeSvg :: Double -> Maybe Quantity -> BarLayout -> Amount -> [DrawSeries] -> Maybe Series -> XScale -> (Double, Svg)
-timeSvg top mscale layout unit drawn mtotal xscale = (plotHeight + 28, do
+timeSvg :: Double -> Maybe Quantity -> BarLayout -> Amount -> [DrawSeries] -> Maybe Series -> Maybe (Text, Quantity) -> XScale -> (Double, Svg)
+timeSvg top mscale layout unit drawn mtotal maverage xscale = (plotHeight + 28, do
     -- gridlines and y tick labels
     forM_ ticks $ \t -> do
       S.line ! A.class_ (if t == 0 then "axis" else "grid")
@@ -215,6 +223,10 @@ timeSvg top mscale layout unit drawn mtotal xscale = (plotHeight + 28, do
               x1 = toValue $ num (xcenter j - halfw)
               x2 = toValue $ num (xcenter j + halfw)
           S.line ! A.class_ "mark total" ! A.x1 x1 ! A.x2 x2 ! A.y1 y ! A.y2 y
+    -- the average, if any: a dashed line across the plot
+    forM_ maverage $ \(tip, q) -> withTooltip tip $ do
+      let y = toValue $ num (yof $ toD q)
+      S.line ! A.class_ "average" ! A.x1 (toValue $ num plotleft) ! A.x2 (toValue $ num plotright) ! A.y1 y ! A.y2 y
   )
   where
     xlabels = case xscale of
@@ -618,6 +630,7 @@ stylesheet dark = T.unlines $
   , ".hledger-chart .grid,.hledger-chart .axis{stroke-width:1}"
   , ".hledger-chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}"
   , ".hledger-chart .mark{stroke-width:1.5}"
+  , ".hledger-chart .average{stroke-width:1.5;stroke-dasharray:5 4}"
   , ".hledger-chart .hit{fill:transparent}"
   , ".hledger-chart .hatch{stroke-width:2.5}"
   ]
@@ -637,7 +650,7 @@ stylesheet dark = T.unlines $
       [ (".bg", "fill", "surface"), (".title", "fill", "ink"), (".heading", "fill", "ink")
       , (".label", "fill", "ink2"), (".value", "fill", "ink2"), (".tick", "fill", "muted")
       , (".grid", "stroke", "grid"), (".axis", "stroke", "axis")
-      , (".line.total", "stroke", "ink"), (".mark.total", "stroke", "ink"), (".clip", "fill", "ink"), (".hatch", "stroke", "surface")
+      , (".line.total", "stroke", "ink"), (".mark.total", "stroke", "ink"), (".average", "stroke", "ink"), (".clip", "fill", "ink"), (".hatch", "stroke", "surface")
       ]
     lightcolours :: [(Text, Text)]
     lightcolours =
