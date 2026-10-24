@@ -529,14 +529,15 @@ dialog:focus {
 }
 
 /* The key hints (the . key, hledger.js): a small key cap on each control,
-   before its text, naming its key. Only where there is a pointer that
-   hovers, ie not on touch screens, which have no keys; so too the ? and .
-   keys' own hint, at the top right of every page, in the same caps. */
+   before its text, naming its key. Only on screen, where there is a
+   pointer that hovers, ie not on touch screens, which have no keys, nor
+   on paper; so too the ? and . keys' own hint, at the top right of every
+   page, in the same caps. */
 kbd.keyhint,
 #keys-hint {
   display: none;
 }
-@media (hover: hover) {
+@media screen and (hover: hover) {
   #keys-hint {
     display: block;
     float: right;

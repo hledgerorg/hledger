@@ -515,7 +515,7 @@ test.describe('keyboard shortcuts', () => {
 
 test.describe('key hints', () => {
 
-  test('"." shows each control\'s key on it, and the choice survives a reload', async ({ page }) => {
+  test('"." shows each control\'s key on it, on screen only, and the choice survives a reload', async ({ page }) => {
     await page.goto('/balance');
     const hints = page.locator('kbd.keyhint');
     const unmarked = page.locator('#main-content .status a', { hasText: 'Unmarked' });
@@ -535,6 +535,12 @@ test.describe('key hints', () => {
     await page.waitForFunction(() => /showcontrols_\d+=1/.test(document.cookie));
     await page.reload();
     await expect(unmarked.locator('kbd.keyhint')).toHaveText('U');
+    // they are left out of a printout
+    await expect(unmarked.locator('kbd.keyhint')).toBeVisible();
+    await page.emulateMedia({ media: 'print' });
+    await expect(unmarked.locator('kbd.keyhint')).toBeHidden();
+    expect(await gHint()).toBe('none');
+    await page.emulateMedia({ media: 'screen' });
     await page.locator('body').press('.');
     await expect(hints).toHaveCount(0);
     await page.reload();

@@ -104,8 +104,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.target.closest('input, textarea, select')) { return; }
     // The help keys toggle the help, so they close it too; while a dialog
     // is open the other keys do nothing.
+    var k = keymapFind(e.key);
     var help = document.getElementById('helpmodal');
-    if (help && help.open && (e.key === 'h' || e.key === '?')) {
+    if (help && help.open && k && k.run === helpToggle) {
       helpToggle();
       e.preventDefault();
       return;
@@ -118,7 +119,6 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       return;
     }
-    var k = keymapFind(e.key);
     if (!k || k.run(keyTarget(k), e.key) === false) { return; }
     e.preventDefault();
   });
