@@ -530,11 +530,36 @@ dialog:focus {
 
 /* The key hints (the . key, hledger.js): a small key cap on each control,
    before its text, naming its key. Only where there is a pointer that
-   hovers, ie not on touch screens, which have no keys. */
-kbd.keyhint {
+   hovers, ie not on touch screens, which have no keys; so too the ? and .
+   keys' own hint, at the top right of every page, in the same caps. */
+kbd.keyhint,
+#keys-hint {
   display: none;
 }
 @media (hover: hover) {
+  #keys-hint {
+    display: block;
+    float: right;
+    margin: 28px 0 0 1em;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  #keys-hint .btn-link {
+    padding: 0;
+    border: 0;
+    font-size: inherit;
+    color: inherit;
+  }
+  #keys-hint .btn-link:hover,
+  #keys-hint .btn-link:focus {
+    text-decoration: underline;
+  }
+  #keys-hint [aria-pressed=true] {
+    font-weight: 600;
+  }
+  #keys-hint .sep {
+    margin: 0 0.4em;
+  }
   /* The report links' hints (g then the page's key) are drawn here from
      their data-gokey, not added by hledger.js, so that they are there at
      first paint. The empty alternative text keeps them out of the links'
@@ -544,6 +569,7 @@ kbd.keyhint {
     content: "g " attr(data-gokey) / "";
   }
   kbd.keyhint,
+  #keys-hint kbd,
   body.keyhints .report-links.reports a[data-gokey]::before {
     display: inline-block;
     min-width: 1.7em;

@@ -47,8 +47,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // clicks save the page's scroll position.
   controlsInit();
 
-  // The key hints, if they are on (the . key).
+  // The key hints, if they are on (the . key, or the keys button).
   keyHintsShow();
+  var keyhintstoggle = document.getElementById('keyhints-toggle');
+  if (keyhintstoggle) { keyhintstoggle.addEventListener('click', keyHintsToggle); }
 
   // The hideemptyaccts cookie was replaced by the empty parameter;
   // clear it from browsers that still carry it. Older versions set it
@@ -276,6 +278,8 @@ function keyHintsToggle() {
 
 function keyHintsShow() {
   var on = document.body.classList.contains('keyhints');
+  var toggle = document.getElementById('keyhints-toggle');
+  if (toggle) { toggle.setAttribute('aria-pressed', on); }
   document.querySelectorAll('kbd.keyhint').forEach(function(b) { b.remove(); });
   if (!on) { return; }
   keymap.forEach(function(k) {

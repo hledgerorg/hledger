@@ -204,12 +204,12 @@ The **add form** (press `a`, or click "Add a transaction" in the journal view)
 adds a transaction to the main journal file, if the [access level](#permissions) allows it.
 It autocompletes account names and descriptions from your existing entries.
 
-The **help dialog** (press `?`, or click the question mark button) lists these keyboard shortcuts,
+The **help dialog** (press `?`, or click the question mark button, or "help" at the top right) lists these keyboard shortcuts,
 which work when you are not typing in a field:
 
 - `h` or `?` - show or hide the help dialog
 - `.` - show or hide key hints: a small badge on each control, naming its key
-  (remembered in this browser; not shown on touch screens)
+  (or click "keys" at the top right; remembered in this browser; not shown on touch screens)
 - `g` - go to another page: shows a menu of the pages, each with its key;
   then `j` journal, `b` balance sheet, `i` income statement, `c` cashflow statement,
   `h` holdings (for journals using lots), `a` all accounts, `e` balance sheet with equity,

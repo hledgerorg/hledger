@@ -570,6 +570,36 @@ test.describe('key hints', () => {
     expect(pageErrors).toEqual([]);
   });
 
+  test('the page always shows the ? and . keys, as buttons that do what the keys do', async ({ page }) => {
+    await page.goto('/journal');
+    const keys = page.locator('#keys-hint #keyhints-toggle');
+    await expect(keys).toBeVisible();
+    await expect(keys).toHaveAttribute('aria-pressed', 'false');
+    await keys.click();
+    await expect(page.locator('#addformlink kbd.keyhint')).toHaveText('a');
+    await expect(keys).toHaveAttribute('aria-pressed', 'true');
+    await page.locator('#keys-hint button', { hasText: 'help' }).click();
+    await expect(page.locator('#helpmodal')).toBeVisible();
+    expect(pageErrors).toEqual([]);
+  });
+
+});
+
+// A touch screen has no keys to hint at.
+test.describe('key hints on a touch screen', () => {
+  test.use({ isMobile: true, hasTouch: true, viewport: { width: 390, height: 844 } });
+
+  test('are not shown, even when turned on', async ({ page }) => {
+    await page.goto('/journal');
+    await page.evaluate(() => localStorage.setItem('keyhints', '1'));
+    await page.reload();
+    // positive control: they are on, in the page
+    await expect(page.locator('body')).toHaveClass(/keyhints/);
+    await expect(page.locator('kbd.keyhint').first()).toBeAttached();
+    await expect(page.locator('kbd.keyhint:visible')).toHaveCount(0);
+    await expect(page.locator('#keys-hint')).toBeHidden();
+  });
+
 });
 
 test.describe('modal dialogs', () => {

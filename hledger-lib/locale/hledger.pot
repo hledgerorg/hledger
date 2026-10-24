@@ -1919,8 +1919,26 @@ msgstr ""
 msgid "Manage journal files"
 msgstr ""
 
+#. the hint at the top right of every page: the words after the ? and . keys, and their tooltips.
 #: hledger-web/templates/default-layout.hamlet
 msgid "Show search and general help"
+msgstr ""
+
+#. the hint at the top right of every page: the words after the ? and . keys, and their tooltips.
+#: hledger-web/templates/default-layout.hamlet
+msgctxt "keys hint"
+msgid "help"
+msgstr ""
+
+#. the hint at the top right of every page: the words after the ? and . keys, and their tooltips.
+#: hledger-web/templates/default-layout.hamlet
+msgid "Show or hide each control's key"
+msgstr ""
+
+#. the hint at the top right of every page: the words after the ? and . keys, and their tooltips.
+#: hledger-web/templates/default-layout.hamlet
+msgctxt "keys hint"
+msgid "keys"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet

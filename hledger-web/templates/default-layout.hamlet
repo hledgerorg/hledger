@@ -5,6 +5,19 @@
       <span .glyphicon.glyphicon-align-left.tgl-icon>
 
 <div#topbar .col-md-8 .col-sm-8 .col-xs-10>
+  $# The two keys that lead to the others, always shown, above the help
+  $# button: ? opens the help, which lists the keys, and . shows each
+  $# control's key on it (hledger.js). The keys are not translated.
+  $# TRANSLATORS: the hint at the top right of every page: the words after the ? and . keys, and their tooltips.
+  <p #keys-hint .hidden-print>
+    <button type=button .btn-link data-toggle="modal" data-target="#helpmodal"
+       title=_{HMsg "Show search and general help"}>
+      <kbd>?</kbd> _{HMsgc "keys hint" "help"}
+    <span .sep>·
+    <button #keyhints-toggle type=button .btn-link aria-pressed=false
+       title=_{HMsg "Show or hide each control's key"}>
+      <kbd>.</kbd> _{HMsgc "keys hint" "keys"}
+
   <h1>#{takeFileName (journalFilePath j)}
 
 $if elem ViewPermission perms
