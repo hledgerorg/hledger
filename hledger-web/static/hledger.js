@@ -47,6 +47,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // clicks save the page's scroll position.
   controlsInit();
 
+  // The key hints, if they are on (the . key).
+  keyHintsShow();
+
   // The hideemptyaccts cookie was replaced by the empty parameter;
   // clear it from browsers that still carry it. Older versions set it
   // with a one-year max-age, so this can safely be removed after
@@ -177,21 +180,32 @@ function focusPage() {
 //----------------------------------------------------------------------
 // KEYS
 
-// The keyboard shortcuts, as a table. Each entry has its keys and what
-// they do, and when they stand for a control on the page, how to find it:
-// a selector, or a function returning the element (nothing when this page
+// The keyboard shortcuts, as a table, which the key handler and the key
+// hints (the . key) both read, so that a hint shows only where its key
+// acts. Each entry has its keys, the first being the one hinted, and what
+// they do; when they stand for a control on the page, how to find it: a
+// selector, or a function returning the element (nothing when this page
 // has none). The action is given that element and the key pressed, and
 // returns false when the key was not for it, leaving the key to the
-// browser. The keys are cased as hledger-ui's.
+// browser. The hints go on that element, unless the entry says where
+// (keyHints). The keys are cased as hledger-ui's.
 // In full window mode, s, o and / leave it, showing what they ask for.
 var keymap = [
-  { keys: ['h', '?'], run: helpToggle },
-  { keys: ['g'], run: gomenuShow },
-  { keys: ['s'], run: function() { if (fullWindowLeave()) { sidebarShow(); } else { sidebarToggle(); } } },
-  { keys: ['o'], run: function() { if (fullWindowLeave()) { controlsShow(); } else { controlsToggle(); } } },
-  { keys: ['a', 'n'], run: function() { addformShow(); } },
-  { keys: ['f'], run: fullWindowToggle },
-  { keys: ['/'], run: function() { fullWindowLeave(); focusSearch(); } },
+  { keys: ['?', 'h'], at: '#searchform [data-target="#helpmodal"]', run: helpToggle },
+  // The report links carry the keys that go to them after g, as the g
+  // menu's links do, both from the server's report menu (App.reportMenu).
+  // hledger.css draws their hints from those, so that they are there at
+  // first paint: added here, after a long page has loaded, they would
+  // make the row wrap a moment after it appeared, moving the page down.
+  { keys: ['g'], run: gomenuShow, hints: function() { return []; } },
+  { keys: ['s'], at: '#sidebar-menu',
+    run: function() { if (fullWindowLeave()) { sidebarShow(); } else { sidebarToggle(); } } },
+  { keys: ['o'], at: '#main-content details.report-controls > summary',
+    run: function() { if (fullWindowLeave()) { controlsShow(); } else { controlsToggle(); } } },
+  { keys: ['a', 'n'], at: '#addformlink', run: function() { addformShow(); } },
+  { keys: ['f'], at: '#fullwindow-exit', run: fullWindowToggle },
+  { keys: ['/'], at: '#searchform input[name=q]', run: function() { fullWindowLeave(); focusSearch(); } },
+  { keys: ['.'], run: keyHintsToggle },
   { keys: ['z'], at: '.zero-balances a:not(.current)', run: linkFollow },
   { keys: ['t'], at: rowLink('accounts', -1),        run: linkToggle },
   { keys: ['H'], at: rowLink('accum', 1),            run: linkToggle },
@@ -211,9 +225,11 @@ var keymap = [
   { keys: ['M'], at: rowLink('interval', 3),         run: linkToggle },
   { keys: ['W'], at: rowLink('interval', 4),         run: linkToggle },
   { keys: ['D'], at: rowLink('interval', 5),         run: linkToggle },
-  { keys: '0123456789'.split(''), at: rowLink('depth', -1), run: depthSet },
-  { keys: ['-', '_'], at: depthStep(-1),             run: linkFollow },
-  { keys: ['+', '='], at: depthStep(1),              run: linkFollow },
+  // The depth keys are hinted by the Depth row's label: its links are
+  // digits already, and - and + step from whichever is current.
+  { keys: '0123456789'.split(''), at: rowLink('depth', -1), run: depthSet, hints: depthHint('0-9') },
+  { keys: ['-', '_'], at: depthStep(-1),             run: linkFollow, hints: depthHint('-') },
+  { keys: ['+', '='], at: depthStep(1),              run: linkFollow, hints: depthHint('+') },
   // With nothing else to cancel, escape leaves full window mode.
   { keys: ['Escape'], run: function() { return fullWindowLeave(); } },
 ];
@@ -226,6 +242,55 @@ function keymapFind(key) {
 function keyTarget(k) {
   if (!k.at) { return null; }
   return typeof k.at === 'string' ? document.querySelector(k.at) : k.at();
+}
+
+// A keymap entry's hints on this page: each an element, the text to show,
+// and whether it goes after the element's content rather than before.
+function keyHints(k) {
+  if (k.hints) { return k.hints(k); }
+  var el = keyTarget(k);
+  return el ? [[el, k.keys[0], false]] : [];
+}
+
+// A depth key's hint, after the Depth row's label, while the key has a
+// link to go to.
+function depthHint(text) {
+  return function(k) {
+    var label = document.querySelector('#main-content .depth .row-label');
+    return label && keyTarget(k) ? [[label, text, true]] : [];
+  };
+}
+
+// The . key shows or hides a small badge on each control, naming its key.
+// The setting is kept in local storage, for this hledger-web (scheme, host
+// and port), and the body's keyhints class restored from it before the
+// page paints (default-layout-wrapper.hamlet); keyHintsShow then adds the
+// badges. hledger.css hides them on touch screens, which have no keys.
+function keyHintsToggle() {
+  var on = document.body.classList.toggle('keyhints');
+  try {
+    if (on) { localStorage.setItem('keyhints', '1'); } else { localStorage.removeItem('keyhints'); }
+  } catch (e) {}
+  keyHintsShow();
+}
+
+function keyHintsShow() {
+  var on = document.body.classList.contains('keyhints');
+  document.querySelectorAll('kbd.keyhint').forEach(function(b) { b.remove(); });
+  if (!on) { return; }
+  keymap.forEach(function(k) {
+    keyHints(k).forEach(function(h) {
+      var el = h[0];
+      var badge = document.createElement('kbd');
+      badge.className = 'keyhint';
+      badge.setAttribute('aria-hidden', 'true');
+      badge.textContent = h[1];
+      // A field can't hold it, so it goes beside the field.
+      if (el.matches('input')) { el.before(badge); }
+      else if (h[2]) { el.append(badge); }
+      else { el.prepend(badge); }
+    });
+  });
 }
 
 // A finder for the link at idx (negative counts from the end) in a row of

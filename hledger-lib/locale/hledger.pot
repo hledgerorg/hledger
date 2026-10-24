@@ -2085,6 +2085,10 @@ msgid "view this help"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet
+msgid "toggle key hints on the controls"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet
 msgid "go to a page: shows the journal and reports with their keys, then press one"
 msgstr ""
 

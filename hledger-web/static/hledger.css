@@ -528,6 +528,66 @@ dialog:focus {
   margin-right: 0.5em;
 }
 
+/* The key hints (the . key, hledger.js): a small key cap on each control,
+   before its text, naming its key. Only where there is a pointer that
+   hovers, ie not on touch screens, which have no keys. */
+kbd.keyhint {
+  display: none;
+}
+@media (hover: hover) {
+  /* The report links' hints (g then the page's key) are drawn here from
+     their data-gokey, not added by hledger.js, so that they are there at
+     first paint. The empty alternative text keeps them out of the links'
+     accessible names, where browsers support it. */
+  body.keyhints .report-links.reports a[data-gokey]::before {
+    content: "g " attr(data-gokey);
+    content: "g " attr(data-gokey) / "";
+  }
+  kbd.keyhint,
+  body.keyhints .report-links.reports a[data-gokey]::before {
+    display: inline-block;
+    min-width: 1.7em;
+    margin-right: 0.35em;
+    padding: 0 0.3em;
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 15px;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: 1px;
+    color: var(--muted);
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    box-shadow: none;
+  }
+  /* after a row's label, eg Depth's */
+  .row-label > kbd.keyhint {
+    margin-right: 0;
+    margin-left: 0.35em;
+  }
+  /* the sidebar's, in its top corner */
+  #sidebar-menu > kbd.keyhint {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    z-index: 1;
+  }
+  /* the search field's, inside it at the start, with room kept for it
+     from the first paint */
+  #searchform > kbd.keyhint {
+    position: absolute;
+    top: 9px;
+    left: 8px;
+    z-index: 3;
+  }
+  body.keyhints #searchform input[name=q] {
+    padding-left: 2.6em;
+  }
+}
+
 /* In the help dialog's lists, an item that starts a new group. */
 .modal-body li.gap-above {
   margin-top: 1em;

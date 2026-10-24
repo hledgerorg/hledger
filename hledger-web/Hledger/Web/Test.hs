@@ -749,8 +749,8 @@ hledgerWebTest = do
     yit "lists the named reports, then the general ones a little apart" $ do
       get BalanceR
       statusIs 200
-      bodyContains ">Cashflow statement</a><a class=\"current group-start\""
-      bodyContains ">All accounts</a><a href="
+      bodyContains ">Cashflow statement</a><a data-gokey=\"a\" class=\"current group-start\""
+      bodyContains ">All accounts</a><a data-gokey=\"e\" href="
 
     yit "includes the add form on the report pages too, for the a key" $ do
       forM_ [BalanceR, BalancesheetR, IncomestatementR] $ \r -> do
@@ -766,6 +766,15 @@ hledgerWebTest = do
       bodyContains "<code>b</code> Balance sheet</a>"
       bodyContains "<code>a</code> All accounts</a>"
       bodyContains "<code>e</code> Balance sheet with equity</a>"
+
+    yit "gives the report links their g keys, for the key hints" $ do
+      let base = defbaseurl defhost defport
+      get BalanceR
+      statusIs 200
+      -- a named page and a general report; the g menu's links show their
+      -- keys as text, these only in the attribute
+      bodyContains ("<a data-gokey=\"i\" href=\"" ++ base ++ "/incomestatement\" title=\"Show revenues and expenses\">Income statement</a>")
+      bodyContains ("<a data-gokey=\"e\" href=\"" ++ base ++ "/balancesheetequity\" title=\"Show assets, liabilities, and equity\">Balance sheet with equity</a>")
 
     yit "offers the next and previous pages in the g key's menu, going round" $ do
       let base = defbaseurl defhost defport
@@ -1321,7 +1330,7 @@ hledgerWebTest = do
       -- in the sidebar, in the g menu, and in the row of page links
       bodyContains ("<a href=\"" ++ base ++ "/journal?interval=quarterly&amp;sort=amount\" title=\"Show general journal entries, most recent first\">Journal</a>")
       bodyContains ("<a href=\"" ++ base ++ "/journal?interval=quarterly&amp;sort=amount\" data-gokey=\"j\"")
-      bodyContains ("<p class=\"report-links reports\"><a href=\"" ++ base ++ "/journal?interval=quarterly&amp;sort=amount\"")
+      bodyContains ("<p class=\"report-links reports\"><a data-gokey=\"j\" href=\"" ++ base ++ "/journal?interval=quarterly&amp;sort=amount\"")
 
     yit "starts each page with the report links, then the search, the options, and the heading" $ do
       get BalancesheetR
@@ -1330,7 +1339,7 @@ hledgerWebTest = do
       -- the register, though no report, has them too
       get RegisterR
       statusIs 200
-      bodyContainsInOrder ["<p class=\"report-links reports\"><a href=\"" <> T.pack base <> "/journal\"", "searchform", "report-controls", "<h2>"]
+      bodyContainsInOrder ["<p class=\"report-links reports\"><a data-gokey=\"j\" href=\"" <> T.pack base <> "/journal\"", "searchform", "report-controls", "<h2>"]
 
     yit "links the sidebar's total to the register of the search" $ do
       request $ do
@@ -1580,12 +1589,12 @@ hledgerWebTest = do
       bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?q=expenses\" title=\"Show assets, liabilities, and net worth\"")
       bodyContains ("class=\"group-start\" href=\"" ++ defbaseurl defhost defport ++ "/balance?q=expenses\"")
       -- the journal leads the row, marked as the page shown
-      bodyContains ("<p class=\"report-links reports\"><a class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/journal?q=expenses\" title=\"Show general journal entries, most recent first\">Journal</a>")
+      bodyContains ("<p class=\"report-links reports\"><a data-gokey=\"j\" class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/journal?q=expenses\" title=\"Show general journal entries, most recent first\">Journal</a>")
 
     yit "links the report pages to the journal, first in their row of report links" $ do
       get IncomestatementR
       statusIs 200
-      bodyContains ("<p class=\"report-links reports\"><a href=\"" ++ defbaseurl defhost defport ++ "/journal\" title=\"Show general journal entries, most recent first\">Journal</a>")
+      bodyContains ("<p class=\"report-links reports\"><a data-gokey=\"j\" href=\"" ++ defbaseurl defhost defport ++ "/journal\" title=\"Show general journal entries, most recent first\">Journal</a>")
 
     yit "lists the balance sheet, income statement, and cashflow statement in the sidebar, marking the one shown" $ do
       get BalancesheetR

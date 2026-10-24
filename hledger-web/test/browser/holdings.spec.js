@@ -3,7 +3,8 @@
 // lots=1 each position's lots are shown beneath it, the caret folding
 // them in place (reportTreeInit) and a depth limit clipping them, as on
 // the command line; the L key follows
-// the Lots row's links, toggling lot detail; a lot row's account
+// the Lots row's links, toggling lot detail, and its key hint marks the
+// link it follows; a lot row's account
 // link reaches that lot's register, quoting the lot subaccount name -
 // including its auto label's double quotes - so the query round-trips;
 // and the flat view shows the account names' shared prefix once, as a
@@ -100,6 +101,9 @@ test.describe('holdings page', () => {
     await expect(lotCells.first()).toBeVisible();
     await page.locator('body').press('L');
     await expect(page).not.toHaveURL(/lots=1/);
+    // the key hints (the . key) show it on the link it follows
+    await page.locator('body').press('.');
+    await expect(page.locator('#main-content .lots a', { has: page.locator('kbd.keyhint') })).toHaveText('LShown');
     expect(errors).toEqual([]);
   });
 

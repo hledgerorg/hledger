@@ -172,17 +172,20 @@ linksRow = linksRowClass ""
 -- | 'linksRow' with an extra class on the row: a hook for hledger.js's
 -- keyboard shortcuts.
 linksRowClass :: Text -> Text -> [(Text, Text, (r, [(Text, Text)]), Bool)] -> HtmlUrl r
-linksRowClass cls rowlabel items = linksRowGroups cls rowlabel [items]
+linksRowClass cls rowlabel items =
+  linksRowGroups cls rowlabel [[ (label, title, link, current, Nothing) | (label, title, link, current) <- items ]]
 
--- | 'linksRowClass' with the links in groups, shown a little apart.
-linksRowGroups :: Text -> Text -> [[(Text, Text, (r, [(Text, Text)]), Bool)]] -> HtmlUrl r
+-- | 'linksRowClass' with the links in groups, shown a little apart, each
+-- link with the key that goes to it after g, if it has one (hledger.js).
+linksRowGroups :: Text -> Text -> [[(Text, Text, (r, [(Text, Text)]), Bool, Maybe Text)]] -> HtmlUrl r
 linksRowGroups cls rowlabel groups renderUrl =
     H.p ! A.class_ (H.toValue $ T.unwords $ "report-links" : [cls | not (T.null cls)]) $ do
       unless (T.null rowlabel) $ H.span ! A.class_ "row-label" $ H.toHtml rowlabel
       for_ (zip [0 :: Int ..] groups) $ \(g, items) ->
-        for_ (zip [0 :: Int ..] items) $ \(i, (label, title, link, current)) ->
+        for_ (zip [0 :: Int ..] items) $ \(i, (label, title, link, current, mgokey)) ->
           let classes = ["current" | current] ++ ["group-start" | g > 0, i == 0]
-          in H.a !? (not (null classes), A.class_ (H.toValue $ T.unwords classes))
+          in H.a !? (isJust mgokey, H.dataAttribute "gokey" (H.toValue $ fromMaybe "" mgokey))
+                 !? (not (null classes), A.class_ (H.toValue $ T.unwords classes))
                  ! A.href (H.toValue $ uncurry renderUrl link)
                  ! A.title (H.toValue title) $
                H.toHtml label

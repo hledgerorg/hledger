@@ -182,6 +182,7 @@ $if elem ViewPermission perms
               <b>_{HMsg "Keyboard shortcuts"}
               <ul>
                 <li> <code>h</code> _{HMsg "or"} <code>?</code> - _{HMsg "view this help"}
+                <li> <code>.</code> - _{HMsg "toggle key hints on the controls"}
                 <li> <code>g</code> - _{HMsg "go to a page: shows the journal and reports with their keys, then press one"}
                 <li> <code>a</code> - _{HMsg "add a transaction"}
                 <li> <code>s</code> - _{HMsg "toggle sidebar"}
