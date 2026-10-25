@@ -1,9 +1,9 @@
 $# A page's label spans both columns: it may be longer than an account name,
 $# and nothing goes beside it.
-$forall (route, label, title) <- reports
+$forall (route, label, title, gokey) <- reports
   <tr :here == route:.inacct>
     <td .top .acct colspan=2>
-      <a href=@?{(route, reportParams)} :here == route:.inacct title=#{tr trs title}>
+      <a href=@?{(route, reportParams)} :here == route:.inacct title=#{tr trs title} data-gokey=#{gokey}>
         #{tr trs label}
 $forall (acct, adisplay, aindent, abal) <- items
   <tr data-indent=#{aindent} data-acct=#{acct}

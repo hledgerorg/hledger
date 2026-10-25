@@ -131,10 +131,11 @@ registerKeptParams :: [(Text, Text)] -> [(Text, Text)]
 registerKeptParams ps = [p | p@(k, _) <- ps, k `elem` ["depth", "value", "list", "infer", "empty", "lots"]]
 
 -- | Render a "BalanceReport" as the sidebar: the page links (each page's
--- route, label, and title, with the parameters their links carry), then
--- the accounts, linking to their registers. The current page's row is marked.
+-- route, label, title, and the key that goes there after g, with the
+-- parameters their links carry), then the accounts, linking to their
+-- registers. The current page's row is marked.
 balanceReportAsHtml ::
-  Eq r => r -> r -> [(r, Text, Text)] -> [(Text, Text)] -> Bool -> Text -> Text -> Translations -> Journal -> Text -> Maybe (AccountName, Bool) -> BalanceReport -> HtmlUrl r
+  Eq r => r -> r -> [(r, Text, Text, Text)] -> [(Text, Text)] -> Bool -> Text -> Text -> Translations -> Journal -> Text -> Maybe (AccountName, Bool) -> BalanceReport -> HtmlUrl r
 balanceReportAsHtml registerR here reports reportParams hideEmpty totlabel tottitle trs j qparam maccount (items, total) =
   $(hamletFile "templates/balance-report.hamlet")
   where
@@ -172,19 +173,22 @@ linksRow = linksRowClass ""
 -- | 'linksRow' with an extra class on the row: a hook for hledger.js's
 -- keyboard shortcuts.
 linksRowClass :: Text -> Text -> [(Text, Text, (r, [(Text, Text)]), Bool)] -> HtmlUrl r
-linksRowClass cls rowlabel items = linksRowGroups cls rowlabel [items]
+linksRowClass cls rowlabel items =
+  linksRowGroups cls rowlabel [[ (label, title, link, current, Nothing) | (label, title, link, current) <- items ]]
 
--- | 'linksRowClass' with the links in groups, shown a little apart.
-linksRowGroups :: Text -> Text -> [[(Text, Text, (r, [(Text, Text)]), Bool)]] -> HtmlUrl r
+-- | 'linksRowClass' with the links in groups, shown a little apart, each
+-- link with the key that goes to it after g, if it has one (hledger.js).
+linksRowGroups :: Text -> Text -> [[(Text, Text, (r, [(Text, Text)]), Bool, Maybe Text)]] -> HtmlUrl r
 linksRowGroups cls rowlabel groups renderUrl =
     H.p ! A.class_ (H.toValue $ T.unwords $ "report-links" : [cls | not (T.null cls)]) $ do
       unless (T.null rowlabel) $ H.span ! A.class_ "row-label" $ H.toHtml rowlabel
       for_ (zip [0 :: Int ..] groups) $ \(g, items) ->
-        for_ (zip [0 :: Int ..] items) $ \(i, (label, title, link, current)) ->
+        for_ (zip [0 :: Int ..] items) $ \(i, (label, title, link, current, mgokey)) ->
           let classes = ["current" | current] ++ ["group-start" | g > 0, i == 0]
           in H.a !? (not (null classes), A.class_ (H.toValue $ T.unwords classes))
                  ! A.href (H.toValue $ uncurry renderUrl link)
-                 ! A.title (H.toValue title) $
+                 ! A.title (H.toValue title)
+                 !? (isJust mgokey, H.dataAttribute "gokey" (H.toValue $ fromMaybe "" mgokey)) $
                H.toHtml label
 
 -- | A page's rows of report controls behind a disclosure, closed by

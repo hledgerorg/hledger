@@ -205,7 +205,8 @@ adds a transaction to the main journal file, if the [access level](#permissions)
 It autocompletes account names and descriptions from your existing entries.
 
 The **help dialog** (press `?`, or click the question mark button) lists these keyboard shortcuts,
-which work when you are not typing in a field:
+which work when you are not typing in a field
+(pointing at a control also shows its key, in the control's tooltip):
 
 - `h` or `?` - show or hide the help dialog
 - `g` - go to another page: shows a menu of the pages, each with its key;

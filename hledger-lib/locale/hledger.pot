@@ -1910,6 +1910,12 @@ msgstr ""
 msgid "Show the transactions that make up this total"
 msgstr ""
 
+#. the line added to a control's tooltip naming its key, eg "M", or "g b" for g then b. The keys are not translated.
+#: hledger-web/templates/default-layout-wrapper.hamlet
+#, python-brace-format
+msgid "Shortcut: {key}"
+msgstr ""
+
 #: hledger-web/templates/default-layout.hamlet
 msgid "hledger-web is no longer running. It exits after fifteen minutes with no browser window showing it, or when stopped. To continue, start it again and reload this page."
 msgstr ""

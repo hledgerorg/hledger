@@ -1348,10 +1348,10 @@ hledgerWebTest = do
         addGetParam "account" "assets:bank:checking"
         addGetParam "q" "date:2025"
       statusIs 200
-      bodyContains ("<td class=\"top acct\" colspan=\"2\"><a href=\"" ++ base ++ "/journal?q=date%3A2025\" title=\"Show general journal entries, most recent first\">Journal</a>")
+      bodyContains ("<td class=\"top acct\" colspan=\"2\"><a href=\"" ++ base ++ "/journal?q=date%3A2025\" title=\"Show general journal entries, most recent first\" data-gokey=\"j\">Journal</a>")
       get JournalR
       statusIs 200
-      bodyContains ("<td class=\"top acct\" colspan=\"2\"><a class=\"inacct\" href=\"" ++ base ++ "/journal\" title=\"Show general journal entries, most recent first\">Journal</a>")
+      bodyContains ("<td class=\"top acct\" colspan=\"2\"><a class=\"inacct\" href=\"" ++ base ++ "/journal\" title=\"Show general journal entries, most recent first\" data-gokey=\"j\">Journal</a>")
 
     yit "gives the journal links the same report state as the other page links" $ do
       request $ do
@@ -1361,8 +1361,8 @@ hledgerWebTest = do
         addGetParam "sort" "amount"
       statusIs 200
       -- in the sidebar, in the g menu, and in the row of page links
-      bodyContains ("<a href=\"" ++ base ++ "/journal?interval=quarterly&amp;sort=amount\" title=\"Show general journal entries, most recent first\">Journal</a>")
-      bodyContains ("<a href=\"" ++ base ++ "/journal?interval=quarterly&amp;sort=amount\" data-gokey=\"j\"")
+      bodyContains ("<td class=\"top acct\" colspan=\"2\"><a href=\"" ++ base ++ "/journal?interval=quarterly&amp;sort=amount\" title=\"Show general journal entries, most recent first\" data-gokey=\"j\">Journal</a>")
+      bodyContains ("<li><a href=\"" ++ base ++ "/journal?interval=quarterly&amp;sort=amount\" data-gokey=\"j\"")
       bodyContains ("<p class=\"report-links reports\"><a href=\"" ++ base ++ "/journal?interval=quarterly&amp;sort=amount\"")
 
     yit "starts each page with the report links, then the search, the options, and the heading" $ do
@@ -1622,19 +1622,19 @@ hledgerWebTest = do
       bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?q=expenses\" title=\"Show assets, liabilities, and net worth\"")
       bodyContains ("class=\"group-start\" href=\"" ++ defbaseurl defhost defport ++ "/balance?q=expenses\"")
       -- the journal leads the row, marked as the page shown
-      bodyContains ("<p class=\"report-links reports\"><a class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/journal?q=expenses\" title=\"Show general journal entries, most recent first\">Journal</a>")
+      bodyContains ("<p class=\"report-links reports\"><a class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/journal?q=expenses\" title=\"Show general journal entries, most recent first\" data-gokey=\"j\">Journal</a>")
 
     yit "links the report pages to the journal, first in their row of report links" $ do
       get IncomestatementR
       statusIs 200
-      bodyContains ("<p class=\"report-links reports\"><a href=\"" ++ defbaseurl defhost defport ++ "/journal\" title=\"Show general journal entries, most recent first\">Journal</a>")
+      bodyContains ("<p class=\"report-links reports\"><a href=\"" ++ defbaseurl defhost defport ++ "/journal\" title=\"Show general journal entries, most recent first\" data-gokey=\"j\">Journal</a>")
 
     yit "lists the balance sheet, income statement, and cashflow statement in the sidebar, marking the one shown" $ do
       get BalancesheetR
       statusIs 200
-      bodyContains ("<tr class=\"inacct\"><td class=\"top acct\" colspan=\"2\"><a class=\"inacct\" href=\"" ++ defbaseurl defhost defport ++ "/balancesheet\" title=\"Show assets, liabilities, and net worth\">Balance sheet</a>")
-      bodyContains ("<tr><td class=\"top acct\" colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/incomestatement\" title=\"Show revenues and expenses\">Income statement</a>")
-      bodyContains ("<a href=\"" ++ defbaseurl defhost defport ++ "/cashflow\" title=\"Show changes in liquid assets\">Cashflow statement</a>")
+      bodyContains ("<tr class=\"inacct\"><td class=\"top acct\" colspan=\"2\"><a class=\"inacct\" href=\"" ++ defbaseurl defhost defport ++ "/balancesheet\" title=\"Show assets, liabilities, and net worth\" data-gokey=\"b\">Balance sheet</a>")
+      bodyContains ("<tr><td class=\"top acct\" colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/incomestatement\" title=\"Show revenues and expenses\" data-gokey=\"i\">Income statement</a>")
+      bodyContains ("<a href=\"" ++ defbaseurl defhost defport ++ "/cashflow\" title=\"Show changes in liquid assets\" data-gokey=\"c\">Cashflow statement</a>")
       -- the other two reports are in the Report row, not the sidebar
       bodyNotContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/balancesheetequity\"")
 
@@ -1648,7 +1648,7 @@ hledgerWebTest = do
         addGetParam "q" "expenses"
       statusIs 200
       -- the period is kept, the mode is not: it belongs to this report
-      bodyContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?interval=quarterly&amp;q=expenses\" title=\"Show assets, liabilities, and net worth\">")
+      bodyContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?interval=quarterly&amp;q=expenses\" title=\"Show assets, liabilities, and net worth\" data-gokey=\"b\">")
       bodyNotContains "/balancesheet?interval=quarterly&amp;accum"
 
     yit "links the sidebar's reports from the journal and register too" $ do
@@ -1658,13 +1658,13 @@ hledgerWebTest = do
         addGetParam "account" "assets:bank:checking"
         addGetParam "q" "date:2025"
       statusIs 200
-      bodyContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?q=date%3A2025\" title=\"Show assets, liabilities, and net worth\">")
+      bodyContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?q=date%3A2025\" title=\"Show assets, liabilities, and net worth\" data-gokey=\"b\">")
       request $ do
         setMethod "GET"
         setUrl JournalR
         addGetParam "q" "date:2025"
       statusIs 200
-      bodyContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/incomestatement?q=date%3A2025\" title=\"Show revenues and expenses\">")
+      bodyContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/incomestatement?q=date%3A2025\" title=\"Show revenues and expenses\" data-gokey=\"i\">")
 
     yit "drops each section's shared account prefix, dimming remaining paths" $ do
       get BalancesheetR

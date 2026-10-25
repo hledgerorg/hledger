@@ -47,6 +47,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // clicks save the page's scroll position.
   controlsInit();
 
+  // Each control's tooltip names its key.
+  keyTipsInit();
+
   // The hideemptyaccts cookie was replaced by the empty parameter;
   // clear it from browsers that still carry it. Older versions set it
   // with a one-year max-age, so this can safely be removed after
@@ -183,15 +186,20 @@ function focusPage() {
 // has none). The action is given that element and the key pressed, and
 // returns false when the key was not for it, leaving the key to the
 // browser. The keys are cased as hledger-ui's.
+// The control's tooltip names the first key (keyTipsInit), so that a key
+// is named only where it acts. An entry whose keys are named elsewhere,
+// or nowhere, says so with tips: a function returning each control to
+// name a key on, with the key as named there.
 // In full window mode, s, o and / leave it, showing what they ask for.
 var keymap = [
-  { keys: ['h', '?'], run: helpToggle },
-  { keys: ['g'], run: gomenuShow },
+  { keys: ['?', 'h'], at: '#searchform [data-target="#helpmodal"]', run: helpToggle },
+  { keys: ['g'], run: gomenuShow, tips: goTips },
   { keys: ['s'], run: function() { if (fullWindowLeave()) { sidebarShow(); } else { sidebarToggle(); } } },
-  { keys: ['o'], run: function() { if (fullWindowLeave()) { controlsShow(); } else { controlsToggle(); } } },
-  { keys: ['a', 'n'], run: function() { addformShow(); } },
-  { keys: ['f'], run: fullWindowToggle },
-  { keys: ['/'], run: function() { fullWindowLeave(); focusSearch(); } },
+  { keys: ['o'], at: '#main-content details.report-controls > summary',
+    run: function() { if (fullWindowLeave()) { controlsShow(); } else { controlsToggle(); } } },
+  { keys: ['a', 'n'], at: '#addformlink', run: function() { addformShow(); } },
+  { keys: ['f'], at: '#fullwindow-exit', run: fullWindowToggle },
+  { keys: ['/'], at: '#searchform input[name=q]', run: function() { fullWindowLeave(); focusSearch(); } },
   { keys: ['z'], at: '.zero-balances a:not(.current)', run: linkFollow },
   { keys: ['t'], at: rowLink('accounts', -1),        run: linkToggle },
   { keys: ['H'], at: rowLink('accum', 1),            run: linkToggle },
@@ -211,9 +219,11 @@ var keymap = [
   { keys: ['M'], at: rowLink('interval', 3),         run: linkToggle },
   { keys: ['W'], at: rowLink('interval', 4),         run: linkToggle },
   { keys: ['D'], at: rowLink('interval', 5),         run: linkToggle },
-  { keys: '0123456789'.split(''), at: rowLink('depth', -1), run: depthSet },
-  { keys: ['-', '_'], at: depthStep(-1),             run: linkFollow },
-  { keys: ['+', '='], at: depthStep(1),              run: linkFollow },
+  // - and + step from the current depth, whichever it is, so only the
+  // digits are named, each on its own Depth link.
+  { keys: '0123456789'.split(''), at: rowLink('depth', -1), run: depthSet, tips: depthTips },
+  { keys: ['-', '_'], at: depthStep(-1),             run: linkFollow, tips: noTips },
+  { keys: ['+', '='], at: depthStep(1),              run: linkFollow, tips: noTips },
   // With nothing else to cancel, escape leaves full window mode.
   { keys: ['Escape'], run: function() { return fullWindowLeave(); } },
 ];
@@ -226,6 +236,45 @@ function keymapFind(key) {
 function keyTarget(k) {
   if (!k.at) { return null; }
   return typeof k.at === 'string' ? document.querySelector(k.at) : k.at();
+}
+
+// Add a line to each control's tooltip naming its key, in the page's
+// language: the body's data-keytip, eg "Shortcut: {key}". On a line of
+// its own, so that it is not taken for the command line flag some
+// tooltips end with.
+function keyTipsInit() {
+  var line = document.body.getAttribute('data-keytip');
+  if (!line) { return; }
+  keymap.forEach(function(k) {
+    keyTips(k).forEach(function(t) {
+      var tip = line.replace('{key}', t[1]);
+      t[0].title = t[0].title ? t[0].title + '\n' + tip : tip;
+    });
+  });
+}
+
+// A keymap entry's controls on this page, each with the key to name on it.
+function keyTips(k) {
+  if (k.tips) { return k.tips(); }
+  var el = keyTarget(k);
+  return el ? [[el, k.keys[0]]] : [];
+}
+
+function noTips() { return []; }
+
+// The pages' links, in the report links row and the sidebar, carry the
+// keys that go to them after g, as the g menu's links do (App.reportMenu).
+function goTips() {
+  return Array.prototype.filter.call(document.querySelectorAll('a[data-gokey]'), function(a) {
+    return !a.closest('#gomenu');
+  }).map(function(a) { return [a, 'g ' + a.getAttribute('data-gokey')]; });
+}
+
+// The Depth links a digit key sets, each named by its digit.
+function depthTips() {
+  return Array.prototype.filter.call(document.querySelectorAll('#main-content .depth a'), function(a) {
+    return /^\d$/.test(a.textContent);
+  }).map(function(a) { return [a, a.textContent]; });
 }
 
 // A finder for the link at idx (negative counts from the end) in a row of

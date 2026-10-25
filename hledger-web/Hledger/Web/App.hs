@@ -570,13 +570,13 @@ reportMenu =
 reportMenuFor :: Bool -> [ReportMenuItem]
 reportMenuFor hasLots = [i | i <- reportMenu, hasLots || rmRoute i /= HoldingsR]
 
--- | The pages' routes, labels, and titles, for a row of links.
-reportLinkItems :: [ReportMenuItem] -> [(Route App, Text, Text)]
-reportLinkItems items = [(rmRoute i, rmLabel i, rmTitle i) | i <- items]
+-- | The pages' routes, labels, titles, and go keys, for a row of links.
+reportLinkItems :: [ReportMenuItem] -> [(Route App, Text, Text, Text)]
+reportLinkItems items = [(rmRoute i, rmLabel i, rmTitle i, rmGoKey i) | i <- items]
 
 -- | 'reportLinkItems' in two groups, the named pages and the general reports,
 -- for a row of links that shows the groups apart.
-reportLinkGroups :: [ReportMenuItem] -> [[(Route App, Text, Text)]]
+reportLinkGroups :: [ReportMenuItem] -> [[(Route App, Text, Text, Text)]]
 reportLinkGroups items = filter (not . null) [reportLinkItems named, reportLinkItems general]
   where (general, named) = partition rmGeneral items
 

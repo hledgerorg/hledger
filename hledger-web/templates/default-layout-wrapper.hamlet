@@ -17,7 +17,10 @@ $newline never
           document.hledgerWebBaseurl = '#{base_url_ opts}'; /* save for binding keys later */
           document.hledgerWebCookieSuffix = '#{uiCookieSuffix opts}'; /* see App.uiCookie */
 
-    <body :browsemode:data-browse-mode>
+    $# data-keytip is the line hledger.js adds to a control's tooltip,
+    $# naming the control's key.
+    $# TRANSLATORS: the line added to a control's tooltip naming its key, eg "M", or "g b" for g then b. The keys are not translated.
+    <body :browsemode:data-browse-mode data-keytip=#{tr trs "Shortcut: {key}"}>
         $# Full window mode (the f key, hledger.js) is remembered in this
         $# tab's session storage, which is separate for each hledger-web
         $# (scheme, host and port), and restored here, before anything paints.

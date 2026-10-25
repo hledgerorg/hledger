@@ -277,13 +277,14 @@ intervalPeriodExpr = \case
     -- their interval yields no period expression.
     weekdayName d = lookup d $ zip [1..] ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
 
--- | Links to the report pages, given in groups as route, label, and title,
--- keeping the given parameters; the page being shown is marked. Unlike the
--- other rows of links, this one needs no label: it is the pages' navigation.
-reportLinks :: Eq r => Translations -> r -> [(Text, Text)] -> [[(r, Text, Text)]] -> HtmlUrl r
+-- | Links to the report pages, given in groups as route, label, title, and
+-- the key that goes there after g, keeping the given parameters; the page
+-- being shown is marked. Unlike the other rows of links, this one needs no
+-- label: it is the pages' navigation.
+reportLinks :: Eq r => Translations -> r -> [(Text, Text)] -> [[(r, Text, Text, Text)]] -> HtmlUrl r
 reportLinks trs here kept groups =
   linksRowGroups "reports" ""
-    [ [ (tr trs label, tr trs title, (route, kept), route == here) | (route, label, title) <- grp ] | grp <- groups ]
+    [ [ (tr trs label, tr trs title, (route, kept), route == here, Just gokey) | (route, label, title, gokey) <- grp ] | grp <- groups ]
 
 -- | Links to the same report page for each reporting interval, keeping
 -- the search (and its dates) and the given parameters; the interval

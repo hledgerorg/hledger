@@ -415,6 +415,24 @@ test.describe('keyboard shortcuts', () => {
     expect(pageErrors).toEqual([]);
   });
 
+  // The tooltips name the keys from the table the keys run from, so the key
+  // a tooltip names is the one that acts on its control.
+  test('a control\'s tooltip names its key, which follows that control', async ({ page }) => {
+    for (const [row, label, key] of [
+      ['interval', 'Monthly', 'M'],
+      ['reports', 'Journal', 'g j'],
+      ['depth', '2', '2'],
+    ]) {
+      await page.goto('/balance');
+      const link = page.locator(`#main-content .${row} a`, { hasText: label });
+      await expect(link).toHaveAttribute('title', new RegExp(`\\nShortcut: ${key}$`));
+      const href = await link.evaluate(a => a.href);
+      for (const k of key.split(' ')) { await page.locator('body').press(k); }
+      await expect(page).toHaveURL(href);
+    }
+    expect(pageErrors).toEqual([]);
+  });
+
   test('"+" and "-" step the depth limit through the Depth links, stopping at the ends', async ({ page }) => {
     // the fixture's deepest accounts are at depth 4, whose link removes the limit
     await page.goto('/balance?depth=3');
