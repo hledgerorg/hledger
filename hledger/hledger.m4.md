@@ -4260,6 +4260,19 @@ if MATCHER
   ...
 ```
 
+Because every matching row is applied in order, the last one that matches wins.
+To supply a default, set the field before the table (or put a catch-all matcher such as `.*` as the first row); later, more-specific rows will override it when they match.
+
+```rules
+account2  expenses:unknown
+
+ifs | account2
+WHOLE FOODS | expenses:food
+WHOLE FOODS.*organic | expenses:food:organic
+```
+
+In this example a transaction whose description contains "WHOLE FOODS organic" matches both WHOLE FOODS rows; the last assignment is the one that remains.
+
 The [`skip`](#skip), [`end`](#end) and [`merge`](#merge) actions can also be table columns.
 Write a number in the cell on lines where the action should happen, and leave it blank on other lines.
 For `skip` and `merge` the number is how many records to skip or merge (1 or more);
