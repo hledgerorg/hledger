@@ -67,6 +67,17 @@ author's grouping is preserved. Details:
   transactions use showTransactionBeancount (which also renders preceding comments).
   Plain `print -O beancount` outputs only transactions (the header moved to --export).
 
+### Amount expressions
+
+A posting amount written as an expression (eg `$1 + $2`) is evaluated when the journal is read,
+and only the result is stored. So print, `--export` and every output format (including ledger and
+beancount) show the result, not the expression. This is by design for now, to keep it simple;
+keeping the expression text would need a new Posting field.
+The results of `*` and `/` are rounded when the entry has been parsed, to the entry's balancing precision
+for that commodity (or in periodic transaction and auto posting rules, to their own precision).
+The result is given that precision, so the stored amount is exactly what print shows, and print output
+reads back as the same journal, with or without any commodity directives.
+
 ### `--round`
 
 Controls rounding/padding of displayed amounts:

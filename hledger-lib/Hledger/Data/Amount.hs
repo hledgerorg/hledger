@@ -259,6 +259,8 @@ isNonsimpleCommodityChar c = case c of
 quoteCommoditySymbolIfNeeded :: T.Text -> T.Text
 quoteCommoditySymbolIfNeeded s
   | T.any isNonsimpleCommodityChar s = "\"" <> s <> "\""
+  -- in a posting amount, (X)10 or 10 /x would be read as an amount expression (see amountexprp)
+  | T.take 1 s `elem` ["(", "/"] = "\"" <> s <> "\""
   | otherwise = s
 
 -- | Formatting options available when displaying Amounts and MixedAmounts.

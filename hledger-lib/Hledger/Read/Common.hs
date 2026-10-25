@@ -94,6 +94,7 @@ module Hledger.Read.Common (
   amountp,
   AmountParseKind(..),
   amountp',
+  postingamountp,
   simpleamountp,
   commoditysymbolp,
   costp,
@@ -1143,8 +1144,23 @@ amountp' :: AmountParseKind -> JournalParser m Amount
 amountp' kind =
   -- dbg "amountp'" $
   label "amount" $ do
+  amt <- simpleamountp kind <* lift skipNonNewlineSpaces
+  amountannotationsp amt
+
+-- | A posting amount. Like amountp', except that the amount may also be written as a simple
+-- arithmetic expression, which is evaluated to a single amount (see amountexprp) (#2648).
+-- Any cost, valuation or lot annotations come after the expression, and apply to its result.
+postingamountp :: AmountParseKind -> JournalParser m Amount
+postingamountp kind =
+  label "amount" $ do
+  amt <- amountexprp kind <* lift skipNonNewlineSpaces
+  amountannotationsp amt
+
+-- | The cost, valuation and lot annotations which may follow an amount
+-- (and any spaces after it). Returns the amount with its cost and cost basis set.
+amountannotationsp :: Amount -> JournalParser m Amount
+amountannotationsp amt = do
   let spaces = lift $ skipNonNewlineSpaces
-  amt <- simpleamountp kind <* spaces
   -- A cost, valuation expression or lot annotation may follow, in any order, each at most once.
   -- Each begins with a distinctive character or two, so look at those and run just the right
   -- parser, stopping at anything else or at a repeated kind. (A permutation parser was used before,
@@ -1192,7 +1208,14 @@ amountnobasisp =
 -- An amount with no cost or cost basis.
 -- A commodity-less amount will have the default commodity applied to it, unless it's a multiplier.
 simpleamountp :: AmountParseKind -> JournalParser m Amount
-simpleamountp kind =
+simpleamountp = simpleamountp' Nothing
+
+-- | Like simpleamountp, but when given a nesting depth, parses an operand of an amount expression
+-- (see amountexprp), inside that many parentheses. There, an unquoted commodity symbol written
+-- after the number can't begin with /, and inside parentheses can't contain ),
+-- so that 10 EUR / 4 and (10 EUR + 5 EUR) are read as expressions.
+simpleamountp' :: Maybe Int -> AmountParseKind -> JournalParser m Amount
+simpleamountp' mdepth kind =
   -- dbg "simpleamountp" $
   do
   sign <- lift signp
@@ -1204,6 +1227,13 @@ simpleamountp kind =
 
   where
   startsCommoditySymbol c = c == '"' || not (isNonsimpleCommodityChar c)
+
+  isoperand = isJust mdepth
+  inparens  = maybe False (> 0) mdepth
+  rightsymbolp :: TextParser n CommoditySymbol
+  rightsymbolp
+    | inparens  = quotedcommoditysymbolp <|> takeWhile1P Nothing (\c -> not (isNonsimpleCommodityChar c) && c /= ')')
+    | otherwise = commoditysymbolp
 
   -- An amount with commodity symbol on the left.
   leftsymbolamountp :: (Decimal -> Decimal) -> JournalParser m Amount
@@ -1237,8 +1267,8 @@ simpleamountp kind =
     -- A commodity symbol may follow the number, possibly after spaces; check cheaply first.
     (_, mnext) <- lift peekAfterSpaces
     mSpaceAndCommodity <- lift $
-      if maybe False startsCommoditySymbol mnext
-      then optional $ try $ (,) <$> skipNonNewlineSpaces' <*> commoditysymbolp
+      if maybe False (\c -> startsCommoditySymbol c && not (isoperand && c == '/') && not (inparens && c == ')')) mnext
+      then optional $ try $ (,) <$> skipNonNewlineSpaces' <*> rightsymbolp
       else pure Nothing
     case mSpaceAndCommodity of
       -- right symbol amount
@@ -1286,6 +1316,134 @@ simpleamountp kind =
       Left errMsg -> customFailure $
                        uncurry parseErrorAtRegion posRegion errMsg
       Right (q,p,d,g) -> pure (q, Precision p, d, g)
+
+-- | A simple arithmetic expression involving amounts, evaluated to a single amount (#2648). Eg:
+--
+-- > $-21.60 + $-27.68 + $-5.03
+-- > 10 EUR - 2.50 EUR
+-- > $47.97 * 0.05
+-- > ($200 + $15.75) / 3
+-- > $10 + 5
+--
+-- The operands are simple amounts (see simpleamountp), or parenthesised expressions.
+-- The operators are + - * and /. * and / are applied before + and -; otherwise, left to right.
+-- Spaces around operators are optional, except before a / which follows a commodity symbol (10 EUR / 4).
+-- A - or + directly before an operand or parenthesis is its sign.
+--
+-- + and - combine amounts of the same commodity; a number with no commodity symbol takes the
+-- other side's commodity. The result has the larger of their precisions.
+-- * takes a plain number (with no commodity symbol) on either side, and / takes one on the right.
+-- Their result has the commodity and display style of the amount being multiplied or divided
+-- (with two plain numbers, the left one).
+-- So a result's precision is the most decimal places written in the amounts it was calculated from
+-- (not counting plain numbers used with * or /).
+-- The results of * and / are exact here, and so may have more decimal places than their precision.
+-- They are rounded once the whole entry has been read, since the number of decimal places
+-- depends on the other amounts in the entry (see transactionRoundCalculatedAmounts in
+-- Hledger.Read.JournalReader).
+-- Anything else (eg adding different commodities, or dividing by zero) is a parse error.
+--
+-- The operands are parsed without applying the default commodity (D), so that a number can
+-- take its commodity from the expression; if the result has no commodity, the default commodity
+-- is applied to it, as for a simple amount (unless it's a multiplier amount).
+--
+-- An amount with no operators is parsed the same as by simpleamountp.
+amountexprp :: AmountParseKind -> JournalParser m Amount
+amountexprp kind = do
+  a <- sump (0 :: Int)
+  if kind /= MultiplierAmount && T.null (acommodity a) then withDefaultCommodity a else pure a
+  where
+    spaces = lift skipNonNewlineSpaces
+
+    -- if a default commodity has been set, apply it and its style (like simpleamountp)
+    withDefaultCommodity a = do
+      defcs <- getDefaultCommodityAndStyle
+      case defcs of
+        Just (defc, defs) -> do
+          s <- shareAmountStyle defs{asprecision = max (asprecision defs) (asprecision $ astyle a)}
+          pure a{acommodity = defc, astyle = s}
+        Nothing -> pure a
+
+    -- a sum or difference of products (depth is the number of enclosing parentheses)
+    sump depth = productp depth >>= sumrestp depth
+    sumrestp depth a = do
+      mop <- lift peekChar
+      case mop of
+        Just op | op `elem` ['+','-'] -> do
+          off <- getOffset
+          b <- char op *> spaces *> productp depth
+          off' <- getOffset
+          c <- addAmounts (off, off') op a b
+          sumrestp depth c
+        _ -> pure a
+
+    -- a product or quotient of factors
+    productp depth = factorp depth >>= productrestp depth
+    productrestp depth a = do
+      mop <- lift peekChar
+      case mop of
+        Just op | op `elem` ['*','/'] -> do
+          off <- getOffset
+          b <- char op *> spaces *> factorp depth
+          off' <- getOffset
+          c <- multiplyAmounts (off, off') op a b
+          productrestp depth c
+        _ -> pure a
+
+    -- a simple amount, or a parenthesised expression with an optional sign; and any following spaces.
+    -- (Look ahead cheaply, so that ordinary amounts are parsed without backtracking.)
+    -- Operands are parsed as multiplier amounts, ie without applying the default commodity.
+    factorp depth = do
+      s <- getInput
+      case T.uncons s of
+        Just ('(', _) -> parensp depth
+        Just (c, rest) | c `elem` ['-','+'], "(" `T.isPrefixOf` T.dropWhile isNonNewlineSpace rest -> do
+          a <- anySingle *> spaces *> parensp depth
+          pure $ if c == '-' then a{aquantity = negate $ aquantity a} else a
+        _ -> do
+          a <- simpleamountp' (Just depth) MultiplierAmount
+          -- In 10 EUR/4, the commodity symbol is read as EUR/. Explain that, rather than just
+          -- reporting the unexpected 4. (A number can't follow an amount, so this is safe.)
+          -- The symbol is checked first, so that the usual case needs no lookahead.
+          when (ascommodityside (astyle a) == R && "/" `T.isSuffixOf` acommodity a) $ do
+            off <- getOffset
+            (spaced, mnext) <- lift peekAfterSpaces
+            let looksdivided = case mnext of
+                  Just c | isDigit c -> True
+                         | not spaced -> c `elem` ['(','.','-','+']
+                  _ -> False
+            when looksdivided $
+              customFailure $ parseErrorAtRegion (off-1) off $
+                "this / is read as part of the commodity symbol " ++ T.unpack (acommodity a)
+                ++ "; to divide, write a space before it (eg 10 EUR / 4)"
+          a <$ spaces
+
+    parensp depth = char '(' *> spaces *> sump (depth+1) <* (char ')' <?> "closing parenthesis") <* spaces
+
+    exprError (off, off') msg = customFailure $ parseErrorAtRegion off off' msg
+
+    hascommodity = not . T.null . acommodity
+
+    addAmounts reg op a b
+      | hascommodity a && hascommodity b && acommodity a /= acommodity b = exprError reg $
+          "can't " ++ (if op == '+' then "add" else "subtract") ++ " amounts with different commodities ("
+          ++ T.unpack (acommodity a) ++ " and " ++ T.unpack (acommodity b) ++ ")"
+      | otherwise = do
+          -- a number with no commodity takes the other side's commodity and style
+          let a' = if hascommodity a || not (hascommodity b) then a else b
+              q = (if op == '+' then (+) else (-)) (aquantity a) (aquantity b)
+          s <- shareAmountStyle (astyle a'){asprecision = max (asprecision $ astyle a) (asprecision $ astyle b)}
+          pure a'{aquantity = q, astyle = s}
+
+    multiplyAmounts reg op a b
+      | op == '*' && hascommodity a && hascommodity b = exprError reg
+          "can't multiply two amounts with commodity symbols; one side of * should be a plain number"
+      | op == '/' && hascommodity b = exprError reg
+          "the right side of / should be a number without a commodity symbol"
+      | op == '/' && aquantity b == 0 = exprError reg "can't divide by zero"
+      | op == '*' && hascommodity b = pure $ multiplyAmount (aquantity a) b
+      | op == '*' = pure $ multiplyAmount (aquantity b) a
+      | otherwise = pure $ divideAmount (aquantity b) a
 
 -- | Try to parse a single-commodity amount from a string
 parseamount :: String -> Either HledgerParseErrors Amount
@@ -2220,6 +2378,53 @@ tests_Common = testGroup "Common" [
    ,testCase "unit price, parenthesised" $ assertParse amountp "$10 (@) €0.5"
    ,testCase "total price, parenthesised" $ assertParse amountp "$10 (@@) €0.5"
    ]
+
+  ,let p = postingamountp OrdinaryAmount
+       -- the parts of the result which the expression rules decide
+       costParts (UnitCost a)  = ("@" :: String, acommodity a, aquantity a)
+       costParts (TotalCost a) = ("@@", acommodity a, aquantity a)
+       eq input c q prec = assertParseEqOn p input (\a -> (acommodity a, aquantity a, asprecision $ astyle a)) (c, q, Precision prec)
+   in testGroup "postingamountp" [
+     testCase "a simple amount is unchanged"  $ assertParseEq p "$47.18" (usd 47.18)
+    ,testCase "the example in #2648"          $ eq "$-50.20 + $-209.00 + $-16.54 + $-438" "$" (-713.74) 2
+    ,testCase "subtraction, spaces optional"  $ eq "10 EUR-2.50 EUR" "EUR" 7.5 2
+    ,testCase "a sign after an operator"      $ eq "$10 - -$5" "$" 15 0
+    ,testCase "* and / before + and -"        $ eq "$1 + $2 * 3" "$" 7 0
+    ,testCase "parentheses"                   $ eq "($1 + $2) * 3" "$" 9 0
+    ,testCase "nested parentheses"            $ eq "((1.0 + 2) * (3 - 1)) / 4" "" 1.5 1
+    ,testCase "a sign before parentheses"     $ eq "-($1 + $2) - +($3)" "$" (-6) 0
+    ,testCase "/ with a right-side symbol"    $ eq "10.00 EUR / 4" "EUR" 2.5 2
+    ,testCase "a right-side symbol in parentheses" $ eq "(10.00 EUR + 5 EUR) / 4" "EUR" 3.75 2
+    ,testCase "* is exact, with the amount's precision" $ eq "$47.97 * 0.05" "$" 2.3985 2
+    ,testCase "/ is exact, with the amount's precision" $
+       assertParseEqOn p "$100.00 / 3" (\a -> (aquantity a > 33.3333333 && aquantity a < 33.3333334, asprecision $ astyle a)) (True, Precision 2)
+    ,testCase "an amount on the right of *"   $ eq "3 * $10.005" "$" 30.015 3
+    ,testCase "the plain number's decimal places don't count" $ eq "0.5 * $10" "$" 5 0
+    ,testCase "two plain numbers use the left one's precision" $ eq "5 / 2" "" 2.5 0
+    ,testCase "precision of + is the larger"  $ eq "$1 + $0.5" "$" 1.5 1
+    ,testCase "a number takes the other side's commodity" $ do
+       eq "$10 + 5.5" "$" 15.5 1
+       eq "5 - $10" "$" (-5) 0
+       eq "(2 + 3) * 10 EUR" "EUR" 50 0
+       assertParseEqOn p "5 + 10 EUR" (ascommodityside . astyle) R
+    ,testCase "a cost applies to the result"  $ assertParseEqOn p "1 X + 2 X @ $3" (\a -> (aquantity a, costParts <$> acost a)) (3, Just ("@", "$", 3))
+    ,testCase "different commodities"         $ assertParseError p "$1 + 1 EUR" "can't add amounts with different commodities ($ and EUR)"
+    ,testCase "two amounts with commodities in *" $ assertParseError p "$2 * $1" "can't multiply two amounts with commodity symbols"
+    ,testCase "a commodity on the right of /" $ assertParseError p "2 / $1" "the right side of / should be a number"
+    ,testCase "division by zero"              $ assertParseError p "$1 / 0" "can't divide by zero"
+    ,testCase "no space before / after a commodity symbol" $ do
+       assertParseError p "10 EUR/4" "this / is read as part of the commodity symbol EUR/; to divide, write a space before it"
+       assertParseError p "10 EUR/ 4" "this / is read as part of the commodity symbol EUR/"
+       assertParseError p "10 EUR/-2" "this / is read as part of the commodity symbol EUR/"
+       assertParseEqOn p "10 EUR/ + 2 EUR/" acommodity "EUR/"
+    ,testCase "an unclosed parenthesis"       $ assertParseError p "($1 + $2" "closing parenthesis"
+    ,testCase "the default commodity applies only to a result with no commodity" $ do
+       let p' = modify' (\j -> j{jparsedefaultcommodity=Just ("$", amountstyle)}) >> p
+           on = assertParseEqOn p'
+       on "10 EUR * 2" (\a -> (acommodity a, aquantity a)) ("EUR", 20)
+       on "10 EUR + 2" (\a -> (acommodity a, aquantity a)) ("EUR", 12)
+       on "10 + 2"     (\a -> (acommodity a, aquantity a)) ("$", 12)
+    ]
 
   ,let p = lift (numberp Nothing) :: JournalParser IO (Quantity, Word8, Maybe Char, Maybe DigitGroupStyle) in
    testCase "numberp" $ do

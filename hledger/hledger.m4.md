@@ -1182,6 +1182,68 @@ output; you can't write them directly in the journal file.
 By default, the format of amounts in the journal influences how hledger displays them in output.
 This is explained in [Commodity display style](#commodity-display-style) below.
 
+### Amount expressions
+
+A posting amount can also be a simple arithmetic expression, which hledger calculates when reading the journal.
+This can be handy for keeping the parts of a total visible, eg when entering several receipts:
+
+```journal
+2025-10-14 outing
+    expenses:meals        $47.97
+    expenses:meals        $200.65
+    expenses:parking      $15.75
+    assets:personal       $-47.97 + $-200.65 + $-15.75
+```
+
+You can use `+`, `-`, `*` and `/`, and parentheses.
+`*` and `/` are done before `+` and `-`; otherwise it's left to right.
+Spaces around the operators are optional, except that a `/` following a commodity symbol needs a space before it
+(`10 EUR / 4`; `10 EUR/4` is an error).
+A minus sign can also go before parentheses, eg `-($1 + $2)`.
+
+- `+` and `-` work only between amounts with the same commodity.
+  A number without a commodity symbol takes the other side's commodity, so you can write the commodity once: `$10 + 5` is $15.
+  The result shows as many decimal places as the more precise of the two.
+- `*` needs a plain number (no commodity symbol) on one side, eg `$47.97 * 0.05` or `3 * $10`.
+  `/` needs a plain number on the right, eg `$100.00 / 3`.
+- The result of `*` or `/` is rounded, using [banker's rounding](#display-rounding), after the whole entry has been read.
+  It is rounded to the most decimal places used by that commodity's amounts in the entry,
+  including amounts written inside expressions or balance assignments, but not cost amounts, or plain numbers used with `*` or `/`.
+  These are the same decimal places hledger uses to check that the entry balances
+  (see [Transaction balancing](#transaction-balancing)).
+  The rounded amount is what hledger stores and `print` shows (see also [Where hledger divides](#where-hledger-divides)).
+  So in an entry with other amounts like `$-100.00`, `$100/3` is $33.33,
+  and with only whole-number amounts, it is $33.
+  Likewise `$10 * 0.15` is $1.50 in an entry with other amounts like `$-11.50`, and $2 on its own.
+  Write more decimal places if you want more, eg `$100.0000 / 3` is $33.3333.
+  [Commodity directives](#commodity-directive) don't affect this.
+- So a split that doesn't divide evenly makes the entry unbalanced, and the error message says that such amounts are rounded.
+  To split unevenly, leave one amount blank, and hledger will give it the remainder:
+  ```journal
+  2026-01-01 dinner, split three ways
+      expenses:food:alice    $100/3      ; $33.33
+      expenses:food:bob      $100/3      ; $33.33
+      expenses:food:me                   ; $33.34
+      assets:checking        $-100.00
+  ```
+- In [periodic transaction rules](#periodic-transactions) and [auto posting rules](#auto-postings),
+  a result is rounded to its own decimal places, eg `$100/3` is $33 and `$100.00/3` is $33.33.
+- If the result has no commodity, the default commodity from a [`D` directive](#d-directive) is applied to it as usual.
+  It is then like any other plain number after a `D` directive, whose decimal places count:
+  after `D $1,000.00`, `5 / 2` is $2.50 (without `D`, it is 2, or 2.5 in an entry with other amounts like `-2.5`).
+- A cost, lot annotation or balance assertion can follow an expression, and applies to its result:
+  `10 EUR + 5 EUR @ $1.10` is 15 EUR, costing $1.10 each.
+- Expressions can be used only in posting amounts, not in costs, balance assertions, directives,
+  or auto posting rule multipliers (`*AMT`).
+- hledger keeps only the result. `print` (including `--export`) and all its output formats show the result,
+  eg `$-264.37`, not the expression. So do error messages and other reports.
+  If you want to keep the parts visible, write them in a comment too.
+
+Breaking change: in a posting amount, an unquoted commodity symbol can no longer begin with `(` when written before the number,
+or with `/` when written after it, and can't contain `)` inside parentheses,
+since these would be read as part of an expression (eg `(X)10` or `10 /x`).
+Write such symbols in double quotes, eg `"(X)" 10` or `10 "/x"`. `print` adds the quotes when needed.
+
 <a name="transaction-prices"></a>
 
 ## Costs
@@ -5681,11 +5743,13 @@ When hledger shows such a rounded amount in full, eg in `print` output, it shows
 
 ## Where hledger divides
 
-Journal amounts are always written as finite decimals, so non-terminating decimals can arise only where hledger divides.
+Non-terminating decimals can arise only where hledger divides.
+(Journal amounts are written as finite decimals, and [amount expressions](#amount-expressions) round their results.)
 Here's when that happens:
 
 | When | What is divided | Visible effect |
 |------------------------------|--------------|------------------------------------|
+| Dividing in an [amount expression](#amount-expressions) (`$100.00 / 3`) | amount / number | None: the result is rounded to the entry's decimal places for that commodity when the journal is read, so it is exactly what `print` shows. A split that doesn't divide evenly makes the transaction unbalanced, unless one amount is left blank. |
 | Converting a lot's total [cost](#costs) (`@@`) or total [cost basis](#cost-basis) (`{{ }}`) to a unit cost | total cost / quantity | None in calculations: gains use the unrounded unit cost. Lot names and `print` show it with up to 8 decimal places (more if the cost commodity's display style has more), so text copied from them is slightly rounded; see [Cost basis precision](#cost-basis-precision). |
 | Inferring market prices from costs, with [`--infer-market-prices`](#--infer-market-prices-market-prices-from-transactions) | total cost / quantity | None |
 | Using a [reverse market price](#finding-market-price) | 1 / price | None |

@@ -1,0 +1,554 @@
+# * Arithmetic expressions in posting amounts (#2648)
+
+# ** 1. An expression is evaluated to a single amount. print shows the result, not the expression.
+<
+2025-10-14 some outing
+    expenses:meals          $47.97
+    assets:tax:gstexp       $2.23
+    expenses:meals          $200.65
+    assets:tax:gstexp       $8.35
+    expenses:parking        $15.75
+    assets:tax:gstexp       $0.79
+    expenses:lodging        $419.32
+    assets:tax:gstexp       $18.68
+    assets:personal         $-50.20 + $-209.00 + $-16.54 + $-438   ; four receipts
+$ hledger -f- print
+2025-10-14 some outing
+    expenses:meals                               $47.97
+    assets:tax:gstexp                             $2.23
+    expenses:meals                              $200.65
+    assets:tax:gstexp                             $8.35
+    expenses:parking                             $15.75
+    assets:tax:gstexp                             $0.79
+    expenses:lodging                            $419.32
+    assets:tax:gstexp                            $18.68
+    assets:personal                            $-713.74  ; four receipts
+
+>=
+
+# ** 2. The result of * or / is rounded, once the whole entry has been read, to the most decimal places
+# used by that commodity's amounts in the entry. It is the amount that print shows.
+<
+2025-01-01
+    expenses:food           ($100.00 + $15.00) / 3
+    expenses:tax            $47.97 * 0.05
+    assets:cash
+$ hledger -f- print
+2025-01-01
+    expenses:food                                $38.33
+    expenses:tax                                  $2.40
+    assets:cash
+
+>=
+
+# ** 3. So a split that doesn't divide evenly leaves the transaction unbalanced,
+# and the error message suggests leaving one amount blank.
+<
+2026-01-01
+    assets                  $-100
+    expenses:dining          ($100/3)
+    expenses:receivable:a    ($100/3)
+    expenses:receivable:b    ($100/3)
+$ hledger -f- print
+>2 /The real postings' sum should be 0 but is \$-1
+.*
+Note, amounts calculated with \* or \/ are rounded; to split unevenly, leave one amount blank./
+>=1
+
+# ** 4. It can be handled the usual way, eg by leaving one amount to be inferred.
+# Balance assertions see the stored amounts.
+<
+2025-01-01
+    a    $100.00 / 3
+    b    $100.00 / 3
+    c
+    d    $-100.00
+
+2025-01-02
+    a    $10.00 / 4  = $35.83
+    d
+$ hledger -f- bal -N
+              $35.83  a
+              $33.33  b
+              $33.34  c
+            $-102.50  d
+>=
+
+# ** 5. print output reads back the same, including with --export.
+<
+2025-01-01
+    a    $100.00 / 3
+    b    $100.00 / 3
+    c
+    d    $-100.00
+
+2025-01-03
+    expenses:tax    $47.97 * 0.05
+    assets:cash     $-2.40
+$ hledger -f- print --export | hledger -f- print --export
+2025-01-01
+    a                                            $33.33
+    b                                            $33.33
+    c
+    d                                          $-100.00
+
+2025-01-03
+    expenses:tax                                  $2.40
+    assets:cash                                  $-2.40
+
+>=
+
+# ** 6. A cost or balance assertion may follow an expression, and applies to its result.
+<
+2025-01-01
+    a    10 EUR + 5 EUR @ $1.10
+    b    $-16.50
+    c    1 + 2 = 3
+    d    -3
+$ hledger -f- print
+2025-01-01
+    a                                             15 EUR @ $1.10
+    b                                           $-16.50
+    c                                              3             = 3
+    d                                             -3
+
+>=
+
+# ** 7. + and - need amounts of the same commodity.
+<
+2025-01-01
+    a    $1 + 1 EUR
+    b
+$ hledger -f- print
+>2 /can't add amounts with different commodities \(\$ and EUR\)/
+>=1
+
+# ** 8. The commodity can be written once: a number takes the other side's commodity,
+# and * accepts the amount on either side.
+<
+2025-01-01
+    a    $10 + 5
+    b    5 + $10.00
+    c    3 * $10
+    d    2 * (10 EUR + 2.5)
+    e    -25 EUR
+    f
+$ HLEDGER_FASTPATH=check hledger -f- print
+2025-01-01
+    a                                            $15
+    b                                            $15.00
+    c                                            $30
+    d                                             25.0 EUR
+    e                                            -25 EUR
+    f
+
+>=
+
+# ** 9. A number with no commodity can't be divided by an amount.
+<
+2025-01-01
+    a    2 / $1
+    b
+$ hledger -f- print
+>2 /the right side of \/ should be a number without a commodity symbol/
+>=1
+
+# ** 10. Two amounts with commodities can't be multiplied.
+<
+2025-01-01
+    a    $2 * $1
+    b
+$ hledger -f- print
+>2 /can't multiply two amounts with commodity symbols/
+>=1
+
+# ** 11. A / directly after a commodity symbol is part of the symbol. The error explains this.
+<
+2025-01-01
+    a    10 EUR/4
+    b
+$ hledger -f- print
+>2 /this \/ is read as part of the commodity symbol EUR\/; to divide, write a space before it/
+>=1
+
+# ** 12. The fast path declines expressions, and the general parser agrees with it on everything else.
+# 10 /2 is a division in a posting amount; a commodity symbol beginning with / must be quoted.
+<
+2025-01-01
+    a    10 /2
+    b    $1 + $2
+    c    -5
+    d    $-3
+    e    10 "/x"
+    f    -10 "/x"
+$ HLEDGER_FASTPATH=check hledger -f- print
+2025-01-01
+    a                                              5
+    b                                             $3
+    c                                             -5
+    d                                            $-3
+    e                                             10 "/x"
+    f                                            -10 "/x"
+
+>=
+
+# ** 13. A commodity symbol written after the number can be used inside parentheses.
+# A symbol beginning with ( is printed in quotes, so that it reads back the same.
+<
+2025-01-01
+    a    (10.00 EUR + 5 EUR) / 4
+    b    "(X)" 10
+    c
+$ HLEDGER_FASTPATH=check hledger -f- print
+2025-01-01
+    a                                              3.75 EUR
+    b                                       "(X)" 10
+    c
+
+>=
+
+# ** 14. Only the result is kept, so print, --export and the ledger and beancount formats show the result.
+<
+2025-01-01 receipts
+    expenses:food     $10.00 + $2.50
+    assets:cash       -($100.00 / 4)
+    expenses:misc
+$ hledger -f- print --export
+2025-01-01 receipts
+    expenses:food                                $12.50
+    assets:cash                                 $-25.00
+    expenses:misc
+
+>=
+
+# ** 15. The same with -O ledger.
+<
+2025-01-01 receipts
+    expenses:food     $10.00 + $2.50
+    assets:cash       -($100.00 / 4)
+    expenses:misc
+$ hledger -f- print -O ledger
+2025-01-01 receipts
+    expenses:food                                $12.50
+    assets:cash                                 $-25.00
+    expenses:misc
+
+>=
+
+# ** 16. The same with -O beancount.
+<
+2025-01-01 receipts
+    expenses:food     $10.00 + $2.50
+    assets:cash       -($100.00 / 4)
+    expenses:misc
+$ hledger -f- print -O beancount
+2025-01-01 * "receipts"
+    Expenses:Food       12.50 USD
+    Assets:Cash        -25.00 USD
+    Expenses:Misc
+
+>=
+
+# ** 17. Leaving one amount blank: the other amounts are rounded to the entry's decimal places,
+# wherever they appear in the entry, and the blank one gets the remainder.
+<
+2026-01-01
+    a         $100/3
+    b         $100/3
+    c
+    assets    $-100.00
+$ HLEDGER_FASTPATH=check hledger -f- print -x
+2026-01-01
+    a                                            $33.33
+    b                                            $33.33
+    c                                            $33.34
+    assets                                     $-100.00
+
+>=
+
+# ** 18. With no decimal places in the entry, a split is rounded to whole units.
+<
+2026-01-01
+    assets    $-100
+    a         $100/3
+    b         $100/3
+    c
+$ hledger -f- print -x
+2026-01-01
+    assets                                     $-100
+    a                                            $33
+    b                                            $33
+    c                                            $34
+
+>=
+
+# ** 19. So other amounts can add decimal places to a result. Alone, $10 * 0.15 is $2.
+# The decimal places of a plain number used with * or / don't count.
+<
+2026-01-01
+    expenses:food    $10.00
+    expenses:tip     $10 * 0.15
+    assets           $-11.50
+
+2026-01-02
+    expenses:tip     $10 * 0.15
+    assets
+$ hledger -f- print
+2026-01-01
+    expenses:food                                $10.00
+    expenses:tip                                  $1.50
+    assets                                      $-11.50
+
+2026-01-02
+    expenses:tip                                  $2
+    assets
+
+>=
+
+# ** 20. Commodity directives, and the D directive, don't affect the rounding of amounts with a commodity symbol.
+<
+commodity $1,000.0000
+D $1,000.00
+
+2026-01-01
+    assets    $-100
+    a         $100/3
+    b         $100/3
+    c
+    d         100 EUR / 3
+    e         -33 EUR
+$ hledger -f- print
+2026-01-01
+    assets                                     $-100
+    a                                            $33
+    b                                            $33
+    c
+    d                                             33 EUR
+    e                                            -33 EUR
+
+>=
+
+# ** 21. A result with no commodity is rounded the same way, using the entry's plain numbers.
+<
+2026-01-01
+    a    5 / 2
+    b
+
+2026-01-02
+    a    5 / 2
+    b    -2.5
+$ hledger -f- print
+2026-01-01
+    a                                              2
+    b
+
+2026-01-02
+    a                                              2.5
+    b                                             -2.5
+
+>=
+
+# ** 22. When such a result gets the default commodity, it is like any other plain number under a D directive,
+# whose decimal places count as written.
+<
+D $1,000.00
+
+2026-01-01
+    a    5 / 2
+    b
+$ hledger -f- print
+2026-01-01
+    a                                             $2.50
+    b
+
+>=
+
+# ** 23. Rounding is banker's rounding.
+<
+2026-01-01
+    a    $0.25 / 2
+    b    $0.35 / 2
+    c    $-0.30
+$ hledger -f- print
+2026-01-01
+    a                                             $0.12
+    b                                             $0.18
+    c                                            $-0.30
+
+>=
+
+# ** 24. A split with more decimal places still leaves a remainder, so stays unbalanced.
+<
+2025-01-01
+    assets    $-100
+    e1        $100.0000 / 3
+    e2        $100.0000 / 3
+    e3        $100.0000 / 3
+$ hledger -f- print
+>2 /The real postings' sum should be 0 but is \$-0.0001/
+>=1
+
+# ** 25. The hint is shown only when rounding changed an amount.
+<
+2026-01-01
+    a    $10.00 * 0.15
+    b    $-1.49
+$ hledger -f- print
+>2 !/calculated with/
+>=1
+
+# ** 26. Cost amounts don't count; only the result is rounded.
+<
+2026-01-01
+    a    10 X / 3 @ $1.2345
+    b    $-4
+$ hledger -f- print
+2026-01-01
+    a                                              3 X @ $1.2345
+    b                                            $-4
+
+>=
+
+# ** 27. Balance assertion amounts don't count either; the assertion sees the rounded amount.
+<
+2026-01-01
+    a    $100/3  = $33.33
+    b
+$ hledger -f- print
+>2 /the asserted balance is: +\$33.33
+but the calculated balance is: +\$33/
+>=1
+
+# ** 28. Balanced virtual postings are rounded with the rest of the entry, and get the hint too.
+<
+2026-01-01
+    a      $1
+    b      $-1
+    [c]    $10 / 4
+    [d]    $-3
+$ hledger -f- print
+>2 /The balanced virtual postings' sum should be 0 but is: \$-1
+.*
+Note, amounts calculated with \* or \/ are rounded/
+>=1
+
+# ** 29. Each commodity is rounded to its own decimal places in the entry.
+<
+2026-01-01
+    a    $100.00 / 3
+    b    10 EUR / 3
+    c    $-33.33
+    d    -3.333 EUR
+$ hledger -f- print
+2026-01-01
+    a                                            $33.33
+    b                                              3.333 EUR
+    c                                           $-33.33
+    d                                             -3.333 EUR
+
+>=
+
+# ** 30. Many decimal places, digit group marks and decimal commas work as usual.
+<
+decimal-mark ,
+
+2026-01-01
+    a    1,00000000 BTC / 3
+    b    1 BTC / 3
+    c
+    d    1.000,00 EUR / 3
+    e    -333,33 EUR
+$ hledger -f- print
+2026-01-01
+    a                                              0,33333333 BTC
+    b                                              0,33333333 BTC
+    c
+    d                                            333,33 EUR
+    e                                           -333,33 EUR
+
+>=
+
+# ** 31. In periodic transactions and auto posting rules, a result is rounded to its own decimal places.
+<
+~ monthly from 2026-01 to 2026-02
+    a    $100/3
+    b    $100.00/3
+    c
+
+= x
+    (y)    $10/3
+
+2026-01-15
+    x    $1.00
+    z
+$ hledger -f- print --forecast=2026-01..2026-02 --auto
+2026-01-01
+    a                                            $33
+    b                                            $33.33
+    c
+
+2026-01-15
+    x                                             $1.00
+    (y)                                           $3
+    z
+
+>=
+
+# ** 32. print output reads back the same, with or without the directives.
+# ($10 * 0.15 has 4 decimal places here, like $100.0000 / 3 in the same entry.)
+<
+commodity $1,000.00
+D $1,000.00
+
+2026-01-01 split
+    assets    $-100
+    e1        $100 / 3
+    e2        $100 / 3
+    e3
+
+2026-01-02
+    a    $10 * 0.15
+    b    5 / 2
+    c    $100.0000 / 3
+    d
+$ hledger -f- print -x | hledger -f- print -x
+2026-01-01 split
+    assets                                     $-100
+    e1                                           $33
+    e2                                           $33
+    e3                                           $34
+
+2026-01-02
+    a                                             $1.5000
+    b                                             $2.50
+    c                                            $33.3333
+    d                                           $-37.3333
+
+>=
+
+# ** 33. The rounding leaves no trace: no tag is added that tags, queries, print or JSON could see.
+<
+= tag:rounded
+    (x)    1
+
+2026-01-01
+    a      $100/3
+    b      $100/3
+    c
+    d      $-100.00
+$ hledger -f- tags --auto
+$ hledger -f - print --auto tag:rounded
+$ hledger -f - print --auto -O json | grep -c '"ptags": \[\]'
+4
+
+# ** 34. Balance assignment amounts count for the precision too, as in balancing.
+<
+2026-01-01
+    a      $10/3
+    b      = $-3.33
+$ hledger -f- print -x
+2026-01-01
+    a                                             $3.33
+    b                                            $-3.33 = $-3.33
+
+>=

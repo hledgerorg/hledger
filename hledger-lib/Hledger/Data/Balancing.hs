@@ -19,6 +19,7 @@ module Hledger.Data.Balancing
 , balanceSingleTransaction
 , balanceTransactionHelper
 , transactionBalanceError
+, roundedPostingTagName
   -- * assertion validation
 , transactionCheckAssertions
   -- * journal balancing
@@ -165,6 +166,7 @@ transactionCheckBalanced BalancingOpts{commodity_styles_=_mglobalstyles, txn_bal
           | otherwise     = "The real postings' sum should be 0 but is "
               ++ showamt rsumcost
               ++ "\n  " ++ intercalate "  +  " (map showamt rsumamts) ++ "  =  " ++ showamt rsumcost ++ gainnote rps
+              ++ roundedmsg rps
               ++ (if rsumokold then oldbalancingmsg else "")
               ++ lotmismatchmsg rps
         bvmsg
@@ -173,6 +175,7 @@ transactionCheckBalanced BalancingOpts{commodity_styles_=_mglobalstyles, txn_bal
           | otherwise     = "The balanced virtual postings' sum should be 0 but is: "
               ++ showamt bvsumcost
               ++ "\n  " ++ intercalate " + " (map showamt bvsumamts) ++ " = " ++ showamt bvsumcost ++ gainnote bvps
+              ++ roundedmsg bvps
               ++ (if bvsumokold then oldbalancingmsg else "")
               ++ lotmismatchmsg bvps
         -- When a balancing conversion cost was not inferred because of a
@@ -191,6 +194,12 @@ transactionCheckBalanced BalancingOpts{commodity_styles_=_mglobalstyles, txn_bal
             ,"  matching the fee expense(s)."
             ]
             ++ ["(With --ignore-lots, a balancing conversion cost is inferred instead.)" | not lenient_lots_]
+        -- When some amounts were calculated with * or / in amount expressions, and changed
+        -- by rounding (see roundedPostingTagName), mention that.
+        roundedmsg ps
+          | any (postingHasTag roundedPostingTagName) ps =
+              "\nNote, amounts calculated with * or / are rounded; to split unevenly, leave one amount blank."
+          | otherwise = ""
         oldbalancingmsg = unlines [
           -- -------------------------------------------------------------------------------
            "\nNote, hledger <1.50 accepted this entry because of the global display precision,"
@@ -307,6 +316,21 @@ balanceTransactionHelperMaybeSplittingLotFees bopts t0
     t2 = transactionAutoSplitFeeOutflows (verbose_balancing_tags_ bopts) (accountNameType (account_types_ bopts)) (`S.member` lotfulcomms)
            (accountUsesNoLotsWith (account_lots_tags_ bopts)) t
 
+-- | An internal tag added by the journal reader to postings whose amount was calculated with
+-- * or / in an amount expression, and changed by rounding (see
+-- Hledger.Read.JournalReader.transactionRoundCalculatedAmounts) (#2648).
+-- If the transaction doesn't balance, the error mentions the rounding.
+-- The tag is removed when the transaction balances, so it is not seen by users or queries.
+roundedPostingTagName :: TagName
+roundedPostingTagName = "_rounded-posting"
+
+-- | Remove the internal 'roundedPostingTagName' tag from a transaction's postings, if any.
+transactionRemoveRoundedTags :: Transaction -> Transaction
+transactionRemoveRoundedTags t
+  | any (postingHasTag roundedPostingTagName) $ tpostings t =
+      t{tpostings = [p{ptags = filter ((/= roundedPostingTagName) . fst) $ ptags p} | p <- tpostings t]}
+  | otherwise = t
+
 -- | Helper used by balanceSingleTransaction and balanceTransactionWithBalanceAssignmentAndCheckAssertionsB;
 -- use one of those instead.
 -- It also returns a list of accounts and amounts that were inferred.
@@ -319,7 +343,7 @@ balanceTransactionHelper bopts t = do
     & transactionInferBalancingAmount (fromMaybe M.empty $ commodity_styles_ bopts) (account_types_ bopts)
     <&> dbg9With (lbl "balancing amounts inferred".show.map (second showMixedAmountOneLine).snd)
   case transactionCheckBalanced bopts t' of
-    []   -> Right (txnTieKnot t', inferredamtsandaccts)
+    []   -> Right (txnTieKnot $ transactionRemoveRoundedTags t', inferredamtsandaccts)
     errs -> Left $ transactionBalanceError t' errs'
       where
         ismulticommodity = (length $ transactionCommodities t') > 1

@@ -118,3 +118,9 @@ account Income:Capital Gains  ; type:G
     Income:Capital Gains       $-125.00
 
 $ hledger -f- check
+
+# * 9. amount expressions (simple arithmetic only)
+<
+2022-01-01
+  (a)    (1 + 1)
+$ hledger -f- check

@@ -87,7 +87,24 @@ account-name-component = account-char, { account-char } ;
 account-char = any-char - ";" - newline - ":" - "  " (* two spaces *) ;
 
 (* Amounts *)
-amount-expr = amount, [ cost-expr ] ;
+amount-expr = amount-sum, [ cost-expr ] ;
+
+(* An amount with arithmetic, in posting amounts only. Evaluated when parsed; only the result is kept. *)
+amount-sum     = amount-product, { [ whitespace ], ( "+" | "-" ), [ whitespace ], amount-product } ;
+amount-product = amount-factor, { [ whitespace ], ( "*" | "/" ), [ whitespace ], amount-factor } ;
+amount-factor  = amount
+               | [ "-" | "+" ], "(", [ whitespace ], amount-sum, [ whitespace ], ")" ;
+(* + and - need the same commodity on both sides, or a number without a commodity symbol on one side,
+   which takes the other side's commodity. * needs a number without a commodity symbol on one side,
+   / needs one on the right. If the result has no commodity, the default commodity (D) is applied.
+   The result of * or / is exact while the entry is read; after its last posting, it is rounded
+   (banker's rounding) to the entry's balancing precision for its commodity: the most decimal places of
+   that commodity's posting amounts, as written (including amounts inside expressions and balance
+   assignment amounts, not costs).
+   It gets that precision, so what is stored is what print shows. In periodic transaction rules and
+   auto posting rules, it is rounded to its own precision. Commodity directives don't affect this.
+   In a posting amount, an unquoted commodity-symbol can't begin with "(" before the quantity,
+   or with "/" after it, and inside parentheses can't contain ")". *)
 
 amount = [ "-" | "+" ], commodity-symbol, quantity-no-sep
        | [ "-" | "+" ], quantity, [ whitespace ], commodity-symbol ;
