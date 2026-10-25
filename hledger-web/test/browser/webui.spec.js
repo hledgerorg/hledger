@@ -586,6 +586,12 @@ test.describe('key hints', () => {
     await expect(keys).toHaveAttribute('aria-pressed', 'true');
     await page.locator('#keys-hint button', { hasText: 'help' }).click();
     await expect(page.locator('#helpmodal')).toBeVisible();
+    // at the content's right edge, also when the sidebar is hidden and the content widens
+    await page.locator('body').press('Escape');
+    await page.locator('body').press('s');
+    await expect(page.locator('#sidebar-menu')).not.toBeVisible();
+    const right = async sel => { const b = await page.locator(sel).boundingBox(); return Math.round(b.x + b.width); };
+    expect(await right('#keys-hint')).toBe(await right('#searchform'));
     expect(pageErrors).toEqual([]);
   });
 

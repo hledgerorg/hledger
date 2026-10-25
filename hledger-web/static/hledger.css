@@ -538,12 +538,20 @@ kbd.keyhint,
   display: none;
 }
 @media screen and (hover: hover) {
+  /* At the page's top right, where the content's right edge is, inside the
+     container's and the column's padding, whether or not the sidebar shows;
+     the page's title leaves room for it. */
   #keys-hint {
     display: block;
-    float: right;
-    margin: 28px 0 0 1em;
+    position: absolute;
+    top: 28px;
+    right: 15px;
+    margin: 0;
     font-size: 12px;
     color: var(--muted);
+  }
+  #topbar h1 {
+    padding-right: 140px;
   }
   #keys-hint .btn-link {
     padding: 0;
@@ -872,6 +880,7 @@ ul {
    top right leaves it. */
 body.fullwindow #spacer,
 body.fullwindow #topbar,
+body.fullwindow #keys-hint,
 body.fullwindow #sidebar-menu,
 body.fullwindow #searchform,
 body.fullwindow .report-links.reports,
