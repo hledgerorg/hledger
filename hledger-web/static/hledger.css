@@ -533,6 +533,60 @@ dialog:focus {
   margin-top: 1em;
 }
 
+/* The help's headings and notes, and its tables of keys: each key, or
+   each options row's label, in a column of its own, the keys being
+   keycaps, set apart from the search syntax's code. Its two columns
+   stack on a phone (col-sm-6). */
+#helpmodal h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: bold;
+}
+#helpmodal h5 {
+  margin: 14px 0 6px;
+  font-size: 14px;
+  font-weight: bold;
+}
+#helpmodal h4:not(:first-child) {
+  margin-top: 16px;
+}
+#helpmodal .help-note {
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+.help-keys {
+  margin-bottom: 8px;
+}
+.help-keys th,
+.help-keys td {
+  padding: 1px 0;
+  vertical-align: top;
+}
+.help-keys th {
+  padding-right: 12px;
+  font-weight: normal;
+  white-space: nowrap;
+}
+.help-keys td > span {
+  display: inline-block;
+  margin-right: 12px;
+  white-space: nowrap;
+}
+#helpmodal kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+  color: inherit;
+  background-color: var(--row-hover);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  box-shadow: none;
+}
+
 /*------------------------------------------------------------------------------------------*/
 /* 7. the report charts */
 

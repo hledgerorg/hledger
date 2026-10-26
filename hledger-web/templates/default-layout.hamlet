@@ -176,62 +176,135 @@ $if elem ViewPermission perms
     <button type="button" .close data-dismiss="modal" aria-label=_{HMsg "Close"}>&times;
     <span .version>#{progname} #{packageversion}
     <h3 .modal-title #helpLabel>_{HMsg "Help"}
+  $# The general keys, then the options' keys, which follow the options
+  $# panel row by row, under its own labels, so that a key can be found by
+  $# the control it acts on. Beside them the search syntax, then the
+  $# manual. The keys and query syntax stay outside the translatable text.
   <div .modal-body>
-        $# The keys and query syntax stay outside the translatable text.
-        <div .row>
-          <div .col-xs-6>
-            <p>
-              <b>_{HMsg "Keyboard shortcuts:"}
-              <ul>
-                <li> <code>h</code> _{HMsg "or"} <code>?</code> - _{HMsg "view this help"}
-                <li> <code>g</code> - _{HMsg "go to a page: shows the journal and reports with their keys, then press one"}
-                <li> <code>a</code> - _{HMsg "add a transaction"}
-                <li> <code>s</code> - _{HMsg "toggle sidebar"}
-                <li> <code>o</code> - _{HMsg "toggle report options"}
-                <li> <code>c</code> - _{HMsg "toggle the report's chart"}
-                <li> <code>[</code>, <code>]</code> - _{HMsg "switch the chart between commodities"}
-                <li> <code>d</code> - _{HMsg "toggle the report's data"}
-                <li> <code>f</code> - _{HMsg "toggle full window"}
-                <li> <code>/</code> - _{HMsg "focus search form"}
-                <li> <code>z</code> - _{HMsg "hide empty accounts"}
-                <li> <code>t</code> - _{HMsg "toggle tree mode"}
-                <li> <code>H</code> - _{HMsg "toggle historical balances"}
-                <li> <code>L</code> - _{HMsg "toggle lot detail"}
-                <li> <code>V</code> - _{HMsg "toggle market value"}
-                <li> <code>B</code> - _{HMsg "toggle cost"}
-                <li> <code>R</code> - _{HMsg "toggle real postings"}
-                <li> <code>U</code>, <code>P</code>, <code>C</code> - _{HMsg "filter by status"}
-                <li> <code>S</code> - _{HMsg "sort by amount"}
-                <li> <code>T</code>, <code>A</code> - _{HMsg "total and average columns"}
-                <li> <code>D</code>, <code>W</code>, <code>M</code>, <code>Q</code>, <code>Y</code> - _{HMsg "set the report interval"}
-                <li> <code>0</code>-<code>9</code>, <code>-</code>, <code>+</code> - _{HMsg "set or adjust the depth limit"}
-                <li> <code>escape</code> - _{HMsg "cancel"}
-            <p>
-              <b>_{HMsg "More help:"}
-              <ul>
-                <li>
-                  <a href=#{webmanualurl} target=hledgerhelp>_{HMsg "hledger-web user manual"}
-          <div .col-xs-6>
-            <p>
-              <b>_{HMsgc "help heading" "Search queries:"}
-              <ul>
-                <li> _{HMsg "Search patterns with spaces should be enclosed in quotes."}
-                <li> <code>REGEX</code> - _{HMsg "match account names"}
-                <li> <code>type:TYPE</code> - _{HMsg "match account types"}
-                <li> <code>date:PERIODEXP</code> - _{HMsg "match dates"}
-                <li> <code>status:*</code>, <code>status:!</code>, <code>status:</code> - _{HMsg "match status"}
-                <li> <code>code:REGEX</code> - _{HMsg "match transaction codes"}
-                <li> <code>find:REGEX</code> _{HMsg "or"} <code>::REGEX</code> - _{HMsg "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"}
-                <li> <code>desc:REGEX</code> - _{HMsg "match transaction descriptions"}
-                <li> <code>payee:REGEX</code> - _{HMsg "match payee part of descriptions"}
-                <li> <code>note:REGEX</code> - _{HMsg "match note part of descriptions"}
-                <li> <code>amt:N</code>, <code>amt:&lt;N</code>, <code>amt:&gt;N</code> - _{HMsg "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."}
-                <li> <code>cur:REGEX</code> - _{HMsg "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"} <code>\$</code>
-                <li> <code>tag:NAME</code>, <code>tag:NAME=REGEX</code> - _{HMsg "match tags, or tag and value"}
-                <li> <code>real:BOOL</code> - _{HMsg "match postings' realness/virtualness"}
-                <li> <code>not:QTERM</code> - _{HMsg "prepend not: to negate a search term"}
-                <li> <code>expr:'QEXPR'</code> - _{HMsg "match with a boolean query (and, or, not, (..))"}
-                <li>  <code>any:'QEXPR'</code> - _{HMsg "match transactions where any posting matches"}
-                <li>  <code>all:'QEXPR'</code> - _{HMsg "match transactions where all postings match"}
-                <li .gap-above> <code>depth:N</code> - _{HMsg "clip account names at this depth"}
-                $# <li> Description, account, status query terms are OR'ed, others are AND'ed.
+    <div .row>
+      <div .col-sm-6>
+        <h4>_{HMsg "Keyboard shortcuts:"}
+        <table .help-keys>
+          <tr>
+            <th><kbd>h</kbd> _{HMsg "or"} <kbd>?</kbd>
+            <td>_{HMsg "view this help"}
+          <tr>
+            <th><kbd>g</kbd>
+            <td>_{HMsg "go to a page: shows the journal and reports with their keys, then press one"}
+          $if elem AddPermission perms
+            <tr>
+              <th><kbd>a</kbd>
+              <td>_{HMsg "add a transaction"}
+          <tr>
+            <th><kbd>s</kbd>
+            <td>_{HMsg "toggle sidebar"}
+          <tr>
+            <th><kbd>o</kbd>
+            <td>_{HMsg "toggle report options"}
+          <tr>
+            <th><kbd>c</kbd>
+            <td>_{HMsg "toggle the report's chart"}
+          <tr>
+            <th><kbd>[</kbd> <kbd>]</kbd>
+            <td>_{HMsg "switch the chart between commodities"}
+          <tr>
+            <th><kbd>d</kbd>
+            <td>_{HMsg "toggle the report's data"}
+          <tr>
+            <th><kbd>f</kbd>
+            <td>_{HMsg "toggle full window"}
+          <tr>
+            <th><kbd>/</kbd>
+            <td>_{HMsg "focus search form"}
+          <tr>
+            <th><kbd>Esc</kbd>
+            <td>_{HMsg "cancel"}
+        $# TRANSLATORS: in the help, the heading of the options' keys, listed under the options panel's own labels.
+        <h5>_{HMsg "Report options"}
+
+        <table .help-keys .help-options>
+          <tr>
+            <th>_{HMsg "Show:"}
+            <td>
+              <span><kbd>H</kbd> _{HMsg "Ending balances"}
+          <tr>
+            <th>_{HMsg "Interval:"}
+            <td>
+              <span><kbd>Y</kbd> _{HMsg "Yearly"}
+              <span><kbd>Q</kbd> _{HMsg "Quarterly"}
+              <span><kbd>M</kbd> _{HMsg "Monthly"}
+              <span><kbd>W</kbd> _{HMsg "Weekly"}
+              <span><kbd>D</kbd> _{HMsg "Daily"}
+          <tr>
+            <th>_{HMsg "Status:"}
+            <td>
+              <span><kbd>U</kbd> _{HMsg "Unmarked"}
+              <span><kbd>P</kbd> _{HMsg "Pending"}
+              <span><kbd>C</kbd> _{HMsg "Cleared"}
+          <tr>
+            <th>_{HMsg "Postings:"}
+            <td>
+              <span><kbd>R</kbd> _{HMsg "Real"}
+          <tr>
+            <th>_{HMsg "Depth:"}
+            <td>
+              $# TRANSLATORS: in the help's Depth row: what the digit keys, and the - and + keys, do to the depth limit.
+              <span><kbd>0</kbd>–<kbd>9</kbd> _{HMsg "set it"}
+              <span><kbd>-</kbd> <kbd>+</kbd> _{HMsg "decrease or increase it"}
+
+          <tr>
+            <th>_{HMsg "Accounts:"}
+            <td>
+              <span><kbd>t</kbd> _{HMsgc "accounts" "Tree"}
+          <tr>
+            <th>_{HMsg "Amounts:"}
+            <td>
+              <span><kbd>B</kbd> _{HMsg "At cost"}
+              <span><kbd>V</kbd> _{HMsg "At market value"}
+          <tr>
+            <th>_{HMsg "Zero balances:"}
+            <td>
+              <span><kbd>z</kbd> _{HMsg "Hidden"} / _{HMsg "Shown"}
+          <tr>
+            <th>_{HMsg "Lots:"}
+            <td>
+              <span><kbd>L</kbd> _{HMsgc "lots" "Shown"}
+          <tr>
+            <th>_{HMsg "Extra columns:"}
+            <td>
+              <span><kbd>T</kbd> _{HMsgc "column" "Total"}
+              <span><kbd>A</kbd> _{HMsgc "column" "Average"}
+          <tr>
+            <th>_{HMsg "Sort:"}
+            <td>
+              <span><kbd>S</kbd> _{HMsg "By amount"}
+        $# TRANSLATORS: in the help, below the options' keys.
+        <p .help-note>_{HMsg "Pressed again, an option's key turns it back off."}
+
+      <div .col-sm-6>
+        <h4>_{HMsgc "help heading" "Search queries:"}
+        <ul .help-list>
+          <li> _{HMsg "Search patterns with spaces should be enclosed in quotes."}
+          <li> <code>REGEX</code> - _{HMsg "match account names"}
+          <li> <code>type:TYPE</code> - _{HMsg "match account types"}
+          <li> <code>date:PERIODEXP</code> - _{HMsg "match dates"}
+          <li> <code>status:*</code>, <code>status:!</code>, <code>status:</code> - _{HMsg "match status"}
+          <li> <code>code:REGEX</code> - _{HMsg "match transaction codes"}
+          <li> <code>find:REGEX</code> _{HMsg "or"} <code>::REGEX</code> - _{HMsg "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"}
+          <li> <code>desc:REGEX</code> - _{HMsg "match transaction descriptions"}
+          <li> <code>payee:REGEX</code> - _{HMsg "match payee part of descriptions"}
+          <li> <code>note:REGEX</code> - _{HMsg "match note part of descriptions"}
+          <li> <code>amt:N</code>, <code>amt:&lt;N</code>, <code>amt:&gt;N</code> - _{HMsg "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."}
+          <li> <code>cur:REGEX</code> - _{HMsg "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"} <code>\$</code>
+          <li> <code>tag:NAME</code>, <code>tag:NAME=REGEX</code> - _{HMsg "match tags, or tag and value"}
+          <li> <code>real:BOOL</code> - _{HMsg "match postings' realness/virtualness"}
+          <li> <code>not:QTERM</code> - _{HMsg "prepend not: to negate a search term"}
+          <li> <code>expr:'QEXPR'</code> - _{HMsg "match with a boolean query (and, or, not, (..))"}
+          <li>  <code>any:'QEXPR'</code> - _{HMsg "match transactions where any posting matches"}
+          <li>  <code>all:'QEXPR'</code> - _{HMsg "match transactions where all postings match"}
+          <li .gap-above> <code>depth:N</code> - _{HMsg "clip account names at this depth"}
+          $# <li> Description, account, status query terms are OR'ed, others are AND'ed.
+        <h4>_{HMsg "More help:"}
+        <ul .help-list>
+          <li>
+            <a href=#{webmanualurl} target=hledgerhelp>_{HMsg "hledger-web user manual"}
