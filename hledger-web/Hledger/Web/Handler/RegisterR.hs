@@ -26,16 +26,18 @@ import Hledger.Write.Chart (Chart(..))
 import Hledger.Write.Chart.Svg (SvgOptions(..), chartSvgMarkupWith, defaultSvgOptions)
 import Hledger.Web.Import
 import Hledger.Web.Paging
-import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, removeAttributes, intervalLinks, listWord, parseCalc, parseInterval, parseListMode, parseValue, setAmountMode, valueParams)
+import Hledger.Web.ReportPage qualified as Report
+import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, removeAttributes, listWord, parseCalc, parseInterval, parseListMode, parseValue, setAmountMode, valueParams)
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
+import Hledger.Web.Widget.Common qualified as Report
 import Hledger.Web.Widget.Common
-             (accountParams, accountRegisterQuery, amountLinks, calcLinks, columnsLinks,
-              commodityLinks, controlsHint, controlsToggle, optionsSummary, searchHeading, costsLinks, depthLinks,
-              inertControls, listModeLinks, lotsLinks, mixedAmountAsHtmlElided,
-              mixedAmountAsHtmlWith, moreCommodities, percentLinks, pricesLinks, realLinks,
-              runningBalanceAsHtml, sortLinks, statusLinks, typeLinks,
-              zeroBalanceLinks, transactionFragment, removeDates, journalDayQuery)
+             (accountParams, accountRegisterQuery,
+              controlsToggle, optionsSummary, searchHeading,
+              inertControls, mixedAmountAsHtmlElided,
+              mixedAmountAsHtmlWith, moreCommodities,
+              runningBalanceAsHtml,
+              transactionFragment, removeDates, journalDayQuery)
 
 -- | The main journal/account register view, with accounts sidebar.
 getRegisterR :: Handler Html
@@ -119,30 +121,30 @@ getRegisterR = do
       -- the rows of links above the chart: the filters (status,
       -- realness, type, tag, commodity, and depth), and the accounts,
       -- amounts, and costs modes
-      statusRow = statusLinks trs RegisterR modeParams qparam
-      realRow = realLinks trs RegisterR modeParams qparam
-      typeRow = typeLinks trs RegisterR modeParams qparam
+      statusRow = Report.statusLinks trs RegisterR modeParams qparam
+      realRow = Report.realLinks trs RegisterR modeParams qparam
+      typeRow = Report.typeLinks trs RegisterR modeParams qparam
       -- TRANSLATORS: the hint below the account type filter row.
-      typeHintRow = controlsHint $ tr trs "Shift-click selects several types."
-      commodityRow = commodityLinks trs RegisterR modeParams qparam commoditiesOpen
+      typeHintRow = Report.controlsHint $ tr trs "Shift-click selects several types."
+      commodityRow = Report.commodityLinks trs RegisterR modeParams qparam commoditiesOpen
         -- TRANSLATORS: the hint below the commodity filter row.
         (tr trs "Shift-click selects several commodities.") j
       -- The depth links clip the sidebar's accounts, or in tree mode
       -- fold them, and carry to the reports; the register's rows always
       -- show in full.
       deepest = deepestDepth j
-      depthRow = depthLinks trs RegisterR modeParams qparam deepest
+      depthRow = Report.depthLinks trs RegisterR modeParams qparam deepest
       -- Tree mode adds the sidebar's fold carets.
-      listRow = listModeLinks trs RegisterR (qParams qparam ++ removeAttributes ["list"] modeParams) (accountlistmode_ $ _rsReportOpts rspec0) elist
-      amountsRow = amountLinks trs RegisterR (qParams qparam ++ removeAttributes ["value"] modeParams)
+      listRow = Report.listModeLinks trs RegisterR (qParams qparam ++ removeAttributes ["list"] modeParams) (accountlistmode_ $ _rsReportOpts rspec0) elist
+      amountsRow = Report.amountLinks trs RegisterR (qParams qparam ++ removeAttributes ["value"] modeParams)
         (amountModeOf $ _rsReportOpts rspec0) (amountModeOf ropts)
-      costsRow = costsLinks trs RegisterR (qParams qparam ++ removeAttributes ["costs"] modeParams) costsOn
-      pricesRow = pricesLinks trs RegisterR (qParams qparam ++ removeAttributes ["infer"] modeParams) inferOn
-      zeroRow = zeroBalanceLinks trs RegisterR (qParams qparam ++ removeAttributes ["empty"] modeParams) dfltHidden hideEmpty
+      costsRow = Report.costsLinks trs RegisterR (qParams qparam ++ removeAttributes ["costs"] modeParams) costsOn
+      pricesRow = Report.pricesLinks trs RegisterR (qParams qparam ++ removeAttributes ["infer"] modeParams) inferOn
+      zeroRow = Report.zeroBalanceLinks trs RegisterR (qParams qparam ++ removeAttributes ["empty"] modeParams) dfltHidden hideEmpty
       -- Lot detail shows lot subaccounts and per-lot postings; row
       -- hidden when the journal has no lots.
       lotsRow = if jHasLots
-        then lotsLinks trs RegisterR (qParams qparam ++ removeAttributes ["lots"] modeParams) lotsShown
+        then Report.lotsLinks trs RegisterR (qParams qparam ++ removeAttributes ["lots"] modeParams) lotsShown
         else const mempty
       -- The report-shaping controls, operative on the report pages,
       -- shown dimmed with the url's state marked.
@@ -151,12 +153,12 @@ getRegisterR = do
       -- The years row; its links rewrite the search's date narrowing themselves.
       yearsNav = yearsRow trs RegisterR qparam today modeParams years
       intervalRow = inertControls trs $
-        intervalLinks trs RegisterR (removeAttributes ["interval"] modeParams) qparam rpInterval
+        Report.intervalLinks trs RegisterR (removeAttributes ["interval"] modeParams) qparam rpInterval
       inertRows = inertControls trs $ mconcat
-        [ columnsLinks trs RegisterR (qParams qparam ++ removeAttributes ["total", "avg"] modeParams) totalOn avgOn
-        , sortLinks trs RegisterR (qParams qparam ++ removeAttributes ["sort"] modeParams) sortAmt
-        , percentLinks trs RegisterR (qParams qparam ++ removeAttributes ["pct"] modeParams) pctOn
-        , calcLinks trs RegisterR (qParams qparam ++ removeAttributes ["calc"] modeParams) calcCur
+        [ Report.columnsLinks trs RegisterR (qParams qparam ++ removeAttributes ["total", "avg"] modeParams) totalOn avgOn
+        , Report.sortLinks trs RegisterR (qParams qparam ++ removeAttributes ["sort"] modeParams) sortAmt
+        , Report.percentLinks trs RegisterR (qParams qparam ++ removeAttributes ["pct"] modeParams) pctOn
+        , Report.calcLinks trs RegisterR (qParams qparam ++ removeAttributes ["calc"] modeParams) calcCur
         ]
       -- All of them behind the controls disclosure, closed by default,
       -- in the same order as on the report pages.

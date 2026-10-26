@@ -17,13 +17,10 @@ import Hledger.Utils.I18n (tr, trc, trf)
 import Hledger.Web.Import
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Paging (yearsRow)
-import Hledger.Web.ReportPage
+import Hledger.Web.ReportPage as Report
 import Hledger.Web.WebOptions
-import Hledger.Web.Widget.Common
-  (amountLinks, calcLinks, columnsLinks, commodityLinks, controlsHint, controlsToggle, optionsSummary,
-   depthLinks, listModeLinks, lotsLinks,
-   percentLinks, pricesLinks, realLinks, sortLinks,
-   statusLinks, typeLinks, zeroBalanceLinks)
+import Hledger.Web.Widget.Common qualified as Report
+import Hledger.Web.Widget.Common (controlsToggle, optionsSummary)
 
 
 -- | The balance or multi-period balance view, with sidebar.
@@ -133,28 +130,28 @@ getBalanceR = do
               entriesReport rspecOrig{_rsQuery = filterQuery (\x -> not (queryIsDateOrDate2 x || queryIsDepth x)) q} j
             yearsNav = yearsRow trs BalanceR qparam today pageParams yearsDays
             controlRows = controlsToggle trs controlsOpen (optionsSummary trs deepest pageParams) $ \render -> foldMap ($ render) $
-              [ accumulationLinks trs BalanceR (qParams ++ removeAttributes ["accum"] pageParams) PerPeriod accum
-              , intervalLinks trs BalanceR (removeAttributes ["interval"] pageParams) qparam rpInterval
+              [ Report.accumulationLinks trs BalanceR (qParams ++ removeAttributes ["accum"] pageParams) PerPeriod accum
+              , Report.intervalLinks trs BalanceR (removeAttributes ["interval"] pageParams) qparam rpInterval
               , yearsNav
-              , statusLinks trs BalanceR pageParams qparam
-              , realLinks trs BalanceR pageParams qparam
-              , typeLinks trs BalanceR pageParams qparam
+              , Report.statusLinks trs BalanceR pageParams qparam
+              , Report.realLinks trs BalanceR pageParams qparam
+              , Report.typeLinks trs BalanceR pageParams qparam
               -- TRANSLATORS: the hint below the account type filter row.
-              , controlsHint $ tr trs "Shift-click selects several types."
-              , commodityLinks trs BalanceR pageParams qparam commoditiesOpen
+              , Report.controlsHint $ tr trs "Shift-click selects several types."
+              , Report.commodityLinks trs BalanceR pageParams qparam commoditiesOpen
                   -- TRANSLATORS: the hint below the commodity filter row.
                   (tr trs "Shift-click selects several commodities.") j ] ++
-              [ depthLinks trs BalanceR pageParams qparam deepest | deepest > 1 ] ++
-              [ listModeLinks trs BalanceR (qParams ++ removeAttributes ["list"] pageParams) (accountlistmode_ roptsOrig) (accountlistmode_ ropts)
-              , amountLinks trs BalanceR (qParams ++ removeAttributes ["value"] pageParams) (amountModeOf roptsOrig) (amountModeOf ropts)
-              , pricesLinks trs BalanceR (qParams ++ removeAttributes ["infer"] pageParams) (infer_prices_ ropts)
-              , zeroBalanceLinks trs BalanceR (qParams ++ removeAttributes ["empty"] pageParams) (empty_ roptsOrig) hideEmpty ] ++
-              [ lotsLinks trs BalanceR (qParams ++ removeAttributes ["lots"] pageParams) lotsShown | jHasLots ] ++
-              [ columnsLinks trs BalanceR (qParams ++ removeAttributes ["total", "avg"] pageParams) (row_total_ ropts) (average_ ropts)
+              [ Report.depthLinks trs BalanceR pageParams qparam deepest | deepest > 1 ] ++
+              [ Report.listModeLinks trs BalanceR (qParams ++ removeAttributes ["list"] pageParams) (accountlistmode_ roptsOrig) (accountlistmode_ ropts)
+              , Report.amountLinks trs BalanceR (qParams ++ removeAttributes ["value"] pageParams) (amountModeOf roptsOrig) (amountModeOf ropts)
+              , Report.pricesLinks trs BalanceR (qParams ++ removeAttributes ["infer"] pageParams) (infer_prices_ ropts)
+              , Report.zeroBalanceLinks trs BalanceR (qParams ++ removeAttributes ["empty"] pageParams) (empty_ roptsOrig) hideEmpty ] ++
+              [ Report.lotsLinks trs BalanceR (qParams ++ removeAttributes ["lots"] pageParams) lotsShown | jHasLots ] ++
+              [ Report.columnsLinks trs BalanceR (qParams ++ removeAttributes ["total", "avg"] pageParams) (row_total_ ropts) (average_ ropts)
               | rpInterval /= NoInterval ] ++
-              [ sortLinks trs BalanceR (qParams ++ removeAttributes ["sort"] pageParams) (sort_amount_ ropts)
-              , percentLinks trs BalanceR (qParams ++ removeAttributes ["pct"] pageParams) (percent_ ropts)
-              , calcLinks trs BalanceR (qParams ++ removeAttributes ["calc"] pageParams) (balancecalc_ ropts) ]
+              [ Report.sortLinks trs BalanceR (qParams ++ removeAttributes ["sort"] pageParams) (sort_amount_ ropts)
+              , Report.percentLinks trs BalanceR (qParams ++ removeAttributes ["pct"] pageParams) (percent_ ropts)
+              , Report.calcLinks trs BalanceR (qParams ++ removeAttributes ["calc"] pageParams) (balancecalc_ ropts) ]
         Yesod.toWidget controlRows
         Yesod.toWidget $ H.h2 $ H.toHtml $ withFilter title
         for_ pctErr $ Yesod.toWidget . pctError trs

@@ -15,14 +15,13 @@ import Hledger.Web.Import
 import Hledger.Web.Paging
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
-import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, intervalLinks, listWord, parseCalc, parseInterval, parseListMode, parseValue, removeAttributes, setAmountMode, valueParams)
+import Hledger.Web.ReportPage qualified as Report
+import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, listWord, parseCalc, parseInterval, parseListMode, parseValue, removeAttributes, setAmountMode, valueParams)
+import Hledger.Web.Widget.Common qualified as Report
 import Hledger.Web.Widget.Common
-            (accountParams, amountLinks, calcLinks, columnsLinks, commodityLinks,
-             controlsHint, controlsToggle, optionsSummary, searchHeading,
-             depthLinks, inertControls, listModeLinks, lotsLinks,
-             mixedAmountAsHtml, percentLinks, pricesLinks, realLinks, sortLinks,
-             statusLinks, typeLinks,
-             transactionFragment, journalDayQuery, zeroBalanceLinks)
+            (accountParams, controlsToggle, optionsSummary, searchHeading,
+             inertControls, mixedAmountAsHtml,
+             transactionFragment, journalDayQuery,)
 
 -- | The formatted journal view, with sidebar.
 getJournalR :: Handler Html
@@ -90,29 +89,29 @@ getJournalR = do
       -- the rows of links above the entries: the filters (status,
       -- realness, type, tag, commodity, and depth), and the sidebar's
       -- accounts and amounts modes
-      statusRow = statusLinks trs JournalR carried qparam
-      realRow = realLinks trs JournalR carried qparam
-      typeRow = typeLinks trs JournalR carried qparam
+      statusRow = Report.statusLinks trs JournalR carried qparam
+      realRow = Report.realLinks trs JournalR carried qparam
+      typeRow = Report.typeLinks trs JournalR carried qparam
       -- TRANSLATORS: the hint below the account type filter row.
-      typeHintRow = controlsHint $ tr trs "Shift-click selects several types."
-      commodityRow = commodityLinks trs JournalR carried qparam commoditiesOpen
+      typeHintRow = Report.controlsHint $ tr trs "Shift-click selects several types."
+      commodityRow = Report.commodityLinks trs JournalR carried qparam commoditiesOpen
         -- TRANSLATORS: the hint below the commodity filter row.
         (tr trs "Shift-click selects several commodities.") j
       -- The depth links clip the sidebar's accounts, or in tree mode
       -- fold them, and carry to the reports.
       deepest = deepestDepth j
-      depthRow = depthLinks trs JournalR carried qparam deepest
+      depthRow = Report.depthLinks trs JournalR carried qparam deepest
       -- The amounts mode converts the sidebar's amounts, and tree mode
       -- adds its fold carets; the journal's entries always show as written.
-      listRow = listModeLinks trs JournalR (qps ++ removeAttributes ["list"] carried) (accountlistmode_ roptsStartup) elist
-      amountsRow = amountLinks trs JournalR (qps ++ removeAttributes ["value"] carried)
+      listRow = Report.listModeLinks trs JournalR (qps ++ removeAttributes ["list"] carried) (accountlistmode_ roptsStartup) elist
+      amountsRow = Report.amountLinks trs JournalR (qps ++ removeAttributes ["value"] carried)
         (amountModeOf roptsStartup) (amountModeOf $ maybe id setAmountMode mmode roptsStartup)
-      pricesRow = pricesLinks trs JournalR (qps ++ removeAttributes ["infer"] carried) inferOn
-      zeroRow = zeroBalanceLinks trs JournalR (qps ++ removeAttributes ["empty"] carried) dfltHidden hideEmpty
+      pricesRow = Report.pricesLinks trs JournalR (qps ++ removeAttributes ["infer"] carried) inferOn
+      zeroRow = Report.zeroBalanceLinks trs JournalR (qps ++ removeAttributes ["empty"] carried) dfltHidden hideEmpty
       -- Lot detail shows in the entries and the sidebar; row hidden
       -- when the journal has no lots.
       lotsRow = if jHasLots
-        then lotsLinks trs JournalR (qps ++ removeAttributes ["lots"] carried) lotsShown
+        then Report.lotsLinks trs JournalR (qps ++ removeAttributes ["lots"] carried) lotsShown
         else const mempty
       -- The report-shaping controls, operative on the report pages,
       -- shown dimmed with the url's state marked.
@@ -121,12 +120,12 @@ getJournalR = do
       -- The years row; its links rewrite the search's date narrowing themselves.
       yearsNav = yearsRow trs JournalR qparam today carried years
       intervalRow = inertControls trs $
-        intervalLinks trs JournalR (removeAttributes ["interval"] carried) qparam rpInterval
+        Report.intervalLinks trs JournalR (removeAttributes ["interval"] carried) qparam rpInterval
       inertRows = inertControls trs $ mconcat
-        [ columnsLinks trs JournalR (qps ++ removeAttributes ["total", "avg"] carried) totalOn avgOn
-        , sortLinks trs JournalR (qps ++ removeAttributes ["sort"] carried) sortAmt
-        , percentLinks trs JournalR (qps ++ removeAttributes ["pct"] carried) pctOn
-        , calcLinks trs JournalR (qps ++ removeAttributes ["calc"] carried) calcCur
+        [ Report.columnsLinks trs JournalR (qps ++ removeAttributes ["total", "avg"] carried) totalOn avgOn
+        , Report.sortLinks trs JournalR (qps ++ removeAttributes ["sort"] carried) sortAmt
+        , Report.percentLinks trs JournalR (qps ++ removeAttributes ["pct"] carried) pctOn
+        , Report.calcLinks trs JournalR (qps ++ removeAttributes ["calc"] carried) calcCur
         ]
       -- All of them behind the controls disclosure, closed by default,
       -- in the same order as on the report pages.
