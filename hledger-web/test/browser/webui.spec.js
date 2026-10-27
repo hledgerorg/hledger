@@ -611,8 +611,26 @@ test.describe('sidebar', () => {
     await expect(page.locator('#main-content h2')).toContainText('Income Statement');
     await expect(page.locator('#sidebar-menu tr.inacct a')).toHaveText('Income statement');
     // from a report, the other reports are one click away in the Report row
-    await page.locator('#main-content .report-links a', { hasText: 'Balance sheet with equity' }).click();
-    await expect(page).toHaveURL(/\/balancesheetequity$/);
+    await page.locator('#main-content .report-links a', { hasText: 'All accounts' }).click();
+    await expect(page).toHaveURL(/\/balance$/);
+    expect(pageErrors).toEqual([]);
+  });
+
+  // The balance sheet with equity is the balance sheet with its Equity
+  // row's Shown link; its old page's url leads there.
+  test('the balance sheet\'s Equity row shows or hides the equity section', async ({ page }) => {
+    await page.goto('/balancesheet');
+    const heading = page.locator('#main-content h2').first();
+    await expect(heading).not.toContainText('With Equity');
+    await page.locator('#main-content details.report-controls > summary').click();
+    await page.locator('#main-content .equity a', { hasText: 'Shown' }).click();
+    await expect(page).toHaveURL(/\/balancesheet\?equity=1$/);
+    await expect(heading).toContainText('Balance Sheet With Equity');
+    await page.locator('#main-content .equity a', { hasText: 'Hidden' }).click();
+    await expect(page).toHaveURL(/\/balancesheet$/);
+    await expect(heading).not.toContainText('With Equity');
+    await page.goto('/balancesheetequity');
+    await expect(page).toHaveURL(/\/balancesheet\?equity=1$/);
     expect(pageErrors).toEqual([]);
   });
 

@@ -54,7 +54,6 @@ import Hledger.Utils.I18n (Translations(..), i18n, langTagCandidates, resolveLan
 import Hledger
 import Hledger.Cli (CliOpts(..), journalPrepareLotDetail, journalReloadIfChanged)
 import Hledger.Cli.Commands.Balancesheet (balancesheetSpec)
-import Hledger.Cli.Commands.Balancesheetequity (balancesheetequitySpec)
 import Hledger.Cli.Commands.Cashflow (cashflowSpec)
 import Hledger.Cli.Commands.Incomestatement (incomestatementSpec)
 import Hledger.Cli.CompoundBalanceCommand (CompoundBalanceCommandSpec(..))
@@ -564,7 +563,6 @@ reportMenu =
   , ReportMenuItem CashflowR           (i18n "Cashflow statement")        (i18n "Show changes in liquid assets")                       (Just $ cbcaccum cashflowSpec)           True  False "c"
   , ReportMenuItem HoldingsR           (i18n "Holdings")                  (i18n "Show investment holdings, lots, and gains")           (Just PerPeriod)                         True  False "h"
   , ReportMenuItem BalanceR            (i18n "All accounts")              (i18n "Show the balances of all accounts, by period, like the balance command") (Just PerPeriod) False True  "a"
-  , ReportMenuItem BalancesheetequityR (i18n "Balance sheet with equity") (i18n "Show assets, liabilities, and equity")                (Just $ cbcaccum balancesheetequitySpec) False True  "e"
   ]
 
 -- | The pages that apply to this journal: a journal with no lot features

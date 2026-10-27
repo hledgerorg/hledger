@@ -183,7 +183,7 @@ test.describe('the content security policy', () => {
     await expect(page).toHaveURL(/date(:|%3A)/);
     await expectNoViolations(page, violations);
 
-    for (const url of ['/balance?period=monthly', '/balancesheet', '/balancesheetequity',
+    for (const url of ['/balance?period=monthly', '/balancesheet', '/balancesheet?equity=1',
                        '/incomestatement?period=quarterly', '/cashflow', '/manage', '/nosuchpage']) {
       await page.goto(url);
       await expectNoViolations(page, violations);

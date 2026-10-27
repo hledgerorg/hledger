@@ -19,6 +19,7 @@ module Hledger.Web.Widget.Common
   , pricesLinks
   , commodityLinks
   , depthLinks
+  , equityLinks
   , amountLinks
   , zeroBalanceLinks
   , statusLinks
@@ -218,7 +219,7 @@ optionsSummary :: Translations -> Int -> [(Text, Text)] -> [Text]
 optionsSummary trs deepest = mapMaybe phrase . sortOn (rowOrder . fst)
   where
     rowOrder k = fromMaybe maxBound $ elemIndex k
-      ["interval", "accum", "depth", "list", "value", "infer", "empty", "lots", "closed",
+      ["equity", "interval", "accum", "depth", "list", "value", "infer", "empty", "lots", "closed",
        "total", "avg", "costs", "sort", "pct", "calc", "date2"]
     phrase = \case
       ("interval", w)     -> Just $ fromMaybe w $ lookup w
@@ -253,6 +254,7 @@ optionsSummary trs deepest = mapMaybe phrase . sortOn (rowOrder . fst)
       ("closed", "1")     -> Just $ tr trs "Closed positions shown"
       ("closed", "0")     -> Just $ tr trs "Closed positions hidden"
       ("date2", "1")      -> Just $ tr trs "Secondary dates"
+      ("equity", "1")     -> Just $ tr trs "Equity shown"
       _                   -> Nothing
 
 -- | A journal or register page's heading: the given title, then the
@@ -388,6 +390,18 @@ $newline never
   <a href=@?{link False} :not hidden:.current title=#{tr trs "Show accounts whose balances are zero"}>#{tr trs "Shown"}
 |]
   where link h = (route, kept ++ [("empty", if h then "0" else "1") | h /= dfltHidden])
+
+-- | On the balance sheet, links hiding or showing an equity section, as
+-- the balancesheet and balancesheetequity commands do, keeping the given
+-- parameters; the one in effect is marked.
+equityLinks :: Translations -> r -> [(Text, Text)] -> Bool -> HtmlUrl r
+equityLinks trs route kept shown =
+  -- TRANSLATORS: the label before the balance sheet's links that hide or show equity, and the links' tooltips.
+  linksRowClass "equity" (tr trs "Equity:")
+    [ (tr trs "Hidden", tr trs "Show assets, liabilities, and net worth, as the balancesheet command does", link False, not shown)
+    , (tr trs "Shown",  tr trs "Show assets, liabilities, and equity, as the balancesheetequity command does", link True, shown)
+    ]
+  where link e = (route, kept ++ [("equity", "1") | e])
 
 -- | A row of links that each rewrite one kind of search term: each link
 -- replaces the terms the row owns (those the predicate matches) with its

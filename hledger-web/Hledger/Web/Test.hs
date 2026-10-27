@@ -803,7 +803,8 @@ hledgerWebTest = do
       get BalanceR
       statusIs 200
       bodyContains ">Cashflow statement</a><a class=\"current group-start\""
-      bodyContains ">All accounts</a><a href="
+      -- the balance sheet with equity is the balance sheet's equity=1 now
+      bodyContains ">All accounts</a></p>"
 
     yit "charts the report between its heading and its table, as balance --chart does" $ do
       get BalanceR
@@ -853,22 +854,22 @@ hledgerWebTest = do
       bodyContains "data-gokey=\"j\""
       bodyContains "<code>b</code> Balance sheet</a>"
       bodyContains "<code>a</code> All accounts</a>"
-      bodyContains "<code>e</code> Balance sheet with equity</a>"
+      bodyNotContains "data-gokey=\"e\""
 
     yit "offers the next and previous pages in the g key's menu, going round" $ do
       let base = defbaseurl defhost defport
       get BalanceR
       statusIs 200
-      -- All accounts is between the cashflow statement and the balance
-      -- sheet with equity (this journal has no lots, so no Holdings page)
-      bodyContains ("<a href=\"" ++ base ++ "/balancesheetequity\" data-gokey=\"n\"")
+      -- All accounts, the last, follows the cashflow statement (this
+      -- journal has no lots, so no Holdings page), and the journal, the
+      -- first, follows it
+      bodyContains ("<a href=\"" ++ base ++ "/journal\" data-gokey=\"n\"")
       bodyContains "<code>n</code> Next report</a>"
       bodyContains ("<a href=\"" ++ base ++ "/cashflow\" data-gokey=\"p\"")
       bodyContains "<code>p</code> Previous report</a>"
-      -- the journal, first, follows the last
       get JournalR
       statusIs 200
-      bodyContains ("<a href=\"" ++ base ++ "/balancesheetequity\" data-gokey=\"p\"")
+      bodyContains ("<a href=\"" ++ base ++ "/balance\" data-gokey=\"p\"")
 
     yit "styles the report through the stylesheet, not inline styles" $ do
       get BalanceR
@@ -1638,12 +1639,34 @@ hledgerWebTest = do
       bodyContains ">Cash flows — assets:bank</th>"
       bodyNotContains "<tfoot>"
 
-    yit "serves the balance sheet with equity" $ do
-      get BalancesheetequityR
+    -- The balance sheet's Equity row shows balancesheetequity's report,
+    -- with an equity=1 parameter its own links keep, and its registers don't.
+    yit "serves the balance sheet with equity, for equity=1" $ do
+      get BalancesheetR
+      statusIs 200
+      bodyContains "<p class=\"report-links equity\"><span class=\"row-label\">Equity:</span>"
+      bodyNotContains ">Equity</th>"
+      request $ do
+        setMethod "GET"
+        setUrl BalancesheetR
+        addGetParam "equity" "1"
       statusIs 200
       bodyContains "<h2>Balance Sheet With Equity 2025-02-06</h2>"
       bodyContains ">Equity</th>"
+      bodyContains "<span class=\"options-summary\">Equity shown</span>"
+      bodyContains "/balancesheet?equity=1&amp;accum=change\""
       bodyContains "href=\"register?q=type:ALE+date:2025-01-01..2025-02-07&amp;accum=historical\""
+      get IncomestatementR
+      statusIs 200
+      bodyNotContains "report-links equity"
+
+    yit "redirects the old balance sheet with equity page to the balance sheet's equity=1" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalancesheetequityR
+        addGetParam "interval" "monthly"
+      statusIs 303
+      assertHeader "Location" (TE.encodeUtf8 $ T.pack (defbaseurl defhost defport) <> "/balancesheet?interval=monthly&equity=1")
 
     yit "links the reports to one another, marking the one shown, and to All accounts" $ do
       request $ do
@@ -1687,8 +1710,8 @@ hledgerWebTest = do
       bodyContains ("<tr class=\"inacct\"><td class=\"top acct\" colspan=\"2\"><a class=\"inacct\" href=\"" ++ defbaseurl defhost defport ++ "/balancesheet\" title=\"Show assets, liabilities, and net worth\">Balance sheet</a>")
       bodyContains ("<tr><td class=\"top acct\" colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/incomestatement\" title=\"Show revenues and expenses\">Income statement</a>")
       bodyContains ("<a href=\"" ++ defbaseurl defhost defport ++ "/cashflow\" title=\"Show changes in liquid assets\">Cashflow statement</a>")
-      -- the other two reports are in the Report row, not the sidebar
-      bodyNotContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/balancesheetequity\"")
+      -- All accounts is in the Report row, not the sidebar
+      bodyNotContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/balance\"")
 
     yit "gives the sidebar's report links the search minus its account term, and the period" $ do
       request $ do

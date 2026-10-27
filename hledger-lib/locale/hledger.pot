@@ -739,16 +739,6 @@ msgstr ""
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
-msgid "Balance sheet with equity"
-msgstr ""
-
-#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/App.hs
-msgid "Show assets, liabilities, and equity"
-msgstr ""
-
-#. the report links above each report page and in the sidebar: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/App.hs
 msgid "Income statement"
 msgstr ""
 
@@ -1349,8 +1339,24 @@ msgid "Show accounts whose balances are zero"
 msgstr ""
 
 #. the label before the links that show or hide zero balances, and the links' text and tooltips.
+#. the label before the balance sheet's links that hide or show equity, and the links' tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Shown"
+msgstr ""
+
+#. the label before the balance sheet's links that hide or show equity, and the links' tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Equity:"
+msgstr ""
+
+#. the label before the balance sheet's links that hide or show equity, and the links' tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show assets, liabilities, and net worth, as the balancesheet command does"
+msgstr ""
+
+#. the label before the balance sheet's links that hide or show equity, and the links' tooltips.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Show assets, liabilities, and equity, as the balancesheetequity command does"
 msgstr ""
 
 #. the label before the links that show or hide zero balances, and the links' text and tooltips.
@@ -1359,6 +1365,7 @@ msgid "Hide accounts whose balances are zero"
 msgstr ""
 
 #. the label before the links that show or hide zero balances, and the links' text and tooltips.
+#. the label before the balance sheet's links that hide or show equity, and the links' tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Hidden"
 msgstr ""
@@ -1635,6 +1642,11 @@ msgstr ""
 #. options in effect, listed on the closed options disclosure.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Secondary dates"
+msgstr ""
+
+#. options in effect, listed on the closed options disclosure.
+#: hledger-web/Hledger/Web/Widget/Common.hs
+msgid "Equity shown"
 msgstr ""
 
 #. a journal or register page's heading when the search has dates, eg "General Journal in 2024".

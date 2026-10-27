@@ -164,7 +164,7 @@ hledger-web's main views are:
   register's links and search keep; and
 - the **report views**, described [below](#reports): the balance sheet, income statement,
   and cashflow statement (and holdings, for journals using lots), also linked from the sidebar,
-  and the All accounts report and the balance sheet with equity.
+  and the All accounts report.
 
 The register's chart shows the running balance over the page's transactions, across the page.
 With several commodities, a legend (or the `[` and `]` keys) chooses the one charted, each on its own scale,
@@ -210,7 +210,7 @@ which work when you are not typing in a field:
 - `h` or `?` - show or hide the help dialog
 - `g` - go to another page: shows a menu of the pages, each with its key;
   then `j` journal, `b` balance sheet, `i` income statement, `c` cashflow statement,
-  `h` holdings (for journals using lots), `a` all accounts, `e` balance sheet with equity,
+  `h` holdings (for journals using lots), `a` all accounts,
   or `n` / `p` the next / previous page in that order, wrapping round (escape to cancel)
 - `a` or `n` - add a transaction (escape to cancel)
 - `s` - show or hide the sidebar
@@ -285,12 +285,14 @@ reports of the command line's
 [balancesheetequity](hledger.md#balancesheetequity),
 [incomestatement](hledger.md#incomestatement), and
 [cashflow](hledger.md#cashflow) commands, at `/balancesheet`,
-`/balancesheetequity`, `/incomestatement`, and `/cashflow`, and the
+`/incomestatement`, and `/cashflow`, and the
 general [balance report](hledger.md#balance), named All accounts (as in hledger-ui), at `/balance`.
+The balance sheet's Equity option shows balancesheetequity's report, with an equity section
+(an `equity=1` parameter; the old `/balancesheetequity` address leads there).
 The sidebar links to the balance sheet, income statement, and cashflow
 statement, and the row of links at the top of every page links to them
-all: the journal and the named reports first, as in the sidebar, then the
-general ones (All accounts, and the balance sheet with equity).
+all: the journal and the named reports first, as in the sidebar, then
+All accounts.
 
 Each report has a chart between its heading and its table, the one the command's
 [`--chart`](hledger.md#charts) draws, as wide as the page:

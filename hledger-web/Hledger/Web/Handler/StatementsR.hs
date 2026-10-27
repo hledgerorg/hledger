@@ -1,6 +1,7 @@
--- | The financial statement pages: /balancesheet, /balancesheetequity,
--- /incomestatement, and /cashflow, showing the reports of the commands
--- of the same names.
+-- | The financial statement pages: /balancesheet, /incomestatement, and
+-- /cashflow, showing the reports of the commands of the same names. The
+-- balance sheet shows balancesheetequity's report with an equity=1
+-- parameter; /balancesheetequity, its own page once, redirects there.
 
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -37,24 +38,34 @@ import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Chart (reportChart)
 import Hledger.Web.Widget.Common
   (amountLinks, calcLinks, columnsLinks, commodityLinks, controlsToggle, optionsSummary,
-   depthLinks, helplink,
+   depthLinks, equityLinks, helplink,
    listModeLinks, lotsLinks, percentLinks, pricesLinks, realLinks,
    sortLinks, statusLinks, zeroBalanceLinks)
 
 getBalancesheetR, getBalancesheetequityR, getIncomestatementR, getCashflowR :: Handler Html
 -- TRANSLATORS: the browser tab titles of the statement pages.
-getBalancesheetR       = statementPage BalancesheetR       (i18n "balance sheet - hledger-web")             balancesheetSpec
-getBalancesheetequityR = statementPage BalancesheetequityR (i18n "balance sheet with equity - hledger-web") balancesheetequitySpec
-getIncomestatementR    = statementPage IncomestatementR    (i18n "income statement - hledger-web")          incomestatementSpec
-getCashflowR           = statementPage CashflowR           (i18n "cashflow statement - hledger-web")        cashflowSpec
+getBalancesheetR = do
+  equity <- (== Just "1") <$> lookupGetParam "equity"
+  if equity
+    then statementPage BalancesheetR (i18n "balance sheet with equity - hledger-web") balancesheetequitySpec (Just True)
+    else statementPage BalancesheetR (i18n "balance sheet - hledger-web")             balancesheetSpec       (Just False)
+getIncomestatementR = statementPage IncomestatementR (i18n "income statement - hledger-web")   incomestatementSpec Nothing
+getCashflowR        = statementPage CashflowR        (i18n "cashflow statement - hledger-web") cashflowSpec        Nothing
+
+-- | The balance sheet with equity, once a page of its own, is now the
+-- balance sheet's equity=1; old links and bookmarks are sent there.
+getBalancesheetequityR = do
+  params <- reqGetParams <$> getRequest
+  redirect (BalancesheetR, filter ((/= "equity") . fst) params ++ [("equity", "1")])
 
 -- | A statement page: the command's report for the page's search and
 -- period, with sidebar. The report's own accumulation mode applies
 -- (ending balances for the balance sheets, changes for the others)
 -- unless an accum parameter overrides it, which the heading then says,
--- as the command's does.
-statementPage :: AppRoute -> Text -> CompoundBalanceCommandSpec -> Handler Html
-statementPage here tabtitle spec = do
+-- as the command's does. On the balance sheet, an Equity row among the
+-- controls says whether equity is shown, by the report given.
+statementPage :: AppRoute -> Text -> CompoundBalanceCommandSpec -> Maybe Bool -> Handler Html
+statementPage here tabtitle spec mequity = do
   checkServerSideUiEnabled
   VD{perms, j, jHasLots, lotsShown, q, qopts, qparam, opts, today, trs, hideEmpty, controlsOpen, commoditiesOpen} <- getViewData
   require ViewPermission
@@ -116,9 +127,10 @@ statementPage here tabtitle spec = do
             date2Params = [("date2", "1") | date2_ ropts, not (date2_ roptsOrig)]
             emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= empty_ roptsOrig]
             lotsParams  = [("lots", "1") | lotsShown]
+            equityParams = [("equity", "1") | mequity == Just True]
             pageParams =
               dbg1 "statement pageParams" $
-              intervalParams ++ accumParams ++ valParams ++ listParams ++
+              equityParams ++ intervalParams ++ accumParams ++ valParams ++ listParams ++
               totalParams ++ avgParams ++ sortParams ++ pctParams ++ calcParams ++
               inferParams ++ date2Params ++ emptyParams ++ lotsParams ++ depthParams q
             qParams = [("q", qparam) | not (T.null qparam)]
@@ -127,7 +139,7 @@ statementPage here tabtitle spec = do
             -- default, the startup options', converts them.
             registerParams =
               [("value", "none") | amountModeOf ropts == Just AsRecorded, amountModeOf roptsOrig /= Just AsRecorded] ++
-              removeAttributes ["accum", "value"] pageParams
+              removeAttributes ["accum", "value", "equity"] pageParams
             -- TRANSLATORS: the name of a depth 0 report's one row, all accounts in one.
             relink = map (map (labelAllAccounts (trc trs "accounts" "All") . addLinkParams registerParams))
             headinglink = urlrender here . headingParams rpInterval qparam params
@@ -168,6 +180,7 @@ statementPage here tabtitle spec = do
               entriesReport rspecOrig{_rsQuery = filterQuery (\x -> not (queryIsDateOrDate2 x || queryIsDepth x)) q} j
             yearsNav = yearsRow trs here qparam today pageParams yearsDays
             controlRows = controlsToggle trs controlsOpen (optionsSummary trs deepest pageParams) $ \render -> foldMap ($ render) $
+              [ equityLinks trs here (qParams ++ removeAttributes ["equity"] pageParams) shown | Just shown <- [mequity] ] ++
               [ accumulationLinks trs here (qParams ++ removeAttributes ["accum"] pageParams) (cbcaccum spec) accum
               , intervalLinks trs here (removeAttributes ["interval"] pageParams) qparam rpInterval
               , yearsNav
