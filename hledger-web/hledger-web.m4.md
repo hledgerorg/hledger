@@ -163,8 +163,8 @@ hledger-web's main views are:
   eg `/register?account=assets:bank` (with `subs=0`, excluding its subaccounts), which the
   register's links and search keep; and
 - the **report views**, described [below](#reports): the balance sheet, income statement,
-  and cashflow statement (and holdings, for journals using lots), also linked from the sidebar,
-  and the All accounts report.
+  cashflow statement (and holdings, for journals using lots), and All accounts report,
+  all linked from the sidebar.
 
 The register's chart shows the running balance over the page's transactions, across the page.
 With several commodities, a legend (or the `[` and `]` keys) chooses the one charted, each on its own scale,
@@ -290,10 +290,8 @@ general [balance report](hledger.md#balance), named All accounts (as in hledger-
 The balance sheet's Equity option shows balancesheetequity's report, with an equity section
 (an `equity=1` parameter; the old `/balancesheetequity` address leads there).
 The browser remembers this choice for each hledger-web server, until it is changed.
-The sidebar links to the balance sheet, income statement, and cashflow
-statement, and the row of links at the top of every page links to them
-all: the journal and the named reports first, as in the sidebar, then
-All accounts.
+The sidebar and the row of links at the top of every page both link to
+the journal and all of these reports, ending with All accounts.
 
 Each report has a chart between its heading and its table, the one the command's
 [`--chart`](hledger.md#charts) draws, as wide as the page:

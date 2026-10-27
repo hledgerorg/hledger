@@ -67,7 +67,7 @@ import Yesod (HtmlUrl)
 import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor (dateTerm, renderPeriodHeading)
-import Hledger.Web.Widget.Common (AmountMode(..), accumWord, linksRowClass, linksRowGroups, listWord, removeDates, valueWord)
+import Hledger.Web.Widget.Common (AmountMode(..), accumWord, linksRowClass, listWord, removeDates, valueWord)
 import Hledger.Query qualified as Query
 import Hledger.Write.Html (Html, formatCell, nl)
 import Hledger.Write.Spreadsheet (Cell(..), Class(..), NumLines, textFromClass)
@@ -278,13 +278,13 @@ intervalPeriodExpr = \case
     -- their interval yields no period expression.
     weekdayName d = lookup d $ zip [1..] ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
 
--- | Links to the report pages, given in groups as route, label, and title,
--- keeping the given parameters; the page being shown is marked. Unlike the
--- other rows of links, this one needs no label: it is the pages' navigation.
-reportLinks :: Eq r => Translations -> r -> [(Text, Text)] -> [[(r, Text, Text)]] -> HtmlUrl r
-reportLinks trs here kept groups =
-  linksRowGroups "reports" ""
-    [ [ (tr trs label, tr trs title, (route, kept), route == here) | (route, label, title) <- grp ] | grp <- groups ]
+-- | Links to the report pages, given as route, label, and title, keeping
+-- the given parameters; the page being shown is marked. Unlike the other
+-- rows of links, this one needs no label: it is the pages' navigation.
+reportLinks :: Eq r => Translations -> r -> [(Text, Text)] -> [(r, Text, Text)] -> HtmlUrl r
+reportLinks trs here kept items =
+  linksRowClass "reports" ""
+    [ (tr trs label, tr trs title, (route, kept), route == here) | (route, label, title) <- items ]
 
 -- | Links to the same report page for each reporting interval, keeping
 -- the search (and its dates) and the given parameters; the interval

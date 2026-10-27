@@ -799,12 +799,12 @@ hledgerWebTest = do
       bodyContains "<tfoot>"
       bodyContains "class=\"amount negative\""
 
-    yit "lists the named reports, then the general ones a little apart" $ do
+    yit "lists the journal and reports, then All accounts, in one group" $ do
       get BalanceR
       statusIs 200
-      bodyContains ">Cashflow statement</a><a class=\"current group-start\""
-      -- the balance sheet with equity is the balance sheet's equity=1 now
+      bodyContains ">Cashflow statement</a><a class=\"current\""
       bodyContains ">All accounts</a></p>"
+      bodyNotContains "group-start"
 
     yit "charts the report between its heading and its table, as balance --chart does" $ do
       get BalanceR
@@ -1711,7 +1711,7 @@ hledgerWebTest = do
     yit "links All accounts to the statements too" $ do
       get BalanceR
       statusIs 200
-      bodyContains ("class=\"current group-start\" href=\"" ++ defbaseurl defhost defport ++ "/balance\" title=\"Show the balances of all accounts, by period, like the balance command\"")
+      bodyContains ("class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/balance\" title=\"Show the balances of all accounts, by period, like the balance command\"")
       bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/incomestatement\" title=\"Show revenues and expenses\"")
 
     yit "links the journal page to the reports too, keeping the search minus its account term" $ do
@@ -1722,7 +1722,7 @@ hledgerWebTest = do
         addGetParam "q" "expenses"
       statusIs 200
       bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balancesheet?q=expenses\" title=\"Show assets, liabilities, and net worth\"")
-      bodyContains ("class=\"group-start\" href=\"" ++ defbaseurl defhost defport ++ "/balance?q=expenses\"")
+      bodyContains ("href=\"" ++ defbaseurl defhost defport ++ "/balance?q=expenses\"")
       -- the journal leads the row, marked as the page shown
       bodyContains ("<p class=\"report-links reports\"><a class=\"current\" href=\"" ++ defbaseurl defhost defport ++ "/journal?q=expenses\" title=\"Show general journal entries, most recent first\">Journal</a>")
 
@@ -1737,8 +1737,8 @@ hledgerWebTest = do
       bodyContains ("<tr class=\"inacct\"><td class=\"top acct\" colspan=\"2\"><a class=\"inacct\" href=\"" ++ defbaseurl defhost defport ++ "/balancesheet\" title=\"Show assets, liabilities, and net worth\">Balance sheet</a>")
       bodyContains ("<tr><td class=\"top acct\" colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/incomestatement\" title=\"Show revenues and expenses\">Income statement</a>")
       bodyContains ("<a href=\"" ++ defbaseurl defhost defport ++ "/cashflow\" title=\"Show changes in liquid assets\">Cashflow statement</a>")
-      -- All accounts is in the Report row, not the sidebar
-      bodyNotContains ("colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/balance\"")
+      -- and All accounts, last
+      bodyContains ("<tr><td class=\"top acct\" colspan=\"2\"><a href=\"" ++ defbaseurl defhost defport ++ "/balance\" title=\"Show the balances of all accounts, by period, like the balance command\">All accounts</a>")
 
     yit "gives the sidebar's report links the search minus its account term, and the period" $ do
       request $ do

@@ -207,8 +207,8 @@ td.date {
 .report-links.reports > :first-child {
   margin-left: 0;
 }
-/* A second group of links, eg the general reports after the named ones,
-   starts a little apart. */
+/* In a row of links in groups (linksRowGroups), each group after the
+   first starts a little apart. */
 .report-links .group-start {
   margin-left: 2em;
 }

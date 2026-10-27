@@ -62,7 +62,7 @@ import Hledger.Web.Settings (Extra(..), webmanualurl, widgetFile)
 import Hledger.Web.Settings.StaticFiles
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Common (MovedOptions(..), accountParams, balanceReportAsHtml, normalisedSearch)
-import Data.List (findIndex, isPrefixOf, partition)
+import Data.List (findIndex, isPrefixOf)
 
 -- | The site argument for your application. This can be a good place to
 -- keep settings and values requiring initialization before your application
@@ -241,7 +241,7 @@ instance Yesod App where
     -- The sidebar's links keep the search, minus any account term,
     -- which the reports ignore, and the sticky report state the page
     -- keeps; the page-local parameters (accum, costs) stay behind.
-    let sidebarReports = reportLinkItems $ filter rmInSidebar $ reportMenuFor jHasLots
+    let sidebarReports = reportLinkItems $ reportMenuFor jHasLots
         sidebarParams =
           [p | p@("interval", _) <- keptParams] ++
           [("q", qparam) | not (T.null qparam)] ++
@@ -267,7 +267,7 @@ instance Yesod App where
           Nothing -> if step > 0 then 0 else length goMenu - 1
         -- The links to the journal and reports at the top of every page,
         -- above the search, with the sidebar links' parameters.
-        reportsRow = reportLinks trs here sidebarParams $ reportLinkGroups $ reportMenuFor jHasLots
+        reportsRow = reportLinks trs here sidebarParams $ reportLinkItems $ reportMenuFor jHasLots
         -- What the sidebar's bottom row is, in the current amounts mode:
         -- the whole journal's net. Label it by what that means.
         (totlabel, tottitle) = case amountModeOf ropts' of
@@ -542,27 +542,22 @@ data ReportMenuItem = ReportMenuItem {
       -- ^ a report page's default accumulation mode: its command's own for
       --   a statement, balance changes for the balance report; the journal,
       --   not a report page, has none
-    rmInSidebar :: Bool,
-      -- ^ has a row in the sidebar (the others are one click away, in the
-      --   pages' own Report row)
-    rmGeneral   :: Bool,
-      -- ^ a general report, listed after the named pages, a little apart
     rmGoKey     :: Text
       -- ^ the key that goes to it after g (hledger.js); not translated,
       --   like the other keys
 }
 
--- | The pages, in menu order: the journal and the named reports, as in the
--- sidebar, then the general reports.
+-- | The pages, in menu order, as in the sidebar and the row of report links:
+-- the journal, the named reports, then All accounts.
 reportMenu :: [ReportMenuItem]
 reportMenu =
   -- TRANSLATORS: the report links above each report page and in the sidebar: each link's text, and its tooltip.
-  [ ReportMenuItem JournalR            (i18n "Journal")                   (i18n "Show general journal entries, most recent first")     Nothing                                  True  False "j"
-  , ReportMenuItem BalancesheetR       (i18n "Balance sheet")             (i18n "Show assets, liabilities, and net worth")             (Just $ cbcaccum balancesheetSpec)       True  False "b"
-  , ReportMenuItem IncomestatementR    (i18n "Income statement")          (i18n "Show revenues and expenses")                          (Just $ cbcaccum incomestatementSpec)    True  False "i"
-  , ReportMenuItem CashflowR           (i18n "Cashflow statement")        (i18n "Show changes in liquid assets")                       (Just $ cbcaccum cashflowSpec)           True  False "c"
-  , ReportMenuItem HoldingsR           (i18n "Holdings")                  (i18n "Show investment holdings, lots, and gains")           (Just PerPeriod)                         True  False "h"
-  , ReportMenuItem BalanceR            (i18n "All accounts")              (i18n "Show the balances of all accounts, by period, like the balance command") (Just PerPeriod) False True  "a"
+  [ ReportMenuItem JournalR            (i18n "Journal")                   (i18n "Show general journal entries, most recent first")     Nothing                                  "j"
+  , ReportMenuItem BalancesheetR       (i18n "Balance sheet")             (i18n "Show assets, liabilities, and net worth")             (Just $ cbcaccum balancesheetSpec)       "b"
+  , ReportMenuItem IncomestatementR    (i18n "Income statement")          (i18n "Show revenues and expenses")                          (Just $ cbcaccum incomestatementSpec)    "i"
+  , ReportMenuItem CashflowR           (i18n "Cashflow statement")        (i18n "Show changes in liquid assets")                       (Just $ cbcaccum cashflowSpec)           "c"
+  , ReportMenuItem HoldingsR           (i18n "Holdings")                  (i18n "Show investment holdings, lots, and gains")           (Just PerPeriod)                         "h"
+  , ReportMenuItem BalanceR            (i18n "All accounts")              (i18n "Show the balances of all accounts, by period, like the balance command") (Just PerPeriod) "a"
   ]
 
 -- | The pages that apply to this journal: a journal with no lot features
@@ -573,12 +568,6 @@ reportMenuFor hasLots = [i | i <- reportMenu, hasLots || rmRoute i /= HoldingsR]
 -- | The pages' routes, labels, and titles, for a row of links.
 reportLinkItems :: [ReportMenuItem] -> [(Route App, Text, Text)]
 reportLinkItems items = [(rmRoute i, rmLabel i, rmTitle i) | i <- items]
-
--- | 'reportLinkItems' in two groups, the named pages and the general reports,
--- for a row of links that shows the groups apart.
-reportLinkGroups :: [ReportMenuItem] -> [[(Route App, Text, Text)]]
-reportLinkGroups items = filter (not . null) [reportLinkItems named, reportLinkItems general]
-  where (general, named) = partition rmGeneral items
 
 -- | The report pages: those that take a period and an accumulation mode.
 reportRoutes :: [Route App]
