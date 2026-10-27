@@ -649,7 +649,7 @@ showCommodities :: Handler Bool
 showCommodities = (== Just "1") <$> uiCookie "showcommodities"
 
 -- | One of the cookies in which the browser remembers this hledger-web's
--- UI state (hledger.js). A browser shares cookies between all servers on
+-- UI state (set by hledger.js, or by setUiCookie). A browser shares cookies between all servers on
 -- a host, whatever their port, so their names end with the port (see
 -- uiCookieSuffix), keeping several hledger-webs' states apart.
 -- Cookies, because the server renders this state; full window mode, which
@@ -658,6 +658,14 @@ uiCookie :: Text -> Handler (Maybe Text)
 uiCookie name = do
   App{appOpts} <- getYesod
   lookup (name <> uiCookieSuffix appOpts) . reqCookies <$> getRequest
+
+-- | Have the browser remember some UI state in one of this hledger-web's
+-- cookies (see uiCookie), as hledger.js's setCookie does.
+setUiCookie :: Text -> Text -> Handler ()
+setUiCookie name val = do
+  App{appOpts} <- getYesod
+  addHeader "Set-Cookie" $
+    name <> uiCookieSuffix appOpts <> "=" <> val <> "; Path=/; Max-Age=31536000; SameSite=Lax"
 
 -- | The end of this hledger-web's UI cookie names, also given to the
 -- page's script (default-layout-wrapper.hamlet).

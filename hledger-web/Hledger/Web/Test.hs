@@ -1660,6 +1660,33 @@ hledgerWebTest = do
       statusIs 200
       bodyNotContains "report-links equity"
 
+    -- The choice is remembered, for this hledger-web, in a cookie the
+    -- server sets when the equity parameter is given.
+    yit "remembers the balance sheet's equity choice" $ do
+      request $ do
+        setMethod "GET"
+        setUrl BalancesheetR
+        addGetParam "equity" "1"
+      statusIs 200
+      get BalancesheetR
+      statusIs 200
+      bodyContains ">Equity</th>"
+      request $ do
+        setMethod "GET"
+        setUrl BalancesheetR
+        addGetParam "equity" "0"
+      statusIs 200
+      bodyNotContains ">Equity</th>"
+      get BalancesheetR
+      statusIs 200
+      bodyNotContains ">Equity</th>"
+
+    yit "ignores the equity choice of an hledger-web on another port" $ do
+      testSetCookie defaultSetCookie{setCookieName = fromString ("showequity_" <> show (defport + 1)), setCookieValue = "1"}
+      get BalancesheetR
+      statusIs 200
+      bodyNotContains ">Equity</th>"
+
     yit "redirects the old balance sheet with equity page to the balance sheet's equity=1" $ do
       request $ do
         setMethod "GET"

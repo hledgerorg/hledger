@@ -289,6 +289,7 @@ reports of the command line's
 general [balance report](hledger.md#balance), named All accounts (as in hledger-ui), at `/balance`.
 The balance sheet's Equity option shows balancesheetequity's report, with an equity section
 (an `equity=1` parameter; the old `/balancesheetequity` address leads there).
+The browser remembers this choice for each hledger-web server, until it is changed.
 The sidebar links to the balance sheet, income statement, and cashflow
 statement, and the row of links at the top of every page links to them
 all: the journal and the named reports first, as in the sidebar, then

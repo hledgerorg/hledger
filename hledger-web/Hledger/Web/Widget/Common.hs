@@ -393,7 +393,8 @@ $newline never
 
 -- | On the balance sheet, links hiding or showing an equity section, as
 -- the balancesheet and balancesheetequity commands do, keeping the given
--- parameters; the one in effect is marked.
+-- parameters; the one in effect is marked. Both say which, overriding
+-- the remembered choice (StatementsR).
 equityLinks :: Translations -> r -> [(Text, Text)] -> Bool -> HtmlUrl r
 equityLinks trs route kept shown =
   -- TRANSLATORS: the label before the balance sheet's links that hide or show equity, and the links' tooltips.
@@ -401,7 +402,7 @@ equityLinks trs route kept shown =
     [ (tr trs "Hidden", tr trs "Show assets, liabilities, and net worth, as the balancesheet command does", link False, not shown)
     , (tr trs "Shown",  tr trs "Show assets, liabilities, and equity, as the balancesheetequity command does", link True, shown)
     ]
-  where link e = (route, kept ++ [("equity", "1") | e])
+  where link e = (route, kept ++ [("equity", if e then "1" else "0")])
 
 -- | A row of links that each rewrite one kind of search term: each link
 -- replaces the terms the row owns (those the predicate matches) with its

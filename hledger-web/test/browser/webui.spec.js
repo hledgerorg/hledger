@@ -617,17 +617,23 @@ test.describe('sidebar', () => {
   });
 
   // The balance sheet with equity is the balance sheet with its Equity
-  // row's Shown link; its old page's url leads there.
-  test('the balance sheet\'s Equity row shows or hides the equity section', async ({ page }) => {
+  // row's Shown link, a choice remembered; its old page's url leads there.
+  test('the balance sheet\'s Equity row shows or hides the equity section, and is remembered', async ({ page }) => {
     await page.goto('/balancesheet');
     const heading = page.locator('#main-content h2').first();
+    const sidebarlink = page.locator('#sidebar-menu a', { hasText: 'Balance sheet' });
     await expect(heading).not.toContainText('With Equity');
     await page.locator('#main-content details.report-controls > summary').click();
     await page.locator('#main-content .equity a', { hasText: 'Shown' }).click();
     await expect(page).toHaveURL(/\/balancesheet\?equity=1$/);
     await expect(heading).toContainText('Balance Sheet With Equity');
-    await page.locator('#main-content .equity a', { hasText: 'Hidden' }).click();
+    await sidebarlink.click();
     await expect(page).toHaveURL(/\/balancesheet$/);
+    await expect(heading).toContainText('Balance Sheet With Equity');
+    await page.locator('#main-content .equity a', { hasText: 'Hidden' }).click();
+    await expect(page).toHaveURL(/\/balancesheet\?equity=0$/);
+    await expect(heading).not.toContainText('With Equity');
+    await sidebarlink.click();
     await expect(heading).not.toContainText('With Equity');
     await page.goto('/balancesheetequity');
     await expect(page).toHaveURL(/\/balancesheet\?equity=1$/);

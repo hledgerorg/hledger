@@ -43,10 +43,15 @@ import Hledger.Web.Widget.Common
    sortLinks, statusLinks, zeroBalanceLinks)
 
 getBalancesheetR, getBalancesheetequityR, getIncomestatementR, getCashflowR :: Handler Html
+-- The balance sheet's equity choice is remembered: an equity parameter
+-- (1 or 0) shows or hides equity and saves that in the showequity cookie,
+-- which a request without one follows.
 -- TRANSLATORS: the browser tab titles of the statement pages.
 getBalancesheetR = do
-  equity <- (== Just "1") <$> lookupGetParam "equity"
-  if equity
+  mparam <- fmap (== "1") <$> lookupGetParam "equity"
+  for_ mparam $ \e -> setUiCookie "showequity" (if e then "1" else "0")
+  remembered <- (== Just "1") <$> uiCookie "showequity"
+  if fromMaybe remembered mparam
     then statementPage BalancesheetR (i18n "balance sheet with equity - hledger-web") balancesheetequitySpec (Just True)
     else statementPage BalancesheetR (i18n "balance sheet - hledger-web")             balancesheetSpec       (Just False)
 getIncomestatementR = statementPage IncomestatementR (i18n "income statement - hledger-web")   incomestatementSpec Nothing
