@@ -228,7 +228,14 @@ timeWeightedReturn _styles showCashFlow prettyTables investmentsQuery trans mixe
       -- over them.
       zeroBalanceDates    = [ d | d <- nub (map fst cashflows)
                                 , valueAfterDate (addDays (-1) d) == 0 || valueAfterDate d == 0 ]
-      sortedValDates      = sort . nub $ [begin, addDays (-1) end] ++ pDirectiveDates ++ pnlDates ++ zeroBalanceDates
+
+      -- A date of the P directivee is a valuation date only if that day's price changes the value of the investment.
+      -- Price directives for commodities that do not affect our investment tell us nothing about it, and splitting a
+      -- window on them would incorrectly treat the unchanged investment value as actually observed or recorded (#2825).
+      priceChangesValue d = let holdings = totalInvestmentPostingsTill (addDays 1 d)
+                            in mixedAmountValue end d holdings /= mixedAmountValue end (addDays (-1) d) holdings
+      priceDates          = filter priceChangesValue pDirectiveDates
+      sortedValDates      = sort . nub $ [begin, addDays (-1) end] ++ priceDates ++ pnlDates ++ zeroBalanceDates
       cashFlowsForWindows = sortOn fst [(d, -(unMix ma)) | (d, ma) <- cashflows]
       windows             = dbg3 "activityWindows" $
                             segmentIntoWindows sortedValDates cashFlowsForWindows valueAfterDate
