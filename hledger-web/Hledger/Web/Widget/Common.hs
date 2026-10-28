@@ -13,9 +13,6 @@ module Hledger.Web.Widget.Common
   , optionsSummary
   , searchHeading
   , inertControls
-  , linksRow
-  , linksRowClass
-  , linksRowGroups
   , pricesLinks
   , commodityLinks
   , depthLinks
@@ -28,7 +25,6 @@ module Hledger.Web.Widget.Common
   , columnsLinks
   , sortLinks
   , percentLinks
-  , calcLinks
   , costsLinks
   , lotsLinks
   , closedLinks
@@ -57,7 +53,7 @@ module Hledger.Web.Widget.Common
   ) where
 
 import Control.Applicative ((<|>))
-import Control.Monad (guard, unless, when)
+import Control.Monad (guard, when)
 import Control.Monad.Except (ExceptT, mapExceptT)
 import Data.Char (isDigit)
 import Data.Foldable (find, for_)
@@ -82,6 +78,7 @@ import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor qualified as Anchor
 import Hledger.Cli.Utils (writeFileWithBackupIfChanged)
+import Hledger.Web.Param (calcParam, linksRow, linksRowClass, paramName, paramPhrase)
 import Hledger.Web.Settings (manualurl)
 import Hledger.Query qualified as Query
 
@@ -162,32 +159,6 @@ balanceReportAsHtml registerR here reports reportParams hideEmpty totlabel totti
     -- form's clear button is the way out of a search.
     totallink = (registerR, qps ++ kept)
 
--- | A row of links above a report: a label, then each link's label,
--- title, target, and whether it is the one being shown.
--- Each label and title is a whole phrase, not a word slotted into a
--- sentence: an adjective that fits one language's sentence does not fit
--- another's, so a translation cannot be assembled from parts.
-linksRow :: Text -> [(Text, Text, (r, [(Text, Text)]), Bool)] -> HtmlUrl r
-linksRow = linksRowClass ""
-
--- | 'linksRow' with an extra class on the row: a hook for hledger.js's
--- keyboard shortcuts.
-linksRowClass :: Text -> Text -> [(Text, Text, (r, [(Text, Text)]), Bool)] -> HtmlUrl r
-linksRowClass cls rowlabel items = linksRowGroups cls rowlabel [items]
-
--- | 'linksRowClass' with the links in groups, shown a little apart.
-linksRowGroups :: Text -> Text -> [[(Text, Text, (r, [(Text, Text)]), Bool)]] -> HtmlUrl r
-linksRowGroups cls rowlabel groups renderUrl =
-    H.p ! A.class_ (H.toValue $ T.unwords $ "report-links" : [cls | not (T.null cls)]) $ do
-      unless (T.null rowlabel) $ H.span ! A.class_ "row-label" $ H.toHtml rowlabel
-      for_ (zip [0 :: Int ..] groups) $ \(g, items) ->
-        for_ (zip [0 :: Int ..] items) $ \(i, (label, title, link, current)) ->
-          let classes = ["current" | current] ++ ["group-start" | g > 0, i == 0]
-          in H.a !? (not (null classes), A.class_ (H.toValue $ T.unwords classes))
-                 ! A.href (H.toValue $ uncurry renderUrl link)
-                 ! A.title (H.toValue title) $
-               H.toHtml label
-
 -- | A page's rows of report controls behind a disclosure, closed by
 -- default so the page stays uncluttered. Opening it is remembered per
 -- browser in the showcontrols cookie (hledger.js), which the server
@@ -220,7 +191,7 @@ optionsSummary trs deepest = mapMaybe phrase . sortOn (rowOrder . fst)
   where
     rowOrder k = fromMaybe maxBound $ elemIndex k
       ["equity", "interval", "accum", "depth", "list", "value", "infer", "empty", "lots", "closed",
-       "total", "avg", "costs", "sort", "pct", "calc", "date2"]
+       "total", "avg", "costs", "sort", "pct", paramName calcParam, "date2"]
     phrase = \case
       ("interval", w)     -> Just $ fromMaybe w $ lookup w
         [ ("yearly", tr trs "Yearly"), ("quarterly", tr trs "Quarterly"), ("monthly", tr trs "Monthly")
@@ -240,9 +211,7 @@ optionsSummary trs deepest = mapMaybe phrase . sortOn (rowOrder . fst)
       ("list", "flat")    -> Just $ trc trs "accounts" "List"
       ("sort", "amount")  -> Just $ tr trs "By amount"
       ("pct", "1")        -> Just $ tr trs "Percentages"
-      ("calc", c)         -> lookup c
-        [ ("valuechange", tr trs "Value change"), ("gain", tr trs "Unrealized gain")
-        , ("count", tr trs "Posting counts") ]
+      (k, w) | k == paramName calcParam -> paramPhrase calcParam trs w
       -- TRANSLATORS: options in effect, listed on the closed options disclosure.
       ("total", "1")      -> Just $ trc trs "column" "Total"
       ("avg", "1")        -> Just $ trc trs "column" "Average"
@@ -490,19 +459,6 @@ percentLinks trs route kept pct =
     [ (trc trs "numbers" "Amounts", tr trs "Show the amounts", (route, kept), not pct)
     , (tr trs "Percentages", tr trs "Show each amount as a percentage of its column's total (-%)", (route, kept ++ [("pct", "1")]), pct)
     ]
-
--- | Links choosing what the report's cells calculate, as the balance
--- commands' --valuechange, --gain, and --count flags do.
-calcLinks :: Translations -> r -> [(Text, Text)] -> BalanceCalculation -> HtmlUrl r
-calcLinks trs route kept calc =
-  -- TRANSLATORS: the label before a report's calculation links, and the links' text and tooltips.
-  linksRow (tr trs "Calculate:")
-    [ (trc trs "calculation" "Sums", tr trs "Show sums of postings", (route, kept), calc == CalcChange)
-    , (tr trs "Value change", tr trs "Show how period-end market values changed (--valuechange)", link "valuechange", calc == CalcValueChange)
-    , (tr trs "Unrealized gain", tr trs "Show unrealized capital gains: market value minus cost (--gain)", link "gain", calc == CalcGain)
-    , (tr trs "Posting counts", tr trs "Count the postings instead of summing them (--count)", link "count", calc == CalcPostingsCount)
-    ]
-  where link w = (route, kept ++ [("calc", w)])
 
 -- | Links showing or hiding the costs recorded with a register's
 -- amounts (10 AAPL @ $95), keeping the given parameters.

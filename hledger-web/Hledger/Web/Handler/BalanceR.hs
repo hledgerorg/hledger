@@ -18,11 +18,12 @@ import Hledger.Utils.I18n (tr, trc, trf)
 import Hledger.Web.Import
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Paging (yearsRow)
+import Hledger.Web.Param (calcParam, paramLinks, paramSettings)
 import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Chart (reportChart)
 import Hledger.Web.Widget.Common
-  (amountLinks, calcLinks, columnsLinks, commodityLinks, controlsHint, controlsToggle, optionsSummary,
+  (amountLinks, columnsLinks, commodityLinks, controlsHint, controlsToggle, optionsSummary,
    depthLinks, listModeLinks, lotsLinks,
    percentLinks, pricesLinks, realLinks, sortLinks,
    statusLinks, typeLinks, zeroBalanceLinks)
@@ -88,7 +89,7 @@ getBalanceR = do
             avgParams   = [("avg", "1") | average_ ropts]
             sortParams  = [("sort", "amount") | sort_amount_ ropts]
             pctParams   = [("pct", "1") | percent_ ropts]
-            calcParams  = [("calc", w) | Just w <- [calcWord $ balancecalc_ ropts]]
+            calcParams  = paramSettings calcParam CalcChange (balancecalc_ ropts)
             inferParams = [("infer", "1") | infer_prices_ ropts, not (infer_prices_ roptsOrig)]
             date2Params = [("date2", "1") | date2_ ropts, not (date2_ roptsOrig)]
             emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= empty_ roptsOrig]
@@ -162,7 +163,7 @@ getBalanceR = do
               | rpInterval /= NoInterval ] ++
               [ sortLinks trs BalanceR (qParams ++ removeAttributes ["sort"] pageParams) (sort_amount_ ropts)
               , percentLinks trs BalanceR (qParams ++ removeAttributes ["pct"] pageParams) (percent_ ropts)
-              , calcLinks trs BalanceR (qParams ++ removeAttributes ["calc"] pageParams) (balancecalc_ ropts) ]
+              , paramLinks calcParam trs BalanceR (qParams ++ pageParams) CalcChange (balancecalc_ ropts) ]
         Yesod.toWidget controlRows
         Yesod.toWidget $ H.h2 $ H.toHtml $ withFilter title
         for_ pctErr $ Yesod.toWidget . pctError trs

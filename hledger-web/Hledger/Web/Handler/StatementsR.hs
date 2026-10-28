@@ -33,11 +33,12 @@ import Hledger.Write.Spreadsheet qualified as Spr
 import Hledger.Web.Import
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Paging (yearsRow)
+import Hledger.Web.Param (calcParam, paramLinks, paramSettings)
 import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Chart (reportChart)
 import Hledger.Web.Widget.Common
-  (amountLinks, calcLinks, columnsLinks, commodityLinks, controlsToggle, optionsSummary,
+  (amountLinks, columnsLinks, commodityLinks, controlsToggle, optionsSummary,
    depthLinks, equityLinks, helplink,
    listModeLinks, lotsLinks, percentLinks, pricesLinks, realLinks,
    sortLinks, statusLinks, zeroBalanceLinks)
@@ -127,7 +128,7 @@ statementPage here tabtitle spec mequity = do
             avgParams   = [("avg", "1") | average_ ropts]
             sortParams  = [("sort", "amount") | sort_amount_ ropts]
             pctParams   = [("pct", "1") | percent_ ropts]
-            calcParams  = [("calc", w) | Just w <- [calcWord $ balancecalc_ ropts]]
+            calcParams  = paramSettings calcParam CalcChange (balancecalc_ ropts)
             inferParams = [("infer", "1") | infer_prices_ ropts, not (infer_prices_ roptsOrig)]
             date2Params = [("date2", "1") | date2_ ropts, not (date2_ roptsOrig)]
             emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= empty_ roptsOrig]
@@ -204,7 +205,7 @@ statementPage here tabtitle spec mequity = do
               | rpInterval /= NoInterval ] ++
               [ sortLinks trs here (qParams ++ removeAttributes ["sort"] pageParams) (sort_amount_ ropts)
               , percentLinks trs here (qParams ++ removeAttributes ["pct"] pageParams) (percent_ ropts)
-              , calcLinks trs here (qParams ++ removeAttributes ["calc"] pageParams) (balancecalc_ ropts) ]
+              , paramLinks calcParam trs here (qParams ++ pageParams) CalcChange (balancecalc_ ropts) ]
         Yesod.toWidget controlRows
         Yesod.toWidget $ H.h2 $ H.toHtml $ withFilter $ cbrTitle cbr
         for_ pctErr $ Yesod.toWidget . pctError trs

@@ -27,11 +27,12 @@ import Hledger.Write.Chart.Svg (SvgOptions(..), chartSvgMarkupWith, defaultSvgOp
 import Hledger.Web.Import
 import Hledger.Web.Paging
 import Hledger.Web.Widget.Chart (chartLegend, chartWidth)
-import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, removeAttributes, intervalLinks, listWord, parseCalc, parseInterval, parseListMode, parseValue, setAmountMode, valueParams)
+import Hledger.Web.Param (calcParam, lookupParam, paramLinks, paramSettings)
+import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, removeAttributes, intervalLinks, listWord, parseInterval, parseListMode, parseValue, setAmountMode, valueParams)
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Widget.Common
-             (accountParams, accountRegisterQuery, amountLinks, calcLinks, columnsLinks,
+             (accountParams, accountRegisterQuery, amountLinks, columnsLinks,
               commodityLinks, controlsHint, controlsToggle, optionsSummary, searchHeading, costsLinks, depthLinks,
               inertControls, listModeLinks, lotsLinks, mixedAmountAsHtmlElided,
               mixedAmountAsHtmlWith, moreCommodities, percentLinks, pricesLinks, realLinks,
@@ -64,7 +65,7 @@ getRegisterR = do
   avgOn   <- (== Just "1") <$> lookupGetParam "avg"
   sortAmt <- (== Just "amount") <$> lookupGetParam "sort"
   pctOn   <- (== Just "1") <$> lookupGetParam "pct"
-  mcalc   <- lookupGetParam "calc"
+  calcCur <- fromMaybe CalcChange <$> lookupParam calcParam
   urlrender <- getUrlRenderParams
   pagereq <- pageRequest
   -- How wide to draw the chart: as wide as the page's main column.
@@ -104,7 +105,7 @@ getRegisterR = do
         [("avg", "1") | avgOn] ++
         [("sort", "amount") | sortAmt] ++
         [("pct", "1") | pctOn] ++
-        [("calc", c) | Just c <- [mcalc], not (T.null c)]
+        paramSettings calcParam CalcChange calcCur
       lotsParams = [("lots", "1") | lotsShown]
       -- The account this register is for, which its own links keep.
       acctParams = maybe [] (\(a, subs) -> accountParams subs a) account
@@ -147,7 +148,6 @@ getRegisterR = do
       -- The report-shaping controls, operative on the report pages,
       -- shown dimmed with the url's state marked.
       rpInterval = maybe NoInterval (either (const NoInterval) id . parseInterval) minterval
-      calcCur = either (const CalcChange) id $ parseCalc mcalc
       -- The years row; its links rewrite the search's date narrowing themselves.
       yearsNav = yearsRow trs RegisterR qparam today modeParams years
       intervalRow = inertControls trs $
@@ -156,7 +156,7 @@ getRegisterR = do
         [ columnsLinks trs RegisterR (qParams qparam ++ removeAttributes ["total", "avg"] modeParams) totalOn avgOn
         , sortLinks trs RegisterR (qParams qparam ++ removeAttributes ["sort"] modeParams) sortAmt
         , percentLinks trs RegisterR (qParams qparam ++ removeAttributes ["pct"] modeParams) pctOn
-        , calcLinks trs RegisterR (qParams qparam ++ removeAttributes ["calc"] modeParams) calcCur
+        , paramLinks calcParam trs RegisterR (qParams qparam ++ modeParams) CalcChange calcCur
         ]
       -- All of them behind the controls disclosure, closed by default,
       -- in the same order as on the report pages.
