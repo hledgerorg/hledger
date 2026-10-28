@@ -222,7 +222,13 @@ timeWeightedReturn _styles showCashFlow prettyTables investmentsQuery trans mixe
       valueAfterDate date = unMix $ mixedAmountValue end date $ totalInvestmentPostingsTill (addDays 1 date)
 
   let pnlDates            = map fst pnls
-      sortedValDates      = sort . nub $ [begin, addDays (-1) end] ++ pDirectiveDates ++ pnlDates
+      -- A cash flow into an empty investment, or one that completely empties it, gives us a known value (zero, ether
+      -- before or after it), so its date is a valid valuation date too. This splits periods with nothing invested
+      -- during them into windows of their own (and they return 0%), instead of stretching the growth of a later deposit
+      -- over them.
+      zeroBalanceDates    = [ d | d <- nub (map fst cashflows)
+                                , valueAfterDate (addDays (-1) d) == 0 || valueAfterDate d == 0 ]
+      sortedValDates      = sort . nub $ [begin, addDays (-1) end] ++ pDirectiveDates ++ pnlDates ++ zeroBalanceDates
       cashFlowsForWindows = sortOn fst [(d, -(unMix ma)) | (d, ma) <- cashflows]
       windows             = dbg3 "activityWindows" $
                             segmentIntoWindows sortedValDates cashFlowsForWindows valueAfterDate
