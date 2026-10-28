@@ -102,6 +102,7 @@ library
       Hledger.Web.Import
       Hledger.Web.Main
       Hledger.Web.Paging
+      Hledger.Web.Param
       Hledger.Web.ReportPage
       Hledger.Web.Settings
       Hledger.Web.Settings.StaticFiles

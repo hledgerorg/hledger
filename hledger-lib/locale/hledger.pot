@@ -293,9 +293,8 @@ msgstr ""
 msgid "Historical gain"
 msgstr ""
 
-#. the depth limit, in the list of options in effect.
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs hledger-web/Hledger/Web/Param.hs
 msgid "Posting counts"
 msgstr ""
 
@@ -1646,35 +1645,33 @@ msgid "Show each amount as a percentage of its column's total (-%)"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Calculate:"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Show sums of postings"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgctxt "calculation"
 msgid "Sums"
 msgstr ""
 
-#. the depth limit, in the list of options in effect.
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Value change"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Show how period-end market values changed (--valuechange)"
 msgstr ""
 
-#. the depth limit, in the list of options in effect.
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Unrealized gain"
 msgstr ""
 
@@ -1736,12 +1733,12 @@ msgid "{title} in {dates}, filtered"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Show unrealized capital gains: market value minus cost (--gain)"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Count the postings instead of summing them (--count)"
 msgstr ""
 

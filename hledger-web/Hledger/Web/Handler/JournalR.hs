@@ -15,9 +15,10 @@ import Hledger.Web.Import
 import Hledger.Web.Paging
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
-import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, intervalLinks, listWord, parseCalc, parseInterval, parseListMode, parseValue, removeAttributes, setAmountMode, valueParams)
+import Hledger.Web.Param (calcParam, lookupParam, paramLinks, paramSettings)
+import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, intervalLinks, listWord, parseInterval, parseListMode, parseValue, removeAttributes, setAmountMode, valueParams)
 import Hledger.Web.Widget.Common
-            (accountParams, amountLinks, calcLinks, columnsLinks, commodityLinks,
+            (accountParams, amountLinks, columnsLinks, commodityLinks,
              controlsHint, controlsToggle, optionsSummary, searchHeading,
              depthLinks, inertControls, listModeLinks, lotsLinks,
              mixedAmountAsHtml, percentLinks, pricesLinks, realLinks, sortLinks,
@@ -38,7 +39,7 @@ getJournalR = do
   avgOn   <- (== Just "1") <$> lookupGetParam "avg"
   sortAmt <- (== Just "amount") <$> lookupGetParam "sort"
   pctOn   <- (== Just "1") <$> lookupGetParam "pct"
-  mcalc   <- lookupGetParam "calc"
+  calcCur <- fromMaybe CalcChange <$> lookupParam calcParam
   date2On <- (== Just "1") <$> lookupGetParam "date2"
   pagereq <- pageRequest
   let title = case account of
@@ -80,7 +81,7 @@ getJournalR = do
         [("avg", "1") | avgOn] ++
         [("sort", "amount") | sortAmt] ++
         [("pct", "1") | pctOn] ++
-        [("calc", c) | Just c <- [mcalc], not (T.null c)] ++
+        paramSettings calcParam CalcChange calcCur ++
         [("date2", "1") | date2On]
       lotsParams = [("lots", "1") | lotsShown]
       carried = dbg1 "journal carried params" $ stickyParams ++ valParams ++ listParams ++ inferParams ++ emptyParams ++ lotsParams ++ depthParams q
@@ -117,7 +118,6 @@ getJournalR = do
       -- The report-shaping controls, operative on the report pages,
       -- shown dimmed with the url's state marked.
       rpInterval = maybe NoInterval (either (const NoInterval) id . parseInterval) minterval
-      calcCur = either (const CalcChange) id $ parseCalc mcalc
       -- The years row; its links rewrite the search's date narrowing themselves.
       yearsNav = yearsRow trs JournalR qparam today carried years
       intervalRow = inertControls trs $
@@ -126,7 +126,7 @@ getJournalR = do
         [ columnsLinks trs JournalR (qps ++ removeAttributes ["total", "avg"] carried) totalOn avgOn
         , sortLinks trs JournalR (qps ++ removeAttributes ["sort"] carried) sortAmt
         , percentLinks trs JournalR (qps ++ removeAttributes ["pct"] carried) pctOn
-        , calcLinks trs JournalR (qps ++ removeAttributes ["calc"] carried) calcCur
+        , paramLinks calcParam trs JournalR (qps ++ carried) CalcChange calcCur
         ]
       -- All of them behind the controls disclosure, closed by default,
       -- in the same order as on the report pages.

@@ -60,7 +60,8 @@ import Hledger.Cli.Commands.Balancesheet (balancesheetSpec)
 import Hledger.Cli.Commands.Cashflow (cashflowSpec)
 import Hledger.Cli.Commands.Incomestatement (incomestatementSpec)
 import Hledger.Cli.CompoundBalanceCommand (CompoundBalanceCommandSpec(..))
-import Hledger.Web.ReportPage (AmountMode(..), accumWord, amountModeOf, intervalPeriodExpr, parseCalc, parseListMode, parseValue, reportLinks, setAmountMode)
+import Hledger.Web.Param (calcParam, lookupParam, paramName)
+import Hledger.Web.ReportPage (AmountMode(..), accumWord, amountModeOf, intervalPeriodExpr, parseListMode, parseValue, reportLinks, setAmountMode)
 import Hledger.Web.Settings (Extra(..), webmanualurl, widgetFile)
 import Hledger.Web.Settings.StaticFiles
 import Hledger.Web.WebOptions
@@ -453,7 +454,7 @@ getViewData = do
   -- parameters, see startupUrlState).
   lotsShown <- (== Just "1") <$> lookupGetParam "lots"
   mvalue <- either (const Nothing) id . parseValue <$> lookupGetParam "value"
-  gain <- either (const False) (== CalcGain) . parseCalc <$> lookupGetParam "calc"
+  gain <- (== Just CalcGain) <$> lookupParam calcParam
   let jHasLots = jsHasLots js
       jfull = jsFull js
       atCost = conversionop_ (maybe id setAmountMode mvalue _rsReportOpts) == Just ToCost
@@ -610,7 +611,7 @@ keptParamNames route
 -- only the control it names. date2 has no control, being deprecated,
 -- but is preserved like the rest.
 stickyParamNames :: [Text]
-stickyParamNames = ["interval", "depth", "value", "list", "total", "avg", "sort", "pct", "calc", "infer", "date2", "empty", "lots"]
+stickyParamNames = ["interval", "depth", "value", "list", "total", "avg", "sort", "pct", paramName calcParam, "infer", "date2", "empty", "lots"]
 
 -- | Are zero-balance accounts hidden ? The empty parameter says (1
 -- shows them, 0 hides them, the direction of the command line's

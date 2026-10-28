@@ -21,7 +21,7 @@ module Hledger.Web.ReportPage (
   AmountMode(..),
   parseValue,
   parseListMode,
-  parseCalc,
+  readParam,
   listWord,
   valueWord,
   amountModeOf,
@@ -33,7 +33,6 @@ module Hledger.Web.ReportPage (
   parseInterval,
   depthParams,
   accumWord,
-  calcWord,
   columnHeading,
   headingParams,
   removeAttributes,
@@ -67,7 +66,8 @@ import Yesod (HtmlUrl)
 import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor (dateTerm, renderPeriodHeading)
-import Hledger.Web.Widget.Common (AmountMode(..), accumWord, linksRowClass, listWord, removeDates, valueWord)
+import Hledger.Web.Param (Param(..), calcParam, linksRowClass, paramSettings, parseParam)
+import Hledger.Web.Widget.Common (AmountMode(..), accumWord, listWord, removeDates, valueWord)
 import Hledger.Query qualified as Query
 import Hledger.Write.Html (Html, formatCell, nl)
 import Hledger.Write.Spreadsheet (Cell(..), Class(..), NumLines, textFromClass)
@@ -119,7 +119,7 @@ reportParams rspecOrig qparam q qopts hideEmpty params = do
   avg     <- parseFlag "avg" (param "avg")
   sortAmt <- parseSort (param "sort")
   pct     <- parseFlag "pct" (param "pct")
-  calc    <- parseCalc (param "calc")
+  calc    <- fromMaybe CalcChange <$> readParam calcParam (param $ paramName calcParam)
   infer <- parseFlag "infer" (param "infer")
   dat2  <- parseFlag "date2" (param "date2")
   let rpInterval = fromMaybe ivl $ intervalFromQueryOpts qopts
@@ -201,7 +201,7 @@ startupUrlState rspec@ReportSpec{_rsReportOpts = ropts} = (params, rspec')
       [("avg", "1")           | average_ ropts] ++
       [("sort", "amount")     | sort_amount_ ropts] ++
       [("pct", "1")           | percent_ ropts] ++
-      [("calc", c)            | Just c <- [calcWord $ balancecalc_ ropts]] ++
+      paramSettings calcParam CalcChange (balancecalc_ ropts) ++
       [("costs", "1")         | show_costs_ ropts] ++
       [("infer", "1")         | infer_prices_ ropts] ++
       [("date2", "1")         | date2_ ropts] ++
@@ -368,25 +368,10 @@ parseSort = \case
   Just "amount"  -> Right True
   Just other     -> Left $ BadParamValue "sort" other
 
--- | The calc parameter: what a report's cells calculate, as the balance
--- commands' --valuechange, --gain, and --count flags choose.
-parseCalc :: Maybe Text -> Either ReportParamError BalanceCalculation
-parseCalc = \case
-  Nothing            -> Right CalcChange
-  Just ""            -> Right CalcChange
-  Just "change"      -> Right CalcChange
-  Just "valuechange" -> Right CalcValueChange
-  Just "gain"        -> Right CalcGain
-  Just "count"       -> Right CalcPostingsCount
-  Just other         -> Left $ BadParamValue "calc" other
-
--- | The calc parameter value naming a calculation, for those that have one.
-calcWord :: BalanceCalculation -> Maybe Text
-calcWord = \case
-  CalcValueChange   -> Just "valuechange"
-  CalcGain          -> Just "gain"
-  CalcPostingsCount -> Just "count"
-  _                 -> Nothing
+-- | Read a multiple-choice parameter's value (see 'parseParam'),
+-- naming the parameter if the value is unknown.
+readParam :: Param a -> Maybe Text -> Either ReportParamError (Maybe a)
+readParam p = either (Left . BadParamValue (paramName p)) Right . parseParam p
 
 -- | The value parameter, mirroring --value's WHEN[,COMM] syntax:
 -- "none", "cost", or a valuation "end", "then", "now", or a date, each
