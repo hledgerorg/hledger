@@ -63,7 +63,9 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
   let
     -- lbl = lbl_ "roi"
     today = _rsDay rspec
-    priceOracle = journalPriceOracle infer_prices_ j
+    -- one oracle for both valuing amounts and finding which prices a valuation uses
+    priceChainOracle = journalPriceChainOracle infer_prices_ j
+    priceOracle = priceChainOracleRates priceChainOracle
     styles = journalCommodityStylesWith HardRounding j
     mixedAmountValue periodlast date =
         -- These calculations can generate very precise decimals. To avoid showing too many digits:
@@ -73,7 +75,18 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
         -- Instead, do what we don't like to do: hard code a max precision, overriding commodity styles.
         mixedAmountSetPrecisionMax defaultMaxDisplayPrecision
       . maybe id (mixedAmountApplyValuation priceOracle styles periodlast today date) value_
-      . maybe id (mixedAmountToCost styles) conversionop_
+      . toCost
+    toCost = maybe id (mixedAmountToCost styles) conversionop_
+
+    -- Does valuing these holdings on this date use a market price which became effective on that date ?
+    -- That is, is there a new price on that date for a commodity held, or for one on the chain of prices that converts it
+    -- to the valuation commodity ? Only valuation at each date (--value=then) uses different prices on different dates.
+    usesPriceFrom date holdings = case value_ of
+      Just (AtThen mc) -> or [ any ((== date) . mpdate) chain
+                             | a <- amounts $ toCost holdings
+                             , not (amountIsZero a)
+                             , Just chain <- [priceChainOracle (date, acommodity a, mc)] ]
+      _ -> False
 
   let
     wd = whichDate ropts
@@ -83,6 +96,12 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
         q <- either usageError (return . fst) . parseQuery today . T.pack $ stringopt flag rawopts
         return . simplifyQuery $ And [queryFromFlags ropts{period_=PeriodAll}, q]
     cantCompute msg = error' $ msg ++ " - will be unable to compute the rates of return"
+    -- Dates of the market prices which valuation can use: declared ones, and those inferred from transactions
+    -- when that is enabled. Inferred prices are observed values too, and deciding by whether a price
+    -- directive happens to fall on the same date would make unrelated prices affect the result (#2825).
+    -- Built once, so that each span only takes its slice.
+    allMarketPriceDates = S.fromList $
+      map pddate (jpricedirectives j) ++ (if infer_prices_ then map mpdate (jinferredmarketprices j) else [])
 
   investmentsQuery <- makeQuery "investment"
   pnlQuery         <- case maybestringopt "pnl" rawopts of
@@ -145,12 +164,9 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
         when (S.size spanCommodities > 1) $
           multiCommodityError $ "Period " ++ show (b,e) ++ " has multiple commodities: " ++ (T.unpack $ T.intercalate ", " $ map showCommoditySymbol (S.toList spanCommodities))
 
-        let pDirectiveDates =
-              sort . nub . map pddate $
-              filter (\pd -> pddate pd >= b && pddate pd < e) $
-              jpricedirectives j
+        let marketPriceDates = S.toAscList . S.takeWhileAntitone (< e) . S.dropWhileAntitone (< b) $ allMarketPriceDates
         (irrdetails, eirr) <- internalRateOfReturn styles showCashFlow prettyTables thisSpan
-        (twrdetails, (periodTwr, annualizedTwr)) <- timeWeightedReturn styles showCashFlow prettyTables investmentsQuery trans mixedAmountValue pDirectiveDates thisSpan
+        (twrdetails, (periodTwr, annualizedTwr)) <- timeWeightedReturn styles showCashFlow prettyTables investmentsQuery trans mixedAmountValue usesPriceFrom marketPriceDates thisSpan
         let cashFlowAmt = maNegate . maSum $ map snd cashFlow
         let smallIsZero x = if abs x < 0.01 then 0.0 else x
         let spanrow irr = [ showDate b
@@ -213,7 +229,7 @@ data ActivityWindow = ActivityWindow
   , awCashFlows :: [(Day, Decimal)]  -- cash flows in (awStart, awEnd]: strictly after start, up to and including end
   } deriving (Show)
 
-timeWeightedReturn _styles showCashFlow prettyTables investmentsQuery trans mixedAmountValue pDirectiveDates (OneSpan begin end _valueBeforeAmt _valueAfterAmt cashflows pnls) = do
+timeWeightedReturn _styles showCashFlow prettyTables investmentsQuery trans mixedAmountValue usesPriceFrom marketPriceDates (OneSpan begin end _valueBeforeAmt _valueAfterAmt cashflows pnls) = do
   let investmentPostings = concatMap (filter (matchesPosting investmentsQuery) . realPostings) trans
 
       totalInvestmentPostingsTill date = sumPostings $ filter (matchesPosting (Date (DateSpan Nothing (Just $ Exact date)))) investmentPostings
@@ -222,7 +238,13 @@ timeWeightedReturn _styles showCashFlow prettyTables investmentsQuery trans mixe
       valueAfterDate date = unMix $ mixedAmountValue end date $ totalInvestmentPostingsTill (addDays 1 date)
 
   let pnlDates            = map fst pnls
-      sortedValDates      = sort . nub $ [begin, addDays (-1) end] ++ pDirectiveDates ++ pnlDates
+      -- A market price date is a valuation date only if that day's price is used to value the investment: it is for a
+      -- commodity held, or one on the chain of prices converting it. (The price need not differ from the previous one.)
+      -- Prices of commodities that do not affect our investment tell us nothing about it, and splitting a
+      -- window on them would incorrectly treat the unchanged investment value as actually observed or recorded (#2825).
+      usesNewPrice d      = usesPriceFrom d $ totalInvestmentPostingsTill (addDays 1 d)
+      priceDates          = filter usesNewPrice marketPriceDates
+      sortedValDates      = sort . nub $ [begin, addDays (-1) end] ++ priceDates ++ pnlDates
       cashFlowsForWindows = sortOn fst [(d, -(unMix ma)) | (d, ma) <- cashflows]
       windows             = dbg3 "activityWindows" $
                             segmentIntoWindows sortedValDates cashFlowsForWindows valueAfterDate
