@@ -16,7 +16,10 @@ module Hledger.Data.Valuation (
    ConversionOp(..)
   ,ValuationType(..)
   ,PriceOracle
+  ,PriceChainOracle
   ,journalPriceOracle
+  ,journalPriceChainOracle
+  ,priceChainOracleRates
   ,journalAliasPriceDirectives
   ,mixedAmountToCost
   ,mixedAmountApplyValuation
@@ -87,6 +90,11 @@ valuationTypeValuationCommodity = \case
 -- another (or if unspecified, to a default valuation commodity) on a
 -- given date.
 type PriceOracle = (Day, CommoditySymbol, Maybe CommoditySymbol) -> Maybe (CommoditySymbol, Quantity)
+
+-- | Like 'PriceOracle', but returns the chain of market prices (one or more, from the source commodity
+-- to the valuation commodity) which the conversion uses, instead of the resulting rate.
+-- Each price keeps the date it became effective, so this tells which prices a valuation depends on.
+type PriceChainOracle = (Day, CommoditySymbol, Maybe CommoditySymbol) -> Maybe [MarketPrice]
 
 -- | An index of market prices for efficient lookup by commodity pair and date.
 -- Maps each (from, to) commodity pair to a Map from date to the effective price,
@@ -189,20 +197,32 @@ lookupDefaultValuations d PriceIndexes{..} =
 -- The boolean argument is whether to infer market prices from
 -- transactions or not.
 --
+-- This is built on 'journalPriceChainOracle'; see that for how prices and commodity aliases are looked up.
+journalPriceOracle :: Bool -> Journal -> PriceOracle
+journalPriceOracle infer j = priceChainOracleRates $ journalPriceChainOracle infer j
+
+-- | Make a 'PriceOracle' from a 'PriceChainOracle', so that one set of price indexes can serve both.
+-- The rates are memoised, since valuation looks up the same ones repeatedly.
+priceChainOracleRates :: PriceChainOracle -> PriceOracle
+priceChainOracleRates chainoracle = memo $ fmap chainRate . chainoracle
+
+-- | Like 'journalPriceOracle', but returns the chain of market prices used (see 'PriceChainOracle').
+-- The price lookup is memoised, as are the price graphs it uses.
+--
 -- Commodity aliases are also used, as fixed exchange rates (see 'buildPriceIndexes'),
 -- but only when no conversion can be found with market prices alone;
 -- so they can't change a valuation which market prices provide (eg one declared in another file tree).
 -- So an alias can be the valuation commodity,
 -- and amounts left in an alias (by a file which didn't declare it) can be valued.
-journalPriceOracle :: Bool -> Journal -> PriceOracle
-journalPriceOracle infer j@Journal{jpricedirectives, jinferredmarketprices} =
+journalPriceChainOracle :: Bool -> Journal -> PriceChainOracle
+journalPriceChainOracle infer j@Journal{jpricedirectives, jinferredmarketprices} =
   let
     declaredprices = map priceDirectiveToMarketPrice jpricedirectives
     inferredprices =
       (if infer then jinferredmarketprices else [])
       & dbg2Msg ("use prices inferred from costs? " <> if infer then "yes" else "no")
     -- Build indexes once for all lookups
-    oracleWith extraprices = memo $ uncurry3 $ priceLookup $ memo $ makePriceGraph $
+    oracleWith extraprices = memo $ uncurry3 $ priceChainLookup $ memo $ makePriceGraph $
       buildPriceIndexes declaredprices inferredprices extraprices
     (ambiguousaliases, aliasrates) = journalAliasPriceDirectivesChecked j
     aliasprices  = map priceDirectiveToMarketPrice aliasrates
@@ -419,7 +439,11 @@ mixedAmountGainAtDate priceoracle styles mto d ma =
 -- are visible.
 --
 priceLookup :: (Day -> PriceGraph) -> Day -> CommoditySymbol -> Maybe CommoditySymbol -> Maybe (CommoditySymbol, Quantity)
-priceLookup makepricegraph d from mto =
+priceLookup makepricegraph d from mto = chainRate <$> priceChainLookup makepricegraph d from mto
+
+-- | Like 'priceLookup', but returns the (non-empty) chain of market prices used, instead of the rate.
+priceChainLookup :: (Day -> PriceGraph) -> Day -> CommoditySymbol -> Maybe CommoditySymbol -> Maybe [MarketPrice]
+priceChainLookup makepricegraph d from mto =
   -- trace ("priceLookup ("++show d++", "++show from++", "++show mto++")") $
   let
     PriceGraph{pgEdges=forwardprices
@@ -451,18 +475,22 @@ priceLookup makepricegraph d from mto =
         in case prices of
           Nothing -> Nothing
           Just [] -> Nothing
-          Just ps -> Just (mpto $ last ps, rate)
-            where
-              rates = map mprate ps
-              rate =
-                -- aggregate all the prices into one
-                product rates
-                -- product (Decimal's Num instance) normalises, stripping trailing zeros.
-                -- But we want to preserve even those, since the number of decimal digits
-                -- here will guide amountValueAtDate in setting the Amount display precision later.
-                -- So we restore them. Or rather, we ensure as many decimal digits as the maximum seen among rates.
-                -- (Some prices might end up more precise than they were, but that seems harmless here.)
-                & setMinDecimalPlaces (maximum $ map decimalPlaces rates)
+          Just ps -> Just ps
+
+-- | The valuation commodity and the combined conversion rate of a non-empty chain of market prices.
+chainRate :: [MarketPrice] -> (CommoditySymbol, Quantity)
+chainRate ps = (mpto $ last ps, rate)
+  where
+    rates = map mprate ps
+    rate =
+      -- aggregate all the prices into one
+      product rates
+      -- product (Decimal's Num instance) normalises, stripping trailing zeros.
+      -- But we want to preserve even those, since the number of decimal digits
+      -- here will guide amountValueAtDate in setting the Amount display precision later.
+      -- So we restore them. Or rather, we ensure as many decimal digits as the maximum seen among rates.
+      -- (Some prices might end up more precise than they were, but that seems harmless here.)
+      & setMinDecimalPlaces (maximum $ map decimalPlaces rates)
 
 -- Ensure this Decimal has at least this many decimal places, adding trailing zeros if necessary.
 setMinDecimalPlaces :: Word8 -> Decimal -> Decimal
