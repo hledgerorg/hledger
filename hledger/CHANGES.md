@@ -12,6 +12,21 @@ User-visible changes in the hledger command line tool and library.
 
 # 7acb6aed
 
+## Reports
+
+- roi: prices of commodities which don't affect the investment's valuation (not held,
+  and not on the chain of prices converting a holding to the valuation commodity)
+  no longer split TWR windows and change its TWR. A price which repeats the previous
+  one still does, as it is an observed value.
+  (Dmitry Astapov, [#2825])
+
+- roi: with --infer-market-prices, prices inferred from any transaction, including ones
+  outside --investment, now split TWR windows when they price a commodity the investment
+  holds, or one on the chain of prices converting it to the valuation commodity.
+  These are real market observations, but they can change TWR results for such journals.
+  (Dmitry Astapov, [#2825])
+
+[#2825]: https://github.com/hledgerorg/hledger/issues/2825
 
 
 # 1.99.5 2026-10-01
