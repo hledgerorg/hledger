@@ -99,13 +99,13 @@ In order.
   > If you speak one of these languages, a few minutes' review helps: start with the entries marked
   > "Key term". To start a new language, run `hledger --write-lang=LANG`. See https://hledger.org/TRANSLATING.html.
   > Thanks to [this release's translators].
-- [ ] **Review/update affected docs** (site repo)
-  - [ ] **Upgrading to hledger 2** (site/src/upgrading.md): the breaking changes, for 1.x users:
+- [x] **Review/update affected docs** (site repo)
+  - [x] **Upgrading to hledger 2** (site/src/upgrading.md): the breaking changes, for 1.x users:
     `test` -> `--test`, `activity` output, amounts that may now read as expressions,
     alias vs apply account order, repeated commodity declarations, holdings tree layout.
-  - [ ] **Ledger page** (site/src/ledger.md): differences affected by this release, eg alias / apply account
+  - [x] **Ledger page** (site/src/ledger.md): differences affected by this release, eg alias / apply account
     order now as in Ledger (#2733), amount expressions.
-  - [ ] **Beancount page** (site/src/beancount.md): differences affected by this release, eg amount expressions.
+  - [x] **Beancount page** (site/src/beancount.md): differences affected by this release, eg amount expressions.
   - [x] **Charts page** (site/src/charts.md): bring up to date with the CLI, html, `run` and hledger-web charts;
     add screenshots (a terminal `--chart`, an SVG chart, a hledger-web report page), reusable in the announcement.
     Done (Oct 29, site ac96c4e17): the terminal chart stays a text block; images/charts-hledger.svg regenerated;
