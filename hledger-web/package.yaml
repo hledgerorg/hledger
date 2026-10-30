@@ -138,6 +138,7 @@ library:
   - transformers
   - unix-compat
   - unordered-containers
+  - utility-ht
   - utf8-string
   - wai
   - wai-app-static >=3.1.9

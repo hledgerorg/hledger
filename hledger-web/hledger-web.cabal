@@ -159,6 +159,7 @@ library
     , unix-compat
     , unordered-containers
     , utf8-string
+    , utility-ht
     , wai
     , wai-app-static >=3.1.9
     , wai-cors

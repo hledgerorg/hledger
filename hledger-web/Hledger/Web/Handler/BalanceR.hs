@@ -22,7 +22,7 @@ import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Chart (reportChart)
 import Hledger.Web.Widget.Common
-  (amountLinks, calcLinks, columnsLinks, commodityLinks, controlsHint, controlsToggle, optionsSummary,
+  (amountLinks, columnsLinks, commodityLinks, controlsHint, controlsToggle, optionsSummary,
    depthLinks, listModeLinks, lotsLinks,
    percentLinks, pricesLinks, realLinks, sortLinks,
    statusLinks, typeLinks, zeroBalanceLinks)

@@ -106,7 +106,7 @@ data BalanceCalculation =
   | CalcGain          -- ^ Change from previous period's gain, i.e. valuation minus cost basis.
   | CalcPostingsCount -- ^ Number of postings in the period.
   | CalcTransactionsCount -- ^ Number of transactions in the period (exact only for a single account row, eg at depth 0).
-  deriving (Eq, Show)
+  deriving (Eq, Show, Enum, Bounded)
 
 instance Default BalanceCalculation where def = CalcChange
 
@@ -121,7 +121,7 @@ data BalanceAccumulation =
   | Cumulative  -- ^ Accumulate changes across periods, starting from zero at report start.
   | Historical  -- ^ Accumulate changes across periods, including any from before report start.
                 --   Eg, shows the historical end balance of each period.
-  deriving (Eq,Show)
+  deriving (Eq, Show, Enum, Bounded)
 
 instance Default BalanceAccumulation where def = PerPeriod
 

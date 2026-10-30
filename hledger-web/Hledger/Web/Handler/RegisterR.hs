@@ -27,11 +27,12 @@ import Hledger.Write.Chart.Svg (SvgOptions(..), chartSvgMarkupWith, defaultSvgOp
 import Hledger.Web.Import
 import Hledger.Web.Paging
 import Hledger.Web.Widget.Chart (chartLegend, chartWidth)
-import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, removeAttributes, intervalLinks, listWord, parseCalc, parseInterval, parseListMode, parseValue, setAmountMode, valueParams)
+-- ToDo: better use qualified imports here
+import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, removeAttributes, intervalLinks, parseInterval, listWord, calcLinks, parseCalc, parseListMode, parseValue, setAmountMode, valueParams)
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Widget.Common
-             (accountParams, accountRegisterQuery, amountLinks, calcLinks, columnsLinks,
+             (accountParams, accountRegisterQuery, amountLinks, columnsLinks,
               commodityLinks, controlsHint, controlsToggle, optionsSummary, searchHeading, costsLinks, depthLinks,
               inertControls, listModeLinks, lotsLinks, mixedAmountAsHtmlElided,
               mixedAmountAsHtmlWith, moreCommodities, percentLinks, pricesLinks, realLinks,
