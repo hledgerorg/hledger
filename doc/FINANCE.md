@@ -31,6 +31,6 @@ Here are the [open bounty issues](https://github.com/hledgerorg/hledger/issues/?
 
 ## Paid review
 
-Since 2026 we pay core developers for PR review work (50 USD/hr for now, invoiced to our Open Collective),
+Since 2026-07-01 we pay core developers for PR review work (50 USD/hr for now, invoiced to our Open Collective),
 and other reviewers whom a core developer nominates on a PR. See [RULES](RULES.md).
 
