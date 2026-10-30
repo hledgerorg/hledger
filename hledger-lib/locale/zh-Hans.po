@@ -178,7 +178,7 @@ msgstr "余额"
 
 #: hledger/Hledger/Cli/Chart.hs hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "Net:"
-msgstr "净值："
+msgstr "净额："
 
 # machine-translated, please review
 #: hledger/Hledger/Cli/Chart.hs
@@ -222,7 +222,7 @@ msgstr "（历史收益）"
 
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Balance Changes)"
-msgstr "（平衡性调整）"
+msgstr "（余额变动）"
 
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Cumulative Ending Balances)"
@@ -330,7 +330,7 @@ msgstr "交易数"
 #: hledger-web/Hledger/Web/ReportPage.hs
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Balance changes"
-msgstr "平衡性调整"
+msgstr "余额变动"
 
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (cumulative)"
@@ -642,7 +642,7 @@ msgstr "支出"
 
 #: hledger/Hledger/Cli/Commands/Register.hs
 msgid "Register"
-msgstr "日记账"
+msgstr "明细账"
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #: hledger/Hledger/Cli/Commands/Run.hs hledger-web/Hledger/Web/ReportPage.hs
@@ -1168,7 +1168,7 @@ msgstr ""
 #. the browser tab title of this page.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgid "register - hledger-web"
-msgstr "登记册 - hledger-web"
+msgstr "明细账 - hledger-web"
 
 #. a chart legend's entry for amounts written without a commodity symbol.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs

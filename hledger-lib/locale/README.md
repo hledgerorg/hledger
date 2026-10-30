@@ -194,23 +194,23 @@ The terms it uses, which machine-filled entries should follow:
 | Cashflow Statement | 现金流量表 |
 | Assets / Liabilities / Equity | 资产 / 负债 / 权益 |
 | Revenues / Expenses | 收入 / 支出 |
-| Net: | 净值： |
+| Net: | 净额： |
 | Total / Average | 总计 / 平均 |
 | Account / Amount / Commodity | 账户 / 金额 / 商品 |
 | Journal (hledger-web's view) / General Journal | 日记账 / 通用日记账 |
-| Ending balances | 期末余额 |
+| Register (`register`'s spreadsheet sheet, hledger-web's register page) | 明细账 |
+| Balance changes / Ending balances | 余额变动 / 期末余额 |
 | Balance brought forward | 上期结转余额 |
 | Daily / Monthly | 每日 / 每月度 (eg 月度资产负债表) |
 
-Choices to check (as of 2026-10):
-
-- "Balance changes", the title of a plain `balance` report, is 平衡性调整,
-  which reads as "balancing adjustments"; 余额变动 says "changes in
-  balance".
-- "Register", the sheet name of `register`'s spreadsheet output, is also
-  日记账, like the Journal view; 明细账 would distinguish it.
-- 净值 for "Net:" reads as net worth, which fits the balance sheet more
-  than the income statement.
+Decided with the translator (2026-10): "Balance changes" is 余额变动
+(was 平衡性调整, "balancing adjustments"), and the Register sheet is 明细账
+(was 日记账, the Journal view's name). For "Net:" the translator kept 净值,
+then suggested 总计; it is now 净额 ("net amount"), since the row is a
+difference rather than a total (assets minus liabilities, revenues minus
+expenses), 总计 is the Total column, and 净值 reads as net worth, which
+suits only the balance sheet. hledger-web's register page then took 明细账 too
+(was 登记册), so that both programs name the register alike.
 
 ## Japanese
 
