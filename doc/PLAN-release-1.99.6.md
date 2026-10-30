@@ -106,8 +106,10 @@ In order.
   - [ ] **Ledger page** (site/src/ledger.md): differences affected by this release, eg alias / apply account
     order now as in Ledger (#2733), amount expressions.
   - [ ] **Beancount page** (site/src/beancount.md): differences affected by this release, eg amount expressions.
-  - [ ] **Charts page** (site/src/charts.md): bring up to date with the CLI, html, `run` and hledger-web charts;
+  - [x] **Charts page** (site/src/charts.md): bring up to date with the CLI, html, `run` and hledger-web charts;
     add screenshots (a terminal `--chart`, an SVG chart, a hledger-web report page), reusable in the announcement.
+    Done (Oct 29, site ac96c4e17): the terminal chart stays a text block; images/charts-hledger.svg regenerated;
+    images/charts-hledger-web.png is now the monthly income statement page (light scheme).
 - [ ] **Merge translations** (until Sat Oct 31 20:00 UTC), for each catalog received:
   - put it in hledger-lib/locale/ (or merge the PR); merge it with the latest template if it is behind
     (`msgmerge --update --no-fuzzy-matching`), so translators needn't track late text changes;
