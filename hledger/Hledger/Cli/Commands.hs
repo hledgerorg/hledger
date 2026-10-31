@@ -161,7 +161,7 @@ builtinCommands = [
 mainmode addons = defMode {
   modeNames = [progname ++ " [COMMAND]"]
  ,modeArgs = ([], Just $ argsFlag "[ARGS]")
- ,modeHelp = unlines ["hledger's main command line interface. Run with no ARGS to list commands."]
+ ,modeHelp = unlines ["hledger's main command line interface. Run with no ARGS to see a quick reference, or `hledger help commands` to list commands."]
  ,modeGroupModes = Group {
     -- subcommands in the unnamed group, shown first:
     groupUnnamed = [
