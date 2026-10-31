@@ -22,6 +22,7 @@ import Data.Bifunctor (second)
 import Data.List
 import Numeric.RootFinding
 import Data.Decimal
+import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
@@ -96,6 +97,43 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
     filteredj = filterJournalTransactions investmentsQuery j
     trans = dbg3 "investments" $ jtxns filteredj
 
+    postingDay   = postingDateOrDate2 wd
+    isInvestment = matchesPosting investmentsQuery
+    isPnl p      = not (isInvestment p) && matchesPosting pnlQuery p
+
+    -- The investment's holdings at the end of each day which changes them, accumulated once.
+    holdingsByDay = M.fromAscList . drop 1 . scanl (\(_, acc) (d, a) -> (d, acc `maPlus` a)) (nulldate, nullmixedamt) . M.toAscList $
+      M.fromListWith maPlus [ (postingDay p, pamount p) | t <- trans, p <- realPostings t, isInvestment p ]
+    -- the investment's holdings at the end of this day
+    holdingsAt d = maybe nullmixedamt snd $ M.lookupLE d holdingsByDay
+
+    -- The unit prices of the investment's own purchases and sales, by commodity and date (the last one recorded on a
+    -- date wins, as with --infer-market-prices), for valuing holdings which have no market price.
+    -- (fromListWith passes the later entry first, and union keeps its first argument's entries.)
+    tradePrices = M.fromListWith M.union
+      [ (pdcommodity pd, M.singleton (postingDay p) (pdamount pd))
+      | t <- trans, p <- realPostings t, isInvestment p, a <- amounts (pamount p)
+      , Just pd <- [amountPriceDirectiveFromCost (postingDay p) a] ]
+    -- the price of the investment's latest purchase or sale of this commodity, on or before this date
+    latestTradePrice c d = M.lookup c tradePrices >>= fmap snd . M.lookupLE d
+
+    -- The investment's cash flows from b to lastDay, measured from its own side: for each transaction and each date of
+    -- its investment postings, the cost of those postings, less the transaction's profit and loss (counted on the first
+    -- of those dates), valued with valueOn. So other postings in the same transaction (eg fees, or gains and losses on
+    -- other holdings) don't count, and flows are dated like the changes they make to the investment.
+    -- Deposits are negative and withdrawals positive, like the postings of the money that pays for them.
+    investmentCashFlows valueOn b lastDay =
+      [ InvestmentFlow d (tdescription t) cost gain (maNegate $ cost `maMinus` gain)
+      | t <- trans
+      , let ps     = realPostings t
+            byDay  = M.fromListWith (flip (++)) [ (postingDay p, [p]) | p <- ps, isInvestment p ]
+            pnlAmt = sumPostings (filter isPnl ps)
+      , (i, (d, invps)) <- zip [0 :: Int ..] (M.toAscList byDay)
+      , d >= b, d <= lastDay
+      , let cost = valueOn d $ mixedAmountToCost styles ToCost $ sumPostings invps
+            gain = if i == 0 then maNegate (valueOn d pnlAmt) else nullmixedamt
+      , maIsNonZero (cost `maMinus` gain) ]
+
   when (null trans) $
     error' "No relevant transactions found. Check your investments query"
 
@@ -110,31 +148,59 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
   let processSpan (b, e) = do
         -- Spans are [begin,end), and end is 1 day after the actual end date we are interested in
         let
-          spn = DateSpan (Just $ Exact b) (Just $ Exact e)
+          -- the last day of the span, which --value=end and the value at the end of the span are valued on
+          lastDay = addDays (-1) e
 
-          cashFlowApplyCostValue = map (\(d,amt) -> (d,mixedAmountValue e d amt))
+          cashFlowApplyCostValue = map (\(d,amt) -> (d,mixedAmountValue lastDay d amt))
 
-          valueBefore = dbg3 "valueBefore" $
-            mixedAmountValue e b $
-            total trans (And [ investmentsQuery
-                             , Date (DateSpan Nothing (Just $ Exact b))])
+          -- With valuation, the investment's value should end up in the same commodity as the cash flows and PnL, which
+          -- are valued the same way (that need not be the one given to --value, if nothing converts to it).
+          -- Without cash flows or PnL, it should be in the one given to --value.
+          expectedCommodity = case value_ of
+            Nothing -> Nothing
+            Just vt -> case S.toList (S.unions $ map (maCommodities . snd) (otherFlows ++ pnl)) of
+              [c] -> Just c
+              []  -> valuationTypeValuationCommodity vt
+              _   -> Nothing
+          -- Value an amount of the investment on a date. Positions fully closed by then are dropped first. A commodity
+          -- with no market price known on or before that date is valued at the price of the investment's latest purchase
+          -- or sale of it (as --infer-market-prices would, but only from the investment's own transactions, and only when
+          -- no market price is known). Its net cost would be wrong after a sale at a different price, and could even be
+          -- negative.
+          valueOn date amt0 =
+            let amt      = dropClosedPositions amt0
+                valued   = mixedAmountValue lastDay date amt
+                unpriced = S.fromList [ acommodity a | Just c <- [expectedCommodity], a <- amounts valued
+                                                     , acommodity a /= c, not (amountIsZero a) ]
+                isUnpriced = (`S.member` unpriced) . acommodity
+                valued'
+                  | S.null unpriced = valued
+                  | otherwise = mixedAmountValue lastDay date $ mixed
+                      [ if isUnpriced a then maybe a (\pr -> pr{aquantity = aquantity pr * aquantity a}) (latestTradePrice (acommodity a) date) else a
+                      | a <- amounts amt ]
+            in checkValued (value_ >>= valuationTypeValuationCommodity) expectedCommodity date valued'
 
-          valueAfter  = dbg3 "valueAfter" $
-            mixedAmountValue e e $
-            total trans (And [investmentsQuery
-                             , Date (DateSpan Nothing (Just $ Exact e))])
+          -- the value at the start of the span is the value at the end of the previous day, so that it equals the value
+          -- at the end of the previous span (except with --value=end, which values each span at its own end)
+          valueBefore = dbg3 "valueBefore" $ valueOn (addDays (-1) b) $ holdingsAt (addDays (-1) b)
 
-          cashFlow = dbg3 "cashFlow" $
-            cashFlowApplyCostValue $
-            calculateCashFlow wd trans (And [ Not investmentsQuery
-                                            , Not pnlQuery
-                                            , Date spn ] )
+          valueAfter  = dbg3 "valueAfter" $ valueOn lastDay $ holdingsAt lastDay
+
+          flowDetails = investmentCashFlows valueOn b lastDay
+          cashFlow = dbg3 "cashFlow" $ [ (ifDate f, ifFlow f) | f <- flowDetails ]
+
+          -- The other postings of the investment transactions, which are where the money comes from or goes to.
+          -- Only used to tell which commodity the money is in, after valuation.
+          otherFlows = dbg3 "otherFlows" $
+            cashFlowApplyCostValue $ inSpan $
+            calculateCashFlow wd trans (And [Not investmentsQuery, Not pnlQuery])
 
           pnl = dbg3 "pnl" $
-            cashFlowApplyCostValue $
-            calculateCashFlow wd trans (And [ Not investmentsQuery
-                                            , pnlQuery
-                                            , Date spn ] )
+            cashFlowApplyCostValue $ inSpan $
+            calculateCashFlow wd trans (And [Not investmentsQuery, pnlQuery])
+
+          -- postings dated (like the cash flows and holdings) within the span
+          inSpan = filter (\(d, _) -> d >= b && d <= lastDay)
 
           spanCommodities = dbg3 "spanCommodities" $
             S.unions $ (maCommodities valueBefore) : (maCommodities valueAfter) : map (maCommodities.snd) (cashFlow ++ pnl)
@@ -145,12 +211,11 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
         when (S.size spanCommodities > 1) $
           multiCommodityError $ "Period " ++ show (b,e) ++ " has multiple commodities: " ++ (T.unpack $ T.intercalate ", " $ map showCommoditySymbol (S.toList spanCommodities))
 
-        let pDirectiveDates =
-              sort . nub . map pddate $
-              filter (\pd -> pddate pd >= b && pddate pd < e) $
-              jpricedirectives j
-        (irrdetails, eirr) <- internalRateOfReturn styles showCashFlow prettyTables thisSpan
-        (twrdetails, (periodTwr, annualizedTwr)) <- timeWeightedReturn styles showCashFlow prettyTables investmentsQuery trans mixedAmountValue pDirectiveDates thisSpan
+        let -- show a quantity of the span's (single) commodity, styled
+            showAmt q = T.pack $ showMixedAmountOneLineWithoutCost False $ styleAmounts styles $
+              mixedAmount nullamt{acommodity = maybe "" id (S.lookupMin spanCommodities), aquantity = q}
+        (irrdetails, eirr) <- internalRateOfReturn styles showCashFlow prettyTables flowDetails thisSpan
+        (twrdetails, (periodTwr, annualizedTwr)) <- timeWeightedReturn showCashFlow prettyTables showAmt holdingsAt valueOn thisSpan
         let cashFlowAmt = maNegate . maSum $ map snd cashFlow
         let smallIsZero x = if abs x < 0.01 then 0.0 else x
         let spanrow irr = [ showDate b
@@ -204,73 +269,105 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
     details <> Tab.render prettyTables id id id table <> "\n"
 
 
--- One window of the TWR algorithm,
-data ActivityWindow = ActivityWindow
-  { awStart     :: Day  -- start date
-  , awEnd       :: Day  -- end date
-  , awVStart    :: Decimal -- value of investment at the start date
-  , awVEnd      :: Decimal -- value of investment at the end date
-  , awCashFlows :: [(Day, Decimal)]  -- cash flows in (awStart, awEnd]: strictly after start, up to and including end
-  } deriving (Show)
+-- | Time-weighted rate of return, computed from the investment's value at the end of each day.
+--
+-- Only end-of-day values are used, which are always well defined: the day's closing balance, valued with the prices in
+-- effect that day, whatever the order of transactions and prices within the day. Between days with cash flows, the
+-- return is the ratio of values. A day with cash flows is split in two: first the day's price changes, applied to the
+-- holdings carried over from the previous day; then the flows, as if made at the day's closing prices, with deposits
+-- counted at the start and withdrawals at the end of that part (any difference between the trade prices and the
+-- closing prices is part of its return). A stretch with nothing invested earns nothing, and contributes a factor of 1.
+-- All returns are chained.
+--
+-- Cash flows are measured from the investment's side (see investmentCashFlows), so that they always agree with the
+-- changes in its value.
+timeWeightedReturn showCashFlow prettyTables showAmt holdingsAt valueOn (OneSpan begin end _valueBeforeAmt _valueAfterAmt cashflows _pnls) = do
+  let
+    lastDay      = addDays (-1) end
+    valueAt d    = unMix $ valueOn d $ holdingsAt d
 
-timeWeightedReturn _styles showCashFlow prettyTables investmentsQuery trans mixedAmountValue pDirectiveDates (OneSpan begin end _valueBeforeAmt _valueAfterAmt cashflows pnls) = do
-  let investmentPostings = concatMap (filter (matchesPosting investmentsQuery) . realPostings) trans
+    -- deposits and withdrawals on each day of the period (each transaction's flows are netted, deposits are positive)
+    flowsByDay = M.fromListWith (\(i1, o1) (i2, o2) -> (i1 + i2, o1 + o2))
+      [ (d, (max 0 f, min 0 f)) | (d, ma) <- cashflows, let f = negate (unMix ma) ]
 
-      totalInvestmentPostingsTill date = sumPostings $ filter (matchesPosting (Date (DateSpan Nothing (Just $ Exact date)))) investmentPostings
+    -- Each row is a part of the period: (begin, end, what it is, value at begin, deposits, withdrawals, value at end).
+    -- Every row's return is (value at end - withdrawals) / (value at begin + deposits) - 1 (withdrawals are negative),
+    -- or 0 when nothing was invested at the start; the time-weighted return chains them.
+    -- Stretches without cash flows get one row. A day with cash flows gets a row for its price changes (when there are
+    -- any), from the previous day's closing value to the holdings carried over at this day's prices, and a row for its
+    -- cash flows, from there to its closing value.
+    go (prevDay, prevValue) [] =
+      [ (addDays 1 prevDay, lastDay, "no cash flows", prevValue, 0, 0, valueAt lastDay) | prevDay < lastDay ]
+    go (prevDay, prevValue) ((d, (deposits, withdrawals)) : rest) =
+      let startValue = valueAt (addDays (-1) d)
+          movedValue = unMix $ valueOn d $ holdingsAt (addDays (-1) d)
+          endValue   = valueAt d
+      in [ (addDays 1 prevDay, addDays (-1) d, "no cash flows", prevValue, 0, 0, startValue) | addDays 1 prevDay <= addDays (-1) d ]
+         ++ [ (d, d, "prices", startValue, 0, 0, movedValue) | movedValue /= startValue ]
+         ++ (d, d, "cash flows", movedValue, deposits, withdrawals, endValue)
+         :  go (d, endValue) rest
 
-      -- filter span is (-infinity, date+1), which gives us effectively (-infinity, date]
-      valueAfterDate date = unMix $ mixedAmountValue end date $ totalInvestmentPostingsTill (addDays 1 date)
+    rowReturn (b, e, part, v0, dep, wdr, v1)
+      | base == 0 && final == 0 = 0
+      | base == 0 = 0  -- nothing invested at the start
+      | base < 0  = error' $ "Cannot compute the time-weighted return for "
+                    ++ T.unpack (if b == e then showDate b else showDate b <> " to " <> showDate e) ++ " (" ++ T.unpack part ++ "): "
+                    ++ "the investment's value at the start (" ++ T.unpack (showAmt v0) ++ ") plus deposits ("
+                    ++ T.unpack (showAmt dep) ++ ") is negative."
+      | otherwise = realToFrac final / realToFrac base - 1 :: Double
+      where base = v0 + dep; final = v1 - wdr
 
-  let pnlDates            = map fst pnls
-      sortedValDates      = sort . nub $ [begin, addDays (-1) end] ++ pDirectiveDates ++ pnlDates
-      cashFlowsForWindows = sortOn fst [(d, -(unMix ma)) | (d, ma) <- cashflows]
-      windows             = dbg3 "activityWindows" $
-                            segmentIntoWindows sortedValDates cashFlowsForWindows valueAfterDate
-      windowRets          = map computeWindowReturn windows
-      twr                 = dbg3 "twr" $
-                            foldl' (\acc r -> (1+acc)*(1+r)-1) 0 windowRets
-      years = fromIntegral (diffDays end begin) / 365.25 :: Double
-      periodTWR     = roundTo 2 (100 * realToFrac twr :: Decimal)
-      annualizedTWR = 100 * ((1 + twr) ** (1 / years) - 1) :: Double
+    rows    = dbg3 "twr rows" $ go (addDays (-1) begin, valueAt (addDays (-1) begin)) (M.toAscList flowsByDay)
+    returns = map rowReturn rows
+    cumulative = drop 1 $ scanl (\acc r -> (1 + acc) * (1 + r) - 1) 0 returns
+    twr     = dbg3 "twr" $ if null cumulative then 0 else last cumulative
 
-      showDecimalT = T.pack . showDecimal
-      details = if not showCashFlow then "" else
-        TL.pack (printf "\nTWR activity windows for period %s - %s\n" (showDate begin) (showDate (addDays (-1) end)))
-        <> Tab.render prettyTables T.pack id id
-          (Table
-           (Tab.Group Tab.NoLine [Header (show n) | n <- [1..length windows]])
-           (Tab.Group DoubleLine
-             [ Tab.Group Tab.SingleLine [Tab.Header "Begin", Tab.Header "End"]
-             , Tab.Group Tab.SingleLine [Tab.Header "Value (begin)",   Tab.Header "Value (end)"]
-             , Tab.Group Tab.SingleLine [Tab.Header "# flows"]
-             , Tab.Group Tab.SingleLine [Tab.Header "Return, %"]])
-           [ [ showDate (awStart w), showDate (awEnd w)
-             , showDecimalT (roundTo 8 (awVStart w))
-             , showDecimalT (roundTo 8 (awVEnd w))
-             , T.pack (show (length (awCashFlows w)))
-             , showDecimalT (roundTo 2 (realToFrac rate * 100)) ]
-           | (w, rate) <- zip windows windowRets ])
-        <> TL.pack (printf "Total period TWR: %s%%.\nPeriod: %.2f years.\nAnnualized TWR: %.2f%%\n\n"
-             (showDecimal periodTWR) years annualizedTWR)
+    years = fromIntegral (diffDays end begin) / 365.25 :: Double
+    periodTWR     = roundTo 2 (100 * realToFrac twr :: Decimal)
+    annualizedTWR = 100 * ((1 + twr) ** (1 / years) - 1) :: Double
+
+    showPercent r = T.pack (showDecimal (roundTo 2 (realToFrac r * 100 :: Decimal)))
+    details = if not showCashFlow then "" else
+      TL.pack (printf "\nTWR returns for period %s - %s\n" (showDate begin) (showDate lastDay))
+      <> Tab.render prettyTables T.pack id id
+        (Table
+         (Tab.Group Tab.NoLine [Header (show n) | n <- [1..length rows]])
+         (Tab.Group DoubleLine
+           [ Tab.Group Tab.SingleLine [Tab.Header "Begin", Tab.Header "End", Tab.Header "Part"]
+           , Tab.Group Tab.SingleLine [Tab.Header "Value (begin)", Tab.Header "Deposits", Tab.Header "Withdrawals", Tab.Header "Value (end)"]
+           , Tab.Group Tab.SingleLine [Tab.Header "Return, %", Tab.Header "Cumulative, %"]])
+         [ [ showDate b, showDate e, part
+           , showAmt v0, showAmt dep, showAmt wdr, showAmt v1
+           , showPercent r, showPercent c ]
+         | ((b, e, part, v0, dep, wdr, v1), r, c) <- zip3 rows returns cumulative ])
+      <> TL.pack (printf "Each row's return is (Value (end) - Withdrawals) / (Value (begin) + Deposits) - 1; they are chained.\n")
+      <> TL.pack (printf "Total period TWR: %s%%.\nPeriod: %.2f years.\nAnnualized TWR: %.2f%%\n\n"
+           (showDecimal periodTWR) years annualizedTWR)
 
   return (details, ((realToFrac periodTWR) :: Double, annualizedTWR))
 
-internalRateOfReturn styles showCashFlow prettyTables (OneSpan begin end valueBefore valueAfter cashFlow _pnl) = do
+internalRateOfReturn styles showCashFlow prettyTables flowDetails (OneSpan begin end valueBefore valueAfter cashFlow _pnl) = do
   let prefix = (begin, maNegate valueBefore)
 
       postfix = (end, valueAfter)
 
       totalCF = filter (maIsNonZero . snd) $ prefix : (sortOn fst cashFlow) ++ [postfix]
 
-      (dates, amts) = unzip totalCF
+      showMA = T.pack . showMixedAmountOneLineWithoutCost False . styleAmounts styles
+      -- one row per cash flow, with the transaction it comes from, between the values at the start and the end
+      -- (dated like the IRR uses them: the value at the end of the last day, on the day after it)
+      rows =
+           [ (begin, "value at the start", "", "", maNegate valueBefore) | maIsNonZero valueBefore ]
+        ++ [ (ifDate f, ifDescription f, showMA (ifCost f), showMA (ifPnl f), ifFlow f) | f <- sortOn ifDate flowDetails ]
+        ++ [ (end, "value at the end of " <> showDate (addDays (-1) end), "", "", valueAfter) | maIsNonZero valueAfter ]
       details = if not showCashFlow then "" else
-        TL.pack (printf "\nIRR cash flow for %s - %s\n" (showDate begin) (showDate (addDays (-1) end)))
+        TL.pack (printf "\nIRR cash flows for %s - %s\n" (showDate begin) (showDate (addDays (-1) end)))
         <> Tab.render prettyTables id id id
           (Table
-           (Tab.Group Tab.NoLine (map (Header . showDate) dates))
-           (Tab.Group Tab.SingleLine [Header "Amount"])
-           (map ((:[]) . T.pack . showMixedAmountOneLineWithoutCost False . styleAmounts styles) amts))
-        <> "\n"
+           (Tab.Group Tab.NoLine [ Header (showDate d) | (d, _, _, _, _) <- rows ])
+           (Tab.Group Tab.SingleLine [Header "Description", Header "Investment, at cost", Header "Profit/loss", Header "Amount"])
+           [ [desc, cost, pnl, showMA amt] | (_, desc, cost, pnl, amt) <- rows ])
+        <> "Amounts are from your point of view: what you put in is negative, what you take out (or still have) positive.\n\n"
 
   -- 0% is always a solution, so require at least something here
   case totalCF of
@@ -304,14 +401,45 @@ calculateCashFlow :: WhichDate -> [Transaction] -> Query -> CashFlow
 calculateCashFlow wd trans query =
   [ (postingDateOrDate2 wd p, pamount p) | p <- concatMap (filter (matchesPosting query) . realPostings) trans, maIsNonZero (pamount p) ]
 
-total :: [Transaction] -> Query -> MixedAmount
-total trans query = sumPostings (concatMap (filter (matchesPosting query) . realPostings) trans)
-
 unMix :: MixedAmount -> Quantity
 unMix a =
   case (unifyMixedAmount a) of
     Just a' -> aquantity a'
     Nothing -> multiCommodityError $ "Amounts could not be converted to a single commodity: " ++ show (map showAmount $ amounts a)
+
+-- | One cash flow of the investment, with the parts it is computed from (shown by --cashflow).
+data InvestmentFlow = InvestmentFlow
+  { ifDate        :: Day
+  , ifDescription :: T.Text
+  , ifCost        :: MixedAmount  -- ^ the cost of the transaction's investment postings on that date
+  , ifPnl         :: MixedAmount  -- ^ the transaction's profit and loss (gains positive)
+  , ifFlow        :: MixedAmount  -- ^ the cash flow: deposits negative, withdrawals positive
+  }
+
+-- | Drop the amounts of commodities whose quantities add up to zero (positions fully closed). Summing postings can keep
+-- these as separate amounts with different costs, which don't cancel out when valued at cost.
+dropClosedPositions :: MixedAmount -> MixedAmount
+dropClosedPositions ma = filterMixedAmount ((`S.notMember` closed) . acommodity) ma
+  where closed = M.keysSet . M.filter (== 0) $ M.fromListWith (+) [ (acommodity a, aquantity a) | a <- amounts ma ]
+
+-- | After valuation, an amount of the investment should be in the expected commodity, if we know it. If some of it is
+-- still in another commodity, there was no market price for that commodity on that date. Say so, rather than mistake
+-- its quantity for a value or report a confusing mix of commodities later.
+-- The expected commodity can differ from the one requested with --value, when nothing converts to that; mention it then.
+checkValued :: Maybe CommoditySymbol -> Maybe CommoditySymbol -> Day -> MixedAmount -> MixedAmount
+checkValued _ Nothing _ amt = amt
+checkValued requested (Just c) date amt =
+  case nub [ acommodity a | a <- amounts amt, acommodity a /= c, not (amountIsZero a) ] of
+    []       -> amt
+    unpriced -> error' $ "Could not value the investment on " ++ T.unpack (showDate date) ++ ": "
+                ++ "no market price in " ++ showc c ++ " is known for "
+                ++ intercalate ", " (map showc unpriced) ++ " on or before that date."
+                ++ (case requested of
+                      Just r | r /= c -> "\n" ++ showc r ++ " was requested with --value, but the cash flows and PnL"
+                                         ++ " are in " ++ showc c ++ ", as no market price converts them to " ++ showc r ++ "."
+                      _ -> "")
+                ++ "\nAdd a P directive, or use --infer-market-prices to also use the prices recorded in transactions."
+  where showc = T.unpack . showCommoditySymbol
 
 multiCommodityError msg = error' $ msg ++
     "\nConsider using --value to force all costs to be in a single commodity." ++
@@ -322,68 +450,3 @@ showDecimal :: Decimal -> String
 showDecimal d = if d == rounded then show d else show rounded
   where
     rounded = roundTo 2 d
-
--- segmentIntoWindows valueDates cashflows valueFunc will split cashflows into a set of
--- ActivityWindows, bracketed by some dates from valueDates. In theory, every interval
--- between valueDates should define ActivityWindow, but for performance reasons we merge
--- adjacent windows together if they don't contain any cashflows.
--- Precondition: valueDates must be strictly increasing (no duplicates); duplicate dates
--- produce zero-length windows and a divide-by-zero in windowNPV.
-segmentIntoWindows :: [Day] -> [(Day, Decimal)] -> (Day -> Decimal) -> [ActivityWindow]
-segmentIntoWindows []         _   _       = []
-segmentIntoWindows [_]        _   _       = []
-segmentIntoWindows (startDate:rest) cashflows valueAt = go startDate rest cashflows
-  where
-    go _  []     _    = []
-    go s  [d]    cfs_ =
-      let (here, _) = span (\(cd,_) -> cd <= d) cfs_
-          -- cd > s: CFs on s are already in awVStart (valueAfterDate s); including
-          -- them here would double-count. They earn zero return as end-boundary CFs
-          -- in the preceding window.
-          inside    = filter (\(cd,_) -> cd > s) here
-      in [ActivityWindow s d (valueAt s) (valueAt d) inside]
-    go s  (d:ds) cfs_ =
-      let (here, later) = span (\(cd,_) -> cd <= d) cfs_
-          -- cd > s: same reasoning as above
-          inside        = filter (\(cd,_) -> cd > s) here
-      in if null inside
-         then case ds of
-                (d2:ds2) ->
-                  let (here2, later2) = span (\(cd,_) -> cd <= d2) later
-                      inside2         = filter (\(cd,_) -> cd > d) here2
-                  in if null inside2
-                     then go s (d2:ds2) later   -- next window does not have cash flows: compress (skip d)
-                     else ActivityWindow s d (valueAt s) (valueAt d) []
-                          : ActivityWindow d d2 (valueAt d) (valueAt d2) inside2
-                          : go d2 ds2 later2
-         else ActivityWindow s d (valueAt s) (valueAt d) inside
-              : go d ds later
-
--- Compute Net Present Value of the ActivityWindow given discount rate r
-windowNPV :: ActivityWindow -> Double -> Double
-windowNPV w r =
-  let d       = fromIntegral (awEnd w `diffDays` awStart w)
-      vsTerm  = -(realToFrac (awVStart w)) * r
-      cfTerms = sum [ -(realToFrac cf)
-                      * r ** (fromIntegral (awEnd w `diffDays` t) / d)
-                    | (t, cf) <- awCashFlows w ]
-      veTerm  = realToFrac (awVEnd w)
-  in vsTerm + cfTerms + veTerm
-
-windowIRR :: ActivityWindow -> Double
-windowIRR w =
-  either error' id (solveIRR (windowNPV w)
-    ("Cannot compute window IRR for "
-     ++ T.unpack (showDate (awStart w)) ++ " - " ++ T.unpack (showDate (awEnd w)) ++ ".\n"
-     ++ "  Possible cause: investment balance becomes negative within this window.")
-    ("Window IRR search did not converge for "
-     ++ T.unpack (showDate (awStart w)) ++ " - " ++ T.unpack (showDate (awEnd w)) ++ "."))  -- PARTIAL:
-  - 1
-
-computeWindowReturn :: ActivityWindow -> Double
-computeWindowReturn w
-  | null (awCashFlows w) =
-      if awVStart w == 0 then 0
-      else realToFrac (awVEnd w / awVStart w) - 1
-  | awVStart w == 0, all ((== awEnd w) . fst) (awCashFlows w) = 0  -- zero starting value and all flows on the end date: 0% return, IRR is undefined
-  | otherwise = windowIRR w

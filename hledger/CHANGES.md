@@ -12,6 +12,52 @@ User-visible changes in the hledger command line tool and library.
 
 # 7acb6aed
 
+## Reports
+
+- roi: TWR is now computed from the investment's value at the end of each day.
+  Computing TWR exactly needs the investment's value immediately before or after each cash
+  flow, which hledger can't determine reliably when several transactions, prices or balance
+  assignments fall on the same day ([#2420]). The previous version avoided that with the BAI
+  linked IRR method: it used values only on dates with a recorded valuation (price directives
+  and --pnl transactions), and between them estimated the return by solving for a constant
+  growth rate. That was better, but deciding which dates count as valuations turned out to be
+  fiddly and error-prone ([#2824], [#2825]), and solving could fail. Using end-of-day values
+  is the next step in the same direction: the value at the end of a day is always well
+  defined, whatever happens within the day, so TWR can now be computed exactly at a daily
+  granularity, with no valuation dates to choose and nothing to solve.
+  A day with cash flows is split in two: the day's price changes on the holdings carried over
+  from the previous day, then the cash flows, as if made at the day's closing prices. Times
+  with nothing invested earn nothing (eg before the first deposit), and periods chain exactly.
+  TWR results change for most journals with cash flows between valuations. If you record
+  changes in value only occasionally (eg with --pnl transactions), the growth is now
+  attributed to the day you record it, so record a valuation around large deposits and
+  withdrawals. See the roi docs, which also explain how to check the results with --cashflow.
+  (Dmitry Astapov, [#2824])
+
+- roi: cash flows (the Cashflow column, IRR and TWR) are now measured from the investment's
+  perspective: the cost of the investment postings, minus any profit and loss in the same
+  transaction, dated like those postings. Other postings in the same transaction (eg fees,
+  unless they match --pnl) no longer change the cash flow.
+  (Dmitry Astapov)
+
+- roi: a holding with no market price is valued at the price of the investment's latest
+  purchase or sale of it, and positions fully closed before the period no longer cause
+  "could not value" errors.
+  (Dmitry Astapov)
+
+- roi: fix: the value at the end of a period was computed with prices from the day after the
+  period. Now it uses the prices of the period's last day, and each period begins with the
+  value the previous one ended with, so in multi-period reports every price change is counted
+  in exactly one period.
+  (Dmitry Astapov)
+
+- roi: fix: prices of commodities which the investment doesn't hold (eg an EUR price, for an
+  investment in dollars) no longer change its TWR.
+  (Dmitry Astapov, [#2825])
+
+[#2420]: https://github.com/hledgerorg/hledger/issues/2420
+[#2824]: https://github.com/hledgerorg/hledger/issues/2824
+[#2825]: https://github.com/hledgerorg/hledger/issues/2825
 
 
 # 1.99.5 2026-10-01

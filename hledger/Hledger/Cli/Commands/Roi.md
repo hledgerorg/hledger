@@ -38,9 +38,12 @@ Note, in some cases this report can fail, for these reasons:
   Possible causes: IRR is huge (>1000000%), balance of investment becomes negative at some point in time.
 - Error (SearchFailed): Failed to find solution for Internal Rate of Return (IRR).
   Either search does not converge to a solution, or converges too slowly.
-- Error (NotBracketed): Cannot compute window IRR.
-  Possible cause: investment balance becomes negative within that window.
-- Error (SearchFailed): Window IRR search did not converge.
+- Error: Cannot compute the time-weighted return for DATES (PART): the investment's value at the start (...) plus
+  deposits (...) is negative.
+  Possible cause: the balance of the investment becomes negative, eg more is sold than is held (a short position).
+- Error: Could not value the investment on DATE: no market price ... is known for COMMODITY on or before that date.
+  A holding has no market price, and none of the investment's transactions on or before that date records a price
+  for buying or selling it. Add a P directive for it, or record the price of its purchase.
 
 Examples:
 
@@ -106,6 +109,26 @@ match `--pnl` query. Changes in value of your investment due to
 "profit and loss" postings will be considered as part of your
 investment return.
 
+The amount of each cash flow is measured from the investment's
+perspective: it is the cost of the transaction's investment postings,
+minus any profit and loss in that transaction. Its date is the date of
+those investment postings, even if the money's posting has a different
+date (eg a settlement date). This means that other postings in the same
+transaction, such as fees, don't change the amount of the cash flow.
+
+In this example, the investment receives $100, so without `--pnl` the
+cash flow is a $100 deposit, and the $1 fee is not part of the
+investment at all. With `--pnl expenses`, the fee counts as part of the
+investment's return instead: the cash flow is a $101 deposit, of which
+$1 is immediately lost (shown as profit/loss of -$1):
+
+```journal
+2019-01-01 Buying Snake Oil, with a fee
+  assets:cash          -$101
+  expenses:fees           $1
+  investment:snake oil  $100
+```
+
 Example: if you use `--inv snake --pnl equity:unrealized`, then
 postings in the example below would be classifed as:
 
@@ -165,24 +188,112 @@ formula in Excel.
 deposit and withdrawal timing, measuring the investment's own
 performance rather than your experience of it.
 
-hledger computes TWR using the BAI (Bank Administration Institute)
-Linked IRR method. The reporting period is divided into windows at
-each date where the portfolio has a known, externally-established
-valuation - these are dates of price directives or of manual balance
-updates recorded via `--pnl` transactions. Within each window, if no
-cash flows occurred, the return is simply the ratio of ending to
-starting value. If cash flows occurred within a window, the window's
-return is found by solving for the rate that reconciles the starting
-value, the ending value, and the timing of those flows. All window
-returns are then multiplied together (geometrically chained) to give
-the TWR for the full period.
+hledger computes TWR from the value of your investment at the end of
+each day: its balance at the end of the day, valued (with `--value`)
+using the prices in effect on that day. The order of transactions and
+prices within a day doesn't matter.
 
-The accuracy of TWR depends on how many valuation dates you have
-recorded. More valuation dates mean finer windows and more precise
-results.
+- The days between two days with cash flows form one stretch, which
+  starts at the end of the earlier cash flow day and ends at the end of
+  the day before the later one. Its return is the ratio of the
+  investment's values at those two moments. For example, with cash
+  flows on March 1 and March 10, the stretch is March 2 to 9, and its
+  return is (value at the end of March 9) / (value at the end of March
+  1) - 1. (March 10 itself is a day with cash flows, handled as below.)
+- A day with cash flows is split in two parts:
+  1. The day's price changes: the return of the holdings carried over
+     from the previous day, from their value at the previous day's prices
+     to their value at this day's prices. (This part is skipped if no
+     prices changed.)
+  2. The cash flows, as if all of the day's trades were made at the
+     day's closing prices. Its return is (value at the end of the day -
+     withdrawals) / (value after part 1 + deposits) - 1, with withdrawals
+     negative. That is, the day's deposits count as invested during this
+     part, as if made at its start, and its withdrawals count as still
+     invested during it, as if made at its end. So any difference between
+     the prices you traded at and the closing prices shows up in this
+     part's return.
+- Times when nothing is invested earn nothing. That includes a day on
+  which something arrives in an empty investment only as profit and loss
+  (eg a stock grant, booked to an account matched by `--pnl`): there is
+  nothing to compute a return on, so that day's return is 0%.
+- A holding which has no market price is valued at the price of the
+  investment's latest purchase or sale of it, on or before that day (as
+  `--infer-market-prices` would do, but only from the investment's own
+  transactions, and only while no market price is known). If there are
+  several on a day, the last one recorded is used. Like any price, it
+  applies to the whole holding on that day, including what was held
+  before the trade, so a trade at a new price can show up in `--cashflow`
+  output as a "prices" row, before its cash flows. And a trade recorded
+  at zero cost (eg a gift, recorded with `@ $0`) gives a price of 0, so
+  such a holding is worth nothing until a market price is known; add a
+  P directive for it.
+
+All these returns are then multiplied together (geometrically chained)
+to give the TWR for the full period. In multi-period reports, each
+period begins with the value the previous one ended with, so the
+periods' returns chain to the total.
+
+Use `--value=then` for TWR, so that each day is valued with the prices
+of that day. With `--value=end`, `--value=now` or `--value=DATE`, all
+the values in a period use the same prices, so its TWR only reflects
+recorded profit and loss and the differences between the prices you
+traded at and those prices. With `--value=end`, each period is also
+valued with its own end's prices, so the periods' returns don't chain
+to the total.
+
+TWR can only be as good as the values your journal gives for each day.
+If you record changes in value only occasionally (with `--pnl`
+transactions, or with sparse price directives), the growth since the
+previous record is attributed to the day you record it, and so is
+counted on whatever was invested on that day. If you made a large
+deposit or withdrawal in between, that can make TWR quite different from
+what it would be if the growth had been spread out. So record a
+valuation around large deposits and withdrawals (professional
+performance standards require this too), or use price directives, or
+`--infer-market-prices` if your transactions record their prices.
 
 **In short:** TWR tells you how good the investment was; IRR tells you
 how good your experience of the investment was.
+
+### Checking the results
+
+`--cashflow` shows everything that IRR and TWR are computed from, so
+that you can check them against your journal, against other hledger
+reports, or in a spreadsheet:
+
+- **IRR cash flows**: one row per cash flow, with the transaction's
+  description, the cost of its investment postings, and its profit or
+  loss, between the investment's value at the start and its value at
+  the end (dated the day after the period's last day, since it is the
+  value at the end of that day). Amounts are from your point of view:
+  what you put in is negative, what you take out or still have is
+  positive. The dates and amounts can be given to Excel's `=XIRR` as
+  they are.
+
+- **TWR returns**: one row for each stretch without cash flows, and for
+  each day with cash flows, a row for its price changes (if any) and a
+  row for its cash flows. Each row's Value (begin) is the previous
+  row's Value (end), and each row's return is
+
+  (Value (end) - Withdrawals) / (Value (begin) + Deposits) - 1
+
+  where withdrawals are negative. The Cumulative column chains the
+  returns by multiplication: each row's (1 + Cumulative) is the
+  previous row's (1 + Cumulative) times (1 + Return). Its last row is
+  the period's TWR.
+
+The values can be checked with `hledger balance`: the value at the end
+of a day D is the investment's historical balance at the end of that
+day, valued then. For example, with `--value=then,$`:
+
+```cli
+$ hledger balance --historical --value=end,$ -e D+1 INVESTMENTQUERY
+```
+
+(where `D+1` is the day after D). Holdings which have no market price
+are the exception, as `roi` values them at the price of their latest
+purchase or sale.
 
 **When each matters**
 
