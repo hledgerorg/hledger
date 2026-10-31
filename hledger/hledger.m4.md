@@ -7078,6 +7078,10 @@ For this, use the `--ignore-lots` flag, or just `-I`.
 This skips lot tracking, capital gains calculation, and all lot error
 checking, while still doing enough lot inference that lot entries
 balance as usual.
+Reports then show no lot subaccounts or gains, and `print` shows lot entries
+as you wrote them, without inferred cost basis annotations or gain postings
+(explicit annotations are kept, and may not be readable by hledger 1;
+if that's needed, use `-O ledger` to write them in Ledger's syntax, which hledger 1 accepts and ignores).
 
 ## Lot movements
 

@@ -189,7 +189,7 @@ inputflags = [
     , "In hledger-ui, also make future-dated transactions visible at startup."
     ])
   ,flagNone ["ignore-assertions"] (setboolopt "ignore-assertions") "don't check balance assertions by default"
-  ,flagNone ["ignore-lots"]       (setboolopt "ignore-lots")       "don't do lot tracking or checking by default"
+  ,flagNone ["ignore-lots"]       (setboolopt "ignore-lots")       "don't track lots: skip lot checks, inferred cost bases and gain postings"
   ,flagNone ["I"]                 (setboolopt "ignore-assertions" . setboolopt "ignore-lots")
                                   "shortcut for --ignore-assertions --ignore-lots"
   ,flagReq  ["txn-tolerance"] (\s opts -> Right $ setopt "txn-tolerance" s opts) "..." (unlines [

@@ -171,7 +171,7 @@ Lot entries are printed with their inferred cost basis annotations, so they can 
 without the commodity's `lots:` declaration when the default cost basis method is used;
 but with other methods, or `lots: NONE` accounts, the missing declarations will change how they are read.
 (`--export` output keeps lot entries as written, since it reproduces the declarations.)
-To suppress errors from these, we often use the `-I` flag (short for `--ignore-assertions --ignore-lots`.
+To suppress errors from these, we often use the `-I` flag (short for `--ignore-assertions --ignore-lots`).
 So any time you are reading from standard input with `-f-`, consider adding `-I` also.
 
 ### print export mode
