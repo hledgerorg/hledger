@@ -199,6 +199,10 @@ Count charts (`pnCounts`) instead cap text at one cell per unit when no SCALE is
   (eg in bcexample's bs) got a categorical colour while the USD panel's assets were blue. A lone account got a categorical colour too,
   which looked arbitrary; hence the "single" colouring. Always using type hues was rejected: 4 tints (2 shades in basic ANSI)
   can't tell apart a one-type chart's accounts.
+- Single-period charts keep type hues even when all accounts are of one type: each account is its own bar, labelled on the axis,
+  so colour isn't needed to identify it, and stays free to show the type (as in mixed-type single-period charts).
+  Colouring each bar by name would add colour that encodes nothing; in multi-period charts accounts are unlabelled stacked segments,
+  so there colour (with the legend) is what identifies them.
 - The name hash was plain FNV-1a at first: its last character (the slot number) was poorly mixed, giving only a few dozen orders of
   preference, so colours collided more often than chance; murmur3's finaliser fixed that.
 - Tints and fill characters were chosen without bias at first; the pale tints looked washed out, and the stippled characters
@@ -246,6 +250,9 @@ Count charts (`pnCounts`) instead cap text at one cell per unit when no SCALE is
 ## Possible future work
 
 - html: include the chart by default ?
+- truecolor/SVG categorical colours include red (`#e34948`, the palette's 8th slot) and orange/amber/green/blue,
+  so in a single-type chart (eg `bal type:A -M --chart`) an account can look like an expense, or another type.
+  Basic ANSI categorical colours avoid red; should the truecolor ones too (and avoid the type hues generally) ?
 - hledger-ui integration, a chart toggle ?
 - repeatable `-o`, for several outputs at once (see Decisions)
 - update hledger-bar doc, charts page
