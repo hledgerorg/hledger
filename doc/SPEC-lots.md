@@ -215,6 +215,8 @@ That is, two or three parts inside curly braces:
 with a comma and space between them.
 When parsing, spaces inside the braces and around the commas are optional and ignored.
 This is similar to Beancount's lot syntax, except it requires DLC order (date, label, cost) and it supports hledger's flexible amount syntax.
+The fixed order is what makes parsing unambiguous: dates and labels have rigid shapes, but a cost can contain commas (decimal or digit group marks), spaces (digit group marks) and quoted commodity symbols, so it must come last, extending to the closing brace.
+Parts written out of order (eg `{$50, "note"}`) are rejected with an error mentioning the required order.
 
 Partial lot names are also used; these have some or all of the parts missing.
 {} is a lot name/cost basis annotation with all parts missing.

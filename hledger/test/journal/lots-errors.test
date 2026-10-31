@@ -712,3 +712,33 @@ commodity AAPL ; lots:
 $ hledger -f- check
 >2 /This transfer-from posting has amounts in several commodities/
 >=1
+
+# ** 32. Cost basis annotation parts must be in date, label, cost order.
+# A part following the cost gives a hint about the order.
+<
+2026-01-01 buy
+    assets:a    10 AAPL {$50, "lot 1"}
+    assets:checking
+$ hledger -f- check
+>2 /cost basis parts must be in this order \(if present\): \{DATE, "LABEL", COST\}/
+>=1
+
+# ** 33. Likewise a date following the label.
+<
+2026-01-01 buy
+    assets:a    10 AAPL {"lot 1", 2026-01-01, $50}
+    assets:checking
+$ hledger -f- check
+>2 /cost basis parts must be in this order \(if present\): \{DATE, "LABEL", COST\}/
+>=1
+
+# ** 34. Lot subaccount names must use the same order; out of order parts get the same hint.
+<
+commodity AAPL ; lots:
+
+2026-01-01 buy
+    assets:a:AAPL:{$50, "lot 1"}    10 AAPL
+    assets:checking
+$ hledger -f- check
+>2 /lot name parts must be in this order \(if present\): \{DATE, "LABEL", COST\}: \{\$50, "lot 1"\}/
+>=1

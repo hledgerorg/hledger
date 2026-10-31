@@ -1576,6 +1576,10 @@ lotcostp postingqty =
     '=' -> ledgerCost
     '"' -> consolidatedNoDate
     _   -> tryDateOrLedger
+  -- A comma, quote or digit here means another part follows the cost,
+  -- ie the parts are out of order; say so, rather than "expecting '}'".
+  mnext <- optional $ lookAhead anySingle
+  when (maybe False startsAnotherPart mnext) wrongOrderError
   char '}'
   when doublebrace $ void $ char '}'
   pure $ if doublebrace then mapCbCost convertToUnitCost cb else cb
@@ -1583,14 +1587,24 @@ lotcostp postingqty =
     -- Apply a function to the cost amount, if any, of a CostBasis.
     mapCbCost f (CostBasis md ml mc) = CostBasis md ml (fmap f mc)
 
+    startsAnotherPart c = c == ',' || c == '"' || isDigit c
+
+    wrongOrderError = do
+      off <- getOffset
+      customFailure $ parseErrorAt off
+        "cost basis parts must be in this order (if present): {DATE, \"LABEL\", COST}"
+
+    -- Does a date (YYYY-D...) come next ?
+    looksLikeDatep = option False $ lookAhead $ try $
+      count 4 digitChar >> char '-' >> digitChar >> pure True
+
     -- The inner parsers below leave the closing }(}) for the outer parser.
 
     tryDateOrLedger = do
       -- Does input look like a date (YYYY-D...) ? If so, commit to consolidated
       -- date parsing (no try), so invalid dates give clear errors instead of
       -- falling through to the amount parser with a confusing message.
-      looksLikeDate <- option False $ lookAhead $ try $
-        count 4 digitChar >> char '-' >> digitChar >> pure True
+      looksLikeDate <- looksLikeDatep
       if looksLikeDate
         then do
           d <- datep
@@ -1606,10 +1620,14 @@ lotcostp postingqty =
       pure $ CostBasis (Just d) mlabel mcost
 
     consolidatedNoDate = do
-      -- parse "LABEL", then optional ", COST"
+      -- parse "LABEL", then optional ", COST" (a date here is out of order)
       mlabel <- Just <$> quotedLabelp
       lift skipNonNewlineSpaces
-      mcost <- optional $ char ',' >> lift skipNonNewlineSpaces >> simpleamountp OrdinaryAmount <* lift skipNonNewlineSpaces
+      mcost <- optional $ do
+        char ',' >> lift skipNonNewlineSpaces
+        looksLikeDate <- looksLikeDatep
+        when looksLikeDate wrongOrderError
+        simpleamountp OrdinaryAmount <* lift skipNonNewlineSpaces
       pure $ CostBasis Nothing mlabel mcost
 
     quotedLabelp = do

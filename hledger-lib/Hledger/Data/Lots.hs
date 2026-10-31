@@ -420,7 +420,18 @@ parseLotName parseAmt t = do
           | otherwise = case parseAmt (T.unpack p) of
               Just amt -> go ps d l (Just amt)
               Nothing  -> Left $ fromMaybe ("invalid lot name: " ++ T.unpack p)
-                                           (missingDateCommaHint p)
+                                           (missingDateCommaHint p <|> wrongOrderHint p)
+
+        -- If the cost part starts with a date, or is followed by a comma and
+        -- something date- or label-like, the parts are out of order
+        -- (eg @{$10, "note"}@ or @{"note", 2026-01-15, $10}@).
+        wrongOrderHint :: Text -> Maybe String
+        wrongOrderHint p
+          | isDatePart (T.take 10 p)
+            || any startsAnotherPart (map (T.stripStart . T.drop 1) $ filter ("," `T.isPrefixOf`) $ T.tails p)
+          = Just $ "lot name parts must be in this order (if present): {DATE, \"LABEL\", COST}: " ++ T.unpack t
+          | otherwise = Nothing
+          where startsAnotherPart s = "\"" `T.isPrefixOf` s || isDatePart (T.take 10 s)
 
         -- If a part starts with what looks like a date but no comma followed,
         -- the user probably forgot the comma (eg @{2026-01-15 $10}@). Show a
