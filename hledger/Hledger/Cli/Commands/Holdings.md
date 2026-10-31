@@ -101,12 +101,12 @@ The percent columns (Weight, UGain%, XIRR) are shown with the display style conf
 
 Query arguments and report flags like `--depth`, `-S/--sort-amount`, `--title` etc. work as usual.
 
-With `-t/--tree`, positions are grouped into account sections:
+With `-t/--tree`, holdings are grouped into account sections:
 an account with subaccounts or several commodities becomes a heading row,
 showing its subtree's totals computed like the totals row,
-with its own positions beneath it named by their commodity;
+with its own holdings beneath it named by their commodity;
 an account holding one commodity with no subaccounts is a single combined row;
-and with `--lots`, each position's lots appear beneath it.
+and with `--lots`, each holding's lots appear beneath it.
 Boring parent accounts are squashed into their child as usual
 (considering only accounts with holdings), unless `--no-elide` is used.
 
