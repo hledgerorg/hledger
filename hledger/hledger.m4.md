@@ -1688,7 +1688,7 @@ But a few declarations reach all file trees ("all files" in the table below):
 
 - Account declarations, including account types and display order.
 - Commodity declarations, including display styles. If file trees declare a commodity's display style differently,
-  the last one is used, with a warning.
+  the last one is used.
 - Payee and tag declarations.
 - [`P`](#p-directive) market prices, used for valuation.
 - [Commodity aliases](#commodity-aliases), but only for valuation, and only as a last resort:
@@ -2295,7 +2295,7 @@ its display style (if it has one) replaces the earlier style,
 its tags take precedence over the earlier tags,
 and its [aliases](#commodity-aliases) are added to the earlier aliases.
 ("Later" means later in the order hledger reads them: through each file and its included files, then the next `-f` file.)
-hledger warns if files read with `-f` declare different display styles.
+`--debug=1` shows any commodities which files read with `-f` declare with different display styles.
 
 ### Commodity tags
 

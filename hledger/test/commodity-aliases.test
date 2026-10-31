@@ -502,10 +502,10 @@ $ hledger -f- check
 $ hledger -f commodity-aliases/savings.journal -f commodity-aliases/usage.journal bal -X Mt -N
                 2 Mt  a
                -1 Mt  b
->2 /different display styles/
 
-# ** 41. If the files declare different display styles, the last file's is used, as in a single file, with a warning.
-$ hledger -f commodity-aliases/usage.journal -f commodity-aliases/savings.journal bal -N
+# ** 41. If the files declare different display styles, the last file's is used, as in a single file.
+# --debug=1 shows the differing declarations.
+$ hledger -f commodity-aliases/usage.journal -f commodity-aliases/savings.journal bal -N --debug=1
          2,000.00 kt  a
         -1,000.00 kt  b
 >2 /commodity kt is declared with different display styles; using the last:
@@ -557,14 +557,12 @@ P 0000-01-01 kt 0.001 Mt  ; commodity alias
 P 0000-01-01 kt 0.1 users  ; commodity alias
 P 0000-01-01 Mt 1,000.000 kt  ; commodity alias
 P 0000-01-01 users 10.0 kt  ; commodity alias
->2 /different display styles/
 
 # ** 47. With --locations, it shows the commodity directive which declared each alias
 # (even when the commodity was declared again later).
 $ hledger -f commodity-aliases/usage.journal -f commodity-aliases/savings.journal prices --show-aliases --locations
 > /Mt  ; commodity alias, location: .*commodity-aliases\/usage.journal:2
 .*users  ; commodity alias, location: .*commodity-aliases\/savings.journal:2/
->2 /different display styles/
 
 # ** 48. Only alias rates which can be used are shown: not those between commodities with a market price between them.
 <

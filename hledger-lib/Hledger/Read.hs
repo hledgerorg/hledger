@@ -141,7 +141,7 @@ import "mtl" Control.Monad.Except (ExceptT(..), runExceptT, liftEither)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Default (def)
 import Data.Foldable (asum)
-import Data.List (union)
+import Data.List (intercalate, union)
 import Data.List.NonEmpty (nonEmpty, NonEmpty((:|)))
 import Data.Containers.ListUtils (nubOrd)
 import Data.Map qualified as M
@@ -398,7 +398,7 @@ readJournalFiles iopts@InputOpts{strict_, new_, new_save_} prefixedfiles = do
 readJournalFilesAndLatestDates :: InputOpts -> [PrefixedFilePath] -> ExceptT String IO (Journal, [LatestDatesForFile])
 readJournalFilesAndLatestDates iopts pfs = do
   (js, lastdates) <- unzip <$> mapM (readJournalFileAndLatestDates iopts) pfs
-  mapM_ warnIO $ commodityStyleConflicts js
+  mapM_ dbg1MsgIO $ commodityStyleConflicts js
   let j = combineCommodityDeclarations js $ maybe def sconcat $ nonEmpty js
   return (journalNumberAndTieTransactions j, catMaybes lastdates)
 
@@ -411,11 +411,12 @@ combineCommodityDeclarations js j = j{
   ,jdeclaredcommoditytags = M.unionsWith union $ reverse $ map jdeclaredcommoditytags js
   }
 
--- | Warnings for commodities declared with different display styles in different file trees.
--- When journals are combined, the last file tree's declared style is used (see 'combineCommodityDeclarations').
+-- | Debug messages for commodities declared with different display styles in different file trees.
+-- When journals are combined, the last file tree's declared style is used (see 'combineCommodityDeclarations'),
+-- as for a repeated declaration within one file tree, so this is not a warning.
 commodityStyleConflicts :: [Journal] -> [String]
 commodityStyleConflicts js =
-  [ unlines $ ("commodity " <> T.unpack sym <> " is declared with different display styles; using the last:")
+  [ intercalate "\n" $ ("commodity " <> T.unpack sym <> " is declared with different display styles; using the last:")
             : [ "  " <> sourcePosFileLine (csourcepos c) <> ": " <> showAmount nullamt{acommodity=sym, aquantity=1000, astyle=st}
               | c <- cs, Just st <- [cformat c] ]
   | (sym, cs) <- M.toList declsBySymbol
