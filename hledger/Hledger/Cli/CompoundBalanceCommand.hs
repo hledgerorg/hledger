@@ -44,7 +44,7 @@ import Text.Tabular.AsciiWide as Tabular hiding (render)
 import Hledger.Utils.I18n qualified as I18n
 import Hledger
 import Hledger.Cli.Anchor (LinkOpts(..), headerDateSpanCell)
-import Hledger.Cli.Chart (chartFlag, chartRequested, chartWidthFlag, compoundBalanceReportAsChart, writeChart)
+import Hledger.Cli.Chart (compoundChartFlag, chartRequested, chartWidthFlag, compoundBalanceReportAsChart, writeChart)
 import Hledger.Cli.Commands.Balance
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils (unsupportedOutputFormatError, writeOutputLazyText, warnIfLargeMultiPeriodReport)
@@ -129,7 +129,7 @@ compoundBalanceCommandMode CompoundBalanceCommandSpec{..} =
     ,outputFormatFlag ["txt","html","csv","tsv","json","svg"]
     ,outputFileFlag
     ,outputViewFlag
-    ,chartFlag
+    ,compoundChartFlag
     ,chartWidthFlag
 
     ])

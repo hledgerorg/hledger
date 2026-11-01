@@ -10,6 +10,7 @@ so that charts just work without configuration (see doc/SPEC-charts.md, "Smart d
 
 module Hledger.Cli.Chart (
   chartFlag,
+  compoundChartFlag,
   chartWidthFlag,
   chartRequested,
   chartAsTextForOpts,
@@ -62,11 +63,21 @@ import Text.Blaze.Html5.Attributes qualified as A
 chartKinds :: [String]
 chartKinds = ["auto", "diverging", "grouped"]
 
--- | The --chart[=KIND,SCALE] option, for commands that can show a chart.
+-- | The --chart[=SCALE] option, for commands that can show a chart.
+-- It also accepts a KIND, like 'compoundChartFlag', but it is ignored, so not mentioned.
 chartFlag :: Flag RawOpts
-chartFlag = flagOpt "auto" ["chart"] setchart "KIND,SCALE"
-  ("show a chart instead of the report table (with txt output), a chart above the table (with html output), or the chart's data (with csv, tsv or json output). svg output always shows a chart. "
-  ++ "KIND can be: auto (the default), or for compound reports grouped (sections side by side; the default for changes) or diverging (sections in one bar, above and below zero; the default for end balances). SCALE fixes the chart's scale, so that charts can be compared: it is the amount that fills the chart (eg 1000, or 1000 USD to set it for one commodity's chart; several can be given). Larger amounts are clipped.")
+chartFlag = chartFlagWith "SCALE" ""
+
+-- | The --chart[=KIND,SCALE] option, for compound balance commands, whose sections a chart can arrange.
+compoundChartFlag :: Flag RawOpts
+compoundChartFlag = chartFlagWith "KIND,SCALE"
+  "KIND: grouped (sections side by side) or diverging (above and below zero). "
+
+chartFlagWith :: String -> String -> Flag RawOpts
+chartFlagWith metavar kindhelp = flagOpt "auto" ["chart"] setchart metavar $
+  "show a chart: instead of the table (txt), above it (html), or as data (csv, tsv, json). "
+  ++ kindhelp
+  ++ "SCALE: the amount that fills the chart (eg 1000 or 1000 USD; one per commodity), for comparable charts."
   where
     setchart s opts = either Left (const $ Right $ setopt "chart" s opts) $ parseChartArg M.empty s
 
