@@ -84,7 +84,9 @@ and be patient while we navigate this period. In summary:
 - hledger 1.52.1 and below had no AI-assisted development.
   (Level 0, <https://www.visidata.org/blog/2026/ai/#self-assessed-ai-level-for-contributions>)
 
-- hledger 1.52.2+ contains a few small (but important) hledger-web security fixes backported from 2.x
+- hledger 1.52.2+ contains a few small (but important) hledger-web 
+  [security](https://hledger.org/relnotes.html#hledger-web-1522)
+  [fixes](https://hledger.org/relnotes.html#hledger-web-1523) backported from 2.x
   (Level 2-4)
 
 - hledger 2 uses careful AI-assisted development (Level 5).
