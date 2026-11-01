@@ -16,7 +16,7 @@ API/developer-ish changes in hledger-lib.
 For user-visible changes, see the hledger package changelog.
 
 
-# e773997a
+# 1.99.6 2026-11-01
 
 API changes. For user-visible changes, see the hledger, hledger-ui and hledger-web changelogs.
 
