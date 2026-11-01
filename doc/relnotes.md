@@ -167,11 +167,11 @@ In brief; each is described more fully in its section below.
 - In CSV rules, a hledger field's value can now be referenced in value assignments.
   This means you can now append to a comment, building it up from several if rules.
 
-- CSV rules now can transform values by calling functions in `%{...}` expressions;
+- CSV rules now can transform values by calling [functions](/1.99.6/hledger.html#functions) in `%{...}` expressions;
   upper, lower, capitalize, trim, negate, abs, concat, default, replace, substr, join are supported.
   Eg `%{capitalize(%desc)}`, `%{default(%payee, %desc)}`, `%{replace(%desc, "ref#[0-9]+", "")}`, `%{join(", ", %note, %ref)}`.
 
-- In CSV rules, if tables use a new `ifs` keyword, which allows aligning their delimiters (`if` still works).
+- In CSV rules, if tables use a new [`ifs`](/1.99.6/hledger.html#ifs) keyword, which allows aligning their delimiters (the old `if<DELIMITER>...` still works).
   The header line can have spaces around field names, spaces around values are ignored, and a blank value no longer assigns that field.
   Error messages say "if rule" and "ifs table", and are worded more clearly.
 
@@ -307,7 +307,7 @@ In brief; each is described more fully in its section below.
 
 #### Charts
 
-- hledger now has easy charting built in. Most reports can be shown as charts, with `--chart`.
+- hledger now has easy [charting](charts.md) built in. Most reports can be shown as charts, with `--chart`.
   In the terminal, these will be bar charts, using colour and Unicode block characters when supported.
   Charts adapt to the report options and data, showing subperiods, stacked bars, net amount/end balance marks,
   contra amounts hatched, largest amounts prioritised, totals/averages, etc.
