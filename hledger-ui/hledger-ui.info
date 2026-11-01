@@ -193,7 +193,7 @@ General help flags:
      --color=YNA --colour   use ANSI color ? y/yes, n/no, or auto (default)
      --lang=LANG            select the user interface language:
                             en (default), de, es, fr, ga, haw, it, ja, pt-BR,
-                            ru, zh, or auto
+                            ru, uk, zh, or auto
 
    With hledger-ui, the '--debug' option sends debug output to a
 'hledger-ui.log' file in the current directory.
@@ -593,23 +593,23 @@ noticeable pause, during which the UI is unresponsive.
 Tag Table:
 Node: Top221
 Node: OPTIONS2054
-Node: MOUSE10679
-Node: KEYS11011
-Node: Navigation keys11569
-Node: Filtering keys12503
-Node: Other keys14426
-Node: SCREENS16756
-Node: Menu screen17812
-Node: Cash accounts screen18128
-Node: Balance sheet accounts screen18489
-Node: Income statement accounts screen18825
-Node: All accounts screen19210
-Node: Register screen19573
-Node: Transaction screen22016
-Node: Error screen23175
-Node: WATCH MODE23732
-Node: ENVIRONMENT24769
-Node: BUGS25168
+Node: MOUSE10683
+Node: KEYS11015
+Node: Navigation keys11573
+Node: Filtering keys12507
+Node: Other keys14430
+Node: SCREENS16760
+Node: Menu screen17816
+Node: Cash accounts screen18132
+Node: Balance sheet accounts screen18493
+Node: Income statement accounts screen18829
+Node: All accounts screen19214
+Node: Register screen19577
+Node: Transaction screen22020
+Node: Error screen23179
+Node: WATCH MODE23736
+Node: ENVIRONMENT24773
+Node: BUGS25172
 
 End Tag Table
 

@@ -398,7 +398,7 @@ Options
                  --color=YNA --colour   use ANSI color ? y/yes, n/no, or auto (default)
                  --lang=LANG            select the user interface language:
                                         en (default), de, es, fr, ga, haw, it, ja, pt-BR,
-                                        ru, zh, or auto
+                                        ru, uk, zh, or auto
 
      Usually hledger accepts any unambiguous flag prefix, eg you can write --dry
      instead of --dry-run.
@@ -10436,16 +10436,16 @@ Languages
             # ~/.config/hledger/hledger.conf
             --lang de
 
-     Currently  German  (de),  Spanish  (es),  French (fr), Irish (ga), Hawaiian
-     (haw), Italian (it), Japanese (ja), Brazilian Portuguese  (pt-BR),  Russian
-     (ru)  and  Simplified Chinese (zh, also selected by zh_CN or zh-Hans) cata-
-     logs are built in.  Catalogs are gettext PO files, which the usual transla-
-     tion tools can edit.  hledger also looks for catalogs in the locale  subdi-
-     rectory  of its config directory (~/.config/hledger/locale/LANG.po on unix,
-     %APPDATA%\hledger\locale\LANG.po on windows), and merges  a  catalog  found
-     there over the built-in catalog for the same language, if any.  So a trans-
-     lator  can  work  on a new language with a released hledger, and a user can
-     adjust terminology to taste.   hledger  --write-lang=LANG  puts  a  catalog
+     Currently  Brazilian Portuguese (pt-BR), French (fr), German (de), Hawaiian
+     (haw), Irish (ga), Italian (it), Japanese (ja),  Russian  (ru),  Simplified
+     Chinese (zh, also selected by zh_CN or zh-Hans), Spanish (es) and Ukrainian
+     (uk) catalogs are built in.  Catalogs are gettext PO files, which the usual
+     translation  tools can edit.  hledger also looks for catalogs in the locale
+     subdirectory of its config directory  (~/.config/hledger/locale/LANG.po  on
+     unix,  %APPDATA%\hledger\locale\LANG.po  on  windows), and merges a catalog
+     found there over the built-in catalog for the same language, if any.  So  a
+     translator  can  work on a new language with a released hledger, and a user
+     can adjust terminology to taste.  hledger --write-lang=LANG puts a  catalog
      there  to  start from: a copy of the built-in catalog for that language, or
      for a new language, an untranslated one.  (It  won't  overwrite  a  catalog
      that  is already there.)  Contributed catalogs are welcome, and no program-
