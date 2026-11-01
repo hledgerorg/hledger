@@ -1,75 +1,98 @@
-I'm pleased to announce hledger 1.99.5, the fifth preview of hledger 2.0!
+I'm very pleased to announce hledger 1.99.6 (2.0 preview release 6).
+This is the last preview before hledger 2.0, due next month;
+by using it, you'll help make 2.0 better!
 
-hledger (https://hledger.org) is accounting software, for both
-beginners and experts, using human-readable, version-controllable,
-future-proof plain text files.  It's dependable, free, fast, friendly,
-cross-platform, double-entry, multi-currency, multi-interface,
-multi-language, GPL-licensed, and fun to use.
+(hledger is accounting software for both beginners and experts,
+using human-readable, version-controllable, future-proof plain text files.
+It's dependable, free, fast, friendly, cross-platform, double-entry,
+multi-currency, multi-interface, multi-language, GPLv3+-licensed, and fun.
+https://hledger.org)
 
+**Highlights**
 
-hledger 1.99.5 (2.0 preview release 5) brings some big improvements:
+- reports can be shown as charts in the terminal, as SVG images,
+  or in html pages
+- --view opens reports in your browser/viewer
+- run combines multiple reports into one html
+- amounts can be written as arithmetic expressions
+- CSV rules can use text processing functions
+- holdings supports report intervals, charts, and is faster
+- roi computes TWR more robustly
+- hledger-web is much more powerful, with charts, a holdings report,
+  a report options panel, and hledger-ui-like keyboard shortcuts
+- eleven UI languages: Brazilian Portuguese, Chinese, English, French,
+  German, Hawaiian, Irish, Italian, Japanese, Russian and Spanish.
 
-- the fastest hledger yet (4x faster than 1.99.4)
-- UI translations (--lang)
-- find-anywhere query (::)
-- compact transactions report
-- lossless print --export
-- CSV multi-record merge rule
-- journals can include CSV & rules files
-- simpler balancing and gains using cost basis
-- lot tracking fixes, short positions
-- hledger-ui auto-updates by default
-- hledger-web balance reports, paging, dark mode.
+For details, see the release notes:
 
-There are a few breaking changes; see the release notes.
-
-Release contributors:
-Simon Michael,
-Arthur Cinader,
-Henning Thielemann,
-Chunhui Ouyang,
-AidenTHu,
-Caleb Maclennan.
-
-- https://hledger.org/relnotes.html#2026-10-01-hledger-1995
-- https://github.com/hledgerorg/hledger/releases/tag/1.99.5
+- https://hledger.org/relnotes.html#2026-11-01-hledger-1996
+- https://github.com/hledgerorg/hledger/releases/tag/1.99.6
 - https://hledger.org/install
 
 
-And, a quick reminder of current status:
+**Release contributors**
 
-hledger 1 and 2:
-
-Both hledger 1 and 2 (the 1.99.x preview releases) are suitable for daily use.
-hledger 1 is receiving only essential fixes.
-hledger 2 preview releases are strictly better, highly compatible,
-and by using the latest you help make 2.0 better (later this year).
-
-AI use:
-
-Here is our current https://hledger.org/AI.html policy.
-If you disagree with it, please be patient while we navigate this period..
-In summary:
-
-- The official hledger tools do not have any built in AI features or use any AI while running.
-  (Some third-party addons do.)
-
-- hledger 1.52.1 and below had no AI use during development. Level 0. (https://www.visidata.org/blog/2026/ai/#self-assessed-ai-level-for-contributions)
-
-- hledger 1.52.2+ have a few small uses of AI-generated code
-  (fully-understood security fixes copied from 2.x). Level 2-4.
-
-- hledger 2 (1.99.1+) uses careful AI-assisted development. Level 5.
-  In 2026 Q2 and Q3 we used a 6-month OSS credit from Anthropic.
-  As a result, hledger is better tested, better documented,
-  more robust, more secure, and faster than ever.
+Simon Michael,
+Arthur Cinader,
+Henning Thielemann,
+Dmitry Astapov,
+Martin,
+Daniil Iaitskov,
+Diego Depaoli,
+Patrick van de Glind,
+Chunhui Ouyang.
+The amount expressions work was a bounty funded by James Shubin.
 
 
-Sponsorship
+**Translators wanted**
 
-If hledger is providing value to you or your organisation, and your
-finances allow it, you can help by becoming a https://hledger.org/sponsor.html.
+Most of the new translations are machine-made and await review by native speakers.
+hledger --write-lang=LANG gives you the po file to edit;
+see https://hledger.org/TRANSLATING.html.
 
 
-Thanks for using and contributing to hledger!
+**A reminder of current status**
+
+hledger 1 is receiving only essential fixes; the hledger 2 preview releases are
+strictly better, and normally require no changes to your hledger 1 data.
+hledger 2's goals have been:
+
+- continue and improve 1.x's reliability
+- provide excellent lot tracking and capital gains calculation
+- explore ethical use of AI as a dev tool
+- more cleanup and simplification of code, docs, process, finance
+- more speed
+- more interoperability
+- more use of jj for version management
+- easier contribution
+
+Our current AI policy is here: https://hledger.org/AI.html
+If you disagree with it, please continue enjoying hledger 1,
+and be patient while we navigate this period. In summary:
+
+- hledger, hledger-ui and hledger-web do not use AI at runtime.
+
+- hledger 1.52.1 and below had no AI-assisted development.
+  (Level 0, https://www.visidata.org/blog/2026/ai/#self-assessed-ai-level-for-contributions)
+
+- hledger 1.52.2+ contains a few small security fixes backported from 2.x
+  (Level 2-4)
+
+- hledger 2 uses careful AI-assisted development (Level 5).
+  As a result, it has become more secure, more correct, better tested, better documented,
+  and much faster.
+
+- Providing an efficient tool that AI users will use, can help reduce
+  wasteful AI computation, offsetting resource usage during development.
+  See the AI policy and usage reports for more on this:
+  https://github.com/hledgerorg/hledger/tree/main/doc/ai
+
+
+**Sponsorship**
+
+If hledger is providing value to you or your organisation, and your finances
+allow it, consider supporting this work: https://hledger.org/sponsor.html
+
+
+Thanks for using and supporting hledger!
 -Simon

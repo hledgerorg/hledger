@@ -1,0 +1,11 @@
+I'm very pleased to announce hledger 1.99.6 (2.0 preview release 6),
+the last preview before hledger 2.0, due next month.
+Built-in terminal/svg/html charts, --view, multi-report html,
+amount expressions, CSV rules functions, holdings and roi improvements,
+hledger-web power user features, eleven UI languages.
+By using it, you'll help make 2.0 better!
+
+https://hledger.org/relnotes.html#2026-11-01-hledger-1996
+https://hledger.org/install
+
+#hledger #PlainTextAccounting
