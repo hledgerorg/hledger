@@ -24,16 +24,13 @@ For package-specific changes, see the hledger package changelogs.
 
 ## Docs
 
+- updated: Upgrading, Charts, Beancount, Ledger
 - CODE: queries vs report options; report periods, intervals and date spans
 - PERFORMANCE: updated for Tackler 26.10.1; why the flat balance report is compared; measured build labelled 1.99.5
 - RELEASING: lessons from the 1.99.5 release; previews also get release notes, a manuals snapshot and announcements
 - SPEC-charts: the built-in charts' design and decisions
 - TESTS: hledger-web's server tests and browser tests compared
 - TRANSLATING, locale/README: updated for the current translation workflow and translator credits
-
-## Website
-
-- updated: Upgrading, Charts, Beancount, Ledger
 
 ## Tools/infrastructure
 
@@ -45,9 +42,6 @@ For package-specific changes, see the hledger package changelogs.
 - Justfile: recipes now recompile ./Shake when needed, avoiding stale scripts
 - Shake changelogs: skips announcement and version-bump commits
 - systemd: hledger-web service file updated (Patrick van de Glind)
-
-## AI usage
-
 - doc/ai: the journal is rewritten with all known data; usage is now imported from commits' AI usage lines; more disclosure styles are recognised;
   the README now shows usage, cost, equivalents and forecast reports; the ai just recipes moved here, run with `just ai ...`
 

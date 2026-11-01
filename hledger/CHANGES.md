@@ -13,118 +13,41 @@ User-visible changes in the hledger command line tool and library.
 
 ## Breaking changes
 
-- `alias` directives/subdirectives/tags are now applied before `apply account`, as in Ledger,
-  so that a file's aliases keep working when it is included under `apply account`.
-  If you had `apply account X` and then `alias X:foo = ...`, that alias should now be written `alias foo = ...`.
-  `--alias` options still apply last, to the full account names.
-  ([#2733])
+In brief; each is described more fully in its section below.
 
-- A repeated commodity declaration (in the same file, an included file, or another `-f` file)
-  now adds to the earlier one, instead of replacing it:
-  commodity aliases are combined, a display style replaces the earlier one only if given,
-  and later tags take precedence.
-  With several `-f` files, the last file's display style is now used (previously the first's);
-  `--debug=1` shows any that differ.
-  Redeclaring an alias with a different quantity is an error.
+- The test command is now an option, `hledger --test`.
+  (Command line)
 
-- activity now shows transactions per week by default, and uses the new chart engine (see below).
-  `--postings` counts postings, per account; `activity --postings -D -0` gives the old report.
-  It now supports `-w/--width`, `-S`, `-T`, `-A`, and svg, html, csv, tsv and json output.
+- `alias` directives are now applied before `apply account`, as in Ledger.
+  (Journal format)
 
-- holdings' tree mode now groups holdings into account sections:
-  an account with subaccounts or several commodities is a heading row showing its subtree's totals,
-  followed by its own holdings and its subaccounts.
-  Previously there was a row per account and commodity at every level, which made the tree much larger.
-  Its csv, tsv and json output is now the same as list mode's:
-  one record per holding (or lot, with `--lots`), without the heading rows.
-  (Arthur Cinader, [#2779])
+- A repeated commodity declaration now adds to the earlier one instead of replacing it,
+  and with several `-f` files the last file's display style is used, not the first's.
+  (Journal format)
 
-- In posting amounts, an unquoted commodity symbol can no longer begin with `(` when written before the number,
-  or with `/` when written after it (to avoid clashing with amount expressions, described below).
-  Eg `(A) 10` or `10 /kg` would now need to be written like `"(A)" 10` or `10 "/kg"`.
+- An unquoted commodity symbol can no longer begin with `(` before the number, or `/` after it,
+  because of the new amount expressions.
+  (Journal format)
 
-- The test command is now an option: `hledger --test[=PATTERN]` runs the built-in unit tests (or those matching PATTERN).
+- activity now shows transactions per week, as a chart; `activity --postings -D -0` gives the old report.
+  (Reports)
 
-## Charts
-
-- hledger now has easy charting built in. Most reports can be shown as charts, with `--chart`.
-  In the terminal, these will be bar charts, using colour and Unicode block characters when supported.
-  Charts adapt to the report options and data, showing stacked bars, net amount/end balance marks,
-  contra amounts hatched, largest amounts prioritised, totals/averages, etc.
-  Each commodity gets its own chart.
-  If csv, tsv or json output is selected, the chart's data is shown instead.
-
-- Charts can also be SVG images, with tooltips and light/dark variants, enabled
-  by a new svg output format (`-O svg` or `-o FILE.svg`).
-  Or, SVG charts can be added to html reports (`-o FILE.html --chart`).
-  See also `--view` and `run` below.
-  (Simon Michael, Arthur Cinader)
-
-- When colour is available, accounts are coloured by type:
-  assets blue, liabilities amber, equity violet, revenues green, expenses red.
-  In a multi-period chart whose accounts are all of one type (eg `bal --chart -M type:X`),
-  accounts get stable unique colours instead, to help distinguish them.
-
-- In compound reports like bs and is, you can override the default layout of subreport amounts
-  by writing `--chart=grouped` (side by side) or `--chart=diverging` (opposite sides of the axis).
-
-- By default, each chart uses all available space. Or you can write `--chart=SCALE` (eg `--chart=5000`)
-  to draw them at a fixed scale, allowing separate charts to be compared visually.
-  Chart layout and scale options can be combined, with the layout first, eg `--chart=grouped,5000`.
-
-## Holdings
-
-- Fixed: holdings' totals row left out the realised gains of accounts which had sold all their holdings,
-  in list mode (the default) and with `--lots`, so its RGain and XIRR could differ from tree mode or `-E`.
-  Now they always include them, as documented.
-  ([#2769])
-
-- holdings is now faster when there are many lots, eg 1.1s -> 0.3s with ~700 holdings.
-  (Arthur Cinader)
-
-- With a report interval (eg `-M`, `-Y`), holdings now shows the totals at each period end.
-
-- holdings has a chart, showing a bar per holding (or lot) with its cost basis, unrealised gain or loss,
-  and gain percentage. Or with a report interval, it shows the overall stats per period.
+- holdings' tree mode now groups holdings into account sections,
+  and its csv, tsv and json output is the same as list mode's.
+  (Holdings)
 
 ## Command line
 
 - Fixed: stats with `-o FILE` wrote only the last part of its output (the run time line) to the file.
   Now the file gets all of the output.
 
-- Fixed: `--count` reports showed counts in the journal's no-symbol commodity style (eg 1.00), rounded their averages to whole numbers,
-  and bs/bse/is showed negative counts in some sections.
-  Now counts are shown as whole numbers, averages have one decimal place, and bs/bse/is show positive counts in every section, and their sum as the net total.
-  balance `--count` reports are now titled "Posting counts".
-
 - Fixed: `print -o FILE.ledger` wrote journal format; now it selects ledger format, like `-O ledger`.
   Also print's default output format is now called "journal" ("txt" is still accepted).
 
-- Fixed: roi's TWR is now computed from the investment's value at the end of each day, exactly, at daily granularity.
-  The previous linked-IRR method's choice of valuation dates was error-prone, and its solving could fail.
-  Results change for most journals with cash flows between valuations; if you record valuations only occasionally
-  (eg with `--pnl` transactions), record one around large deposits and withdrawals.
-  Also, cash flows are now measured from the investment's perspective (other postings in the transaction, eg fees, no longer affect them),
-  a holding without a market price is valued at its cost, and `--cashflow` shows each cash flow and the TWR steps, for checking the results.
-  See the roi docs.
-  (Dmitry Astapov, [#2824], [#2825])
-
-- `--view` opens a report in the system's default viewer for the report's format.
-  It writes an output file if you did not specify one (in hledger's cache directory), and chooses html format if you did not specify that.
-  This is convenient for viewing reports, eg `hledger is -M -o is.fods --view` or `hledger is -M --chart --view`.
-  It works with print, register, aregister, the balance commands, holdings, activity and run.
-
-- `run` with `-O html`, `-o FILE.html` or `--view` now writes its commands' outputs as one combined html page,
-  with a folding section for each command, and links to show just titles, charts, or all data.
-  Eg: `hledger run --view -- is -M --chart -- bs -Q --chart`.
-
-- In html output with `--base-url`, register links now name the account with an `account` parameter,
-  can convert amounts as the report did (with `-B`/`-V`/`-X`), and work for account names containing double quotes (eg labelled lots).
-  Tree mode account cells have `depth-N` classes (the account's depth), and the row indent classes are now `indent-N` (not `depth-N`).
-  (Arthur Cinader, Simon Michael)
-
 - The quick reference card (`hledger` or `hledger help`) and commands list (`hledger help commands`)
   are reorganised and updated.
+
+- The test command is now an option: `hledger --test[=PATTERN]` runs the built-in unit tests (or those matching PATTERN).
 
 - `--help`, `--version` and `--test` now work despite config file errors,
   and config file errors say how to run without the config file (`-n`).
@@ -133,7 +56,34 @@ User-visible changes in the hledger command line tool and library.
 
 - The `--ignore-lots` help says more clearly what it skips: lot checks, inferred cost bases and gain postings.
 
-## Journal format
+- Queries like `desc:` or `::`, where the regular expression pattern is left empty, now match anything.
+  (Previously they gave an error.)
+
+## Data import
+
+- `get` now shows the getdata script's output on stderr rather than stdout,
+  and labels the helper commands it runs ("running: ...", or "would run: ..." with `--dry-run`).
+
+- When a CSV rules file's `source` command is run, the message now names the rules file responsible,
+  eg "bank.rules: running source command: CMD", distinguishing it from get's messages.
+
+- In CSV rules, a hledger field's value can now be referenced in value assignments.
+  This means you can now append to a comment, building it up from several if rules.
+
+- CSV rules now can transform values by calling functions in `%{...}` expressions;
+  upper, lower, capitalize, trim, negate, abs, concat, default, replace, substr, join are supported.
+  Eg `%{capitalize(%desc)}`, `%{default(%payee, %desc)}`, `%{replace(%desc, "ref#[0-9]+", "")}`, `%{join(", ", %note, %ref)}`.
+
+- In CSV rules, if tables use a new `ifs` keyword, which allows aligning their delimiters (`if` still works).
+  The header line can have spaces around field names, spaces around values are ignored, and a blank value no longer assigns that field.
+  Error messages say "if rule" and "ifs table", and are worded more clearly.
+
+## Journal format, accounts
+
+- Fixed: account declarations now accept the full type name, Gain (not just G).
+
+- Fixed: when several accounts were declared with the Gain (or Conversion) type,
+  generated gain and conversion postings used the alphabetically first; now they use the first declared, as documented.
 
 - Fixed: a subaccount-inclusive balance assignment like `a =* $0` could also change other commodities' balances in subaccounts.
   Now it changes only the assigned commodity.
@@ -142,33 +92,48 @@ User-visible changes in the hledger command line tool and library.
 - Fixed: `end aliases` also cancelled `--alias` options, for the rest of that file and the files it included.
   Now it cancels only the account aliases declared in the journal.
 
+- `alias` directives/subdirectives/tags are now applied before `apply account`, as in Ledger,
+  so that a file's aliases keep working when it is included under `apply account`.
+  If you had `apply account X` and then `alias X:foo = ...`, that alias should now be written `alias foo = ...`.
+  `--alias` options still apply last, to the full account names.
+  ([#2733])
+
+- check accounts (and strict mode) no longer require declaring the accounts that hledger chooses for generated postings.
+
+## Journal format, commodities
+
 - Fixed: amounts written in a commodity alias which converts inexactly (eg `10 min` to hours) could fail balance assertions
   or get inexact costs, and once converted they kept the alias's display style. Now they are exact, with the commodity's style.
 
-- Fixed: account declarations now accept the full type name, Gain (not just G).
-
-- Fixed: when several accounts were declared with the Gain (or Conversion) type,
-  generated gain and conversion postings used the alphabetically first; now they use the first declared, as documented.
-
-- We now support posting amounts written as arithmetic expressions, like `$50.20 + $16.54`, `$800.00 * 1.05` or `($92.00 + $15.00) / 3`.
-  `+`, `-`, `*`, `/` and parentheses are supported.
-  The results of `*` and `/` are rounded to the entry's decimal places.
-  See Amount expressions in the manual for full details.
-  (Martin, [#2648], a bounty funded by James Shubin)
-
-- Amounts in a commodity alias (shown eg with `-X ALIAS`, or by print) are now displayed with the canonical commodity's number format
-  (precision, decimal mark, digit groups), unless the alias has its own commodity directive.
-  (Previously they used the format of the amounts written with the alias.)
+- A repeated commodity declaration (in the same file, an included file, or another `-f` file)
+  now adds to the earlier one, instead of replacing it:
+  commodity aliases are combined, a display style replaces the earlier one only if given,
+  and later tags take precedence.
+  With several `-f` files, the last file's display style is now used (previously the first's);
+  `--debug=1` shows any that differ.
+  Redeclaring a commodity alias with a different quantity is an error.
 
 - Commodity aliases are now used as a last resort exchange rate (for `-V`, `-X`, `--value`),
   so eg `-X` can value amounts written in an alias declared by another `-f` file.
   `prices --show-aliases` lists these rates, and `--debug=2` shows when they are used.
   An alias declared differently by different files can't be used for conversion.
 
+- Amounts in a commodity alias (shown eg with `-X ALIAS`, or by print) are now displayed with the canonical commodity's number format
+  (precision, decimal mark, digit groups), unless the alias has its own commodity directive.
+  (Previously they used the format of the amounts written with the alias.)
+
+## Journal format, other
+
+- We now support posting amounts written as arithmetic expressions, like `$50.20 + $16.54`, `$800.00 * 1.05` or `($92.00 + $15.00) / 3`.
+  `+`, `-`, `*`, `/` and parentheses are supported.
+  The results of `*` and `/` are rounded to the entry's decimal places.
+  See Amount expressions in the manual for full details.
+  To avoid clashing with these, an unquoted commodity symbol can no longer begin with `(` when written before the number,
+  or with `/` when written after it; eg `(A) 10` or `10 /kg` must now be written like `"(A)" 10` or `10 "/kg"`.
+  (Martin, [#2648], a bounty funded by James Shubin)
+
 - A `date:` or `date2:` tag with an empty value in a posting comment is now accepted, setting no date.
   This helps when reading Ledger journals.
-
-- check accounts (and strict mode) no longer require declaring the accounts that hledger chooses for generated postings.
 
 ## Transaction balancing
 
@@ -209,39 +174,97 @@ User-visible changes in the hledger command line tool and library.
 - Timedot and timeclock durations are no longer rounded to 0.01 hours, so totals don't drift,
   and a timeclock session crossing midnight no longer loses a second.
 
-## Data import
+## Reports
 
-- A hledger field's value can now be referenced in value assignments.
-  This means you can now append to a comment, building it up from several if rules.
+- Fixed: roi's TWR is now computed from the investment's value at the end of each day, exactly, at daily granularity.
+  The previous linked-IRR method's choice of valuation dates was error-prone, and its solving could fail.
+  Results change for most journals with cash flows between valuations; if you record valuations only occasionally
+  (eg with `--pnl` transactions), record one around large deposits and withdrawals.
+  Also, cash flows are now measured from the investment's perspective (other postings in the transaction, eg fees, no longer affect them),
+  a holding without a market price is valued at its cost, and `--cashflow` shows each cash flow and the TWR steps, for checking the results.
+  See the roi docs.
+  (Dmitry Astapov, [#2824], [#2825])
 
-- CSV rules now can transform values by calling functions in `%{...}` expressions;
-  upper, lower, capitalize, trim, negate, abs, concat, default, replace, substr, join are supported.
-  Eg `%{capitalize(%desc)}`, `%{default(%payee, %desc)}`, `%{replace(%desc, "ref#[0-9]+", "")}`, `%{join(", ", %note, %ref)}`.
+- Fixed: `--count` reports showed counts in the journal's no-symbol commodity style (eg 1.00), rounded their averages to whole numbers,
+  and bs/bse/is showed negative counts in some sections.
+  Now counts are shown as whole numbers, averages have one decimal place, and bs/bse/is show positive counts in every section, and their sum as the net total.
+  balance `--count` reports are now titled "Posting counts".
 
-- If tables are now written with `ifs`, which allows aligning their delimiters (`if` still works).
-  The header line can have spaces around field names, spaces around values are ignored, and a blank value no longer assigns that field.
-  Error messages say "if rule" and "ifs table", and are worded more clearly.
+- activity now shows transactions per week by default, and uses the new chart engine (see below).
+  `--postings` counts postings, per account; `activity --postings -D -0` gives the old report.
+  It now supports `-w/--width`, `-S`, `-T`, `-A`, and svg, html, csv, tsv and json output.
 
-- When a CSV rules file's `source` command is run, the message now names the rules file responsible,
-  eg "bank.rules: running source command: CMD", distinguishing it from get's messages.
+- `--view` opens a report in the system's default viewer for the report's format.
+  It writes an output file if you did not specify one (in hledger's cache directory), and chooses html format if you did not specify that.
+  This is convenient for viewing reports, eg `hledger is -M -o is.fods --view` or `hledger is -M --chart --view`.
+  It works with print, register, aregister, the balance commands, holdings, activity and run.
 
-- `get` now shows the getdata script's output on stderr rather than stdout,
-  and labels the helper commands it runs ("running: ...", or "would run: ..." with `--dry-run`).
+- `run` with `-O html`, `-o FILE.html` or `--view` now writes its commands' outputs as one combined html page,
+  with a folding section for each command, and links to show just titles, charts, or all data.
+  Eg: `hledger run --view -- is -M --chart -- bs -Q --chart`.
 
-## Queries
+- In html output with `--base-url`, register links now name the account with an `account` parameter,
+  can convert amounts as the report did (with `-B`/`-V`/`-X`), and work for account names containing double quotes (eg labelled lots).
+  Tree mode account cells have `depth-N` classes (the account's depth), and the row indent classes are now `indent-N` (not `depth-N`).
+  (Arthur Cinader, Simon Michael)
 
-- Queries like `desc:` or `::`, where the regular expression pattern is left empty, now match anything.
-  (Previously they gave an error.)
+## Charts
+
+- hledger now has easy charting built in. Most reports can be shown as charts, with `--chart`.
+  In the terminal, these will be bar charts, using colour and Unicode block characters when supported.
+  Charts adapt to the report options and data, showing subperiods, stacked bars, net amount/end balance marks,
+  contra amounts hatched, largest amounts prioritised, totals/averages, etc.
+  Each commodity gets its own chart.
+  If csv, tsv or json output is selected, the chart's data is shown instead.
+
+- Charts can also be SVG images, with tooltips and light/dark variants, enabled
+  by a new svg output format (`-O svg` or `-o FILE.svg`).
+  Or, SVG charts can be added to html reports (`-o FILE.html --chart`).
+  See also `--view` and `run` below.
+  (Simon Michael, Arthur Cinader)
+
+- When colour is available, accounts are coloured by type:
+  assets blue, liabilities amber, equity violet, revenues green, expenses red.
+  In a multi-period chart whose accounts are all of one type (eg `bal --chart -M type:X`),
+  accounts get stable unique colours instead, to help distinguish them.
+
+- In compound reports like bs and is, you can override the default layout of subreport amounts
+  by writing `--chart=grouped` (side by side) or `--chart=diverging` (opposite sides of the axis).
+
+- By default, each chart uses all available space. Or you can write `--chart=SCALE` (eg `--chart=5000`)
+  to draw them at a fixed scale, allowing separate charts to be compared visually.
+  Chart layout and scale options can be combined, with the layout first, eg `--chart=grouped,5000`.
+
+## Holdings
+
+- Fixed: holdings' totals row left out the realised gains of accounts which had sold all their holdings,
+  in list mode (the default) and with `--lots`, so its RGain and XIRR could differ from tree mode or `-E`.
+  Now they always include them, as documented.
+  ([#2769])
+
+- holdings' tree mode now groups holdings into account sections:
+  an account with subaccounts or several commodities is a heading row showing its subtree's totals,
+  followed by its own holdings and its subaccounts.
+  Previously there was a row per account and commodity at every level, which made the tree much larger.
+  Its csv, tsv and json output is now the same as list mode's:
+  one record per holding (or lot, with `--lots`), without the heading rows.
+  (Arthur Cinader, [#2779])
+
+- holdings is now faster when there are many lots, eg 1.1s -> 0.3s with ~700 holdings.
+  (Arthur Cinader)
+
+- With a report interval (eg `-M`, `-Y`), holdings now shows the totals at each period end.
+
+- holdings has a chart, showing a bar per holding (or lot) with its cost basis, unrealised gain or loss,
+  and gain percentage. Or with a report interval, it shows the overall stats per period.
 
 ## Translations
 
-- hledger, hledger-ui and hledger-web can now be shown in eight more languages.
-  The German, Russian and Chinese translations have been improved and completed (the new text machine-filled, marked for review), and we now also have
-  Irish, Spanish, Italian, French, Brazilian Portuguese, Russian, Japanese, and Hawaiian.
-  Russian was contributed by Daniil Iaitskov ([#2773]), and Italian is based on Diego Depaoli's draft;
-  the rest are machine-made, and awaiting review by native speakers.
-  To help, see the mail list's call for translators, or [TRANSLATING](TRANSLATING.md).
-  (Daniil Iaitskov, Diego Depaoli, Henning Thielemann, Simon Michael)
+- hledger, hledger-ui and hledger-web can now be shown in 11 languages:
+  English, Brazilian Portuguese, Chinese, French, German, Hawaiian, Irish, Italian, Japanese, Russian and Spanish.
+  Gaps in human translations are filled by machine translations, which are marked for review.
+  Native speakers' help is welcome; see [TRANSLATING](TRANSLATING.md).
+  (Daniil Iaitskov (Russian), Diego Depaoli (Italian), Henning Thielemann (German), Simon Michael)
 
 - `hledger --write-lang=LANG` writes the current po file for a supported language,
   or a starter po file for a new language, into hledger's config directory.
@@ -254,13 +277,13 @@ User-visible changes in the hledger command line tool and library.
   With hledger's typically short account names and CSV fields there may be a small speedup;
   unusually long ones (eg regex aliases on 2000-character account names) are much faster than before.
 
-- check accounts, payees and tags are faster with many declarations
+- check accounts, check payees and check tags are faster with many declarations
   (eg 0.63s -> 0.20s with 10k transactions and 10k declared accounts).
 
 ## Examples
 
-- bcexample's beancount prices are converted to P directives, so -V works.
 - hledger.conf.sample is updated, with command-listing helpers.
+- bcexample's beancount prices are converted to P directives, so -V works.
 
 ## Docs
 
