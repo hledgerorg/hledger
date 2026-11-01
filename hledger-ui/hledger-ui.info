@@ -109,7 +109,8 @@ General input flags:
                             hledger-ui, also make future-dated transactions
                             visible at startup.
      --ignore-assertions    don't check balance assertions by default
-     --ignore-lots          don't do lot tracking or checking by default
+     --ignore-lots          don't track lots: skip lot checks, inferred cost
+                            bases and gain postings
   -I                        shortcut for --ignore-assertions --ignore-lots
      --txn-tolerance=...    how much imbalance to allow in transactions:
                             'entry':   - the entry's precision (default)
@@ -185,11 +186,14 @@ General help flags:
      --webman               show this command's manual on the web
      --examples             show examples for this command
      --version              show version information
+     --write-lang=LANG      write LANG's PO file to the config directory, for
+                            editing translations, and exit
      --debug=[1-9]          show this much debug output (default: 1)
      --pager=YN             use a pager when needed ? y/yes (default) or n/no
      --color=YNA --colour   use ANSI color ? y/yes, n/no, or auto (default)
-     --lang=LANG            language for the user interface:
-                            en (default), de, es, ru, zh, or auto
+     --lang=LANG            select the user interface language:
+                            en (default), de, es, fr, ga, haw, it, ja, pt-BR,
+                            ru, zh, or auto
 
    With hledger-ui, the '--debug' option sends debug output to a
 'hledger-ui.log' file in the current directory.
@@ -589,23 +593,23 @@ noticeable pause, during which the UI is unresponsive.
 Tag Table:
 Node: Top221
 Node: OPTIONS2054
-Node: MOUSE10427
-Node: KEYS10759
-Node: Navigation keys11317
-Node: Filtering keys12251
-Node: Other keys14174
-Node: SCREENS16504
-Node: Menu screen17560
-Node: Cash accounts screen17876
-Node: Balance sheet accounts screen18237
-Node: Income statement accounts screen18573
-Node: All accounts screen18958
-Node: Register screen19321
-Node: Transaction screen21764
-Node: Error screen22923
-Node: WATCH MODE23480
-Node: ENVIRONMENT24517
-Node: BUGS24916
+Node: MOUSE10679
+Node: KEYS11011
+Node: Navigation keys11569
+Node: Filtering keys12503
+Node: Other keys14426
+Node: SCREENS16756
+Node: Menu screen17812
+Node: Cash accounts screen18128
+Node: Balance sheet accounts screen18489
+Node: Income statement accounts screen18825
+Node: All accounts screen19210
+Node: Register screen19573
+Node: Transaction screen22016
+Node: Error screen23175
+Node: WATCH MODE23732
+Node: ENVIRONMENT24769
+Node: BUGS25168
 
 End Tag Table
 

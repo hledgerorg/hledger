@@ -100,7 +100,8 @@ General input flags:
                             hledger\-ui, also make future\-dated transactions
                             visible at startup.
      \-\-ignore\-assertions    don\(aqt check balance assertions by default
-     \-\-ignore\-lots          don\(aqt do lot tracking or checking by default
+     \-\-ignore\-lots          don\(aqt track lots: skip lot checks, inferred cost
+                            bases and gain postings
   \-I                        shortcut for \-\-ignore\-assertions \-\-ignore\-lots
      \-\-txn\-tolerance=...    how much imbalance to allow in transactions:
                             \(aqentry\(aq:   \- the entry\(aqs precision (default)
@@ -176,11 +177,14 @@ General help flags:
      \-\-webman               show this command\(aqs manual on the web
      \-\-examples             show examples for this command
      \-\-version              show version information
+     \-\-write\-lang=LANG      write LANG\(aqs PO file to the config directory, for
+                            editing translations, and exit
      \-\-debug=[1\-9]          show this much debug output (default: 1)
      \-\-pager=YN             use a pager when needed ? y/yes (default) or n/no
      \-\-color=YNA \-\-colour   use ANSI color ? y/yes, n/no, or auto (default)
-     \-\-lang=LANG            language for the user interface:
-                            en (default), de, es, ru, zh, or auto
+     \-\-lang=LANG            select the user interface language:
+                            en (default), de, es, fr, ga, haw, it, ja, pt\-BR,
+                            ru, zh, or auto
 .EE
 .PP
 With hledger\-ui, the \f[CR]\-\-debug\f[R] option sends debug output to

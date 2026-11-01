@@ -414,7 +414,8 @@ General input flags:
                             hledger\-ui, also make future\-dated transactions
                             visible at startup.
      \-\-ignore\-assertions    don\(aqt check balance assertions by default
-     \-\-ignore\-lots          don\(aqt do lot tracking or checking by default
+     \-\-ignore\-lots          don\(aqt track lots: skip lot checks, inferred cost
+                            bases and gain postings
   \-I                        shortcut for \-\-ignore\-assertions \-\-ignore\-lots
      \-\-txn\-tolerance=...    how much imbalance to allow in transactions:
                             \(aqentry\(aq:   \- the entry\(aqs precision (default)
@@ -492,11 +493,14 @@ General help flags:
      \-\-version              show version information
      \-\-test[=PATTERN]       run built\-in tests (those matching PATTERN) and
                             exit
+     \-\-write\-lang=LANG      write LANG\(aqs PO file to the config directory, for
+                            editing translations, and exit
      \-\-debug=[1\-9]          show this much debug output (default: 1)
      \-\-pager=YN             use a pager when needed ? y/yes (default) or n/no
      \-\-color=YNA \-\-colour   use ANSI color ? y/yes, n/no, or auto (default)
-     \-\-lang=LANG            language for the user interface:
-                            en (default), de, es, ru, zh, or auto
+     \-\-lang=LANG            select the user interface language:
+                            en (default), de, es, fr, ga, haw, it, ja, pt\-BR,
+                            ru, zh, or auto
 .EE
 .PP
 Usually hledger accepts any unambiguous flag prefix, eg you can write
@@ -1450,10 +1454,12 @@ Eg:
 $ hledger import bank.csv \-\-dry\-run
 .EE
 .PP
-A dry run changes nothing: it archives no data files, and does not run
-\f[CR]source\f[R] rules\(aq data generating commands (which might fetch
-from the network or have other effects).
+A dry run archives no data files and updates no \f[CR].latest\f[R]
+files.
 With \f[CR]\-g\f[R], the \f[CR]get\f[R] command does a dry run too.
+But \f[CR]source\f[R] rules\(aq data cleaning and data generating
+commands do run, since their output is needed for the preview; so these
+should be safe to repeat.
 .PP
 The dry run output is valid journal format, so hledger can re\-parse it.
 If the output is large, you could show just the uncategorised
@@ -1923,19 +1929,10 @@ Flags:
                             cache directory, and open it in the system\(aqs
                             default viewer for its format (eg a web browser for
                             html). The default format is html.
-     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
-                            txt output), a chart above the table (with html
-                            output), or the chart\(aqs data (with csv, tsv or json
-                            output). svg output always shows a chart. KIND can
-                            be: auto (the default), or for compound reports
-                            grouped (sections side by side; the default for
-                            changes) or diverging (sections in one bar, above
-                            and below zero; the default for end balances).
-                            SCALE fixes the chart\(aqs scale, so that charts can
-                            be compared: it is the amount that fills the chart
-                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
-                            chart; several can be given). Larger amounts are
-                            clipped.
+     \-\-chart[=SCALE]        show a chart: instead of the table (txt), above
+                            it (html), or as data (csv, tsv, json). SCALE: the
+                            amount that fills the chart (eg 1000 or 1000 USD;
+                            one per commodity), for comparable charts.
 .EE
 .PP
 \f[CR]aregister\f[R] shows the overall transactions affecting a
@@ -2143,19 +2140,10 @@ Flags:
                             cache directory, and open it in the system\(aqs
                             default viewer for its format (eg a web browser for
                             html). The default format is html.
-     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
-                            txt output), a chart above the table (with html
-                            output), or the chart\(aqs data (with csv, tsv or json
-                            output). svg output always shows a chart. KIND can
-                            be: auto (the default), or for compound reports
-                            grouped (sections side by side; the default for
-                            changes) or diverging (sections in one bar, above
-                            and below zero; the default for end balances).
-                            SCALE fixes the chart\(aqs scale, so that charts can
-                            be compared: it is the amount that fills the chart
-                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
-                            chart; several can be given). Larger amounts are
-                            clipped.
+     \-\-chart[=SCALE]        show a chart: instead of the table (txt), above
+                            it (html), or as data (csv, tsv, json). SCALE: the
+                            amount that fills the chart (eg 1000 or 1000 USD;
+                            one per commodity), for comparable charts.
   \-w \-\-width=N              with \-\-chart: draw the chart N characters wide
                             (default: the terminal width)
 .EE
@@ -2358,7 +2346,7 @@ multi\-commodity amounts are rendered:
 There are some quirks.
 Eg in one\-line mode, \f[CR]%(depth_spacer)\f[R] has no effect, instead
 \f[CR]%(account)\f[R] has indentation built in.
-\ Experimentation may be needed to get pleasing results.
+Experimentation may be needed to get pleasing results.
 .PP
 Some example formats:
 .IP \(bu 2
@@ -3429,9 +3417,9 @@ Mar  603.32 USD  █████████████████████
 .EE
 .IP \(bu 2
 A multi\-period report of balance changes is charted as stacked bars per
-period, showing the net total as the value (and in graphical charts, as
-a line mark, unless no period has amounts of both signs, when it would
-just be the top of each bar).
+period, showing the net total as the value (and as a line mark,
+\f[CR]┃\f[R] in text, when it isn\(aqt just the end of the bar, eg with
+amounts of both signs).
 .IP \(bu 2
 A multi\-period report of end balances (\f[CR]\-\-cumulative\f[R],
 \f[CR]\-H\f[R]) is charted the same way in text (and as lines in
@@ -3719,19 +3707,12 @@ Flags:
                             cache directory, and open it in the system\(aqs
                             default viewer for its format (eg a web browser for
                             html). The default format is html.
-     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
-                            txt output), a chart above the table (with html
-                            output), or the chart\(aqs data (with csv, tsv or json
-                            output). svg output always shows a chart. KIND can
-                            be: auto (the default), or for compound reports
-                            grouped (sections side by side; the default for
-                            changes) or diverging (sections in one bar, above
-                            and below zero; the default for end balances).
-                            SCALE fixes the chart\(aqs scale, so that charts can
-                            be compared: it is the amount that fills the chart
-                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
-                            chart; several can be given). Larger amounts are
-                            clipped.
+     \-\-chart[=KIND,SCALE]   show a chart: instead of the table (txt), above
+                            it (html), or as data (csv, tsv, json). KIND:
+                            grouped (sections side by side) or diverging (above
+                            and below zero). SCALE: the amount that fills the
+                            chart (eg 1000 or 1000 USD; one per commodity), for
+                            comparable charts.
   \-w \-\-width=N              with \-\-chart: draw the chart N characters wide
                             (default: the terminal width)
 .EE
@@ -3845,19 +3826,12 @@ Flags:
                             cache directory, and open it in the system\(aqs
                             default viewer for its format (eg a web browser for
                             html). The default format is html.
-     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
-                            txt output), a chart above the table (with html
-                            output), or the chart\(aqs data (with csv, tsv or json
-                            output). svg output always shows a chart. KIND can
-                            be: auto (the default), or for compound reports
-                            grouped (sections side by side; the default for
-                            changes) or diverging (sections in one bar, above
-                            and below zero; the default for end balances).
-                            SCALE fixes the chart\(aqs scale, so that charts can
-                            be compared: it is the amount that fills the chart
-                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
-                            chart; several can be given). Larger amounts are
-                            clipped.
+     \-\-chart[=KIND,SCALE]   show a chart: instead of the table (txt), above
+                            it (html), or as data (csv, tsv, json). KIND:
+                            grouped (sections side by side) or diverging (above
+                            and below zero). SCALE: the amount that fills the
+                            chart (eg 1000 or 1000 USD; one per commodity), for
+                            comparable charts.
   \-w \-\-width=N              with \-\-chart: draw the chart N characters wide
                             (default: the terminal width)
 .EE
@@ -3980,19 +3954,12 @@ Flags:
                             cache directory, and open it in the system\(aqs
                             default viewer for its format (eg a web browser for
                             html). The default format is html.
-     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
-                            txt output), a chart above the table (with html
-                            output), or the chart\(aqs data (with csv, tsv or json
-                            output). svg output always shows a chart. KIND can
-                            be: auto (the default), or for compound reports
-                            grouped (sections side by side; the default for
-                            changes) or diverging (sections in one bar, above
-                            and below zero; the default for end balances).
-                            SCALE fixes the chart\(aqs scale, so that charts can
-                            be compared: it is the amount that fills the chart
-                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
-                            chart; several can be given). Larger amounts are
-                            clipped.
+     \-\-chart[=KIND,SCALE]   show a chart: instead of the table (txt), above
+                            it (html), or as data (csv, tsv, json). KIND:
+                            grouped (sections side by side) or diverging (above
+                            and below zero). SCALE: the amount that fills the
+                            chart (eg 1000 or 1000 USD; one per commodity), for
+                            comparable charts.
   \-w \-\-width=N              with \-\-chart: draw the chart N characters wide
                             (default: the terminal width)
 .EE
@@ -4266,8 +4233,14 @@ Flags:
                                    to match precision
                             hard \- round amounts to precision (default)
                             all  \- also round cost amounts to precision
+     \-\-chart[=SCALE]        show a chart: instead of the table (txt), above
+                            it (html), or as data (csv, tsv, json). SCALE: the
+                            amount that fills the chart (eg 1000 or 1000 USD;
+                            one per commodity), for comparable charts.
+  \-w \-\-width=N              with \-\-chart: draw the chart N characters wide
+                            (default: the terminal width)
   \-O \-\-output\-format=FMT    select the output format. Supported formats:
-                            txt, csv, tsv, html, fods, json.
+                            txt, csv, tsv, html, fods, json, svg.
   \-o \-\-output\-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
      \-\-view                 write output to FILE, or to view.FMT in hledger\(aqs
@@ -4365,13 +4338,13 @@ Query arguments and report flags like \f[CR]\-\-depth\f[R],
 \f[CR]\-S/\-\-sort\-amount\f[R], \f[CR]\-\-title\f[R] etc.
 work as usual.
 .PP
-With \f[CR]\-t/\-\-tree\f[R], positions are grouped into account
+With \f[CR]\-t/\-\-tree\f[R], holdings are grouped into account
 sections: an account with subaccounts or several commodities becomes a
 heading row, showing its subtree\(aqs totals computed like the totals
-row, with its own positions beneath it named by their commodity; an
+row, with its own holdings beneath it named by their commodity; an
 account holding one commodity with no subaccounts is a single combined
-row; and with \f[CR]\-\-lots\f[R], each position\(aqs lots appear
-beneath it.
+row; and with \f[CR]\-\-lots\f[R], each holding\(aqs lots appear beneath
+it.
 Boring parent accounts are squashed into their child as usual
 (considering only accounts with holdings), unless
 \f[CR]\-\-no\-elide\f[R] is used.
@@ -4387,6 +4360,63 @@ numbers, and no totals or tree\-mode heading records.
 With \f[CR]\-O json\f[R], a JSON array of holding objects is produced.
 In both, the cost and value fields are named \f[CR]unitcost\f[R],
 \f[CR]unitprice\f[R], \f[CR]totalcost\f[R] and \f[CR]totalvalue\f[R].
+.SS Holdings over time
+With a report interval (eg \f[CR]\-M\f[R], \f[CR]\-Q\f[R],
+\f[CR]\-Y\f[R]), holdings shows how your holdings changed: their totals
+at the end of each period, each computed as on that date (eg valued at
+its market prices, with realised gains and XIRR up to then).
+List/tree mode and \f[CR]\-\-lots\f[R] make no difference to these
+totals, and are ignored.
+With \f[CR]\-O csv\f[R], \f[CR]tsv\f[R] or \f[CR]json\f[R], there is one
+record per period end.
+.IP
+.EX
+$ hledger holdings \-M \-e 2026\-04\-01
+Holdings at period ends, 2026\-01\-31..2026\-03\-31
+
+            || Total cost  Total value  UGain  UGain%  RGain     XIRR 
+============++========================================================
+ 2026\-01\-31 ||       $100         $120    $20   20.0%          820.5% 
+ 2026\-02\-28 ||        $60          $90    $30   50.0%    $20  1566.4% 
+ 2026\-03\-31 ||        $60          $54    $\-6  \-10.0%    $20   108.0% 
+.EE
+.SS Holdings charts
+With \f[CR]\-\-chart\f[R], holdings are shown as a chart: a bar for each
+holding (or lot, with \f[CR]\-\-lots\f[R]), labelled by account and
+commodity.
+A holding\(aqs bar shows its cost basis, and its unrealised gain stacked
+on top, reaching its market value (which is shown); or if it has lost
+value, the part of its cost basis it is still worth, and the part lost
+(hatched), reaching its cost basis.
+When some holding has lost value, the market values are also marked
+across the bars (\f[CR]┃\f[R] in text).
+In graphical charts these are coloured like assets (blue), revenues
+(green) and expenses (red).
+Each bar\(aqs unrealised gain percent is shown after its value (in
+graphical charts, above the bar, since the axis shows the values).
+A holding without a market price is shown as its cost basis, in grey.
+There is a chart panel for each commodity the holdings are valued in;
+use \f[CR]\-X COMM\f[R] to see them all in one.
+With a report interval, there is a bar for each period end instead,
+showing all the holdings then: their total cost basis, and their net
+unrealised gain or loss.
+With SVG output (eg \f[CR]\-o holdings.svg\f[R], or \f[CR]\-\-view\f[R])
+it is a graphical chart, and with HTML output it is shown above the
+report\(aqs table.
+See Charts for more.
+.IP
+.EX
+$ hledger holdings \-\-chart \-w 70
+Holdings on 2024\-12\-31
+
+USD
+█ Cost  ▒ Unrealised gain  ╱ Unrealised loss  ▓ No market price
+┃ Value
+
+assets:broker AAPL  2,500.00 USD  +66.7%  █████████████████▒▒▒▒▒▒▒▒▒▒┃
+assets:broker NEW                         ▓
+assets:broker XYZ     450.00 USD  \-40.0%  ████┃╱╱╱
+.EE
 .SS incomestatement
 (is)
 .PP
@@ -4451,19 +4481,12 @@ Flags:
                             cache directory, and open it in the system\(aqs
                             default viewer for its format (eg a web browser for
                             html). The default format is html.
-     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
-                            txt output), a chart above the table (with html
-                            output), or the chart\(aqs data (with csv, tsv or json
-                            output). svg output always shows a chart. KIND can
-                            be: auto (the default), or for compound reports
-                            grouped (sections side by side; the default for
-                            changes) or diverging (sections in one bar, above
-                            and below zero; the default for end balances).
-                            SCALE fixes the chart\(aqs scale, so that charts can
-                            be compared: it is the amount that fills the chart
-                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
-                            chart; several can be given). Larger amounts are
-                            clipped.
+     \-\-chart[=KIND,SCALE]   show a chart: instead of the table (txt), above
+                            it (html), or as data (csv, tsv, json). KIND:
+                            grouped (sections side by side) or diverging (above
+                            and below zero). SCALE: the amount that fills the
+                            chart (eg 1000 or 1000 USD; one per commodity), for
+                            comparable charts.
   \-w \-\-width=N              with \-\-chart: draw the chart N characters wide
                             (default: the terminal width)
 .EE
@@ -4698,8 +4721,8 @@ Flags:
                             with this prefix. (Usually the base url shown by
                             hledger\-web; can also be relative.)
   \-O \-\-output\-format=FMT    select the output format. Supported formats:
-                            txt, ledger, beancount, csv, tsv, html, fods, json,
-                            sql.
+                            journal, ledger, beancount, csv, tsv, html, fods,
+                            json, sql.
   \-o \-\-output\-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
      \-\-view                 write output to FILE, or to view.FMT in hledger\(aqs
@@ -4869,7 +4892,7 @@ will change how they are read.
 (\f[CR]\-\-export\f[R] output keeps lot entries as written, since it
 reproduces the declarations.)
 To suppress errors from these, we often use the \f[CR]\-I\f[R] flag
-(short for \f[CR]\-\-ignore\-assertions \-\-ignore\-lots\f[R].
+(short for \f[CR]\-\-ignore\-assertions \-\-ignore\-lots\f[R]).
 So any time you are reading from standard input with \f[CR]\-f\-\f[R],
 consider adding \f[CR]\-I\f[R] also.
 .SS print export mode
@@ -4921,8 +4944,8 @@ and comments are kept.
 Transactions from non\-journal files (eg an included CSV file) are added
 at the end.
 .IP \(bu 2
-The \f[CR]txt\f[R] (default), \f[CR]ledger\f[R] and \f[CR]beancount\f[R]
-output formats are supported.
+The \f[CR]journal\f[R] (default), \f[CR]ledger\f[R] and
+\f[CR]beancount\f[R] output formats are supported.
 With \f[CR]\-O ledger\f[R], transactions use Ledger\(aqs lot syntax, and
 directives which hledger accepts but Ledger does not
 (\f[CR]decimal\-mark\f[R], a one\-line \f[CR]commodity\f[R] directive
@@ -4962,11 +4985,12 @@ With \f[CR]\-\-locations\f[R], print adds the source file and line
 number to every transaction, as a tag.
 .SS print output format
 This command also supports the output destination and output format
-options The output formats supported are \f[CR]txt\f[R],
-\f[CR]ledger\f[R], \f[CR]beancount\f[R], \f[CR]csv\f[R], \f[CR]tsv\f[R],
-\f[CR]html\f[R], \f[CR]fods\f[R], \f[CR]json\f[R] and \f[CR]sql\f[R].
+options The output formats supported are \f[CR]journal\f[R] (the
+default; \f[CR]txt\f[R] is also accepted), \f[CR]ledger\f[R],
+\f[CR]beancount\f[R], \f[CR]csv\f[R], \f[CR]tsv\f[R], \f[CR]html\f[R],
+\f[CR]fods\f[R], \f[CR]json\f[R] and \f[CR]sql\f[R].
 .PP
-The \f[CR]ledger\f[R] format is currently the same as \f[CR]txt\f[R]
+The \f[CR]ledger\f[R] format is currently the same as \f[CR]journal\f[R]
 except it renders amounts\(aq cost basis using Ledger\(aqs lot syntax
 (\f[CR][DATE] (LABEL) {COST}\f[R]) instead of hledger\(aqs
 (\f[CR]{DATE, \(dqLABEL\(dq, COST}\f[R]).
@@ -5081,19 +5105,10 @@ Flags:
                             cache directory, and open it in the system\(aqs
                             default viewer for its format (eg a web browser for
                             html). The default format is html.
-     \-\-chart[=KIND,SCALE]   show a chart instead of the report table (with
-                            txt output), a chart above the table (with html
-                            output), or the chart\(aqs data (with csv, tsv or json
-                            output). svg output always shows a chart. KIND can
-                            be: auto (the default), or for compound reports
-                            grouped (sections side by side; the default for
-                            changes) or diverging (sections in one bar, above
-                            and below zero; the default for end balances).
-                            SCALE fixes the chart\(aqs scale, so that charts can
-                            be compared: it is the amount that fills the chart
-                            (eg 1000, or 1000 USD to set it for one commodity\(aqs
-                            chart; several can be given). Larger amounts are
-                            clipped.
+     \-\-chart[=SCALE]        show a chart: instead of the table (txt), above
+                            it (html), or as data (csv, tsv, json). SCALE: the
+                            amount that fills the chart (eg 1000 or 1000 USD;
+                            one per commodity), for comparable charts.
 .EE
 .PP
 The register command displays matched postings, across all accounts, in
@@ -5323,10 +5338,19 @@ Error (SearchFailed): Failed to find solution for Internal Rate of
 Return (IRR).
 Either search does not converge to a solution, or converges too slowly.
 .IP \(bu 2
-Error (NotBracketed): Cannot compute window IRR.
-Possible cause: investment balance becomes negative within that window.
+Error: Cannot compute the time\-weighted return for DATES (PART): the
+investment\(aqs value at the start (...)
+plus deposits (...)
+is negative.
+Possible cause: the balance of the investment becomes negative, eg more
+is sold than is held (a short position).
 .IP \(bu 2
-Error (SearchFailed): Window IRR search did not converge.
+Error: Could not value the investment on DATE: no market price ...
+is known for COMMODITY on or before that date.
+A holding has no market price, and none of the investment\(aqs
+transactions on or before that date records a price for buying or
+selling it.
+Add a P directive for it, or record the price of its purchase.
 .PP
 Examples:
 .IP \(bu 2
@@ -5396,6 +5420,28 @@ they match \f[CR]\-\-pnl\f[R] query.
 Changes in value of your investment due to \(dqprofit and loss\(dq
 postings will be considered as part of your investment return.
 .PP
+The amount of each cash flow is measured from the investment\(aqs
+perspective: it is the cost of the transaction\(aqs investment postings,
+minus any profit and loss in that transaction.
+Its date is the date of those investment postings, even if the
+money\(aqs posting has a different date (eg a settlement date).
+This means that other postings in the same transaction, such as fees,
+don\(aqt change the amount of the cash flow.
+.PP
+In this example, the investment receives $100, so without
+\f[CR]\-\-pnl\f[R] the cash flow is a $100 deposit, and the $1 fee is
+not part of the investment at all.
+With \f[CR]\-\-pnl expenses\f[R], the fee counts as part of the
+investment\(aqs return instead: the cash flow is a $101 deposit, of
+which $1 is immediately lost (shown as profit/loss of \-$1):
+.IP
+.EX
+2019\-01\-01 Buying Snake Oil, with a fee
+  assets:cash          \-$101
+  expenses:fees           $1
+  investment:snake oil  $100
+.EE
+.PP
 Example: if you use \f[CR]\-\-inv snake \-\-pnl equity:unrealized\f[R],
 then postings in the example below would be classifed as:
 .IP
@@ -5455,26 +5501,137 @@ The implementation in hledger produces results that match the
 your deposit and withdrawal timing, measuring the investment\(aqs own
 performance rather than your experience of it.
 .PP
-hledger computes TWR using the BAI (Bank Administration Institute)
-Linked IRR method.
-The reporting period is divided into windows at each date where the
-portfolio has a known, externally\-established valuation \- these are
-dates of price directives or of manual balance updates recorded via
-\f[CR]\-\-pnl\f[R] transactions.
-Within each window, if no cash flows occurred, the return is simply the
-ratio of ending to starting value.
-If cash flows occurred within a window, the window\(aqs return is found
-by solving for the rate that reconciles the starting value, the ending
-value, and the timing of those flows.
-All window returns are then multiplied together (geometrically chained)
-to give the TWR for the full period.
+hledger computes TWR from the value of your investment at the end of
+each day: its balance at the end of the day, valued (with
+\f[CR]\-\-value\f[R]) using the prices in effect on that day.
+The order of transactions and prices within a day doesn\(aqt matter.
+.IP \(bu 2
+The days between two days with cash flows form one stretch, which starts
+at the end of the earlier cash flow day and ends at the end of the day
+before the later one.
+Its return is the ratio of the investment\(aqs values at those two
+moments.
+For example, with cash flows on March 1 and March 10, the stretch is
+March 2 to 9, and its return is (value at the end of March 9) / (value
+at the end of March
+.RS 2
+.IP "1)" 3
+\(bu .RS 2
+.IP "1." 3
+(March 10 itself is a day with cash flows, handled as below.)
+.RE
+.RE
+.IP \(bu 2
+A day with cash flows is split in two parts:
+.RS 2
+.IP "1." 3
+The day\(aqs price changes: the return of the holdings carried over from
+the previous day, from their value at the previous day\(aqs prices to
+their value at this day\(aqs prices.
+(This part is skipped if no prices changed.)
+.IP "2." 3
+The cash flows, as if all of the day\(aqs trades were made at the
+day\(aqs closing prices.
+Its return is (value at the end of the day \- withdrawals) / (value
+after part 1 + deposits) \- 1, with withdrawals negative.
+That is, the day\(aqs deposits count as invested during this part, as if
+made at its start, and its withdrawals count as still invested during
+it, as if made at its end.
+So any difference between the prices you traded at and the closing
+prices shows up in this part\(aqs return.
+.RE
+.IP \(bu 2
+Times when nothing is invested earn nothing.
+That includes a day on which something arrives in an empty investment
+only as profit and loss (eg a stock grant, booked to an account matched
+by \f[CR]\-\-pnl\f[R]): there is nothing to compute a return on, so that
+day\(aqs return is 0%.
+.IP \(bu 2
+A holding which has no market price is valued at the price of the
+investment\(aqs latest purchase or sale of it, on or before that day (as
+\f[CR]\-\-infer\-market\-prices\f[R] would do, but only from the
+investment\(aqs own transactions, and only while no market price is
+known).
+If there are several on a day, the last one recorded is used.
+Like any price, it applies to the whole holding on that day, including
+what was held before the trade, so a trade at a new price can show up in
+\f[CR]\-\-cashflow\f[R] output as a \(dqprices\(dq row, before its cash
+flows.
+And a trade recorded at zero cost (eg a gift, recorded with
+\f[CR]\(at $0\f[R]) gives a price of 0, so such a holding is worth
+nothing until a market price is known; add a P directive for it.
 .PP
-The accuracy of TWR depends on how many valuation dates you have
-recorded.
-More valuation dates mean finer windows and more precise results.
+All these returns are then multiplied together (geometrically chained)
+to give the TWR for the full period.
+In multi\-period reports, each period begins with the value the previous
+one ended with, so the periods\(aq returns chain to the total.
+.PP
+Use \f[CR]\-\-value=then\f[R] for TWR, so that each day is valued with
+the prices of that day.
+With \f[CR]\-\-value=end\f[R], \f[CR]\-\-value=now\f[R] or
+\f[CR]\-\-value=DATE\f[R], all the values in a period use the same
+prices, so its TWR only reflects recorded profit and loss and the
+differences between the prices you traded at and those prices.
+With \f[CR]\-\-value=end\f[R], each period is also valued with its own
+end\(aqs prices, so the periods\(aq returns don\(aqt chain to the total.
+.PP
+TWR can only be as good as the values your journal gives for each day.
+If you record changes in value only occasionally (with
+\f[CR]\-\-pnl\f[R] transactions, or with sparse price directives), the
+growth since the previous record is attributed to the day you record it,
+and so is counted on whatever was invested on that day.
+If you made a large deposit or withdrawal in between, that can make TWR
+quite different from what it would be if the growth had been spread out.
+So record a valuation around large deposits and withdrawals
+(professional performance standards require this too), or use price
+directives, or \f[CR]\-\-infer\-market\-prices\f[R] if your transactions
+record their prices.
 .PP
 \f[B]In short:\f[R] TWR tells you how good the investment was; IRR tells
 you how good your experience of the investment was.
+.SS Checking the results
+\f[CR]\-\-cashflow\f[R] shows everything that IRR and TWR are computed
+from, so that you can check them against your journal, against other
+hledger reports, or in a spreadsheet:
+.IP \(bu 2
+\f[B]IRR cash flows\f[R]: one row per cash flow, with the
+transaction\(aqs description, the cost of its investment postings, and
+its profit or loss, between the investment\(aqs value at the start and
+its value at the end (dated the day after the period\(aqs last day,
+since it is the value at the end of that day).
+Amounts are from your point of view: what you put in is negative, what
+you take out or still have is positive.
+The dates and amounts can be given to Excel\(aqs \f[CR]=XIRR\f[R] as
+they are.
+.IP \(bu 2
+\f[B]TWR returns\f[R]: one row for each stretch without cash flows, and
+for each day with cash flows, a row for its price changes (if any) and a
+row for its cash flows.
+Each row\(aqs Value (begin) is the previous row\(aqs Value (end), and
+each row\(aqs return is
+.RS 2
+.PP
+(Value (end) \- Withdrawals) / (Value (begin) + Deposits) \- 1
+.PP
+where withdrawals are negative.
+The Cumulative column chains the returns by multiplication: each
+row\(aqs (1 + Cumulative) is the previous row\(aqs (1 + Cumulative)
+times (1 + Return).
+Its last row is the period\(aqs TWR.
+.RE
+.PP
+The values can be checked with \f[CR]hledger balance\f[R]: the value at
+the end of a day D is the investment\(aqs historical balance at the end
+of that day, valued then.
+For example, with \f[CR]\-\-value=then,$\f[R]:
+.IP
+.EX
+$ hledger balance \-\-historical \-\-value=end,$ \-e D+1 INVESTMENTQUERY
+.EE
+.PP
+(where \f[CR]D+1\f[R] is the day after D).
+Holdings which have no market price are the exception, as \f[CR]roi\f[R]
+values them at the price of their latest purchase or sale.
 .PP
 \f[B]When each matters\f[R]
 .PP
@@ -7034,7 +7191,7 @@ groups of digits can optionally be separated by a \f[I]digit group
 mark\f[R] \- a comma or period (whichever is not used as decimal mark),
 an underscore, an apostrophe, or a space (several Unicode space
 variants, like no\-break space, are also accepted).
-\ So these are all valid amounts in a journal file:
+So these are all valid amounts in a journal file:
 .IP
 .EX
      $1,000,000.00
@@ -7054,6 +7211,11 @@ tracking.
 If the commodity name contains non\-letters (spaces, numbers, or
 punctuation), you must always write it inside double quotes
 (\f[CR]\(dqgreen apples\(dq\f[R], \f[CR]\(dqABC123\(dq\f[R]).
+In particular, in a posting amount, a symbol that begins with
+\f[CR](\f[R] before the number, or with \f[CR]/\f[R] after it, or that
+contains \f[CR])\f[R] inside parentheses, must be quoted, eg
+\f[CR]\(dq(X)\(dq 10\f[R] or \f[CR]10 \(dq/x\(dq\f[R], or it would be
+read as part of an amount expression.
 .PP
 If you write just a bare number, that too will have a commodity, with
 name \f[CR]\(dq\(dq\f[R]; we call that the \(dqno\-symbol commodity\(dq.
@@ -7065,11 +7227,13 @@ A multi\-commodity amount could be, eg:
 \f[CR]1 USD, 2 EUR, 3.456 TSLA\f[R].
 In practice, you will only see multi\-commodity amounts in hledger\(aqs
 output; you can\(aqt write them directly in the journal file.
-\
 .PP
 By default, the format of amounts in the journal influences how hledger
 displays them in output.
 This is explained in Commodity display style below.
+.PP
+A posting amount can also be an arithmetic expression, like
+\f[CR]$47.97 + $15.75\f[R]; see Amount expressions.
 .PP
 .SS Costs
 When one commodity is exchanged for another \- a currency conversion, or
@@ -7472,7 +7636,6 @@ Postings inherit tags from their transaction.
 .IP "3." 3
 Postings \-> transactions.
 Transactions also acquire the tags of their postings.
-\ 
 .PP
 So when you use a \f[CR]tag:\f[R] query to match whole transactions,
 individual postings, or accounts, it\(aqs good to understand how tags
@@ -7695,7 +7858,7 @@ Account declarations, including account types and display order.
 .IP \(bu 2
 Commodity declarations, including display styles.
 If file trees declare a commodity\(aqs display style differently, the
-last one is used, with a warning.
+last one is used.
 .IP \(bu 2
 Payee and tag declarations.
 .IP \(bu 2
@@ -8622,8 +8785,8 @@ its tags take precedence over the earlier tags, and its aliases are
 added to the earlier aliases.
 (\(dqLater\(dq means later in the order hledger reads them: through each
 file and its included files, then the next \f[CR]\-f\f[R] file.)
-hledger warns if files read with \f[CR]\-f\f[R] declare different
-display styles.
+\f[CR]\-\-debug=1\f[R] shows any commodities which files read with
+\f[CR]\-f\f[R] declare with different display styles.
 .SS Commodity tags
 A commodity directive\(aqs comment may contain tags.
 These will be inherited by all postings using that commodity in their
@@ -9155,6 +9318,113 @@ Note some of the features below are powerful and can be useful in
 special cases, but in general, features in this section are considered
 less important or even not recommended for most users.
 Downsides are mentioned to help you decide if you want to use them.
+.SS Amount expressions
+\f[I]Since 1.99.6; experimental\f[R]
+.PP
+A posting amount can also be a simple arithmetic expression, which
+hledger calculates when reading the journal.
+This saves doing sums by hand, and records how an amount was arrived at:
+.IP
+.EX
+2026\-03\-02 groceries, two receipts
+    assets:checking
+    expenses:food            $50.20 + $16.54          ; $66.74
+
+2026\-03\-05 laptop, plus 5% sales tax
+    liabilities:card
+    expenses:equipment       $800.00
+    expenses:tax             $800.00 * 0.05           ; $40.00
+
+2026\-03\-07 hardware store, 3 boxes of screws less a $2 coupon
+    liabilities:card
+    expenses:supplies        3 * $4.99 \- $2           ; $12.97
+.EE
+.PP
+Downsides: Complicates standard bookkeeping notation; could obscure a
+posting\(aqs true amount.
+Likely to prevent other apps from reading your journal.
+.SS Amount expression syntax
+.IP \(bu 2
+You can use \f[CR]+\f[R], \f[CR]\-\f[R], \f[CR]*\f[R], \f[CR]/\f[R] and
+parentheses.
+\f[CR]*\f[R] and \f[CR]/\f[R] are done before \f[CR]+\f[R] and
+\f[CR]\-\f[R]; otherwise it\(aqs left to right.
+A minus sign can also go before parentheses, eg \f[CR]\-($1 + $2)\f[R].
+.IP \(bu 2
+Spaces around the operators are optional, except that a \f[CR]/\f[R]
+right after a commodity symbol needs a space before it:
+\f[CR]10 EUR / 4\f[R] works, \f[CR]10 EUR/4\f[R] is an error.
+.IP \(bu 2
+\f[CR]+\f[R] and \f[CR]\-\f[R] need amounts in the same commodity.
+You can write the commodity just once, since a plain number takes the
+other side\(aqs commodity: \f[CR]$10 + 5\f[R] is $15.
+.IP \(bu 2
+\f[CR]*\f[R] needs a plain number on one side, eg
+\f[CR]$800.00 * 0.05\f[R] or \f[CR]3 * $4.99\f[R].
+\f[CR]/\f[R] needs a plain number on the right, eg
+\f[CR]$100.00 / 3\f[R].
+.IP \(bu 2
+A cost, lot annotation or balance assertion can follow an expression,
+and applies to its result: \f[CR]10 EUR + 5 EUR \(at $1.10\f[R] is 15
+EUR, costing $1.10 each.
+.IP \(bu 2
+Expressions can be used only in posting amounts, not in costs, balance
+assertions, directives, or auto posting rule multipliers
+(\f[CR]*AMT\f[R]).
+.SS Amount expression rounding
+The result of \f[CR]+\f[R] or \f[CR]\-\f[R] is exact, and shows as many
+decimal places as the more precise of the two amounts.
+.PP
+The result of \f[CR]*\f[R] or \f[CR]/\f[R] is rounded, using banker\(aqs
+rounding, to the entry\(aqs decimal places for that commodity: the most
+decimal places written in that commodity\(aqs amounts in the entry,
+including amounts inside expressions or balance assignments, but not
+cost amounts, or the plain numbers used with \f[CR]*\f[R] or
+\f[CR]/\f[R].
+These are the same decimal places hledger uses to check that the entry
+balances (see Transaction balancing).
+So:
+.IP \(bu 2
+\f[CR]$100/3\f[R] is $33.33 in an entry that also has
+\f[CR]$\-100.00\f[R], but $33 when all of the entry\(aqs dollar amounts
+are whole numbers.
+.IP \(bu 2
+\f[CR]$10 * 0.15\f[R] on its own is $2; write \f[CR]$10.00 * 0.15\f[R]
+to get $1.50.
+.IP \(bu 2
+For more decimal places, write more: \f[CR]$100.0000 / 3\f[R] is
+$33.3333.
+.IP \(bu 2
+In periodic transaction rules and auto posting rules, a result is
+rounded to its own decimal places, eg \f[CR]$100/3\f[R] is $33 and
+\f[CR]$100.00/3\f[R] is $33.33.
+.IP \(bu 2
+A result with no commodity gets the default commodity from a
+\f[CR]D\f[R] directive, if any, as usual.
+It is then like any other plain number after a \f[CR]D\f[R] directive,
+whose decimal places count: after \f[CR]D $1,000.00\f[R],
+\f[CR]5 / 2\f[R] is $2.50.
+.PP
+The rounded amount is what hledger stores (see also Where hledger
+divides).
+So a split that doesn\(aqt divide evenly leaves the entry unbalanced,
+and the error message says that such amounts are rounded.
+To fix it, leave one amount blank, and hledger will give it the
+remainder:
+.IP
+.EX
+2026\-03\-09 dinner with Ana and Raj, split three ways
+    liabilities:card         $\-107.00
+    assets:receivable:ana    ($92.00 + $15.00) / 3    ; $35.67
+    assets:receivable:raj    ($92.00 + $15.00) / 3    ; $35.67
+    expenses:food                                     ; $35.66
+.EE
+.SS Amount expressions are not kept
+hledger keeps only an expression\(aqs result.
+\f[CR]print\f[R] (including \f[CR]\-\-export\f[R], and all its output
+formats), other reports and error messages show the result, eg
+\f[CR]$66.74\f[R], not \f[CR]$50.20 + $16.54\f[R].
+If you need to keep the parts visible, write them in a comment too.
 .SS Balance assignments
 Ledger\-style balance assignments are also supported.
 These are like balance assertions, but with no posting amount on the
@@ -9780,16 +10050,15 @@ output in the error message.
 If a data generating command fails, hledger will show the error as a
 warning and continue, treating this as if no data was found.
 .PP
-\f[CR]import \-\-dry\-run\f[R] does not run data generating commands,
-since they may fetch from the network or have other effects; it just
-shows the command it would run, and treats that source as having no
-data.
-Data cleaning commands do still run in a dry run, since they are needed
-to preview the data; so they should be pure filters, which only read
-their input and write their output.
-If you want a dry run to preview fetched data, fetch it beforehand (eg
-with the get command\(aqs \f[CR]getdata\f[R] script) and use a file
-pattern to read it.
+These commands run in an \f[CR]import \-\-dry\-run\f[R] too, since their
+output is needed to preview the data.
+So they should be safe to run repeatedly: a data cleaning command should
+be a pure filter, and a data generating command should not consume or
+change anything that the real import will need.
+A fetch that isn\(aqt safe to repeat belongs in the get command\(aqs
+\f[CR]getdata\f[R] script instead (which \f[CR]get \-\-dry\-run\f[R] and
+\f[CR]import \-\-dry\-run \-g\f[R] don\(aqt run), with a file pattern to
+read its output.
 .SS \f[CR]archive\f[R]
 With \f[CR]archive\f[R] added to a rules file, the \f[CR]import\f[R]
 command will archive each successfully processed data file or data
@@ -10610,7 +10879,8 @@ fields date, description, amount1\-in, amount1\-out
 if %amount1\-out [1\-9]
  amount1\-out \-%amount1\-out
 .EE
-.IP "c." 3
+.PP
+c.
 \f[B]If both fields can contain a non\-zero value (or both can be
 empty):\f[R]
 .PD 0
@@ -10623,14 +10893,7 @@ Some value pairs can be ambiguous, such as \f[CR]1\f[R] and
 For such cases, use \f[CR]if\f[R] rules to help select the amount.
 Eg, to handle the above you could select the value containing non\-zero
 digits:
-.IP
-.EX
-fields date, description, in, out
-if %in [1\-9]
- amount1 %in
-if %out [1\-9]
- amount1 %out
-.EE
+\f[CR]rules   fields date, description, in, out   if %in [1\-9]    amount1 %in   if %out [1\-9]    amount1 %out\f[R]
 .RE
 .IP "3." 3
 \f[B]If you want posting 2\(aqs amount converted to cost:\f[R]
@@ -11086,6 +11349,24 @@ if MATCHER
   HLEDGERFIELD2 VALUE
   ...
 .EE
+.PP
+Because every matching row is applied in order, the last one that
+matches wins.
+To supply a default, set the field before the table (or put a catch\-all
+matcher such as \f[CR].*\f[R] as the first row); later, more\-specific
+rows will override it when they match.
+.IP
+.EX
+account2  expenses:unknown
+
+ifs | account2
+WHOLE FOODS | expenses:food
+WHOLE FOODS.*organic | expenses:food:organic
+.EE
+.PP
+In this example a transaction whose description contains \(dqWHOLE FOODS
+organic\(dq matches both WHOLE FOODS rows; the last assignment is the
+one that remains.
 .PP
 The \f[CR]skip\f[R], \f[CR]end\f[R] and \f[CR]merge\f[R] actions can
 also be table columns.
@@ -12927,9 +13208,12 @@ file\(aqs general options:
 \-\-lang de
 .EE
 .PP
-Currently German (\f[CR]de\f[R]), Spanish (\f[CR]es\f[R]), Russian
-(\f[CR]ru\f[R]) and Simplified Chinese (\f[CR]zh\f[R], also selected by
-\f[CR]zh_CN\f[R] or \f[CR]zh\-Hans\f[R]) catalogs are built in.
+Currently German (\f[CR]de\f[R]), Spanish (\f[CR]es\f[R]), French
+(\f[CR]fr\f[R]), Irish (\f[CR]ga\f[R]), Hawaiian (\f[CR]haw\f[R]),
+Italian (\f[CR]it\f[R]), Japanese (\f[CR]ja\f[R]), Brazilian Portuguese
+(\f[CR]pt\-BR\f[R]), Russian (\f[CR]ru\f[R]) and Simplified Chinese
+(\f[CR]zh\f[R], also selected by \f[CR]zh_CN\f[R] or
+\f[CR]zh\-Hans\f[R]) catalogs are built in.
 Catalogs are gettext PO files, which the usual translation tools can
 edit.
 hledger also looks for catalogs in the \f[CR]locale\f[R] subdirectory of
@@ -12939,6 +13223,10 @@ and merges a catalog found there over the built\-in catalog for the same
 language, if any.
 So a translator can work on a new language with a released hledger, and
 a user can adjust terminology to taste.
+\f[CR]hledger \-\-write\-lang=LANG\f[R] puts a catalog there to start
+from: a copy of the built\-in catalog for that language, or for a new
+language, an untranslated one.
+(It won\(aqt overwrite a catalog that is already there.)
 Contributed catalogs are welcome, and no programming is needed: see
 Translating hledger in the developer docs.
 .PP
@@ -12975,8 +13263,9 @@ balancing or reports at normal display precisions.
 When hledger shows such a rounded amount in full, eg in \f[CR]print\f[R]
 output, it shows 8 decimal places.
 .SS Where hledger divides
-Journal amounts are always written as finite decimals, so
-non\-terminating decimals can arise only where hledger divides.
+Non\-terminating decimals can arise only where hledger divides.
+(Journal amounts are written as finite decimals, and amount expressions
+round their results.)
 Here\(aqs when that happens:
 .PP
 .TS
@@ -12990,6 +13279,17 @@ T}@T{
 Visible effect
 T}
 _
+T{
+Dividing in an amount expression (\f[CR]$100.00 / 3\f[R])
+T}@T{
+amount / number
+T}@T{
+None: the result is rounded to the entry\(aqs decimal places for that
+commodity when the journal is read, so it is exactly what
+\f[CR]print\f[R] shows.
+A split that doesn\(aqt divide evenly makes the transaction unbalanced,
+unless one amount is left blank.
+T}
 T{
 Converting a lot\(aqs total cost (\f[CR]\(at\(at\f[R]) or total cost
 basis (\f[CR]{{ }}\f[R]) to a unit cost
@@ -13827,7 +14127,6 @@ A \f[I]declared market price\f[R] or \f[I]inferred market price\f[R]:
 A\(aqs latest market price in B on or before the valuation date as
 declared by a P directive, or (with the
 \f[CR]\-\-infer\-market\-prices\f[R] flag) inferred from costs.
-\
 .IP "2." 3
 A \f[I]reverse market price\f[R]: the inverse of a declared or inferred
 market price from B to A.
@@ -14843,6 +15142,12 @@ For this, use the \f[CR]\-\-ignore\-lots\f[R] flag, or just
 This skips lot tracking, capital gains calculation, and all lot error
 checking, while still doing enough lot inference that lot entries
 balance as usual.
+Reports then show no lot subaccounts or gains, and \f[CR]print\f[R]
+shows lot entries as you wrote them, without inferred cost basis
+annotations or gain postings (explicit annotations are kept, and may not
+be readable by hledger 1; if that\(aqs needed, use \f[CR]\-O ledger\f[R]
+to write them in Ledger\(aqs syntax, which hledger 1 accepts and
+ignores).
 .SS Lot movements
 hledger understands three kinds of lot movement: acquire, transfer, and
 dispose.
@@ -16004,11 +16309,13 @@ Here are those commands and the formats currently supported:
 .PP
 .TS
 tab(@);
-lw(17.3n) lw(4.3n) lw(5.2n) lw(7.8n) lw(5.2n) lw(6.9n) lw(9.5n) lw(4.3n) lw(5.2n) lw(4.3n).
+lw(15.6n) lw(3.9n) lw(7.0n) lw(4.7n) lw(7.0n) lw(4.7n) lw(6.2n) lw(8.6n) lw(3.9n) lw(4.7n) lw(3.9n).
 T{
 command
 T}@T{
 txt
+T}@T{
+journal
 T}@T{
 html
 T}@T{
@@ -16032,6 +16339,7 @@ aregister
 T}@T{
 Y
 T}@T{
+T}@T{
 Y
 T}@T{
 Y
@@ -16049,6 +16357,7 @@ T{
 balance
 T}@T{
 Y
+T}@T{
 T}@T{
 Y
 T}@T{
@@ -16068,6 +16377,7 @@ balancesheet
 T}@T{
 Y
 T}@T{
+T}@T{
 Y
 T}@T{
 Y
@@ -16085,6 +16395,7 @@ T{
 balancesheetequity
 T}@T{
 Y
+T}@T{
 T}@T{
 Y
 T}@T{
@@ -16104,6 +16415,7 @@ cashflow
 T}@T{
 Y
 T}@T{
+T}@T{
 Y
 T}@T{
 Y
@@ -16122,6 +16434,7 @@ holdings
 T}@T{
 Y
 T}@T{
+T}@T{
 Y
 T}@T{
 Y
@@ -16139,6 +16452,7 @@ incomestatement
 T}@T{
 Y
 T}@T{
+T}@T{
 Y
 T}@T{
 Y
@@ -16154,6 +16468,7 @@ Y
 T}
 T{
 print
+T}@T{
 T}@T{
 Y
 T}@T{
@@ -16176,6 +16491,7 @@ T{
 register
 T}@T{
 Y
+T}@T{
 T}@T{
 Y
 T}@T{
@@ -16545,8 +16861,8 @@ tests.)
 hledger can show many reports as a chart: add \f[CR]\-\-chart\f[R] to a
 \f[CR]balance\f[R], \f[CR]balancesheet\f[R],
 \f[CR]balancesheetequity\f[R], \f[CR]cashflow\f[R],
-\f[CR]incomestatement\f[R], \f[CR]aregister\f[R] or \f[CR]register\f[R]
-report.
+\f[CR]incomestatement\f[R], \f[CR]aregister\f[R], \f[CR]register\f[R] or
+\f[CR]holdings\f[R] report.
 (The \f[CR]activity\f[R] command always shows one.)
 A suitable kind of chart is chosen for the report: eg stacked bars per
 period for balance changes, lines for balances over time, or a bar per
@@ -16574,7 +16890,8 @@ To see a graphical chart quickly, add \f[CR]\-\-view\f[R], eg
 \f[CR]hledger is \-M \-\-chart \-\-view\f[R].
 \f[CR]\-\-chart\f[R] also accepts a chart kind and a fixed scale, eg to
 compare charts.
-For the details, see Balance charts, aregister and Register charts.
+For the details, see Balance charts, aregister, Register charts and
+Holdings charts.
 .SH Command line tips
 Here are some tips for using hledger at the command line; feel free to
 skip these until you need them.
@@ -16984,7 +17301,8 @@ with \f[CR]launchctl setenv LEDGER_FILE \(ti/finance/main.journal\f[R]
 It can be easier to create a default file at
 \f[CR]C:\(rsUsers\(rsUSER\(rs.hledger.journal\f[R], and have it include
 your other files.
-See I\(aqm on Windows, how do I keep my files in AppData?
+See I\(aqm on Windows, how do I keep my files in
+\f[CR]AppData\(rsRoaming\f[R] ?
 .PP
 Otherwise: using the gui is easiest:
 .IP "1." 3

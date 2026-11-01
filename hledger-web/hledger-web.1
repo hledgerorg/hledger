@@ -26,20 +26,18 @@ accounting and a simple, editable file format.
 hledger is inspired by and largely compatible with ledger(1), and
 largely interconvertible with beancount(1).
 .PP
-hledger\-web is a simple web application for browsing and adding
-transactions.
-It provides a more user\-friendly UI than the hledger CLI or hledger\-ui
-TUI, showing more at once (accounts, the current account register,
-balance charts) and allowing history\-aware data entry, interactive
-searching, and bookmarking.
+hledger\-web is hledger\(aqs web interface.
+In a web browser, it shows the journal, account registers, and the main
+financial reports with their charts, and lets you search them, add
+transactions, and (if allowed) edit the journal files.
+It shows more at once than the hledger CLI or hledger\-ui (eg the
+accounts beside a register, or a report\(aqs chart above its table), and
+every view has its own url, so it can be bookmarked or shared.
 .PP
 hledger\-web also lets you share a journal with multiple users, or even
 the public web.
 There is no user authentication, so if you need that you should put it
-behind a suitable web proxy.
-As a small protection against data loss when running an unprotected
-instance, it writes a numbered backup of the main journal file (only) on
-every edit.
+behind a suitable web proxy (see Permissions).
 .PP
 Like hledger, it reads from (and appends to) a journal file specified by
 the \f[CR]LEDGER_FILE\f[R] environment variable (defaulting to
@@ -63,18 +61,20 @@ for fifteen minutes.
 In all cases hledger\-web runs as a foreground process, logging requests
 to stdout.
 .SH OPTIONS
-hledger\-web provides the following options:
+hledger\-web provides the following command line options:
 .IP
 .EX
 Flags:
-     \-\-serve \-\-server       serve and log requests, don\(aqt browse or auto\-exit
-     \-\-serve\-api            like \-\-serve, but serve only the JSON web API,
-                            not the web UI
+     \-\-serve\-browse         server mode: serve the web UI and JSON API, and
+                            open a browser, and exit if inactive for 15m
+                            (default)
+     \-\-serve                server mode: just serve the web UI and JSON API
+     \-\-serve\-api            server mode: just serve the JSON API
      \-\-allow=view|add|edit  set the user\(aqs access level for changing data
                             (default: \(gaadd\(ga on a local\-only address, \(gaview\(ga
                             otherwise). It also accepts \(gasandstorm\(ga for that
-                            platform (reads from the \(gaX\-Sandstorm\-Permissions\(ga
-                            request header).
+                            platform (reading from the
+                            \(gaX\-Sandstorm\-Permissions\(ga request header).
      \-\-cors=ORIGIN          allow cross\-origin requests from the specified
                             origin; setting ORIGIN to \(dq*\(dq allows requests from
                             any origin
@@ -82,12 +82,13 @@ Flags:
      \-\-port=PORT            listen on this TCP port (default: 5000); 0 means
                             a free port chosen by the OS
      \-\-socket=SOCKET        listen on the given unix socket instead of an IP
-                            address and port (unix only; implies \-\-serve)
+                            address and port (only on unix)
      \-\-base\-url=BASEURL     set the base url (default: http://IPADDR:PORT)
-     \-\-lang=LANG            show the web UI in this language (en, de, zh); or
-                            with auto, use each viewer\(aqs browser language if
-                            available, otherwise the server\(aqs. (Default: the
-                            browser\(aqs language if available, otherwise en.)
+     \-\-lang=LANG            show the web UI in this language (en, de, es, ru,
+                            zh); or with auto, use each viewer\(aqs browser
+                            language if available, otherwise the server\(aqs.
+                            (Default: the browser\(aqs language if available,
+                            otherwise en.)
 .EE
 .PP
 By default hledger\-web listens only on IP address \f[CR]127.0.0.1\f[R],
@@ -150,7 +151,8 @@ General input flags:
                             hledger\-ui, also make future\-dated transactions
                             visible at startup.
      \-\-ignore\-assertions    don\(aqt check balance assertions by default
-     \-\-ignore\-lots          don\(aqt do lot tracking or checking by default
+     \-\-ignore\-lots          don\(aqt track lots: skip lot checks, inferred cost
+                            bases and gain postings
   \-I                        shortcut for \-\-ignore\-assertions \-\-ignore\-lots
      \-\-txn\-tolerance=...    how much imbalance to allow in transactions:
                             \(aqentry\(aq:   \- the entry\(aqs precision (default)
@@ -228,38 +230,35 @@ General help flags:
      \-\-version              show version information
      \-\-test[=PATTERN]       run built\-in tests (those matching PATTERN) and
                             exit
+     \-\-write\-lang=LANG      write LANG\(aqs PO file to the config directory, for
+                            editing translations, and exit
      \-\-debug=[1\-9]          show this much debug output (default: 1)
      \-\-pager=YN             use a pager when needed ? y/yes (default) or n/no
      \-\-color=YNA \-\-colour   use ANSI color ? y/yes, n/no, or auto (default)
 .EE
 .PP
+Some of these can be adjusted while hledger\-web is running, in the web
+UI\(aqs Options panel.
+.PP
 hledger\-web shows accounts with zero balances by default (like
-\f[CR]hledger\-ui\f[R], and unlike \f[CR]hledger\f[R]).
-Using the \f[CR]\-E/\-\-empty\f[R] flag will reverse this behaviour.
-If you see accounts which appear to have a zero balance, but cannot be
-hidden with \f[CR]\-E\f[R], it\(aqs because they have a mixed\-cost
-balance, which looks like zero when costs are hidden.
-(hledger\-web does not show costs.)
+\f[CR]hledger\-ui\f[R], and unlike \f[CR]hledger\f[R]);
+\f[CR]\-E/\-\-empty\f[R] starts it with them hidden instead.
+In the web UI, the Zero balances option or the \f[CR]z\f[R] key shows or
+hides them.
 .PP
-Report options and query arguments given at startup become url state:
-hledger\-web translates them into the url that browse mode opens, and
-that \f[CR]\-\-serve\f[R] prints, eg \f[CR]hledger\-web \-V \-M\f[R]
-opens \f[CR]/journal?period=monthly&value=end\f[R], and
+Report options and a query given at startup set the view hledger\-web
+opens with, by putting them in its url (see URL parameters).
+Eg \f[CR]hledger\-web \-V \-M\f[R] opens
+\f[CR]/journal?interval=monthly&value=end\f[R], and
 \f[CR]hledger\-web \-\-cleared \-3 assets\f[R] opens
-\f[CR]/journal?q=assets status:* depth:3\f[R] (url\-encoded).
-The server itself keeps the defaults, so every view is fully described
-by its url: a bare url shows the default view, and editing the url (or
-the search and the links above each page) changes the view.
-Report options the web UI has no equivalent for are ignored; options
-that map to page\-local state, like \f[CR]\-\-historical\f[R], shape the
-opening page only.
+\f[CR]/journal?q=assets status:*&depth=3\f[R].
+They are only a starting point: they can be changed in the web UI, and
+they don\(aqt affect other urls or the JSON API.
+Report options that hledger\-web has no equivalent for are ignored.
 .PP
-This means a startup query is a starting search, not a restriction: a
-viewer can edit or clear it, and the JSON API serves the whole journal
-regardless.
-To actually restrict what hledger\-web serves, give it a file holding
-only the entries to serve (eg one written by
-\f[CR]hledger print QUERY\f[R]).
+Note, a startup query doesn\(aqt restrict what hledger\-web serves; to
+do that, give it a file holding only the entries to serve (eg one
+written by \f[CR]hledger print QUERY\f[R]).
 .PP
 If you use the bash shell, you can auto\-complete flags by pressing TAB
 in the command line.
@@ -267,49 +266,55 @@ If this is not working see Install > Shell completions.
 .SH WEB UI
 hledger\-web\(aqs main views are:
 .IP \(bu 2
-the \f[B]journal view\f[R] (the home page), showing journal entries,
-newest first, with their postings;
-.IP \(bu 2
-the \f[B]register view\f[R], showing the transactions affecting one
-account (and its subaccounts), with a running balance and a balance
-chart; and
+the \f[B]journal view\f[R], showing journal entries, newest first, with
+their postings
 .IP \(bu 2
 the \f[B]report views\f[R], described below: the balance sheet, income
-statement, and cashflow statement (and holdings, for journals using
-lots), linked from the sidebar, and the All accounts report and the
-balance sheet with equity, linked from those.
+statement, cashflow statement (and holdings, for journals using lots),
+and All accounts report
+.IP \(bu 2
+a \f[B]register view\f[R] for each account, reached by clicking an
+account name, showing the transactions affecting that account (and its
+subaccounts), with a running balance and a balance chart.
 .PP
-The journal and register views show the newest 1000 matching
-transactions, with links to the older and newer pages and to pages by
-number, so that a page stays a reasonable size however large the journal
-is (a \f[CR]page\f[R] parameter in the URL names the page).
-When the matching transactions span more than one year, a row of years
-among the controls links to the view narrowed to each year; \(dqAll\(dq
-widens it again, and shift\-clicking a year selects a range of years (a
-\f[CR]date:FIRST..END\f[R] search term, whose years the row marks).
-When they span more than twenty years, the years are shown one row per
-decade.
+Every page has, from the top: links to the journal and the reports, the
+search form, the options, and then the view itself.
+The options are hidden until you open them (click Options, or press
+\f[CR]o\f[R]); while hidden, they list the ones in effect, eg
+\(dqMonthly · Depth 2 · Tree\(dq.
+.PP
+The journal and register show the newest 1000 matching transactions,
+with links to older and newer pages.
+When the transactions span more than one year, the options include a row
+of years, to narrow the view to one year; shift\-click a second year to
+select a range of years.
+.PP
+The register\(aqs chart shows the running balance over the page\(aqs
+transactions.
+With several commodities, use the legend, or the \f[CR][\f[R] and
+\f[CR]]\f[R] keys, to choose the one charted.
+Click a point to go to its transaction, or drag across the chart to see
+the transactions of those dates.
+The register\(aqs Costs option shows the costs recorded with its
+amounts.
 .PP
 The \f[B]sidebar\f[R] lists accounts and their balances (parent balances
-include subaccounts, and multiple commodities are shown one above the
-other).
-When a report shows its accounts as a tree (the Accounts row), the
-sidebar does too, with carets that fold and open each group in place.
-Folds are remembered in the browser, as choices laid over each page\(aqs
-baseline: a page with a \f[CR]depth:\f[R] limit starts folded to it, one
-without starts fully open, and either way the groups you have opened or
-closed by hand stay as you left them.
-A caret clicked back to its page\(aqs baseline is forgotten.
+include subaccounts).
+When the Accounts option is Tree, the sidebar is a tree too, with carets
+that fold and open each group.
+It starts folded to the depth limit, if there is one, and the browser
+remembers the groups you open or close.
+.PP
 Click an account name to see its register, or an amount to see the
 transactions it is made of.
-In the journal and register views, click a date to see that day\(aqs
-journal entries.
+In the journal and register, click a date to see that day\(aqs journal
+entries.
 .PP
 The \f[B]search form\f[R] filters every view with hledger\(aqs query
 syntax, eg \f[CR]expenses date:thismonth\f[R]; the help dialog
 summarises the query types.
-The current view and search are reflected in the URL, so views can be
-bookmarked and shared.
+The search and the options are part of the page\(aqs url (see URL
+parameters).
 .PP
 The \f[B]add form\f[R] (press \f[CR]a\f[R], or click \(dqAdd a
 transaction\(dq in the journal view) adds a transaction to the main
@@ -327,13 +332,26 @@ typing in a field:
 its key; then \f[CR]j\f[R] journal, \f[CR]b\f[R] balance sheet,
 \f[CR]i\f[R] income statement, \f[CR]c\f[R] cashflow statement,
 \f[CR]h\f[R] holdings (for journals using lots), \f[CR]a\f[R] all
-accounts, \f[CR]e\f[R] balance sheet with equity (escape to cancel)
+accounts, or \f[CR]n\f[R] / \f[CR]p\f[R] the next / previous page in
+that order, wrapping round (escape to cancel)
 .IP \(bu 2
 \f[CR]a\f[R] or \f[CR]n\f[R] \- add a transaction (escape to cancel)
 .IP \(bu 2
 \f[CR]s\f[R] \- show or hide the sidebar
 .IP \(bu 2
 \f[CR]o\f[R] \- show or hide the report options
+.IP \(bu 2
+\f[CR]c\f[R] \- show or hide the report\(aqs chart (on pages with one)
+.IP \(bu 2
+\f[CR][\f[R] / \f[CR]]\f[R] \- chart the previous / next commodity (on
+pages whose chart has several, wrapping round)
+.IP \(bu 2
+\f[CR]d\f[R] \- show or hide the report\(aqs data, its table (on pages
+with a chart)
+.IP \(bu 2
+\f[CR]f\f[R] \- full window: show only the report\(aqs heading and data,
+or everything (\f[CR]s\f[R], \f[CR]o\f[R] and \f[CR]/\f[R] leave it,
+showing what they ask for)
 .IP \(bu 2
 \f[CR]z\f[R] \- show or hide accounts with zero balances
 .IP \(bu 2
@@ -362,9 +380,11 @@ set the report interval (daily, weekly, monthly, quarterly, yearly);
 pressed again, remove it
 .IP \(bu 2
 \f[CR]0\f[R]\-\f[CR]9\f[R], \f[CR]\-\f[R], \f[CR]+\f[R] \- set or adjust
-the account depth limit
+the account depth limit (\f[CR]\-\f[R] and \f[CR]+\f[R] step between 0
+and the deepest)
 .IP \(bu 2
-\f[CR]f\f[R] or \f[CR]/\f[R] \- focus the search form
+\f[CR]/\f[R] \- focus the search form, ready to add a term (escape to
+leave it)
 .PP
 The pages are light or dark, following your OS or browser\(aqs color
 scheme setting, and switch when it changes.
@@ -410,100 +430,219 @@ any files it includes.
 .PP
 Note, unlike any other hledger command, in this mode you (or any
 visitor) can alter or wipe the data files.
-Normally when hledger\-web changes any data, it will save a numbered
-backup of the file (assuming file permissions allow it, the disk is not
-full, etc.)
+Before saving an edited or uploaded file, hledger\-web saves a numbered
+backup of it (eg \f[CR]main.journal.1\f[R], then
+\f[CR]main.journal.2\f[R]); if the backup can\(aqt be written, the file
+is not changed.
+(Adding a transaction appends it to the main journal file without making
+a backup.)
 hledger\-web is not aware of version control systems, currently; if you
 use one, you\(aqll have to arrange to commit the changes yourself.
 .PP
 Changes which would leave the journal file(s) unparseable or invalid (eg
 with failing balance assertions) are prevented.
 .SH REPORTS
-Besides the journal and account registers, hledger\-web can show the
-reports of the command line\(aqs balancesheet, balancesheetequity,
-incomestatement, and cashflow commands, at \f[CR]/balancesheet\f[R],
-\f[CR]/balancesheetequity\f[R], \f[CR]/incomestatement\f[R], and
-\f[CR]/cashflow\f[R], and the general balance report, named All accounts
-(as in hledger\-ui), at \f[CR]/balance\f[R].
-The sidebar links to the balance sheet, income statement, and cashflow
-statement, and a row of links above each page, the journal included,
-links to them all: the journal and the named reports first, as in the
-sidebar, then the general ones (All accounts, and the balance sheet with
-equity).
+Besides the journal and the account registers, hledger\-web shows these
+reports.
+The sidebar and the links at the top of every page lead to each of them,
+and so does the \f[CR]g\f[R] key followed by the first letter of the
+report\(aqs name:
+.IP \(bu 2
+\f[B]Balance sheet\f[R] (\f[CR]b\f[R], \f[CR]/balancesheet\f[R]):
+assets, liabilities and net worth, like the balancesheet command.
+Its Equity option adds an equity section, like balancesheetequity.
+.IP \(bu 2
+\f[B]Income statement\f[R] (\f[CR]i\f[R], \f[CR]/incomestatement\f[R]):
+revenues, expenses and net income, like incomestatement.
+.IP \(bu 2
+\f[B]Cashflow\f[R] (\f[CR]c\f[R], \f[CR]/cashflow\f[R]): changes in cash
+accounts, like cashflow.
+.IP \(bu 2
+\f[B]Holdings\f[R] (\f[CR]h\f[R], \f[CR]/holdings\f[R]): investments and
+their performance, like holdings.
+Shown only for journals that use lots; see below.
+.IP \(bu 2
+\f[B]All accounts\f[R] (\f[CR]a\f[R], \f[CR]/balance\f[R]): all
+accounts, or those you search for, like balance.
 .PP
-For journals that use lots, the holdings report is at
-\f[CR]/holdings\f[R], and appears in the sidebar and the report links.
-It shows one row per account and held commodity by default; its links
-can show each individual lot (a \f[CR]lots=1\f[R] parameter), fully
-disposed positions (a \f[CR]closed=1\f[R] parameter; \f[CR]empty\f[R]
-keeps meaning zero\-balance accounts, as on the other pages), accounts
-as a tree (positions grouped under account headings that subtotal the
-dollar columns, with each position\(aqs lots folding into it, opened in
-place by a caret), values converted to the market valuation commodity
-(\f[CR]value=end\f[R], like \f[CR]\-V\f[R]), and rows sorted by value.
-On such journals every page also gains a Lots link, showing lot
-subaccounts and per\-lot postings everywhere with the same
-\f[CR]lots\f[R] parameter.
+Each report shows a chart and then a table (by default; both can be
+toggled).
+Click any amount to see the transactions it is made of.
+.SS Options
+A report\(aqs options (click Options, or press \f[CR]o\f[R]) change what
+it shows.
+These are similar to hledger\(aqs command\-line options and
+hledger\-ui\(aqs keys.
+The main ones, with their keyboard shortcuts:
+.IP \(bu 2
+\f[B]Interval\f[R] (\f[CR]D\f[R], \f[CR]W\f[R], \f[CR]M\f[R],
+\f[CR]Q\f[R], \f[CR]Y\f[R]): one column for the whole period, or one per
+day, week, month, quarter or year (see Report intervals).
+Click a column\(aqs heading to see the report for just its dates.
+.IP \(bu 2
+\f[B]Show\f[R] (\f[CR]H\f[R]): balance changes in each period, or ending
+balances (which include everything before the period).
+The balance sheet shows ending balances by default and the other reports
+show changes, as their commands do; the report\(aqs heading says which
+it is showing.
+.IP \(bu 2
+\f[B]Depth\f[R] (\f[CR]0\f[R]\-\f[CR]9\f[R], \f[CR]\-\f[R],
+\f[CR]+\f[R]): how many levels of accounts to show (see Depth).
+Depth 0 shows only the totals.
+.IP \(bu 2
+\f[B]Accounts\f[R] (\f[CR]t\f[R]): a list, or a tree with subtotals.
+In a tree, the accounts below the depth limit are folded, and their
+carets open them in place.
+.IP \(bu 2
+\f[B]Amounts\f[R] (\f[CR]B\f[R], \f[CR]V\f[R]): as recorded, at cost, or
+at market value at the end of each period (see Cost reporting and Value
+reporting).
+.IP \(bu 2
+\f[B]Zero balances\f[R] (\f[CR]z\f[R]): hide or show accounts whose
+balance is zero.
+.IP \(bu 2
+\f[B]Equity\f[R] (balance sheet only): hide or show the equity section.
+The browser remembers this choice for each hledger\-web server.
+.IP \(bu 2
+\f[B]Status\f[R] (\f[CR]U\f[R], \f[CR]P\f[R], \f[CR]C\f[R]),
+\f[B]Postings\f[R] (\f[CR]R\f[R]), account types, and commodities: show
+only transactions with that status, only real postings, or only some
+account types or commodities.
+These rows edit the search, adding a term like \f[CR]status:*\f[R] or
+\f[CR]type:A\f[R].
+Shift\-click selects several types or commodities.
 .PP
-A \f[CR]period\f[R] parameter, like the command line\(aqs
-\f[CR]\-p/\-\-period\f[R], selects the interval and/or the period, eg
-\f[CR]/balancesheet?period=monthly\f[R] or
-\f[CR]/incomestatement?period=quarterly in 2025\f[R]; the links above
-each report offer the usual intervals, and column headings link to the
-report for that period.
-The search box filters the reports like the other pages, including
-\f[CR]depth:\f[R] terms.
-A \f[CR]date:\f[R] term can set the interval too, as on the command line
-(\f[CR]date:monthly\f[R], or \f[CR]\(dqdate:quarterly in 2025\(dq\f[R]),
-and wins over the \f[CR]period\f[R] parameter.
+The options you choose stay in effect as you move to other pages, except
+Show, which each report sets to its own default.
+On the journal and register, the report options are shown muted, but are
+kept.
 .PP
-The links above each report also set its depth, which they write as a
-\f[CR]depth:\f[R] term in the search; how amounts are shown, as
-recorded, at cost (like \f[CR]\-B\f[R]), or at market value at the end
-of each period (like \f[CR]\-V\f[R]), with a \f[CR]value\f[R] parameter
-(\f[CR]none\f[R], \f[CR]cost\f[R], \f[CR]then\f[R], \f[CR]end\f[R],
-\f[CR]now\f[R], or a date; all but \f[CR]cost\f[R] take an optional
-commodity, as \f[CR]\-\-value WHEN[,COMM]\f[R]) that is carried to the
-other reports; and whether accounts with zero balances are shown, with
-an \f[CR]empty\f[R] parameter that the \f[CR]z\f[R] key toggles and the
-pages\(aq links carry.
-Other rows filter what every page shows, each rewriting its own search
-term: transaction status, posting realness, account type, and commodity,
-the last two selecting several at once with shift\-click.
+The search form filters reports as it does the other pages, and its
+\f[CR]date:\f[R] terms set the report\(aqs dates.
+An interval or depth typed in the search, like \f[CR]date:monthly\f[R]
+or \f[CR]depth:2\f[R], moves into the options when the page reloads.
+A depth limit for some accounts only, like \f[CR]depth:assets=3\f[R],
+stays in the search.
 .PP
-Every page shows and preserves the report state its url carries: a link
-changes only the control it names, and controls that take effect on
-another page (the report\-shaping rows, on the journal and register)
-show muted labels, their state marked all the same.
-Only the accumulation mode and the register\(aqs costs toggle are
-page\-local: each report accumulates its own way, and following a link
-returns to the target page\(aqs own default.
+The options are also URL parameters, so you can bookmark a report with
+them.
 .PP
-The balance sheets show ending balances and the income statement and
-cashflow statement show changes, as their commands do; an
-\f[CR]accum\f[R] parameter (\f[CR]historical\f[R] or \f[CR]change\f[R])
-overrides that, and the heading then says so, as the commands\(aq does.
-The All accounts report shows changes, or with
-\f[CR]accum=historical\f[R], which its \(dqEnding balances\(dq link
-sets, each account\(aqs balance at the end of each period.
-Like the commands, the statements show all balances as positive amounts,
-so liabilities, equity, and revenues appear with the opposite sign to
-the register\(aqs; the link on such a figure says so.
+(For more detail, see the hledger manual, eg CONCEPTS.)
+.SS Charts
+A report\(aqs chart is the one its command draws with
+\f[CR]\-\-chart\f[R]: eg a bar per account, or with an interval, each
+account over time, and for the statements, each section and the net
+total.
+In tree mode it shows the accounts down to the depth limit.
+With several commodities, use the legend, or the \f[CR][\f[R] and
+\f[CR]]\f[R] keys, to choose the one charted.
 .PP
-Every figure links to the register it is derived from: the account\(aqs
-transactions in that period, whose final balance is the figure, or its
-negation in the sections shown with the opposite sign.
-(The two can differ when a transaction\(aqs postings have dates of their
-own: the report counts such a posting in its own period, while the
-register shows its whole transaction.)
-A section\(aqs total links to the register of the section\(aqs account
-types.
-An ending balance\(aqs register runs in historical mode (its own
-\f[CR]accum=historical\f[R]): its running balance starts from the
-balance brought forward from before the period, shown as its oldest row,
-and its balance column\(aqs heading switches between the two modes.
-A figure at cost or at market value links to a register showing its
-amounts the same way (with the same \f[CR]value\f[R] parameter).
+The \f[CR]c\f[R] key hides or shows the chart, and \f[CR]d\f[R] the
+table.
+The browser remembers this for each hledger\-web server.
+.SS From a report to its transactions
+Click an amount to see its account\(aqs register for that period: the
+transactions the amount is made of.
+An ending balance\(aqs register starts with the balance brought forward,
+so its final running balance is that amount.
+A section\(aqs total shows the register of all the section\(aqs
+accounts.
+An amount shown at cost or market value leads to a register showing its
+amounts the same way.
+.PP
+Some things can make the register look different from the report:
+.IP \(bu 2
+The statements show liabilities, equity and revenues as positive
+amounts, as their commands do, so their registers show the same amounts
+negated.
+The amount\(aqs tooltip says so.
+.IP \(bu 2
+When a posting has a date of its own, the report counts it on that date,
+but the register lists its whole transaction, on the transaction\(aqs
+date.
+.SS Holdings
+The holdings report shows one row for each commodity held in each
+account, with its cost basis, value and gains.
+Its chart has a bar for each one, showing its cost basis and unrealised
+gain or loss.
+Its own options can show:
+.IP \(bu 2
+each lot separately (\f[B]Lots\f[R], \f[CR]L\f[R]),
+.IP \(bu 2
+fully disposed positions and their realised gains (\f[B]Closed
+positions\f[R]),
+.IP \(bu 2
+all values in the market valuation commodity (\f[B]Values\f[R]).
+.PP
+Its depth limit doesn\(aqt fold accounts: as on the command line, it
+merges the deeper accounts\(aq positions, by commodity, into the
+accounts at the limit.
+.PP
+On journals that use lots, every page also has a Lots option, showing
+lot subaccounts and per\-lot postings.
+.SH URL PARAMETERS
+A page\(aqs url includes its search and options, so a bookmark or a
+shared link shows the same view.
+You can also write these urls yourself, eg
+\f[CR]/balancesheet?interval=monthly&depth=2\f[R] or
+\f[CR]/register?account=assets:bank\f[R].
+These are the parameters, most corresponding to hledger options:
+.IP \(bu 2
+\f[CR]q\f[R] \- the search
+.IP \(bu 2
+\f[CR]account\f[R] \- the account whose register to show (with its
+subaccounts, unless \f[CR]subs=0\f[R])
+.IP \(bu 2
+\f[CR]page\f[R] \- which page of transactions to show, in the journal
+and register (1 is the newest)
+.IP \(bu 2
+\f[CR]interval\f[R] \- \f[CR]daily\f[R], \f[CR]weekly\f[R],
+\f[CR]monthly\f[R], \f[CR]quarterly\f[R] or \f[CR]yearly\f[R] (like
+\f[CR]\-D\f[R], \f[CR]\-W\f[R], \f[CR]\-M\f[R], \f[CR]\-Q\f[R],
+\f[CR]\-Y\f[R])
+.IP \(bu 2
+\f[CR]depth\f[R] \- a number (like \f[CR]\-\-depth\f[R])
+.IP \(bu 2
+\f[CR]accum\f[R] \- \f[CR]change\f[R], \f[CR]historical\f[R] or
+\f[CR]cumulative\f[R] (like \f[CR]\-\-change\f[R], \f[CR]\-H\f[R],
+\f[CR]\-\-cumulative\f[R])
+.IP \(bu 2
+\f[CR]value\f[R] \- \f[CR]none\f[R], \f[CR]cost\f[R], or
+\f[CR]then\f[R], \f[CR]end\f[R], \f[CR]now\f[R] or a date, optionally
+followed by \f[CR],COMMODITY\f[R] (like \f[CR]\-\-value\f[R])
+.IP \(bu 2
+\f[CR]infer\f[R] \- \f[CR]1\f[R] to infer market prices from transaction
+costs too (like \f[CR]\-\-infer\-market\-prices\f[R])
+.IP \(bu 2
+\f[CR]empty\f[R] \- \f[CR]1\f[R] to show zero balances, \f[CR]0\f[R] to
+hide them (like \f[CR]\-E\f[R])
+.IP \(bu 2
+\f[CR]list\f[R] \- \f[CR]tree\f[R] or \f[CR]flat\f[R] (like
+\f[CR]\-\-tree\f[R], \f[CR]\-\-flat\f[R])
+.IP \(bu 2
+\f[CR]sort\f[R] \- \f[CR]amount\f[R] (like \f[CR]\-S\f[R])
+.IP \(bu 2
+\f[CR]total\f[R], \f[CR]avg\f[R], \f[CR]pct\f[R] \- \f[CR]1\f[R] to add
+totals, averages, or show percentages (like \f[CR]\-T\f[R],
+\f[CR]\-A\f[R], \f[CR]\-%\f[R])
+.IP \(bu 2
+\f[CR]calc\f[R] \- \f[CR]valuechange\f[R], \f[CR]gain\f[R] or
+\f[CR]count\f[R] (like \f[CR]\-\-valuechange\f[R], \f[CR]\-\-gain\f[R],
+\f[CR]\-\-count\f[R])
+.IP \(bu 2
+\f[CR]date2\f[R] \- \f[CR]1\f[R] to use secondary dates (like
+\f[CR]\-\-date2\f[R])
+.IP \(bu 2
+\f[CR]costs\f[R] \- \f[CR]1\f[R] to show costs, in the register
+.IP \(bu 2
+\f[CR]equity\f[R] \- \f[CR]1\f[R] or \f[CR]0\f[R], on the balance sheet
+(the old \f[CR]/balancesheetequity\f[R] address leads to
+\f[CR]equity=1\f[R])
+.IP \(bu 2
+\f[CR]lots\f[R] \- \f[CR]1\f[R] to show lots (like \f[CR]\-\-lots\f[R])
+.IP \(bu 2
+\f[CR]closed\f[R] \- \f[CR]1\f[R], on the holdings page, to show closed
+positions
 .SH RELOADING
 hledger\-web detects changes made to the files by other means (eg if you
 edit it directly, outside of hledger\-web), and it will show the new
@@ -579,8 +718,8 @@ $ curl \-s http://127.0.0.1:5000/transactions | python3 \-m json.tool
                 \(dqpamount\(dq: [
                     {
                         \(dqacommodity\(dq: \(dq$\(dq,
-                        \(dqaismultiplier\(dq: false,
-                        \(dqaprice\(dq: null,
+                        \(dqacost\(dq: null,
+                        \(dqacostbasis\(dq: null,
 \&...
 .EE
 .PP
@@ -764,7 +903,9 @@ We welcome bug reports in the hledger issue tracker
 .PP
 Some known issues:
 .PP
-Does not work well on small screens, or in text\-mode browsers.
+Without JavaScript (eg in text\-mode browsers), pages can be viewed and
+their links followed, but the add form, help dialog, keyboard shortcuts,
+sidebar toggle and folding don\(aqt work.
 
 
 .SH AUTHORS
