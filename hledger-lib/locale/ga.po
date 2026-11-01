@@ -13,6 +13,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
 
+#. ---- Entries for the hledger command line (some, like month names, also shown by hledger-ui and hledger-web). ----
 #. stand-alone (nominative) month names, as used in a column heading.
 #: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
@@ -169,6 +170,7 @@ msgstr "Iomlán"
 msgid "Balance"
 msgstr "Iarmhéid"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Chart.hs hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "Net:"
 msgstr "Glan:"
@@ -215,40 +217,53 @@ msgstr "(Gnóthachan Carnach)"
 msgid "(Historical Gain)"
 msgstr "(Gnóthachan Stairiúil)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Balance Changes)"
 msgstr "(Athruithe Iarmhéide)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Cumulative Ending Balances)"
 msgstr "(Iarmhéideanna Deiridh Carnacha)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Historical Ending Balances)"
 msgstr "(Iarmhéideanna Deiridh Stairiúla)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", converted to cost"
 msgstr ", i gcostas"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at posting date"
 msgstr ", luacháil ar dháta na postála"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at period ends"
 msgstr ", luacháil ag deireadh gach tréimhse"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", current value"
 msgstr ", luach reatha"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 #, python-brace-format
 msgid ", valued at {date}"
 msgstr ", luacháil ar {date}"
@@ -279,21 +294,25 @@ msgstr "Athruithe luacha ag deireadh tréimhse"
 msgid "Cumulative period-end value changes"
 msgstr "Athruithe carnacha luacha ag deireadh tréimhse"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Incremental gain"
 msgstr "Gnóthachan incriminteach"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Cumulative gain"
 msgstr "Gnóthachan carnach"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Historical gain"
 msgstr "Gnóthachan stairiúil"
 
 #. the depth limit, in the list of options in effect.
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Posting counts"
 msgstr "Líon postálacha"
 
@@ -309,16 +328,21 @@ msgstr "Líon stairiúil postálacha"
 msgid "Transaction counts"
 msgstr "Líon idirbheart"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Balance changes"
 msgstr "Athruithe iarmhéide"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (cumulative)"
 msgstr "Iarmhéideanna deiridh (carnach)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (historical)"
 msgstr "Iarmhéideanna deiridh (stairiúil)"
@@ -329,22 +353,27 @@ msgstr "Iarmhéideanna deiridh (stairiúil)"
 msgid "Budget performance in {dates}{valuation}:"
 msgstr "Feidhmíocht an bhuiséid {dates}{valuation}:"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger/Hledger/Cli/Commands/Balance/Internal.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/Commands/Balance/Internal.hs
 msgctxt "column heading"
 msgid "Commodity"
 msgstr "Aonad"
 
 #. the hint below the commodity filter row.
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger/Hledger/Cli/Commands/Balance/Internal.hs hledger-web/Hledger/Web/Handler/RegisterR.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/Commands/Balance/Internal.hs
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
 msgid "Total"
 msgstr "Iomlán"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger/Hledger/Cli/Commands/Balance/Internal.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/Commands/Balance/Internal.hs
 msgctxt "column heading"
 msgid "Average"
 msgstr "Meán"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Balance Sheet"
@@ -400,16 +429,21 @@ msgstr "Clár Comhardaithe Débhliantúil"
 msgid "Periodic Balance Sheet"
 msgstr "Clár Comhardaithe Tréimhsiúil"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs hledger/Hledger/Cli/Commands/Balancesheetequity.hs
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Assets"
 msgstr "Sócmhainní"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs hledger/Hledger/Cli/Commands/Balancesheetequity.hs
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Liabilities"
 msgstr "Dliteanais"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Balance Sheet With Equity"
@@ -465,12 +499,15 @@ msgstr "Clár Comhardaithe Débhliantúil le Cothromas"
 msgid "Periodic Balance Sheet With Equity"
 msgstr "Clár Comhardaithe Tréimhsiúil le Cothromas"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #. the label before the account type filter links, and the links' text and tooltips.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Equity"
 msgstr "Cothromas"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Cashflow Statement"
@@ -531,26 +568,50 @@ msgstr "Ráiteas Sreabhadh Airgid Tréimhsiúil"
 msgid "Cash flows"
 msgstr "Sreabhadh airgid"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Cost"
 msgstr "Costas"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Unrealised gain"
 msgstr "Gnóthachan neamhréadaithe"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Unrealised loss"
 msgstr "Caillteanas neamhréadaithe"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "No market price"
 msgstr "Gan praghas margaidh"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Value"
 msgstr "Luach"
 
+# machine-translated, please review
+#. the holdings table's cost column heading, translated where it is displayed.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "Avg cost"
+msgstr "Meánchostas"
+
+# machine-translated, please review
+#. the holdings table's cost column heading, translated where it is displayed.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "Unit/Avg cost"
+msgstr "Costas aonaid/meánchostas"
+
+# machine-translated, please review
+#. the holdings table's cost column heading, translated where it is displayed.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "Unit cost"
+msgstr "Costas aonaid"
+
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Income Statement"
@@ -606,11 +667,13 @@ msgstr "Ráiteas Ioncaim Débhliantúil"
 msgid "Periodic Income Statement"
 msgstr "Ráiteas Ioncaim Tréimhsiúil"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Revenues"
 msgstr "Ioncam"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Expenses"
@@ -621,7 +684,8 @@ msgid "Register"
 msgstr "Clár"
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger/Hledger/Cli/Commands/Run.hs hledger-web/Hledger/Web/ReportPage.hs hledger-web/templates/default-layout.hamlet
+#: hledger/Hledger/Cli/Commands/Run.hs hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Show:"
 msgstr "Taispeáin:"
 
@@ -637,6 +701,7 @@ msgstr "Cairteacha"
 msgid "All"
 msgstr "Uile"
 
+#. ---- Entries for hledger-ui. ----
 #: hledger-ui/Hledger/UI/AccountsScreen.hs
 msgid "account balances"
 msgstr "iarmhéideanna cuntas"
@@ -676,10 +741,12 @@ msgstr "Cuntais an ráitis ioncaim"
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #. the browser tab title of this page.
 #. the name of a depth 0 report's one row, all accounts in one.
-#: hledger-ui/Hledger/UI/UIScreens.hs hledger-web/Hledger/Web/App.hs hledger-web/Hledger/Web/Handler/BalanceR.hs
+#: hledger-ui/Hledger/UI/UIScreens.hs hledger-web/Hledger/Web/App.hs
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs
 msgid "All accounts"
 msgstr "Gach cuntas"
 
+#. ---- Entries for hledger-web. ----
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Next report"
@@ -700,6 +767,7 @@ msgstr "An tuarascáil roimhe seo"
 msgid "Go to the previous report"
 msgstr "Téigh go dtí an tuarascáil roimhe seo"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Net, at cost:"
@@ -710,6 +778,7 @@ msgstr "Glan, i gcostas:"
 msgid "The sum of every account, converted to cost: zero for balanced books; anything left comes from unbalanced virtual postings."
 msgstr "Suim gach cuntais, i gcostas: nialas do leabhair chothromaithe; tagann aon rud a fhanann ó phostálacha fíorúla neamhchothromaithe."
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Unbooked gains:"
@@ -720,6 +789,7 @@ msgstr "Gnóthachain neamhthaifeadta:"
 msgid "The sum of every account at market value: appreciation not booked by any entry. If realized gains are booked, this is the unrealized gains."
 msgstr "Suim gach cuntais ag luach margaidh: luachmhéadú nach bhfuil taifeadta ag aon iontráil. Má thaifeadtar gnóthachain réadaithe, is iad seo na gnóthachain neamhréadaithe."
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Net flows:"
@@ -730,6 +800,7 @@ msgstr "Glansreabhadh:"
 msgid "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities."
 msgstr "Suim gach cuntais: na suíomhanna oscailte i ngach aonad, agus an t-airgead a d'íoc astu. Nialas nuair nach dtrasnaíonn aon rud ó aonad go haonad."
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Balance sheet"
@@ -740,6 +811,7 @@ msgstr "Clár comhardaithe"
 msgid "Show assets, liabilities, and net worth"
 msgstr "Taispeáin sócmhainní, dliteanais, agus glanfhiúchas"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Income statement"
@@ -750,6 +822,7 @@ msgstr "Ráiteas ioncaim"
 msgid "Show revenues and expenses"
 msgstr "Taispeáin ioncam agus speansais"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Cashflow statement"
@@ -765,12 +838,28 @@ msgstr "Taispeáin athruithe i sócmhainní leachtacha"
 msgid "Show the balances of all accounts, by period, like the balance command"
 msgstr "Taispeáin iarmhéideanna gach cuntais, de réir tréimhse, mar a dhéanann an t-ordú balance"
 
+#. ---- Entries for the hledger command line (some, like month names, also shown by hledger-ui and hledger-web). ----
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #. the browser tab title of this page.
-#: hledger-web/Hledger/Web/App.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/App.hs
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Holdings"
 msgstr "Sealúchais"
 
+# machine-translated, please review
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "Holdings at period ends"
+msgstr "Sealúchais ag deireadh na dtréimhsí"
+
+# machine-translated, please review
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+#, python-brace-format
+msgid "Holdings at period ends, {dates}"
+msgstr "Sealúchais ag deireadh na dtréimhsí, {dates}"
+
+#. ---- Entries for hledger-web. ----
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Show investment holdings, lots, and gains"
@@ -802,7 +891,8 @@ msgid "Shift-click selects a range of years."
 msgstr "Roghnaíonn Shift-chliceáil raon blianta."
 
 #. the label before a report's interval links.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Interval:"
 msgstr "Eatramh:"
 
@@ -818,7 +908,8 @@ msgid "None"
 msgstr "Dada"
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Yearly"
 msgstr "Bliantúil"
 
@@ -828,7 +919,8 @@ msgid "Show a column per year"
 msgstr "Taispeáin colún do gach bliain"
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Quarterly"
 msgstr "Ráithiúil"
 
@@ -838,7 +930,8 @@ msgid "Show a column per quarter"
 msgstr "Taispeáin colún do gach ráithe"
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Monthly"
 msgstr "Míosúil"
 
@@ -848,7 +941,8 @@ msgid "Show a column per month"
 msgstr "Taispeáin colún do gach mí"
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Weekly"
 msgstr "Seachtainiúil"
 
@@ -858,7 +952,8 @@ msgid "Show a column per week"
 msgstr "Taispeáin colún do gach seachtain"
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Daily"
 msgstr "Laethúil"
 
@@ -872,9 +967,11 @@ msgstr "Taispeáin colún do gach lá"
 msgid "Show how much each balance changed in each period"
 msgstr "Taispeáin an méid a d'athraigh gach iarmhéid i ngach tréimhse"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Ending balances"
 msgstr "Iarmhéideanna deiridh"
 
@@ -883,9 +980,11 @@ msgstr "Iarmhéideanna deiridh"
 msgid "Show each balance at the end of each period, including everything before it"
 msgstr "Taispeáin gach iarmhéid ag deireadh gach tréimhse, lena n-áirítear gach rud roimhe"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Cumulative totals"
 msgstr "Iomláin charnacha"
 
@@ -935,7 +1034,10 @@ msgstr "Taispeáin an tuarascáil seo don tréimhse seo"
 msgid "Transaction added."
 msgstr "Idirbheart curtha leis."
 
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs hledger-web/Hledger/Web/Handler/StatementsR.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 #, python-brace-format
 msgid "{title}, filtered"
 msgstr "{title}, scagtha"
@@ -946,17 +1048,22 @@ msgid "balance - hledger-web"
 msgstr "iarmhéid - hledger-web"
 
 #. the name of a depth 0 report's one row, all accounts in one.
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs hledger-web/Hledger/Web/Handler/StatementsR.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "accounts"
 msgid "All"
 msgstr "Uile"
 
 #. the hint below the account type filter row.
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs hledger-web/Hledger/Web/Handler/JournalR.hs hledger-web/Hledger/Web/Handler/RegisterR.hs
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs
+#: hledger-web/Hledger/Web/Handler/JournalR.hs
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgid "Shift-click selects several types."
 msgstr "Roghnaíonn Shift-chliceáil roinnt cineálacha."
 
-#: hledger-web/Hledger/Web/Handler/EditR.hs hledger-web/Hledger/Web/Handler/UploadR.hs
+#: hledger-web/Hledger/Web/Handler/EditR.hs
+#: hledger-web/Hledger/Web/Handler/UploadR.hs
 #, python-brace-format
 msgid "Failed to load journal: {error}"
 msgstr "Níorbh fhéidir an dialann a lódáil: {error}"
@@ -966,7 +1073,8 @@ msgstr "Níorbh fhéidir an dialann a lódáil: {error}"
 msgid "Saved journal {file}"
 msgstr "Sábháladh an dialann {file}"
 
-#: hledger-web/Hledger/Web/Handler/EditR.hs hledger-web/Hledger/Web/Handler/MiscR.hs
+#: hledger-web/Hledger/Web/Handler/EditR.hs
+#: hledger-web/Hledger/Web/Handler/MiscR.hs
 msgid "Edit journal"
 msgstr "Cuir an dialann in eagar"
 
@@ -975,72 +1083,106 @@ msgstr "Cuir an dialann in eagar"
 msgid "holdings - hledger-web"
 msgstr "sealúchais - hledger-web"
 
+#. ---- Entries for the hledger command line (some, like month names, also shown by hledger-ui and hledger-web). ----
 #. the holdings page's heading; {date} is the report date.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 #, python-brace-format
 msgid "Holdings on {date}"
 msgstr "Sealúchais ar {date}"
 
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Date"
 msgstr "Dáta"
 
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Age"
 msgstr "Aois"
 
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Units"
 msgstr "Aonaid"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Unit price"
 msgstr "Praghas aonaid"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Total cost"
 msgstr "Costas iomlán"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Total value"
 msgstr "Luach iomlán"
 
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Weight"
 msgstr "Ualach"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "UGain"
 msgstr "Gnóth. neamhr."
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "UGain%"
 msgstr "Gnóth. neamhr. %"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "RGain"
 msgstr "Gnóth. réad."
 
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "XIRR"
 msgstr "XIRR"
 
+# machine-translated, please review
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "(no holdings)"
+msgstr "(gan sealúchais)"
+
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Account"
 msgstr "Cuntas"
 
+#. ---- Entries for hledger-web. ----
 #. the tooltip of an account heading or lot's register link.
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Show this account's register"
@@ -1051,11 +1193,14 @@ msgstr "Taispeáin clár an chuntais seo"
 msgid "Show this holding's register"
 msgstr "Taispeáin clár an tsealúchais seo"
 
+#. ---- Entries for the hledger command line (some, like month names, also shown by hledger-ui and hledger-web). ----
 #. the heading of the holdings table's totals row.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Total:"
 msgstr "Iomlán:"
 
+#. ---- Entries for hledger-web. ----
 #: hledger-web/Hledger/Web/Handler/JournalR.hs
 msgid "General Journal"
 msgstr "Dialann Ghinearálta"
@@ -1084,12 +1229,14 @@ msgstr "gach cuntas"
 msgid "{account} (excluding subaccounts)"
 msgstr "{account} (gan fochuntais)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
 msgid "Historical Total"
 msgstr "Iomlán Stairiúil"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
@@ -1112,7 +1259,8 @@ msgid "register - hledger-web"
 msgstr "clár - hledger-web"
 
 #. a chart legend's entry for amounts written without a commodity symbol.
-#: hledger-web/Hledger/Web/Handler/RegisterR.hs hledger-web/Hledger/Web/Widget/Chart.hs
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
+#: hledger-web/Hledger/Web/Widget/Chart.hs
 msgid "no symbol"
 msgstr "gan siombail"
 
@@ -1137,7 +1285,11 @@ msgid "cashflow statement - hledger-web"
 msgstr "ráiteas sreabhadh airgid - hledger-web"
 
 #. the hint below the commodity filter row.
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs hledger-web/Hledger/Web/Handler/JournalR.hs hledger-web/Hledger/Web/Handler/RegisterR.hs hledger-web/Hledger/Web/Handler/StatementsR.hs
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger-web/Hledger/Web/Handler/JournalR.hs
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
 msgid "Shift-click selects several commodities."
 msgstr "Roghnaíonn Shift-chliceáil roinnt aonad."
 
@@ -1171,11 +1323,13 @@ msgstr "Uaslódáladh an comhad {file}"
 msgid "Upload journal"
 msgstr "Uaslódáil dialann"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Close"
 msgstr "Dún"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs hledger-web/templates/journal.hamlet
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
+#: hledger-web/templates/journal.hamlet
 msgid "Add a transaction"
 msgstr "Cuir idirbheart leis"
 
@@ -1293,7 +1447,8 @@ msgid "Show accounts down to depth {depth}"
 msgstr "Taispeáin cuntais síos go doimhneacht {depth}"
 
 #. the label before a report's amount conversion links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Amounts:"
 msgstr "Méideanna:"
 
@@ -1303,12 +1458,14 @@ msgstr "Méideanna:"
 msgid "As recorded"
 msgstr "Mar a taifeadadh"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "amounts"
 msgid "Cost"
 msgstr "Costas"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "amounts"
@@ -1320,6 +1477,7 @@ msgstr "Luach"
 msgid "Show amounts in the commodities they were recorded in"
 msgstr "Taispeáin méideanna sna haonaid inar taifeadadh iad"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's amount conversion links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "At cost"
@@ -1330,6 +1488,7 @@ msgstr "Ag costas"
 msgid "Show amounts converted to their cost, as recorded in transactions (-B)"
 msgstr "Taispeáin méideanna arna dtiontú go dtí a gcostas, mar a taifeadadh in idirbhearta iad (-B)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's amount conversion links, and the links' text and tooltips.
 #. the label before the holdings page's valuation links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -1342,7 +1501,8 @@ msgid "Show amounts converted to their market value at the end of each period, u
 msgstr "Taispeáin méideanna arna dtiontú go dtí a luach margaidh ag deireadh gach tréimhse, le praghsanna margaidh (-V)"
 
 #. the label before the links that show or hide zero balances, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Zero balances:"
 msgstr "Iarmhéideanna nialasacha:"
 
@@ -1384,7 +1544,8 @@ msgid "Hidden"
 msgstr "I bhfolach"
 
 #. the label before a report's status filter links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Status:"
 msgstr "Stádas:"
 
@@ -1399,6 +1560,7 @@ msgctxt "status"
 msgid "All"
 msgstr "Uile"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's status filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Unmarked"
@@ -1409,6 +1571,7 @@ msgstr "Gan mharcáil"
 msgid "Show only unmarked transactions (status:)"
 msgstr "Taispeáin idirbhearta gan mharcáil amháin (status:)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's status filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Pending"
@@ -1419,6 +1582,7 @@ msgstr "Ar feitheamh"
 msgid "Show only pending transactions (status:!)"
 msgstr "Taispeáin idirbhearta ar feitheamh amháin (status:!)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's status filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Cleared"
@@ -1430,7 +1594,8 @@ msgid "Show only cleared transactions (status:*)"
 msgstr "Taispeáin idirbhearta glanta amháin (status:*)"
 
 #. the label before a report's real/virtual filter links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Postings:"
 msgstr "Postálacha:"
 
@@ -1445,6 +1610,7 @@ msgctxt "postings"
 msgid "All"
 msgstr "Uile"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's real/virtual filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Real"
@@ -1455,6 +1621,7 @@ msgstr "Fíor"
 msgid "Show only real postings, as -R does (real:1)"
 msgstr "Taispeáin postálacha fíora amháin, mar a dhéanann -R (real:1)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's real/virtual filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Virtual"
@@ -1466,7 +1633,8 @@ msgid "Show only virtual postings, the parenthesized ones (real:0)"
 msgstr "Taispeáin postálacha fíorúla amháin, iad siúd idir lúibíní (real:0)"
 
 #. the label before a report's list/tree links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Accounts:"
 msgstr "Cuntais:"
 
@@ -1495,7 +1663,8 @@ msgid "Tree"
 msgstr "Crann"
 
 #. the label before a report's extra-column toggles, and the toggles' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Extra columns:"
 msgstr "Colúin bhreise:"
 
@@ -1524,7 +1693,8 @@ msgid "Average"
 msgstr "Meán"
 
 #. the label before a report's sort links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Sort:"
 msgstr "Sórtáil:"
 
@@ -1603,6 +1773,7 @@ msgstr "Athrú luacha"
 msgid "Show how period-end market values changed (--valuechange)"
 msgstr "Taispeáin conas a d'athraigh luachanna margaidh ag deireadh tréimhse (--valuechange)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the depth limit, in the list of options in effect.
 #. the label before a report's calculation links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -1704,7 +1875,8 @@ msgid "Shown"
 msgstr "Taispeánta"
 
 #. the label before a report's lot detail links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Lots:"
 msgstr "Lotaí:"
 
@@ -1793,6 +1965,7 @@ msgctxt "account type"
 msgid "All"
 msgstr "Uile"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Asset"
@@ -1803,6 +1976,7 @@ msgstr "Sócmhainn"
 msgid "Show only asset accounts (type:A)"
 msgstr "Taispeáin cuntais shócmhainne amháin (type:A)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Liability"
@@ -1818,6 +1992,7 @@ msgstr "Taispeáin cuntais dhliteanais amháin (type:L)"
 msgid "Show only equity accounts (type:E)"
 msgstr "Taispeáin cuntais chothromais amháin (type:E)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Revenue"
@@ -1828,6 +2003,7 @@ msgstr "Ioncam"
 msgid "Show only revenue accounts (type:R)"
 msgstr "Taispeáin cuntais ioncaim amháin (type:R)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Expense"
@@ -1848,6 +2024,7 @@ msgstr "Airgead"
 msgid "Show only cash accounts (type:C)"
 msgstr "Taispeáin cuntais airgid amháin (type:C)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Conversion"
@@ -1858,6 +2035,7 @@ msgstr "Tiontú"
 msgid "Show only conversion accounts (type:V)"
 msgstr "Taispeáin cuntais thiontaithe amháin (type:V)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Gain"
@@ -1868,6 +2046,7 @@ msgstr "Gnóthachan"
 msgid "Show only capital gain accounts (type:G)"
 msgstr "Taispeáin cuntais ghnóthachain chaipitiúil amháin (type:G)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Imbalance"
@@ -2058,14 +2237,17 @@ msgstr "seachtainiúil"
 msgid "daily"
 msgstr "laethúil"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger-web/templates/default-layout.hamlet
 msgid "unmarked"
 msgstr "gan mharcáil"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger-web/templates/default-layout.hamlet
 msgid "pending"
 msgstr "ar feitheamh"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger-web/templates/default-layout.hamlet
 msgid "cleared"
 msgstr "glanta"
@@ -2237,7 +2419,9 @@ msgstr "bealach eile chun teorainn doimhneachta a shocrú (is féidir í a shocr
 msgid "Edit file"
 msgstr "Cuir an comhad in eagar"
 
-#: hledger-web/templates/edit-form.hamlet hledger-web/templates/upload-form.hamlet
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#: hledger-web/templates/edit-form.hamlet
+#: hledger-web/templates/upload-form.hamlet
 msgid "Are you sure? This will overwrite your journal!"
 msgstr "An bhfuil tú cinnte? Forscríobhfaidh sé seo do dhialann!"
 
@@ -2314,11 +2498,13 @@ msgstr "Taispeáin na hidirbhearta níos sine"
 msgid "Older"
 msgstr "Níos sine"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "To/From Account(s)"
 msgstr "Chuig/Ó Chuntas"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "Amount Out/In"
@@ -2328,6 +2514,7 @@ msgstr "Méid Amach/Isteach"
 msgid "Show this entry and the other journal entries on its date"
 msgstr "Taispeáin an iontráil seo agus iontrálacha eile na dialainne ar a dáta"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger-web/templates/register.hamlet
 msgid "Balance brought forward"
 msgstr "Iarmhéid tugtha ar aghaidh"

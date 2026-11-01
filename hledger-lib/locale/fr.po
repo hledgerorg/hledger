@@ -170,6 +170,7 @@ msgstr "Total"
 msgid "Balance"
 msgstr "Solde"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Chart.hs hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "Net:"
 msgstr "Net :"
@@ -214,40 +215,53 @@ msgstr "(plus-value cumulée)"
 msgid "(Historical Gain)"
 msgstr "(plus-value historique)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Balance Changes)"
 msgstr "(variations de solde)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Cumulative Ending Balances)"
 msgstr "(soldes de clôture cumulés)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Historical Ending Balances)"
 msgstr "(soldes de clôture historiques)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", converted to cost"
 msgstr ", au coût"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at posting date"
 msgstr ", à la valeur de marché à la date du mouvement"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at period ends"
 msgstr ", à la valeur de marché en fin de chaque période"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", current value"
 msgstr ", à la valeur de marché actuelle"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
-#: hledger/Hledger/Cli/CompoundBalanceCommand.hs hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/CompoundBalanceCommand.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
 #, python-brace-format
 msgid ", valued at {date}"
 msgstr ", à la valeur de marché au {date}"
@@ -278,21 +292,25 @@ msgstr "Variations de valeur en fin de période"
 msgid "Cumulative period-end value changes"
 msgstr "Variations cumulées de valeur en fin de période"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Incremental gain"
 msgstr "Plus-value de la période"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Cumulative gain"
 msgstr "Plus-value cumulée"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Historical gain"
 msgstr "Plus-value historique"
 
 #. the depth limit, in the list of options in effect.
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Posting counts"
 msgstr "Nombre de mouvements"
 
@@ -308,16 +326,21 @@ msgstr "Nombre historique de mouvements"
 msgid "Transaction counts"
 msgstr "Nombre d'opérations"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Balance changes"
 msgstr "Variations de solde"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (cumulative)"
 msgstr "Soldes de clôture (cumulés)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (historical)"
 msgstr "Soldes de clôture (historiques)"
@@ -328,22 +351,27 @@ msgstr "Soldes de clôture (historiques)"
 msgid "Budget performance in {dates}{valuation}:"
 msgstr "Exécution du budget {dates}{valuation} :"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger/Hledger/Cli/Commands/Balance/Internal.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/Commands/Balance/Internal.hs
 msgctxt "column heading"
 msgid "Commodity"
 msgstr "Unité"
 
 #. the hint below the commodity filter row.
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger/Hledger/Cli/Commands/Balance/Internal.hs hledger-web/Hledger/Web/Handler/RegisterR.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/Commands/Balance/Internal.hs
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
 msgid "Total"
 msgstr "Total"
 
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger/Hledger/Cli/Commands/Balance/Internal.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs
+#: hledger/Hledger/Cli/Commands/Balance/Internal.hs
 msgctxt "column heading"
 msgid "Average"
 msgstr "Moyenne"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Balance Sheet"
@@ -399,16 +427,21 @@ msgstr "Bilan biennal"
 msgid "Periodic Balance Sheet"
 msgstr "Bilan périodique"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs hledger/Hledger/Cli/Commands/Balancesheetequity.hs
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Assets"
 msgstr "Actifs"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
-#: hledger/Hledger/Cli/Commands/Balancesheet.hs hledger/Hledger/Cli/Commands/Balancesheetequity.hs
+#: hledger/Hledger/Cli/Commands/Balancesheet.hs
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Liabilities"
 msgstr "Passifs"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Balance Sheet With Equity"
@@ -464,12 +497,15 @@ msgstr "Bilan biennal avec capitaux propres"
 msgid "Periodic Balance Sheet With Equity"
 msgstr "Bilan périodique avec capitaux propres"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #. the label before the account type filter links, and the links' text and tooltips.
-#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Equity"
 msgstr "Capitaux propres"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Cashflow Statement"
@@ -530,26 +566,50 @@ msgstr "Tableau périodique des flux de trésorerie"
 msgid "Cash flows"
 msgstr "Flux de trésorerie"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Cost"
 msgstr "Coût"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Unrealised gain"
 msgstr "Plus-value latente"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Unrealised loss"
 msgstr "Moins-value latente"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "No market price"
 msgstr "Pas de prix de marché"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Value"
 msgstr "Valeur"
 
+# machine-translated, please review
+#. the holdings table's cost column heading, translated where it is displayed.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "Avg cost"
+msgstr "Coût moyen"
+
+# machine-translated, please review
+#. the holdings table's cost column heading, translated where it is displayed.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "Unit/Avg cost"
+msgstr "Coût unitaire/moyen"
+
+# machine-translated, please review
+#. the holdings table's cost column heading, translated where it is displayed.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "Unit cost"
+msgstr "Coût unitaire"
+
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Income Statement"
@@ -605,11 +665,13 @@ msgstr "Compte de résultat biennal"
 msgid "Periodic Income Statement"
 msgstr "Compte de résultat périodique"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Revenues"
 msgstr "Revenus"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Expenses"
@@ -620,7 +682,8 @@ msgid "Register"
 msgstr "Registre"
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger/Hledger/Cli/Commands/Run.hs hledger-web/Hledger/Web/ReportPage.hs hledger-web/templates/default-layout.hamlet
+#: hledger/Hledger/Cli/Commands/Run.hs hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Show:"
 msgstr "Afficher :"
 
@@ -676,7 +739,8 @@ msgstr "Comptes du compte de résultat"
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #. the browser tab title of this page.
 #. the name of a depth 0 report's one row, all accounts in one.
-#: hledger-ui/Hledger/UI/UIScreens.hs hledger-web/Hledger/Web/App.hs hledger-web/Hledger/Web/Handler/BalanceR.hs
+#: hledger-ui/Hledger/UI/UIScreens.hs hledger-web/Hledger/Web/App.hs
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs
 msgid "All accounts"
 msgstr "Tous les comptes"
 
@@ -701,6 +765,7 @@ msgstr "Rapport précédent"
 msgid "Go to the previous report"
 msgstr "Aller au rapport précédent"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Net, at cost:"
@@ -711,6 +776,7 @@ msgstr "Net, au coût :"
 msgid "The sum of every account, converted to cost: zero for balanced books; anything left comes from unbalanced virtual postings."
 msgstr "La somme de tous les comptes, au coût : zéro pour une comptabilité équilibrée ; un reste provient de mouvements virtuels non équilibrés."
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Unbooked gains:"
@@ -721,6 +787,7 @@ msgstr "Plus-values non comptabilisées :"
 msgid "The sum of every account at market value: appreciation not booked by any entry. If realized gains are booked, this is the unrealized gains."
 msgstr "La somme de tous les comptes à la valeur de marché : l'appréciation qu'aucune écriture n'a comptabilisée. Si les plus-values réalisées sont comptabilisées, il s'agit des plus-values latentes."
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Net flows:"
@@ -731,6 +798,7 @@ msgstr "Flux nets :"
 msgid "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities."
 msgstr "La somme de tous les comptes : les positions ouvertes dans chaque unité, et la trésorerie qui les a payées. Zéro quand rien ne passe d'une unité à une autre."
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Balance sheet"
@@ -741,6 +809,7 @@ msgstr "Bilan"
 msgid "Show assets, liabilities, and net worth"
 msgstr "Afficher les actifs, les passifs et la valeur nette"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Income statement"
@@ -751,6 +820,7 @@ msgstr "Compte de résultat"
 msgid "Show revenues and expenses"
 msgstr "Afficher les revenus et les dépenses"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Cashflow statement"
@@ -766,12 +836,28 @@ msgstr "Afficher les variations des actifs liquides"
 msgid "Show the balances of all accounts, by period, like the balance command"
 msgstr "Afficher les soldes de tous les comptes, par période, comme la commande balance"
 
+#. ---- Entries for the hledger command line (some, like month names, also shown by hledger-ui and hledger-web). ----
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #. the browser tab title of this page.
-#: hledger-web/Hledger/Web/App.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/App.hs
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Holdings"
 msgstr "Portefeuille"
 
+# machine-translated, please review
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "Holdings at period ends"
+msgstr "Portefeuille en fin de période"
+
+# machine-translated, please review
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+#, python-brace-format
+msgid "Holdings at period ends, {dates}"
+msgstr "Portefeuille en fin de période, {dates}"
+
+#. ---- Entries for hledger-web. ----
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Show investment holdings, lots, and gains"
@@ -803,7 +889,8 @@ msgid "Shift-click selects a range of years."
 msgstr "Maj-clic sélectionne une plage d'années."
 
 #. the label before a report's interval links.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Interval:"
 msgstr "Intervalle :"
 
@@ -819,7 +906,8 @@ msgid "None"
 msgstr "Aucun"
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Yearly"
 msgstr "Annuel"
 
@@ -829,7 +917,8 @@ msgid "Show a column per year"
 msgstr "Afficher une colonne par année"
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Quarterly"
 msgstr "Trimestriel"
 
@@ -839,7 +928,8 @@ msgid "Show a column per quarter"
 msgstr "Afficher une colonne par trimestre"
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Monthly"
 msgstr "Mensuel"
 
@@ -849,7 +939,8 @@ msgid "Show a column per month"
 msgstr "Afficher une colonne par mois"
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Weekly"
 msgstr "Hebdomadaire"
 
@@ -859,7 +950,8 @@ msgid "Show a column per week"
 msgstr "Afficher une colonne par semaine"
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Daily"
 msgstr "Quotidien"
 
@@ -873,9 +965,11 @@ msgstr "Afficher une colonne par jour"
 msgid "Show how much each balance changed in each period"
 msgstr "Afficher de combien chaque solde a varié à chaque période"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Ending balances"
 msgstr "Soldes de clôture"
 
@@ -884,9 +978,11 @@ msgstr "Soldes de clôture"
 msgid "Show each balance at the end of each period, including everything before it"
 msgstr "Afficher chaque solde en fin de période, en incluant tout ce qui précède"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Cumulative totals"
 msgstr "Totaux cumulés"
 
@@ -936,7 +1032,10 @@ msgstr "Afficher ce rapport pour cette période"
 msgid "Transaction added."
 msgstr "Opération ajoutée."
 
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs hledger-web/Hledger/Web/Handler/StatementsR.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 #, python-brace-format
 msgid "{title}, filtered"
 msgstr "{title}, avec filtre"
@@ -947,17 +1046,22 @@ msgid "balance - hledger-web"
 msgstr "soldes - hledger-web"
 
 #. the name of a depth 0 report's one row, all accounts in one.
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs hledger-web/Hledger/Web/Handler/StatementsR.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
+#: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "accounts"
 msgid "All"
 msgstr "Tous"
 
 #. the hint below the account type filter row.
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs hledger-web/Hledger/Web/Handler/JournalR.hs hledger-web/Hledger/Web/Handler/RegisterR.hs
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs
+#: hledger-web/Hledger/Web/Handler/JournalR.hs
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgid "Shift-click selects several types."
 msgstr "Maj-clic sélectionne plusieurs types."
 
-#: hledger-web/Hledger/Web/Handler/EditR.hs hledger-web/Hledger/Web/Handler/UploadR.hs
+#: hledger-web/Hledger/Web/Handler/EditR.hs
+#: hledger-web/Hledger/Web/Handler/UploadR.hs
 #, python-brace-format
 msgid "Failed to load journal: {error}"
 msgstr "Échec du chargement du journal : {error}"
@@ -967,7 +1071,8 @@ msgstr "Échec du chargement du journal : {error}"
 msgid "Saved journal {file}"
 msgstr "Journal {file} enregistré"
 
-#: hledger-web/Hledger/Web/Handler/EditR.hs hledger-web/Hledger/Web/Handler/MiscR.hs
+#: hledger-web/Hledger/Web/Handler/EditR.hs
+#: hledger-web/Hledger/Web/Handler/MiscR.hs
 msgid "Edit journal"
 msgstr "Modifier le journal"
 
@@ -976,72 +1081,106 @@ msgstr "Modifier le journal"
 msgid "holdings - hledger-web"
 msgstr "portefeuille - hledger-web"
 
+#. ---- Entries for the hledger command line (some, like month names, also shown by hledger-ui and hledger-web). ----
 #. the holdings page's heading; {date} is the report date.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 #, python-brace-format
 msgid "Holdings on {date}"
 msgstr "Portefeuille au {date}"
 
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Date"
 msgstr "Date"
 
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Age"
 msgstr "Âge"
 
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Units"
 msgstr "Quantité"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Unit price"
 msgstr "Prix unitaire"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Total cost"
 msgstr "Coût total"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Total value"
 msgstr "Valeur totale"
 
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Weight"
 msgstr "Poids"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "UGain"
 msgstr "PV lat."
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "UGain%"
 msgstr "PV lat. %"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "RGain"
 msgstr "PV réal."
 
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "XIRR"
 msgstr "TRI"
 
+# machine-translated, please review
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "(no holdings)"
+msgstr "(aucune position)"
+
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Account"
 msgstr "Compte"
 
+#. ---- Entries for hledger-web. ----
 #. the tooltip of an account heading or lot's register link.
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Show this account's register"
@@ -1052,11 +1191,14 @@ msgstr "Afficher le registre de ce compte"
 msgid "Show this holding's register"
 msgstr "Afficher le registre de ce placement"
 
+#. ---- Entries for the hledger command line (some, like month names, also shown by hledger-ui and hledger-web). ----
 #. the heading of the holdings table's totals row.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Total:"
 msgstr "Total :"
 
+#. ---- Entries for hledger-web. ----
 #: hledger-web/Hledger/Web/Handler/JournalR.hs
 msgid "General Journal"
 msgstr "Journal général"
@@ -1085,12 +1227,14 @@ msgstr "tous les comptes"
 msgid "{account} (excluding subaccounts)"
 msgstr "{account} (hors sous-comptes)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
 msgid "Historical Total"
 msgstr "Total historique"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
@@ -1113,7 +1257,8 @@ msgid "register - hledger-web"
 msgstr "registre - hledger-web"
 
 #. a chart legend's entry for amounts written without a commodity symbol.
-#: hledger-web/Hledger/Web/Handler/RegisterR.hs hledger-web/Hledger/Web/Widget/Chart.hs
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
+#: hledger-web/Hledger/Web/Widget/Chart.hs
 msgid "no symbol"
 msgstr "sans symbole"
 
@@ -1138,7 +1283,11 @@ msgid "cashflow statement - hledger-web"
 msgstr "tableau des flux de trésorerie - hledger-web"
 
 #. the hint below the commodity filter row.
-#: hledger-web/Hledger/Web/Handler/BalanceR.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs hledger-web/Hledger/Web/Handler/JournalR.hs hledger-web/Hledger/Web/Handler/RegisterR.hs hledger-web/Hledger/Web/Handler/StatementsR.hs
+#: hledger-web/Hledger/Web/Handler/BalanceR.hs
+#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger-web/Hledger/Web/Handler/JournalR.hs
+#: hledger-web/Hledger/Web/Handler/RegisterR.hs
+#: hledger-web/Hledger/Web/Handler/StatementsR.hs
 msgid "Shift-click selects several commodities."
 msgstr "Maj-clic sélectionne plusieurs unités."
 
@@ -1172,11 +1321,13 @@ msgstr "Fichier {file} téléversé"
 msgid "Upload journal"
 msgstr "Téléverser un journal"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Close"
 msgstr "Fermer"
 
-#: hledger-web/Hledger/Web/Widget/AddForm.hs hledger-web/templates/journal.hamlet
+#: hledger-web/Hledger/Web/Widget/AddForm.hs
+#: hledger-web/templates/journal.hamlet
 msgid "Add a transaction"
 msgstr "Ajouter une opération"
 
@@ -1294,7 +1445,8 @@ msgid "Show accounts down to depth {depth}"
 msgstr "Afficher les comptes jusqu'à la profondeur {depth}"
 
 #. the label before a report's amount conversion links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Amounts:"
 msgstr "Montants :"
 
@@ -1304,12 +1456,14 @@ msgstr "Montants :"
 msgid "As recorded"
 msgstr "Tels qu'enregistrés"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "amounts"
 msgid "Cost"
 msgstr "Coût"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "amounts"
@@ -1321,6 +1475,7 @@ msgstr "Valeur"
 msgid "Show amounts in the commodities they were recorded in"
 msgstr "Afficher les montants dans les unités où ils ont été enregistrés"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's amount conversion links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "At cost"
@@ -1331,6 +1486,7 @@ msgstr "Au coût"
 msgid "Show amounts converted to their cost, as recorded in transactions (-B)"
 msgstr "Afficher les montants convertis à leur coût, tel qu'enregistré dans les opérations (-B)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's amount conversion links, and the links' text and tooltips.
 #. the label before the holdings page's valuation links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -1343,7 +1499,8 @@ msgid "Show amounts converted to their market value at the end of each period, u
 msgstr "Afficher les montants convertis à leur valeur de marché en fin de chaque période, d'après les prix de marché (-V)"
 
 #. the label before the links that show or hide zero balances, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Zero balances:"
 msgstr "Soldes nuls :"
 
@@ -1385,7 +1542,8 @@ msgid "Hidden"
 msgstr "Masqués"
 
 #. the label before a report's status filter links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Status:"
 msgstr "Statut :"
 
@@ -1400,6 +1558,7 @@ msgctxt "status"
 msgid "All"
 msgstr "Tous"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's status filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Unmarked"
@@ -1410,6 +1569,7 @@ msgstr "Non marquées"
 msgid "Show only unmarked transactions (status:)"
 msgstr "Afficher seulement les opérations non marquées (status:)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's status filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Pending"
@@ -1420,6 +1580,7 @@ msgstr "En attente"
 msgid "Show only pending transactions (status:!)"
 msgstr "Afficher seulement les opérations en attente (status:!)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's status filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Cleared"
@@ -1431,7 +1592,8 @@ msgid "Show only cleared transactions (status:*)"
 msgstr "Afficher seulement les opérations rapprochées (status:*)"
 
 #. the label before a report's real/virtual filter links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Postings:"
 msgstr "Mouvements :"
 
@@ -1446,6 +1608,7 @@ msgctxt "postings"
 msgid "All"
 msgstr "Tous"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's real/virtual filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Real"
@@ -1456,6 +1619,7 @@ msgstr "Réels"
 msgid "Show only real postings, as -R does (real:1)"
 msgstr "Afficher seulement les mouvements réels, comme -R (real:1)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before a report's real/virtual filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Virtual"
@@ -1467,7 +1631,8 @@ msgid "Show only virtual postings, the parenthesized ones (real:0)"
 msgstr "Afficher seulement les mouvements virtuels, ceux entre parenthèses (real:0)"
 
 #. the label before a report's list/tree links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Accounts:"
 msgstr "Comptes :"
 
@@ -1496,7 +1661,8 @@ msgid "Tree"
 msgstr "Arborescence"
 
 #. the label before a report's extra-column toggles, and the toggles' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Extra columns:"
 msgstr "Colonnes supplémentaires :"
 
@@ -1525,7 +1691,8 @@ msgid "Average"
 msgstr "Moyenne"
 
 #. the label before a report's sort links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Sort:"
 msgstr "Tri :"
 
@@ -1604,6 +1771,7 @@ msgstr "Variation de valeur"
 msgid "Show how period-end market values changed (--valuechange)"
 msgstr "Afficher comment les valeurs de marché en fin de période ont varié (--valuechange)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the depth limit, in the list of options in effect.
 #. the label before a report's calculation links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -1705,7 +1873,8 @@ msgid "Shown"
 msgstr "Affichés"
 
 #. the label before a report's lot detail links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/templates/default-layout.hamlet
 msgid "Lots:"
 msgstr "Lots :"
 
@@ -1794,6 +1963,7 @@ msgctxt "account type"
 msgid "All"
 msgstr "Tous"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Asset"
@@ -1804,6 +1974,7 @@ msgstr "Actif"
 msgid "Show only asset accounts (type:A)"
 msgstr "Afficher seulement les comptes d'actif (type:A)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Liability"
@@ -1819,6 +1990,7 @@ msgstr "Afficher seulement les comptes de passif (type:L)"
 msgid "Show only equity accounts (type:E)"
 msgstr "Afficher seulement les comptes de capitaux propres (type:E)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Revenue"
@@ -1829,6 +2001,7 @@ msgstr "Revenu"
 msgid "Show only revenue accounts (type:R)"
 msgstr "Afficher seulement les comptes de revenus (type:R)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Expense"
@@ -1849,6 +2022,7 @@ msgstr "Trésorerie"
 msgid "Show only cash accounts (type:C)"
 msgstr "Afficher seulement les comptes de trésorerie (type:C)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Conversion"
@@ -1859,6 +2033,7 @@ msgstr "Conversion"
 msgid "Show only conversion accounts (type:V)"
 msgstr "Afficher seulement les comptes de conversion (type:V)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Gain"
@@ -1869,6 +2044,7 @@ msgstr "Plus-value"
 msgid "Show only capital gain accounts (type:G)"
 msgstr "Afficher seulement les comptes de plus-values (type:G)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Imbalance"
@@ -2059,14 +2235,17 @@ msgstr "hebdomadaire"
 msgid "daily"
 msgstr "quotidien"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger-web/templates/default-layout.hamlet
 msgid "unmarked"
 msgstr "non marquées"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger-web/templates/default-layout.hamlet
 msgid "pending"
 msgstr "en attente"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger-web/templates/default-layout.hamlet
 msgid "cleared"
 msgstr "rapprochées"
@@ -2238,7 +2417,9 @@ msgstr "une autre façon de fixer la limite de profondeur (possible par compte)"
 msgid "Edit file"
 msgstr "Modifier le fichier"
 
-#: hledger-web/templates/edit-form.hamlet hledger-web/templates/upload-form.hamlet
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#: hledger-web/templates/edit-form.hamlet
+#: hledger-web/templates/upload-form.hamlet
 msgid "Are you sure? This will overwrite your journal!"
 msgstr "Êtes-vous sûr ? Cela écrasera votre journal !"
 
@@ -2315,11 +2496,13 @@ msgstr "Afficher les opérations plus anciennes"
 msgid "Older"
 msgstr "Plus anciennes"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "To/From Account(s)"
 msgstr "Vers/depuis le(s) compte(s)"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "Amount Out/In"
@@ -2329,6 +2512,7 @@ msgstr "Montant sortie/entrée"
 msgid "Show this entry and the other journal entries on its date"
 msgstr "Afficher cette écriture et les autres écritures du journal à sa date"
 
+#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #: hledger-web/templates/register.hamlet
 msgid "Balance brought forward"
 msgstr "Solde reporté"
