@@ -9,56 +9,272 @@
 
 User-visible changes in the hledger command line tool and library.
 
+# 79c2b7b1
 
-# 7acb6aed
+## Breaking changes
 
-## Reports
+- `alias` directives/subdirectives/tags are now applied before `apply account`, as in Ledger,
+  so that a file's aliases keep working when it is included under `apply account`.
+  If you had `apply account X` and then `alias X:foo = ...`, that alias should now be written `alias foo = ...`.
+  `--alias` options still apply last, to the full account names.
+  ([#2733])
 
-- roi: TWR is now computed from the investment's value at the end of each day.
-  Computing TWR exactly needs the investment's value immediately before or after each cash
-  flow, which hledger can't determine reliably when several transactions, prices or balance
-  assignments fall on the same day ([#2420]). The previous version avoided that with the BAI
-  linked IRR method: it used values only on dates with a recorded valuation (price directives
-  and --pnl transactions), and between them estimated the return by solving for a constant
-  growth rate. That was better, but deciding which dates count as valuations turned out to be
-  fiddly and error-prone ([#2824], [#2825]), and solving could fail. Using end-of-day values
-  is the next step in the same direction: the value at the end of a day is always well
-  defined, whatever happens within the day, so TWR can now be computed exactly at a daily
-  granularity, with no valuation dates to choose and nothing to solve.
-  A day with cash flows is split in two: the day's price changes on the holdings carried over
-  from the previous day, then the cash flows, as if made at the day's closing prices. Times
-  with nothing invested earn nothing (eg before the first deposit), and periods chain exactly.
-  TWR results change for most journals with cash flows between valuations. If you record
-  changes in value only occasionally (eg with --pnl transactions), the growth is now
-  attributed to the day you record it, so record a valuation around large deposits and
-  withdrawals. See the roi docs, which also explain how to check the results with --cashflow.
-  (Dmitry Astapov, [#2824])
+- A repeated commodity declaration (in the same file, an included file, or another `-f` file)
+  now adds to the earlier one, instead of replacing it:
+  commodity aliases are combined, a display style replaces the earlier one only if given,
+  and later tags take precedence.
+  With several `-f` files, the last file's display style is now used (previously the first's);
+  `--debug=1` shows any that differ.
+  Redeclaring an alias with a different quantity is an error.
 
-- roi: cash flows (the Cashflow column, IRR and TWR) are now measured from the investment's
-  perspective: the cost of the investment postings, minus any profit and loss in the same
-  transaction, dated like those postings. Other postings in the same transaction (eg fees,
-  unless they match --pnl) no longer change the cash flow.
-  (Dmitry Astapov)
+- activity now shows transactions per week by default, and uses the new chart engine (see below).
+  `--postings` counts postings, per account; `activity --postings -D -0` gives the old report.
+  It now supports `-w/--width`, `-S`, `-T`, `-A`, and svg, html, csv, tsv and json output.
 
-- roi: a holding with no market price is valued at the price of the investment's latest
-  purchase or sale of it, and positions fully closed before the period no longer cause
-  "could not value" errors.
-  (Dmitry Astapov)
+- holdings' tree mode now groups holdings into account sections:
+  an account with subaccounts or several commodities is a heading row showing its subtree's totals,
+  followed by its own holdings and its subaccounts.
+  Previously there was a row per account and commodity at every level, which made the tree much larger.
+  Its csv, tsv and json output is now the same as list mode's:
+  one record per holding (or lot, with `--lots`), without the heading rows.
+  (Arthur Cinader, [#2779])
 
-- roi: fix: the value at the end of a period was computed with prices from the day after the
-  period. Now it uses the prices of the period's last day, and each period begins with the
-  value the previous one ended with, so in multi-period reports every price change is counted
-  in exactly one period.
-  (Dmitry Astapov)
+- In posting amounts, an unquoted commodity symbol can no longer begin with `(` when written before the number,
+  or with `/` when written after it (to avoid clashing with amount expressions, described below).
+  Eg `(A) 10` or `10 /kg` would now need to be written like `"(A)" 10` or `10 "/kg"`.
 
-- roi: fix: prices of commodities which the investment doesn't hold (eg an EUR price, for an
-  investment in dollars) no longer change its TWR.
-  (Dmitry Astapov, [#2825])
+- The test command is now an option: `hledger --test[=PATTERN]` runs the built-in unit tests (or those matching PATTERN).
 
-[#2420]: https://github.com/hledgerorg/hledger/issues/2420
+## Charts
+
+- hledger now has easy charting built in. Most reports can be shown as charts, with `--chart`.
+  In the terminal, these will be bar charts, using colour and Unicode block characters when supported.
+  Charts adapt to the report options and data, showing stacked bars, net amount/end balance marks,
+  contra amounts hatched, largest amounts prioritised, totals/averages, etc.
+  Each commodity gets its own chart.
+  If csv, tsv or json output is selected, the chart's data is shown instead.
+
+- Charts can also be SVG images, with tooltips and light/dark variants, enabled
+  by a new svg output format (`-O svg` or `-o FILE.svg`).
+  Or, SVG charts can be added to html reports (`-o FILE.html --chart`).
+  See also `--view` and `run` below.
+  (Simon Michael, Arthur Cinader)
+
+- When colour is available, accounts are coloured by type:
+  assets blue, liabilities amber, equity violet, revenues green, expenses red.
+  In a multi-period chart whose accounts are all of one type (eg `bal --chart -M type:X`),
+  accounts get stable unique colours instead, to help distinguish them.
+
+- In compound reports like bs and is, you can override the default layout of subreport amounts
+  by writing `--chart=grouped` (side by side) or `--chart=diverging` (opposite sides of the axis).
+
+- By default, each chart uses all available space. Or you can write `--chart=SCALE` (eg `--chart=5000`)
+  to draw them at a fixed scale, allowing separate charts to be compared visually.
+  Chart layout and scale options can be combined, with the layout first, eg `--chart=grouped,5000`.
+
+## Holdings
+
+- Fixed: holdings' totals row left out the realised gains of accounts which had sold all their holdings,
+  in list mode (the default) and with `--lots`, so its RGain and XIRR could differ from tree mode or `-E`.
+  Now they always include them, as documented.
+  ([#2769])
+
+- holdings is now faster when there are many lots, eg 1.1s -> 0.3s with ~700 holdings.
+  (Arthur Cinader)
+
+- With a report interval (eg `-M`, `-Y`), holdings now shows the totals at each period end.
+
+- holdings has a chart, showing a bar per holding (or lot) with its cost basis, unrealised gain or loss,
+  and gain percentage. Or with a report interval, it shows the overall stats per period.
+
+## Command line
+
+- Fixed: stats with `-o FILE` wrote only the last part of its output (the run time line) to the file.
+  Now the file gets all of the output.
+
+- Fixed: `--count` reports showed counts in the journal's no-symbol commodity style (eg 1.00), rounded their averages to whole numbers,
+  and bs/bse/is showed negative counts in some sections.
+  Now counts are shown as whole numbers, averages have one decimal place, and bs/bse/is show positive counts in every section, and their sum as the net total.
+  balance `--count` reports are now titled "Posting counts".
+
+- Fixed: `print -o FILE.ledger` wrote journal format; now it selects ledger format, like `-O ledger`.
+  Also print's default output format is now called "journal" ("txt" is still accepted).
+
+- Fixed: roi's TWR is now computed from the investment's value at the end of each day, exactly, at daily granularity.
+  The previous linked-IRR method's choice of valuation dates was error-prone, and its solving could fail.
+  Results change for most journals with cash flows between valuations; if you record valuations only occasionally
+  (eg with `--pnl` transactions), record one around large deposits and withdrawals. See the roi docs.
+  (Dmitry Astapov, [#2824], [#2825])
+
+- `--view` opens a report in the system's default viewer for the report's format.
+  It writes an output file if you did not specify one (in hledger's cache directory), and chooses html format if you did not specify that.
+  This is convenient for viewing reports, eg `hledger is -M -o is.fods --view` or `hledger is -M --chart --view`.
+  It works with print, register, aregister, the balance commands, holdings, activity and run.
+
+- `run` with `-O html`, `-o FILE.html` or `--view` now writes its commands' outputs as one combined html page,
+  with a folding section for each command, and links to show just titles, charts, or all data.
+  Eg: `hledger run --view -- is -M --chart -- bs -Q --chart`.
+
+- In html output with `--base-url`, register links now name the account with an `account` parameter,
+  can convert amounts as the report did (with `-B`/`-V`/`-X`), and work for account names containing double quotes (eg labelled lots).
+  Tree mode account cells have `depth-N` classes (the account's depth), and the row indent classes are now `indent-N` (not `depth-N`).
+  (Arthur Cinader, Simon Michael)
+
+- The quick reference card (`hledger` or `hledger help`) and commands list (`hledger help commands`)
+  are reorganised and updated.
+
+- `--help`, `--version` and `--test` now work despite config file errors,
+  and config file errors say how to run without the config file (`-n`).
+
+- When an `-O` value looks like a file name, the error suggests `-o` instead.
+
+- The `--ignore-lots` help says more clearly what it skips: lot checks, inferred cost bases and gain postings.
+
+## Journal format
+
+- Fixed: a subaccount-inclusive balance assignment like `a =* $0` could also change other commodities' balances in subaccounts.
+  Now it changes only the assigned commodity.
+  ([#2772])
+
+- Fixed: `end aliases` also cancelled `--alias` options, for the rest of that file and the files it included.
+  Now it cancels only the account aliases declared in the journal.
+
+- Fixed: amounts written in a commodity alias which converts inexactly (eg `10 min` to hours) could fail balance assertions
+  or get inexact costs, and once converted they kept the alias's display style. Now they are exact, with the commodity's style.
+
+- Fixed: account declarations now accept the full type name, Gain (not just G).
+
+- Fixed: when several accounts were declared with the Gain (or Conversion) type,
+  generated gain and conversion postings used the alphabetically first; now they use the first declared, as documented.
+
+- We now support posting amounts written as arithmetic expressions, like `$50.20 + $16.54`, `$800.00 * 1.05` or `($92.00 + $15.00) / 3`.
+  `+`, `-`, `*`, `/` and parentheses are supported.
+  The results of `*` and `/` are rounded to the entry's decimal places.
+  See Amount expressions in the manual for full details.
+  (Martin, [#2648], a bounty funded by James Shubin)
+
+- Amounts in a commodity alias (shown eg with `-X ALIAS`, or by print) are now displayed with the canonical commodity's number format
+  (precision, decimal mark, digit groups), unless the alias has its own commodity directive.
+  (Previously they used the format of the amounts written with the alias.)
+
+- Commodity aliases are now used as a last resort exchange rate (for `-V`, `-X`, `--value`),
+  so eg `-X` can value amounts written in an alias declared by another `-f` file.
+  `prices --show-aliases` lists these rates, and `--debug=2` shows when they are used.
+  An alias declared differently by different files can't be used for conversion.
+
+- A `date:` or `date2:` tag with an empty value in a posting comment is now accepted, setting no date.
+  This helps when reading Ledger journals.
+
+- check accounts (and strict mode) no longer require declaring the accounts that hledger chooses for generated postings.
+
+## Transaction balancing
+
+- Fixed: in entries with balance assignments,
+  `check balanced` and strict mode didn't catch implicit commodity conversions, and `--txn-balancing` had no effect.
+  Now they work as expected.
+
+- Fixed: an inferred unit cost could be shown with too few decimal places (eg `@ 33.33 B`),
+  so `print -x` output could be rejected as unbalanced when read back.
+  Now it is shown exactly, or with 8 decimal places if it's a repeating decimal.
+  In other cases too, print shows repeating decimals with 8 decimal places, not 255.
+
+- `--txn-balancing=exact|old` is now `--txn-tolerance=entry|display`, meaning "balance transactions within
+  the entry's precision" (preferred) or "within display precision" (to keep old hledger 1 journals working).
+  The old spelling still works.
+
+- `--infer-imbalance` adds `equity:imbalance` postings to exactly balance entries which are
+  balanced only when rounded to the entry's precision (eg because of a rounded @ cost).
+  So totals at cost become exactly zero, and the accumulated imbalance can be seen.
+  A new Imbalance (M) account type, a subtype of Equity, can be used to select a different account.
+
+## Lot tracking
+
+- Fixed: `close --lots` output couldn't be read back when lots used AVERAGE or AVERAGEALL, since their lot names had no cost.
+  Now close adds the pool's average cost to each lot name.
+
+- Cost basis annotations and lot subaccount names with their parts out of order, eg `{$50, "note"}`,
+  now give an error stating the required order, `{DATE, "LABEL", COST}`, instead of a confusing parse error.
+
+- Explicitly-written gain amounts which are within the entry's precision of the calculated gain,
+  are now replaced internally by the exact calculated gain, so bal -B totals are exactly zero.
+
+## Time logging
+
+- Timedot's mo and y units were 7 times too large; now they are 30 and 365 days, as documented.
+  (Wrong since hledger 1.4.)
+
+- Timedot and timeclock durations are no longer rounded to 0.01 hours, so totals don't drift,
+  and a timeclock session crossing midnight no longer loses a second.
+
+## Data import
+
+- A hledger field's value can now be referenced in value assignments.
+  This means you can now append to a comment, building it up from several if rules.
+
+- CSV rules now can transform values by calling functions in `%{...}` expressions;
+  upper, lower, capitalize, trim, negate, abs, concat, default, replace, substr, join are supported.
+  Eg `%{capitalize(%desc)}`, `%{default(%payee, %desc)}`, `%{replace(%desc, "ref#[0-9]+", "")}`, `%{join(", ", %note, %ref)}`.
+
+- If tables are now written with `ifs`, which allows aligning their delimiters (`if` still works).
+  The header line can have spaces around field names, spaces around values are ignored, and a blank value no longer assigns that field.
+  Error messages say "if rule" and "ifs table", and are worded more clearly.
+
+- When a CSV rules file's `source` command is run, the message now names the rules file responsible,
+  eg "bank.rules: running source command: CMD", distinguishing it from get's messages.
+
+- `get` now shows the getdata script's output on stderr rather than stdout,
+  and labels the helper commands it runs ("running: ...", or "would run: ..." with `--dry-run`).
+
+## Queries
+
+- Queries like `desc:` or `::`, where the regular expression pattern is left empty, now match anything.
+  (Previously they gave an error.)
+
+## Translations
+
+- hledger, hledger-ui and hledger-web can now be shown in eight more languages.
+  The German and Chinese translations have been improved, and we now also have
+  Irish, Spanish, Italian, French, Brazilian Portuguese, Russian, Japanese, and Hawaiian.
+  Russian was contributed by Daniil Iaitskov ([#2773]), and Italian is based on Diego Depaoli's draft;
+  the rest are machine-made, and awaiting review by native speakers.
+  To help, see the mail list's call for translators, or [TRANSLATING](TRANSLATING.md).
+  (Daniil Iaitskov, Diego Depaoli, Henning Thielemann, Simon Michael)
+
+- `hledger --write-lang=LANG` writes the current po file for a supported language,
+  or a starter po file for a new language, into hledger's config directory.
+  This is an easy way to start improving or adding a translation; edit the file,
+  then run hledger with `--lang LANG` to test it.
+
+## Performance
+
+- Regex replacement no longer takes quadratic time in the length of the text.
+  With hledger's typically short account names and CSV fields there may be a small speedup;
+  unusually long ones (eg regex aliases on 2000-character account names) are much faster than before.
+
+- check accounts, payees and tags are faster with many declarations
+  (eg 0.63s -> 0.20s with 10k transactions and 10k declared accounts).
+
+## Examples
+
+- bcexample's beancount prices are converted to P directives, so -V works.
+- hledger.conf.sample is updated, with command-listing helpers.
+
+## Docs
+
+- The manual has new Charts, Amount expressions, Amount arithmetic, Transaction balancing and Built-in tests sections,
+  and updated lots, reconciling, troubleshooting lots, commodity aliases and hledger 1 vs hledger 2 sections.
+- The CSV docs are reorganised, with clearer explanations of reading the data, finding the data, if rules and ifs tables, and rules examples moved into Working with CSV.
+- The alias directive, account aliases and directive scopes are explained more clearly, including combining file trees.
+- The commands chapter is grouped like the commands list.
+
+[#2648]: https://github.com/hledgerorg/hledger/issues/2648
+[#2733]: https://github.com/hledgerorg/hledger/issues/2733
+[#2769]: https://github.com/hledgerorg/hledger/issues/2769
+[#2772]: https://github.com/hledgerorg/hledger/issues/2772
+[#2773]: https://github.com/hledgerorg/hledger/issues/2773
+[#2779]: https://github.com/hledgerorg/hledger/issues/2779
 [#2824]: https://github.com/hledgerorg/hledger/issues/2824
 [#2825]: https://github.com/hledgerorg/hledger/issues/2825
-
 
 # 1.99.5 2026-10-01
 
@@ -451,7 +667,6 @@ Some other breaking changes only affect behaviour introduced in a
 [#2751]: https://github.com/hledgerorg/hledger/issues/2751
 [#2756]: https://github.com/hledgerorg/hledger/issues/2756
 
-
 # 1.99.4 2026-09-10
 
 ## Breaking changes
@@ -834,7 +1049,6 @@ The `repl` and `run` commands have been improved since 1.99.3. In summary:
 - `bin/hledger-bar` now allows its flags to appear anywhere among the arguments, and sets scale with a new `-s` option.
 - `bin/getprices` now has a small delay between requests, reducing failures with some providers.
 
-
 [#273]: https://github.com/hledgerorg/hledger/issues/273
 [#1489]: https://github.com/hledgerorg/hledger/issues/1489
 [#1742]: https://github.com/hledgerorg/hledger/issues/1742
@@ -857,7 +1071,6 @@ The `repl` and `run` commands have been improved since 1.99.3. In summary:
 [#2714]: https://github.com/hledgerorg/hledger/issues/2714
 [#2724]: https://github.com/hledgerorg/hledger/issues/2724
 
-
 # 1.52.4 2026-09-10
 
 Improvements
@@ -871,13 +1084,9 @@ Docs
 
 [#2539]: https://github.com/hledgerorg/hledger/issues/2539
 
-
 # 1.52.3 2026-08-27
 
-
-
 # 1.52.2 2026-08-24
-
 
 # 1.99.3 2026-06-24
 
@@ -1243,7 +1452,6 @@ Docs
 - `Hledger.Write.Ods`: enable digit grouping in output if `AmountStyle` declares any digit groups. (Henning Thielemann) [#2584]
 - `Hledger.Data.Amount`: consolidate `showPriceDirective` here.
 
-
 [#1148]: https://github.com/hledgerorg/hledger/issues/1148
 [#1640]: https://github.com/hledgerorg/hledger/issues/1640
 [#1950]: https://github.com/hledgerorg/hledger/issues/1950
@@ -1262,7 +1470,6 @@ Docs
 [#2645]: https://github.com/hledgerorg/hledger/issues/2645
 [#2646]: https://github.com/hledgerorg/hledger/issues/2646
 [#2649]: https://github.com/hledgerorg/hledger/issues/2649
-
 
 # 1.99.2 2026-04-28
 
@@ -1366,7 +1573,6 @@ Docs
 [#2571]: https://github.com/hledgerorg/hledger/issues/2571
 [#2572]: https://github.com/hledgerorg/hledger/issues/2572
 
-
 # 1.52.1 2026-04-28
 
 Breaking changes
@@ -1381,7 +1587,6 @@ Docs
 
 - The "Cost basis / lot syntax" section has been renamed to "Cost basis",
   and updated to mention hledger 2.
-
 
 # 1.99.1 2026-03-28
 
@@ -1515,7 +1720,6 @@ Approx. estimated claude token use (in+out), and cost, for the lots work in this
 
 Approx. human dev time: ~150h, market value ~$10k-30k
 
-
 # 1.52 2026-03-20
 
 Features
@@ -1634,7 +1838,6 @@ Scripts/addons
 [#2563]: https://github.com/hledgerorg/hledger/issues/2563
 [#2564]: https://github.com/hledgerorg/hledger/issues/2564
 
-
 # 1.51.2 2026-01-08
 
 Fixes
@@ -1674,7 +1877,6 @@ API
 [#2505]: https://github.com/hledgerorg/hledger/issues/2505
 [#2514]: https://github.com/hledgerorg/hledger/issues/2514
 
-
 # 1.51.1 2025-12-08
 
 Fixes
@@ -1702,7 +1904,6 @@ Fixes
 [#2503]: https://github.com/hledgerorg/hledger/issues/2503
 [#2497]: https://github.com/hledgerorg/hledger/issues/2497
 
-
 # 1.50.5 2025-12-08
 
 Fixes
@@ -1711,7 +1912,6 @@ Fixes
   [#2503]
 
 [#2503]: https://github.com/hledgerorg/hledger/issues/2503
-
 
 # 1.51 2025-12-05
 
@@ -1777,7 +1977,6 @@ API
    - stop exporting pivotByOpts, anonymiseByOpts
    - renamed withJournalDo -> withJournal. The old name is still available but deprecated.
 
-
 # 1.50.4 2025-12-04
 
 Fixes
@@ -1800,7 +1999,6 @@ Fixes
   please report it.
 
 [#2498]: https://github.com/hledgerorg/hledger/issues/2498
-
 
 # 1.50.3 2025-11-18
 
@@ -1843,7 +2041,6 @@ Fixes
 
 - Docs updated: add, areg, argument files, check, close, csv, depth, print, print, Special characters, Value reporting
 
-
 # 1.50.2 2025-09-26
 
 Fixes
@@ -1864,7 +2061,6 @@ Fixes
 
 [#2463]: https://github.com/hledgerorg/hledger/issues/2463
 [#2465]: https://github.com/hledgerorg/hledger/issues/2465
-
 
 # 1.50.1 2025-09-16
 
@@ -2103,7 +2299,6 @@ API
 - renamed paypaljson2csv to paypaljson
 - simplefinjson, simplefincsv: new helpers for downloading/converting data from simplefin.org bank aggregator
 
-
 # 1.43.2 2025-06-13
 
 - hledger no longer shows an error message or exits with error status
@@ -2118,7 +2313,6 @@ API
 - Changelog, release notes: mention improved decoding errors [#73];
   add missing issue numbers
 
-
 # 1.43.1 2025-06-04
 
 Fixes
@@ -2131,7 +2325,6 @@ Docs
 
 - Query types: clarify that amt: filters postings [#2396]
 - More text encoding corrections/cleanups [#2394]
-
 
 # 1.43 2025-06-01
 
@@ -2262,7 +2455,6 @@ Docs
 - Hledger.Cli.Conf: make getConf total, add getConf'
 - Hledger.Cli.Version: add more version helpers, rename HledgerBinaryInfo
 
-
 # 1.42.2 2025-05-16
 
 Fixes
@@ -2278,7 +2470,6 @@ Docs
 - CSV encoding: fix inaccurate list of encoding names. [#2354]
 - Fix broken links to "Commodity display style". (Simon Michael, J.B. Rainsberger [hledger_site#132])
 - Misc. edits/fixes: beancount output, commands list, balance command, hledger-iadd link, csv tutorial link
-
 
 # 1.42.1 2025-03-12
 
@@ -2296,7 +2487,6 @@ Fixes
 Docs
 
 - run, repl: doc fixes (Pranesh Prakash, Simon Michael)
-
 
 # 1.42 2025-03-07
 
@@ -2416,7 +2606,6 @@ Scripts/addons
   using newer tech (jujutsu and oil shell's ysh).
 
 - hledger-script-example.hs has had some cleanup.
-
 
 # 1.41 2024-12-09
 
@@ -2643,7 +2832,6 @@ API
 - Hledger.Cli.Commands.Balance: export budgetReportAs* functions, for use in scripts.
   (Dmitry Astapov)
 
-
 # 1.40 2024-09-09
 
 Fixes
@@ -2770,8 +2958,6 @@ Scripts/addons
 - `bin/hledger-script-example`: explain shebang commands better
 - `bin/hledger-register-max`: update/fix
 
-
-
 # 1.34 2024-06-01
 
 Breaking changes
@@ -2864,7 +3050,6 @@ Scripts/addons
 [#2005]: https://github.com/hledgerorg/hledger/issues/2005
 [#2198]: https://github.com/hledgerorg/hledger/issues/2198
 
-
 # 1.33.1 2024-05-02
 
 - process >=1.6.19.0 seems not strictly needed and is no longer required,
@@ -2888,9 +3073,7 @@ Scripts/addons
 [#2149]: https://github.com/hledgerorg/hledger/issues/2149
 [#2196]: https://github.com/hledgerorg/hledger/issues/2196
 
-
 # 1.33 2024-04-18
-
 
 Breaking changes
 
@@ -2901,8 +3084,6 @@ Breaking changes
 
 - Some error messages (date parse errors, balance assertion failures) have changed,
   which might affect error-parsing add-ons like flycheck-hledger.
-
-
 
 Fixes
 
@@ -2936,8 +3117,6 @@ Fixes
 - hledger now requires process-1.6.19.0+ to avoid any vulnerabilities on Windows from
   [HSEC-2024-0003](https://haskell.github.io/security-advisories/advisory/HSEC-2024-0003.html).
 
-
-
 Features
 
 - `close` has had some enhancements for usability ([#2151]):
@@ -2965,8 +3144,6 @@ Features
   - `close` now supports `--round` for controlling display of decimal places, like `print`.
 
   - `examples/multi-year/` is examples/tutorial for managing multiple files with the `close` command.
-
-
 
 Improvements
 
@@ -3029,8 +3206,6 @@ Improvements
 
 - hledger now requires safe >=0.3.20.
 
-
-
 Docs
 
 - add version annotations for features added in 1.32 (hamzashezad)
@@ -3065,8 +3240,6 @@ Docs
 - examples: csv: daedalus-transactions: update for current daedalus [#2171]
 - examples: shared-finances/
 
-
-
 Scripts/addons
 
 - hledger-bar, hledger-simplebal: shellcheck fixes, cleanups (Colin Dean)
@@ -3084,13 +3257,9 @@ Scripts/addons
 
 - hledger-txnsbycat: added
 
-
-
 API
 
 - move readFileStrictly to hledger-lib:Hledger.Utils.IO
-
-
 
 [#815]:  https://github.com/hledgerorg/hledger/issues/815
 [#1056]: https://github.com/hledgerorg/hledger/issues/1056
@@ -3113,7 +3282,6 @@ API
 [#2190]: https://github.com/hledgerorg/hledger/issues/2190
 [#2191]: https://github.com/hledgerorg/hledger/issues/2191
 
-
 # 1.32.3 2024-01-28
 
 Fixes
@@ -3131,11 +3299,7 @@ Fixes
 
 - Balance assertion error messages are clearer, and show the diff again.
 
-
-
 [#2156]: https://github.com/hledgerorg/hledger/issues/2156
-
-
 
 # 1.32.2 2023-12-31
 
@@ -3207,7 +3371,6 @@ Breaking changes
     reports and output formats (hledger manual > REPORTING CONCEPTS >
     Amount formatting, parseability).
 
-
 Features
 
 - Timedot format supports a new letters syntax for easier tagged time logging.
@@ -3237,7 +3400,6 @@ Features
   escaping. Tab, carriage return, and newline characters in data are
   converted to spaces (this should rarely if ever happen in practice).
   (#869) (Peter Sagerson).
-
 
 Improvements
 
@@ -3334,7 +3496,6 @@ Fixes
 
 - Failing balance assertions with a cost now show correct markers in
   the error message. (#2083)
-
 
 Docs
 
@@ -3645,7 +3806,6 @@ Fixes
   have been improved. Also the hledger manual's "Date adjustment" section
   has been corrected and clarified.
 
-
 # 1.29.1 2023-03-16
 
 Improvements
@@ -3887,7 +4047,6 @@ Docs
 - use more standard and consistent boilerplate in hledger, ui, web man pages
 - virtual postings: improve wording per Robert Nielsen
 
-
 # 1.28 2022-12-01
 
 Features
@@ -4018,7 +4177,6 @@ Scripts/addons
 - hledger-check-postable.hs - check that no postings are made to accounts with a postable:(n|no) tag
 
 - hledger-addon-example.hs - script template
-
 
 # 1.26.1 2022-07-11
 
@@ -4335,7 +4493,6 @@ Fixes
   
   
   
-
 
 # 1.23 2021-09-21
 
@@ -4819,7 +4976,6 @@ Fixes
     and now takes a number-of-results argument
   ```
 
-
 # 1.20.4 2021-01-29
 
 - aregister: ignore a depth limit, as in 1.19 (#1468).
@@ -4973,7 +5129,6 @@ Fixes
 
 - The CSV reader's verbose "assignment" debug output is now at level 9.
 
-
 # 1.19.1 2020-09-07
 
 - Fix alignment of coloured numbers (#1345, #1349, Stephen Morgan)
@@ -5116,7 +5271,6 @@ Fixes
 
 - csv conversion with a lot of conditional rules is now faster (Dmitry Astapov)
 
-
 # 1.18.1 2020-06-21
 
 - journal: document recursive wildcards
@@ -5128,7 +5282,6 @@ Fixes
 
 - print: amounts in csv output now have commodity symbol, digit group
   separators and prices removed (Dmitry Astapov)
-
 
 # 1.18 2020-06-07
 
@@ -5211,7 +5364,6 @@ Fixes
 
 - Assigning too many non-zero or zero values to a posting amount now
   gives a clearer error. (#1226)
-
 
 # 1.17.1.1 2020-03-19
 
@@ -5379,7 +5531,6 @@ Fixes
 - You can now write a description after a date, which will be used in
   all of that day's transactions.
 
-
 # 1.16.2 2020-01-14
 
 - add support for megaparsec 8 (#1175)
@@ -5521,8 +5672,6 @@ Migration notes:
 
       $ hledger -f a.csv print | hledger -f- print
 
-
-
 # 1.15.2 2019-09-05
 
 - -V and -X now respect a report end date (set with -e or -p or date:)
@@ -5648,7 +5797,6 @@ Migration notes:
 - CSV rules now allow the amount to be unassigned, if there is an
   assignment to "balance" (generating a balance assignment in this
   case). (#1000)
-
 
 # 1.14.2 2019-03-20
 

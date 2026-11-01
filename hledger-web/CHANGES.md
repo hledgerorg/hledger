@@ -16,9 +16,130 @@ User-visible changes in hledger-web.
 See also the hledger changelog.
 
 
-# 7acb6aed
+# 79c2b7b1
 
+## Breaking changes
 
+- Startup options and query arguments now set up the opening page, as url parameters,
+  instead of acting as invisible server-side defaults and filters.
+  So every view is described by its url, and a shared link shows the same view to everyone.
+  But a startup query no longer restricts what hledger-web serves:
+  it becomes the first page's search, which a viewer can edit or clear,
+  and the JSON API serves the whole journal.
+  To serve a restricted view, serve a restricted file.
+  (Arthur Cinader)
+
+- Some keys have changed, to match hledger-ui:
+  `f` now toggles full window mode, `/` focuses the search,
+  and `z` (not `e`) shows or hides zero balances.
+  Also the journal is `g j` (the plain `j` key is gone).
+
+## Navigation and keys
+
+- Navigation links are now also shown at the top of the page,
+  so you can navigate with the sidebar closed. (Arthur Cinader)
+
+- `g` then a key goes to another page via a dropdown menu,
+  so you can navigate with the sidebar closed or in full-window mode.
+
+- `a` to open the add form now works all pages.
+
+- Keyboard focus is managed better after a page load or a search, so you don't have to click
+  the page to use keyboard scrolling or keyboard shortcuts.
+
+- `/` positions the cursor at the end of the search field, for easier editing.
+
+- `escape` exits the search field, or full window mode, in addition to cancelling things,
+  and without exiting the browser's full screen mode. (A second press will exit full screen mode).
+
+- `f` toggles full window mode, showing only the report.
+
+- The help popup has been cleaned up, and now links to hledger-web's manual on hledger.org.
+  (Arthur Cinader, Simon Michael)
+
+- Keyboard shortcuts for adjusting report options are provided, similar to hledger-ui's.
+  (Arthur Cinader, Simon Michael)
+
+## Reports
+
+- The report pages have a new Options panel, offering most of hledger's report options
+  and filters, so reports can be reshaped in the browser.
+  The options are kept as you move between pages, and every view has a shareable url.
+  (Arthur Cinader, Simon Michael)
+
+- hledger's holdings report is now available in hledger-web, for journals using lots. 
+  In tree mode, accounts are heading rows with subtotals, and lots fold beneath their holdings.
+  (Arthur Cinader, Simon Michael)
+
+- Report urls are simpler and parameters are used more consistently,
+  eg `/register?account=assets:bank` or `interval=monthly`. Old bookmarks still work.
+  (Simon Michael, Henning Thielemann)
+
+- Tree mode now folds items at the requested depth, and you can click individual items
+  to expand them. Boring parent accounts are squashed, and the depth limit corresponds
+  to account depth not indent depth, as on the command line.
+  (Arthur Cinader, Simon Michael)
+
+- In list mode, account names show their parent path dimmed, and a prefix shared by all the accounts is shown once.
+  (Arthur Cinader)
+
+- A Lots option is shown for journals using lots, allowing display of lot subaccounts to be toggled.
+  (Arthur Cinader)
+
+- Percentages that can't be calculated now show plain amounts with an explanation, instead of an error page.
+  (Arthur Cinader)
+
+- A long sidebar balance no longer covers its account name.
+  (Arthur Cinader)
+
+- In the sidebar, an account name stays beside the first line of a multi-commodity balance.
+  (Arthur Cinader)
+
+- A register's running balance of many commodities now shows just the row's own commodities, eliding the others.
+  (Arthur Cinader, [#2784])
+
+- Amounts and their commodity symbol no longer break across lines.
+  (Arthur Cinader)
+
+- Journal and register headings name the search's dates, like other pages.
+
+- There's now just one balance sheet page, with Equity as an option.
+
+- The balance report is now called All accounts, as in hledger-ui.
+
+## Charts
+
+- hledger-web's reports now show a chart at the top.
+  `c` and `d` toggle display of the chart and the data (persistently),
+  so you can use hledger-web with either or both visible.
+  (Simon Michael, Arthur Cinader)
+
+- The register chart has been replaced with hledger's new SVG implementation, showing one commodity at a time.
+  jQuery and Flot are no longer used, so pages load about 155KB less javascript.
+  (Arthur Cinader, [#2800], [#2784])
+
+- When there's more than one commodity chart, the `[` and `]` keys step between them.
+
+## Other
+
+- hledger-webs running at different ports on one host remember their own report and display options,
+  and pages keep their scroll position.
+  (Simon Michael, Arthur Cinader)
+
+- Browsers now check for updated scripts and styles, so they don't keep using old ones after an upgrade
+  (which could eg cause new keys to do nothing).
+
+- hledger-web now supports more languages (selected with --lang at startup; see the hledger changelog).
+  And the add form's validation messages use the chosen language in more cases.
+
+- hledger-web now requires wai-app-static >=3.1.9 and yesod-form >=1.4.12.
+
+## Docs
+
+- The manual has been updated, with a rewritten REPORTS section and a new URL PARAMETERS section.
+
+[#2784]: https://github.com/hledgerorg/hledger/issues/2784
+[#2800]: https://github.com/hledgerorg/hledger/issues/2800
 
 # 1.99.5 2026-10-01
 

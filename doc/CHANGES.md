@@ -20,9 +20,36 @@ General changes in the hledger project.
 For package-specific changes, see the hledger package changelogs.
 
 
-# 7acb6aed
+# 79c2b7b1
 
+## Docs
 
+- CODE: queries vs report options; report periods, intervals and date spans
+- PERFORMANCE: updated for Tackler 26.10.1; why the flat balance report is compared; measured build labelled 1.99.5
+- RELEASING: lessons from the 1.99.5 release; previews also get release notes, a manuals snapshot and announcements
+- SPEC-charts: the built-in charts' design and decisions
+- TESTS: hledger-web's server tests and browser tests compared
+- TRANSLATING, locale/README: updated for the current translation workflow and translator credits
+
+## Website
+
+- updated: Upgrading, Charts, Beancount, Ledger
+
+## Tools/infrastructure
+
+- build: git changes now recompile only the GitInfo module (7.8s -> 4.8s for hledger); hledger-ui and hledger-web drop githash
+- chartsdemo: `just chartsdemo`, `just chartsdemo-html` show a representative set of charts
+- functest: tests are isolated from the user's home directory; sorting uses LC_COLLATE=C, as in CI
+- i18n: the template is in source order, grouped by program, with key terms noted; i18n-merge runs without fuzzy matching or wrapping;
+  `just i18n-web LANG` shows hledger-web's pages in a language; added a translations skill for AI assistants; all machine translations are marked
+- Justfile: recipes now recompile ./Shake when needed, avoiding stale scripts
+- Shake changelogs: skips announcement and version-bump commits
+- systemd: hledger-web service file updated (Patrick van de Glind)
+
+## AI usage
+
+- doc/ai: the journal is rewritten with all known data; usage is now imported from commits' AI usage lines; more disclosure styles are recognised;
+  the README now shows usage, cost, equivalents and forecast reports; the ai just recipes moved here, run with `just ai ...`
 
 # 1.99.5 2026-10-01
 

@@ -16,9 +16,23 @@ User-visible changes in hledger-ui.
 See also the hledger changelog.
 
 
-# 7acb6aed
+# 79c2b7b1
 
+Fixes
 
+- Pressing B to turn off cost now works when hledger-ui was started with -B.
+  (Broken since 1.99.5.)
+  (Arthur Cinader, [#2812])
+
+- With lot detail hidden (the default), B showed a sale that took from several lots at its sale price,
+  instead of at the lots' cost basis. Now it agrees with the command line. (Broken since 1.99.4.)
+  (Arthur Cinader)
+
+Improvements
+
+- hledger-ui can be shown in more languages (see the hledger changelog).
+
+[#2812]: https://github.com/hledgerorg/hledger/issues/2812
 
 # 1.99.5 2026-10-01
 

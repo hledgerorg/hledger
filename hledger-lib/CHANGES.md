@@ -16,9 +16,54 @@ API/developer-ish changes in hledger-lib.
 For user-visible changes, see the hledger package changelog.
 
 
-# 7acb6aed
+# 79c2b7b1
 
+API changes. For user-visible changes, see the hledger, hledger-ui and hledger-web changelogs.
 
+Breaking changes
+
+- AccountType has a new Imbalance (M) constructor, a subtype of Equity.
+  Commodity gains a csourcepos field, and caliases now pairs each alias with its source position.
+  TBPOld and TBPExact are renamed TBPDisplay and TBPEntry.
+
+- --alias options are kept apart from the journal's own aliases, in a new jparseoptaliases
+  parse state field, and are applied after them; alias directives and alias: tags now apply
+  before the apply account prefix. Hledger.Read.Common.accountNameApplyModifiers explains the order.
+  ([#2733])
+
+- A repeated commodity declaration is combined with the earlier one (commodityCombine,
+  combineCommodityDeclarations), rather than replacing it.
+
+Improvements
+
+- Charts: Hledger.Write.Chart is a renderer-independent chart model (a title, an x axis of
+  categories, periods or dates, and panels of series); Hledger.Write.Chart.Text and
+  Hledger.Write.Chart.Svg render it as styled text lines or SVG, with the colours in
+  Hledger.Write.Chart.Palette. chartAsCsv gives a chart's data.
+  blaze-svg >=0.3.7 is a new dependency.
+
+- Charts can be drawn for a page to embed: chartSvgMarkupWith takes SvgOptions, which can
+  leave out the chart's styles (chartStylesheet is exported, to serve separately), set the
+  plot height and width, shade the future and the negative past (svgToday), expose each
+  plot's date scale (svgDateScale), and link each x position (svgPointLink).
+  (Arthur Cinader, [#2800])
+
+- ReportOpts gains fold_depth_, the depth a folding UI will fold to (boring parents at that
+  depth are not squashed); depth_ and no_elide_ are documented. Hledger.Query gains
+  queryIsFlatDepth. Hledger.Reports.PostingsReport gains postingsReportStartBalances.
+  Hledger.Data.Dates exports reportingintervalp.
+
+- Hledger.Utils.Text gains quoteForQuery, which quotes an account name so that the query
+  parser reads it back, including names containing double quotes.
+  (Arthur Cinader)
+
+- Hledger.Data.Lots gains journalAveragePoolTotals and journalAveragePoolCosts, the
+  AVERAGE/AVERAGEALL pool calculations shared by holdings and close.
+
+- The unused empty: query prefix is dropped.
+
+[#2733]: https://github.com/hledgerorg/hledger/issues/2733
+[#2800]: https://github.com/hledgerorg/hledger/issues/2800
 
 # 1.99.5 2026-10-01
 
