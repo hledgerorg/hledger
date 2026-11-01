@@ -735,9 +735,7 @@ msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
-msgid ""
-"The sum of every account, converted to cost: zero for balanced books; "
-"anything left comes from unbalanced virtual postings."
+msgid "The sum of every account, converted to cost: zero for balanced books; anything left comes from unbalanced virtual postings."
 msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
@@ -747,9 +745,7 @@ msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
-msgid ""
-"The sum of every account at market value: appreciation not booked by any "
-"entry. If realized gains are booked, this is the unrealized gains."
+msgid "The sum of every account at market value: appreciation not booked by any entry. If realized gains are booked, this is the unrealized gains."
 msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
@@ -759,9 +755,7 @@ msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
-msgid ""
-"The sum of every account: open positions in each commodity, and the cash "
-"that paid for them. Zero when nothing crosses commodities."
+msgid "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities."
 msgstr ""
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
@@ -921,8 +915,7 @@ msgstr "期末余额"
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/ReportPage.hs
-msgid ""
-"Show each balance at the end of each period, including everything before it"
+msgid "Show each balance at the end of each period, including everything before it"
 msgstr "显示每个期间结束时的余额，包括该期间之前的所有内容"
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
@@ -959,21 +952,15 @@ msgid "The {name} parameter has a value this page does not know:"
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
-msgid ""
-"Value changes and gains are figured from period-end market values: leave the "
-"value parameter off, or use value=end."
+msgid "Value changes and gains are figured from period-end market values: leave the value parameter off, or use value=end."
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
-msgid ""
-"Gains compare market value against cost, so they do not combine with "
-"value=cost."
+msgid "Gains compare market value against cost, so they do not combine with value=cost."
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
-msgid ""
-"This report is at a single date, so value=then does not apply: use "
-"value=end, value=now, or a date."
+msgid "This report is at a single date, so value=then does not apply: use value=end, value=now, or a date."
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
@@ -1161,8 +1148,7 @@ msgstr ""
 
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
-msgid ""
-"Click to show the running balance including everything before this period"
+msgid "Click to show the running balance including everything before this period"
 msgstr ""
 
 #. the browser tab title of this page.
@@ -1207,19 +1193,12 @@ msgstr ""
 
 # machine-translated, please review
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
-msgid ""
-"All the accounts this report shows have zero balances, which are hidden. "
-"Press z to show them."
-msgstr ""
-"本报告中显示的所有账户余额均为零，且处于隐藏状态。请按“z”键显示这些账户。"
+msgid "All the accounts this report shows have zero balances, which are hidden. Press z to show them."
+msgstr "本报告中显示的所有账户余额均为零，且处于隐藏状态。请按“z”键显示这些账户。"
 
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
-msgid ""
-"No accounts of the types this report shows were found. Declare account "
-"types, or use hledger's standard top-level account names. "
-msgstr ""
-"未找到本报告所显示的那些类型的账户。请声明账户类型，或使用 hledger 标准的顶层"
-"账户名称。"
+msgid "No accounts of the types this report shows were found. Declare account types, or use hledger's standard top-level account names. "
+msgstr "未找到本报告所显示的那些类型的账户。请声明账户类型，或使用 hledger 标准的顶层账户名称。"
 
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
 msgid "How hledger finds account types"
@@ -1231,12 +1210,8 @@ msgstr "在此期间，没有符合此搜索条件的内容。"
 
 #: hledger-web/Hledger/Web/Handler/UploadR.hs
 #, python-brace-format
-msgid ""
-"Encoding error: '{error}'. If your file is not UTF-8 encoded, try the 'edit "
-"form', where the transcoding should be handled by the browser."
-msgstr ""
-"编码错误：'{error}'。如果您的文件不是 UTF-8 编码，请尝试使用“编辑表单”，浏览"
-"器应会处理转码。"
+msgid "Encoding error: '{error}'. If your file is not UTF-8 encoded, try the 'edit form', where the transcoding should be handled by the browser."
+msgstr "编码错误：'{error}'。如果您的文件不是 UTF-8 编码，请尝试使用“编辑表单”，浏览器应会处理转码。"
 
 #: hledger-web/Hledger/Web/Handler/UploadR.hs
 #, python-brace-format
@@ -1417,9 +1392,7 @@ msgstr ""
 
 #. the label before a report's amount conversion links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
-msgid ""
-"Show amounts converted to their market value at the end of each period, "
-"using market prices (-V)"
+msgid "Show amounts converted to their market value at the end of each period, using market prices (-V)"
 msgstr ""
 
 #. the label before the links that show or hide zero balances, and the links' text and tooltips.
@@ -1446,14 +1419,12 @@ msgstr ""
 
 #. the label before the balance sheet's links that hide or show equity, and the links' tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
-msgid ""
-"Show assets, liabilities, and net worth, as the balancesheet command does"
+msgid "Show assets, liabilities, and net worth, as the balancesheet command does"
 msgstr ""
 
 #. the label before the balance sheet's links that hide or show equity, and the links' tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
-msgid ""
-"Show assets, liabilities, and equity, as the balancesheetequity command does"
+msgid "Show assets, liabilities, and equity, as the balancesheetequity command does"
 msgstr ""
 
 #. the label before the links that show or hide zero balances, and the links' text and tooltips.
@@ -2043,13 +2014,8 @@ msgid "Show the transactions that make up this total"
 msgstr "显示构成此总额的各项交易"
 
 #: hledger-web/templates/default-layout.hamlet
-msgid ""
-"hledger-web is no longer running. It exits after fifteen minutes with no "
-"browser window showing it, or when stopped. To continue, start it again and "
-"reload this page."
-msgstr ""
-"hledger-web 已停止运行。如果十五分钟内没有浏览器窗口显示它，或者程序被手动停"
-"止，它就会退出。若要继续使用，请重新启动程序并刷新此页面。"
+msgid "hledger-web is no longer running. It exits after fifteen minutes with no browser window showing it, or when stopped. To continue, start it again and reload this page."
+msgstr "hledger-web 已停止运行。如果十五分钟内没有浏览器窗口显示它，或者程序被手动停止，它就会退出。若要继续使用，请重新启动程序并刷新此页面。"
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "Leave full window"
@@ -2277,12 +2243,8 @@ msgid "add a transaction"
 msgstr "添加交易"
 
 #: hledger-web/templates/default-layout.hamlet
-msgid ""
-"match any visible field (account, amount, comment, description, code), or a "
-"date if REGEX is also a period expression"
-msgstr ""
-"匹配交易描述匹配任意可见字段（账户、金额、备注、描述、代码），或者在正则表达"
-"式同时为周期表达式时匹配日期"
+msgid "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"
+msgstr "匹配交易描述匹配任意可见字段（账户、金额、备注、描述、代码），或者在正则表达式同时为周期表达式时匹配日期"
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "match transaction descriptions"
@@ -2297,16 +2259,11 @@ msgid "match note part of descriptions"
 msgstr "匹配描述中的备注部分"
 
 #: hledger-web/templates/default-layout.hamlet
-msgid ""
-"match unsigned magnitudes, or with signed N, signed amounts. For single-"
-"commodity amounts only."
-msgstr ""
-"匹配无符号数值，或结合有符号“与”运算及有符号数值。仅适用于单一商品数量。"
+msgid "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."
+msgstr "匹配无符号数值，或结合有符号“与”运算及有符号数值。仅适用于单一商品数量。"
 
 #: hledger-web/templates/default-layout.hamlet
-msgid ""
-"match currencies/commodities. Must match the whole symbol/name. To match "
-"dollar sign, write"
+msgid "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"
 msgstr "匹配货币/商品。必须匹配完整的代码/名称。若要匹配美元符号，请书写"
 
 #: hledger-web/templates/default-layout.hamlet
@@ -2478,21 +2435,14 @@ msgstr "全部"
 #~ msgid "General"
 #~ msgstr "通用"
 
-#~ msgid ""
-#~ "The Journal view shows general journal entries, representing zero-sum "
-#~ "movements of money (or other commodity) between hierarchical accounts"
-#~ msgstr ""
-#~ "“日记账”视图显示了普通日记账分录，代表了层级账户之间资金（或其他商品）的零"
-#~ "和变动"
+#~ msgid "The Journal view shows general journal entries, representing zero-sum movements of money (or other commodity) between hierarchical accounts"
+#~ msgstr "“日记账”视图显示了普通日记账分录，代表了层级账户之间资金（或其他商品）的零和变动"
 
 #~ msgid "The sidebar shows the resulting accounts and their final balances"
 #~ msgstr "侧边栏显示了生成的账户及其最终余额"
 
-#~ msgid ""
-#~ "The sidebar's report links show the balance sheet, income statement, and "
-#~ "cashflow statement, each linking to the other reports"
-#~ msgstr ""
-#~ "侧边栏中的报表链接指向资产负债表、损益表和现金流量表，且各报表之间相互链接"
+#~ msgid "The sidebar's report links show the balance sheet, income statement, and cashflow statement, each linking to the other reports"
+#~ msgstr "侧边栏中的报表链接指向资产负债表、损益表和现金流量表，且各报表之间相互链接"
 
 #~ msgid "Parent account balances include subaccount balances"
 #~ msgstr "父账户余额包含子账户余额"
@@ -2500,27 +2450,17 @@ msgstr "全部"
 #~ msgid "Multiple currencies in balances are displayed one above the other"
 #~ msgstr "余额中的多种货币呈上下排列显示"
 
-#~ msgid ""
-#~ "Click account name links to see transactions affecting that account, with "
-#~ "running balance"
+#~ msgid "Click account name links to see transactions affecting that account, with running balance"
 #~ msgstr "点击账户名称链接，即可查看影响该账户的交易记录及实时余额"
 
-#~ msgid ""
-#~ "Click an amount to see the transactions it is made of, in a register "
-#~ "ending on that amount"
-#~ msgstr ""
-#~ "点击某个金额，即可在以该金额为终值的明细列表中查看构成该金额的各项交易"
+#~ msgid "Click an amount to see the transactions it is made of, in a register ending on that amount"
+#~ msgstr "点击某个金额，即可在以该金额为终值的明细列表中查看构成该金额的各项交易"
 
 #~ msgid "Click date links to see journal entries on that date"
 #~ msgstr "点击日期链接，查看该日期的日志条目"
 
-#~ msgid ""
-#~ "The balance sheet and income statement show liabilities, equity, and "
-#~ "revenues as positive amounts; their registers show them negative, as "
-#~ "hledger does"
-#~ msgstr ""
-#~ "资产负债表和损益表将负债、权益和收入显示为正数；而在账目明细中，它们则显示"
-#~ "为负数，这与 hledger 的处理方式一致"
+#~ msgid "The balance sheet and income statement show liabilities, equity, and revenues as positive amounts; their registers show them negative, as hledger does"
+#~ msgstr "资产负债表和损益表将负债、权益和收入显示为正数；而在账目明细中，它们则显示为负数，这与 hledger 的处理方式一致"
 
 #~ msgctxt "help heading"
 #~ msgid "Search"

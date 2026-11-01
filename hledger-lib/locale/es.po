@@ -722,9 +722,7 @@ msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
-msgid ""
-"The sum of every account, converted to cost: zero for balanced books; "
-"anything left comes from unbalanced virtual postings."
+msgid "The sum of every account, converted to cost: zero for balanced books; anything left comes from unbalanced virtual postings."
 msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
@@ -734,9 +732,7 @@ msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
-msgid ""
-"The sum of every account at market value: appreciation not booked by any "
-"entry. If realized gains are booked, this is the unrealized gains."
+msgid "The sum of every account at market value: appreciation not booked by any entry. If realized gains are booked, this is the unrealized gains."
 msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
@@ -746,9 +742,7 @@ msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
-msgid ""
-"The sum of every account: open positions in each commodity, and the cash "
-"that paid for them. Zero when nothing crosses commodities."
+msgid "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities."
 msgstr ""
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
@@ -908,10 +902,8 @@ msgstr "Saldos finales"
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/ReportPage.hs
-msgid ""
-"Show each balance at the end of each period, including everything before it"
-msgstr ""
-"Mostrar cada saldo al final de cada período, incluyendo todo lo anterior"
+msgid "Show each balance at the end of each period, including everything before it"
+msgstr "Mostrar cada saldo al final de cada período, incluyendo todo lo anterior"
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
@@ -947,21 +939,15 @@ msgid "The {name} parameter has a value this page does not know:"
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
-msgid ""
-"Value changes and gains are figured from period-end market values: leave the "
-"value parameter off, or use value=end."
+msgid "Value changes and gains are figured from period-end market values: leave the value parameter off, or use value=end."
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
-msgid ""
-"Gains compare market value against cost, so they do not combine with "
-"value=cost."
+msgid "Gains compare market value against cost, so they do not combine with value=cost."
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
-msgid ""
-"This report is at a single date, so value=then does not apply: use "
-"value=end, value=now, or a date."
+msgid "This report is at a single date, so value=then does not apply: use value=end, value=now, or a date."
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
@@ -1149,8 +1135,7 @@ msgstr ""
 
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
-msgid ""
-"Click to show the running balance including everything before this period"
+msgid "Click to show the running balance including everything before this period"
 msgstr ""
 
 #. the browser tab title of this page.
@@ -1194,21 +1179,12 @@ msgid "Shift-click selects several commodities."
 msgstr ""
 
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
-msgid ""
-"All the accounts this report shows have zero balances, which are hidden. "
-"Press z to show them."
-msgstr ""
-"Todas las cuentas de este informe tienen saldo cero, y están ocultas. "
-"Presione z para mostrarlas."
+msgid "All the accounts this report shows have zero balances, which are hidden. Press z to show them."
+msgstr "Todas las cuentas de este informe tienen saldo cero, y están ocultas. Presione z para mostrarlas."
 
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
-msgid ""
-"No accounts of the types this report shows were found. Declare account "
-"types, or use hledger's standard top-level account names. "
-msgstr ""
-"No se encontraron cuentas de los tipos que muestra este informe. Declare los "
-"tipos de cuenta, o use los nombres de cuenta de nivel superior estándar de "
-"hledger. "
+msgid "No accounts of the types this report shows were found. Declare account types, or use hledger's standard top-level account names. "
+msgstr "No se encontraron cuentas de los tipos que muestra este informe. Declare los tipos de cuenta, o use los nombres de cuenta de nivel superior estándar de hledger. "
 
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
 msgid "How hledger finds account types"
@@ -1220,13 +1196,8 @@ msgstr "Nada coincide con esta búsqueda en este período."
 
 #: hledger-web/Hledger/Web/Handler/UploadR.hs
 #, python-brace-format
-msgid ""
-"Encoding error: '{error}'. If your file is not UTF-8 encoded, try the 'edit "
-"form', where the transcoding should be handled by the browser."
-msgstr ""
-"Error de codificación: '{error}'. Si su archivo no está codificado en UTF-8, "
-"pruebe el 'formulario de edición', donde el navegador debería encargarse de "
-"la conversión."
+msgid "Encoding error: '{error}'. If your file is not UTF-8 encoded, try the 'edit form', where the transcoding should be handled by the browser."
+msgstr "Error de codificación: '{error}'. Si su archivo no está codificado en UTF-8, pruebe el 'formulario de edición', donde el navegador debería encargarse de la conversión."
 
 #: hledger-web/Hledger/Web/Handler/UploadR.hs
 #, python-brace-format
@@ -1407,9 +1378,7 @@ msgstr ""
 
 #. the label before a report's amount conversion links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
-msgid ""
-"Show amounts converted to their market value at the end of each period, "
-"using market prices (-V)"
+msgid "Show amounts converted to their market value at the end of each period, using market prices (-V)"
 msgstr ""
 
 #. the label before the links that show or hide zero balances, and the links' text and tooltips.
@@ -1436,14 +1405,12 @@ msgstr ""
 
 #. the label before the balance sheet's links that hide or show equity, and the links' tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
-msgid ""
-"Show assets, liabilities, and net worth, as the balancesheet command does"
+msgid "Show assets, liabilities, and net worth, as the balancesheet command does"
 msgstr ""
 
 #. the label before the balance sheet's links that hide or show equity, and the links' tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
-msgid ""
-"Show assets, liabilities, and equity, as the balancesheetequity command does"
+msgid "Show assets, liabilities, and equity, as the balancesheetequity command does"
 msgstr ""
 
 #. the label before the links that show or hide zero balances, and the links' text and tooltips.
@@ -2018,8 +1985,7 @@ msgstr "Mostrar las transacciones que afectan a esta cuenta y sus subcuentas"
 
 #: hledger-web/templates/balance-report.hamlet
 msgid "Show transactions affecting this account but not subaccounts"
-msgstr ""
-"Mostrar las transacciones que afectan a esta cuenta, sin sus subcuentas"
+msgstr "Mostrar las transacciones que afectan a esta cuenta, sin sus subcuentas"
 
 #: hledger-web/templates/balance-report.hamlet
 msgid "only"
@@ -2034,14 +2000,8 @@ msgid "Show the transactions that make up this total"
 msgstr "Mostrar las transacciones que componen este total"
 
 #: hledger-web/templates/default-layout.hamlet
-msgid ""
-"hledger-web is no longer running. It exits after fifteen minutes with no "
-"browser window showing it, or when stopped. To continue, start it again and "
-"reload this page."
-msgstr ""
-"hledger-web ya no se está ejecutando. Se cierra tras quince minutos sin "
-"ninguna ventana del navegador que lo muestre, o al detenerlo. Para "
-"continuar, inícielo de nuevo y recargue esta página."
+msgid "hledger-web is no longer running. It exits after fifteen minutes with no browser window showing it, or when stopped. To continue, start it again and reload this page."
+msgstr "hledger-web ya no se está ejecutando. Se cierra tras quince minutos sin ninguna ventana del navegador que lo muestre, o al detenerlo. Para continuar, inícielo de nuevo y recargue esta página."
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "Leave full window"
@@ -2054,8 +2014,7 @@ msgstr "Buscar"
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "Enter hledger search patterns to filter the data below"
-msgstr ""
-"Introduzca patrones de búsqueda de hledger para filtrar los datos de abajo"
+msgstr "Introduzca patrones de búsqueda de hledger para filtrar los datos de abajo"
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "Clear search terms"
@@ -2270,12 +2229,8 @@ msgid "add a transaction"
 msgstr "añadir una transacción"
 
 #: hledger-web/templates/default-layout.hamlet
-msgid ""
-"match any visible field (account, amount, comment, description, code), or a "
-"date if REGEX is also a period expression"
-msgstr ""
-"buscar en cualquier campo visible (cuenta, importe, comentario, descripción, "
-"código), o una fecha si REGEX también es una expresión de período"
+msgid "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"
+msgstr "buscar en cualquier campo visible (cuenta, importe, comentario, descripción, código), o una fecha si REGEX también es una expresión de período"
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "match transaction descriptions"
@@ -2290,20 +2245,12 @@ msgid "match note part of descriptions"
 msgstr "buscar por la parte de nota de la descripción"
 
 #: hledger-web/templates/default-layout.hamlet
-msgid ""
-"match unsigned magnitudes, or with signed N, signed amounts. For single-"
-"commodity amounts only."
-msgstr ""
-"buscar por magnitud sin signo o, con un N con signo, por importe con signo. "
-"Solo para importes de una única unidad."
+msgid "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."
+msgstr "buscar por magnitud sin signo o, con un N con signo, por importe con signo. Solo para importes de una única unidad."
 
 #: hledger-web/templates/default-layout.hamlet
-msgid ""
-"match currencies/commodities. Must match the whole symbol/name. To match "
-"dollar sign, write"
-msgstr ""
-"buscar por moneda o unidad. Debe coincidir con todo el símbolo o nombre. "
-"Para buscar el signo de dólar, escriba"
+msgid "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"
+msgstr "buscar por moneda o unidad. Debe coincidir con todo el símbolo o nombre. Para buscar el signo de dólar, escriba"
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "match tags, or tag and value"
@@ -2469,8 +2416,7 @@ msgstr "Todos"
 #~ msgstr "Mostrar el saldo acumulado desde el inicio de este período"
 
 #~ msgid "Show the running balance including everything before this period"
-#~ msgstr ""
-#~ "Mostrar el saldo acumulado incluyendo todo lo anterior a este período"
+#~ msgstr "Mostrar el saldo acumulado incluyendo todo lo anterior a este período"
 
 #~ msgid "hide empty accounts"
 #~ msgstr "ocultar las cuentas vacías"
@@ -2478,25 +2424,14 @@ msgstr "Todos"
 #~ msgid "General"
 #~ msgstr "General"
 
-#~ msgid ""
-#~ "The Journal view shows general journal entries, representing zero-sum "
-#~ "movements of money (or other commodity) between hierarchical accounts"
-#~ msgstr ""
-#~ "La vista Libro diario muestra los asientos del libro diario, que "
-#~ "representan movimientos de suma cero de dinero (u otra unidad) entre "
-#~ "cuentas jerárquicas"
+#~ msgid "The Journal view shows general journal entries, representing zero-sum movements of money (or other commodity) between hierarchical accounts"
+#~ msgstr "La vista Libro diario muestra los asientos del libro diario, que representan movimientos de suma cero de dinero (u otra unidad) entre cuentas jerárquicas"
 
 #~ msgid "The sidebar shows the resulting accounts and their final balances"
-#~ msgstr ""
-#~ "La barra lateral muestra las cuentas resultantes y sus saldos finales"
+#~ msgstr "La barra lateral muestra las cuentas resultantes y sus saldos finales"
 
-#~ msgid ""
-#~ "The sidebar's report links show the balance sheet, income statement, and "
-#~ "cashflow statement, each linking to the other reports"
-#~ msgstr ""
-#~ "Los enlaces de informes de la barra lateral muestran el balance general, "
-#~ "el estado de resultados y el estado de flujos de efectivo, cada uno con "
-#~ "enlaces a los demás informes"
+#~ msgid "The sidebar's report links show the balance sheet, income statement, and cashflow statement, each linking to the other reports"
+#~ msgstr "Los enlaces de informes de la barra lateral muestran el balance general, el estado de resultados y el estado de flujos de efectivo, cada uno con enlaces a los demás informes"
 
 #~ msgid "Parent account balances include subaccount balances"
 #~ msgstr "Los saldos de las cuentas padre incluyen los de sus subcuentas"
@@ -2504,31 +2439,17 @@ msgstr "Todos"
 #~ msgid "Multiple currencies in balances are displayed one above the other"
 #~ msgstr "Las distintas monedas de un saldo se muestran una encima de otra"
 
-#~ msgid ""
-#~ "Click account name links to see transactions affecting that account, with "
-#~ "running balance"
-#~ msgstr ""
-#~ "Haga clic en el nombre de una cuenta para ver las transacciones que la "
-#~ "afectan, con saldo acumulado"
+#~ msgid "Click account name links to see transactions affecting that account, with running balance"
+#~ msgstr "Haga clic en el nombre de una cuenta para ver las transacciones que la afectan, con saldo acumulado"
 
-#~ msgid ""
-#~ "Click an amount to see the transactions it is made of, in a register "
-#~ "ending on that amount"
-#~ msgstr ""
-#~ "Haga clic en un importe para ver las transacciones que lo componen, en un "
-#~ "registro que termina en ese importe"
+#~ msgid "Click an amount to see the transactions it is made of, in a register ending on that amount"
+#~ msgstr "Haga clic en un importe para ver las transacciones que lo componen, en un registro que termina en ese importe"
 
 #~ msgid "Click date links to see journal entries on that date"
 #~ msgstr "Haga clic en una fecha para ver los asientos de ese día"
 
-#~ msgid ""
-#~ "The balance sheet and income statement show liabilities, equity, and "
-#~ "revenues as positive amounts; their registers show them negative, as "
-#~ "hledger does"
-#~ msgstr ""
-#~ "El balance general y el estado de resultados muestran los pasivos, el "
-#~ "patrimonio y los ingresos como importes positivos; sus registros los "
-#~ "muestran negativos, como hace hledger"
+#~ msgid "The balance sheet and income statement show liabilities, equity, and revenues as positive amounts; their registers show them negative, as hledger does"
+#~ msgstr "El balance general y el estado de resultados muestran los pasivos, el patrimonio y los ingresos como importes positivos; sus registros los muestran negativos, como hace hledger"
 
 #~ msgctxt "help heading"
 #~ msgid "Search"

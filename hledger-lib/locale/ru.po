@@ -12,8 +12,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
 #. stand-alone (nominative) month names, as used in a column heading.
 #: hledger-lib/Hledger/Utils/I18n.hs
@@ -737,9 +736,7 @@ msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
-msgid ""
-"The sum of every account, converted to cost: zero for balanced books; "
-"anything left comes from unbalanced virtual postings."
+msgid "The sum of every account, converted to cost: zero for balanced books; anything left comes from unbalanced virtual postings."
 msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
@@ -749,9 +746,7 @@ msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
-msgid ""
-"The sum of every account at market value: appreciation not booked by any "
-"entry. If realized gains are booked, this is the unrealized gains."
+msgid "The sum of every account at market value: appreciation not booked by any entry. If realized gains are booked, this is the unrealized gains."
 msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
@@ -761,9 +756,7 @@ msgstr ""
 
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
-msgid ""
-"The sum of every account: open positions in each commodity, and the cash "
-"that paid for them. Zero when nothing crosses commodities."
+msgid "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities."
 msgstr ""
 
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
@@ -923,11 +916,8 @@ msgstr "Конечные сальдо"
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/ReportPage.hs
-msgid ""
-"Show each balance at the end of each period, including everything before it"
-msgstr ""
-"Показать каждое сальдо на конец каждого периода, включая всё, что было до "
-"него"
+msgid "Show each balance at the end of each period, including everything before it"
+msgstr "Показать каждое сальдо на конец каждого периода, включая всё, что было до него"
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
@@ -963,21 +953,15 @@ msgid "The {name} parameter has a value this page does not know:"
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
-msgid ""
-"Value changes and gains are figured from period-end market values: leave the "
-"value parameter off, or use value=end."
+msgid "Value changes and gains are figured from period-end market values: leave the value parameter off, or use value=end."
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
-msgid ""
-"Gains compare market value against cost, so they do not combine with "
-"value=cost."
+msgid "Gains compare market value against cost, so they do not combine with value=cost."
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
-msgid ""
-"This report is at a single date, so value=then does not apply: use "
-"value=end, value=now, or a date."
+msgid "This report is at a single date, so value=then does not apply: use value=end, value=now, or a date."
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
@@ -1165,8 +1149,7 @@ msgstr ""
 
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
-msgid ""
-"Click to show the running balance including everything before this period"
+msgid "Click to show the running balance including everything before this period"
 msgstr ""
 
 #. the browser tab title of this page.
@@ -1211,20 +1194,12 @@ msgstr ""
 
 # machine-translated, please review
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
-msgid ""
-"All the accounts this report shows have zero balances, which are hidden. "
-"Press z to show them."
-msgstr ""
-"Все счета в этом отчёте имеют нулевое сальдо и скрыты. Нажмите z, чтобы "
-"показать их."
+msgid "All the accounts this report shows have zero balances, which are hidden. Press z to show them."
+msgstr "Все счета в этом отчёте имеют нулевое сальдо и скрыты. Нажмите z, чтобы показать их."
 
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
-msgid ""
-"No accounts of the types this report shows were found. Declare account "
-"types, or use hledger's standard top-level account names. "
-msgstr ""
-"Не найдено счетов тех типов, которые показывает этот отчёт. Объявите типы "
-"счетов или используйте стандартные названия счетов верхнего уровня hledger. "
+msgid "No accounts of the types this report shows were found. Declare account types, or use hledger's standard top-level account names. "
+msgstr "Не найдено счетов тех типов, которые показывает этот отчёт. Объявите типы счетов или используйте стандартные названия счетов верхнего уровня hledger. "
 
 #: hledger-web/Hledger/Web/Handler/StatementsR.hs
 msgid "How hledger finds account types"
@@ -1236,12 +1211,8 @@ msgstr "За этот период ничего не найдено."
 
 #: hledger-web/Hledger/Web/Handler/UploadR.hs
 #, python-brace-format
-msgid ""
-"Encoding error: '{error}'. If your file is not UTF-8 encoded, try the 'edit "
-"form', where the transcoding should be handled by the browser."
-msgstr ""
-"Ошибка кодировки: '{error}'. Если ваш файл не в кодировке UTF-8, попробуйте "
-"форму редактирования, где перекодировку должен выполнить браузер."
+msgid "Encoding error: '{error}'. If your file is not UTF-8 encoded, try the 'edit form', where the transcoding should be handled by the browser."
+msgstr "Ошибка кодировки: '{error}'. Если ваш файл не в кодировке UTF-8, попробуйте форму редактирования, где перекодировку должен выполнить браузер."
 
 #: hledger-web/Hledger/Web/Handler/UploadR.hs
 #, python-brace-format
@@ -1422,9 +1393,7 @@ msgstr ""
 
 #. the label before a report's amount conversion links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
-msgid ""
-"Show amounts converted to their market value at the end of each period, "
-"using market prices (-V)"
+msgid "Show amounts converted to their market value at the end of each period, using market prices (-V)"
 msgstr ""
 
 #. the label before the links that show or hide zero balances, and the links' text and tooltips.
@@ -1451,14 +1420,12 @@ msgstr ""
 
 #. the label before the balance sheet's links that hide or show equity, and the links' tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
-msgid ""
-"Show assets, liabilities, and net worth, as the balancesheet command does"
+msgid "Show assets, liabilities, and net worth, as the balancesheet command does"
 msgstr ""
 
 #. the label before the balance sheet's links that hide or show equity, and the links' tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
-msgid ""
-"Show assets, liabilities, and equity, as the balancesheetequity command does"
+msgid "Show assets, liabilities, and equity, as the balancesheetequity command does"
 msgstr ""
 
 #. the label before the links that show or hide zero balances, and the links' text and tooltips.
@@ -2048,14 +2015,8 @@ msgid "Show the transactions that make up this total"
 msgstr "Показать транзакции, из которых складывается этот итог"
 
 #: hledger-web/templates/default-layout.hamlet
-msgid ""
-"hledger-web is no longer running. It exits after fifteen minutes with no "
-"browser window showing it, or when stopped. To continue, start it again and "
-"reload this page."
-msgstr ""
-"hledger-web больше не работает. Он завершается после пятнадцати минут без "
-"открытого окна браузера или при остановке. Чтобы продолжить, запустите его "
-"снова и перезагрузите эту страницу."
+msgid "hledger-web is no longer running. It exits after fifteen minutes with no browser window showing it, or when stopped. To continue, start it again and reload this page."
+msgstr "hledger-web больше не работает. Он завершается после пятнадцати минут без открытого окна браузера или при остановке. Чтобы продолжить, запустите его снова и перезагрузите эту страницу."
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "Leave full window"
@@ -2283,12 +2244,8 @@ msgid "add a transaction"
 msgstr "добавить транзакцию"
 
 #: hledger-web/templates/default-layout.hamlet
-msgid ""
-"match any visible field (account, amount, comment, description, code), or a "
-"date if REGEX is also a period expression"
-msgstr ""
-"найти любое видимое поле (счёт, сумма, комментарий, описание, код) или дату, "
-"если REGEX также является выражением периода"
+msgid "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"
+msgstr "найти любое видимое поле (счёт, сумма, комментарий, описание, код) или дату, если REGEX также является выражением периода"
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "match transaction descriptions"
@@ -2303,20 +2260,12 @@ msgid "match note part of descriptions"
 msgstr "найти часть описания с примечанием"
 
 #: hledger-web/templates/default-layout.hamlet
-msgid ""
-"match unsigned magnitudes, or with signed N, signed amounts. For single-"
-"commodity amounts only."
-msgstr ""
-"найти суммы по величине, а с N со знаком — с учётом знака. Только для сумм с "
-"одной единицей учёта."
+msgid "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."
+msgstr "найти суммы по величине, а с N со знаком — с учётом знака. Только для сумм с одной единицей учёта."
 
 #: hledger-web/templates/default-layout.hamlet
-msgid ""
-"match currencies/commodities. Must match the whole symbol/name. To match "
-"dollar sign, write"
-msgstr ""
-"найти валюты/единицы учёта. Должно совпадать с полным символом/названием. "
-"Для поиска знака доллара напишите"
+msgid "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"
+msgstr "найти валюты/единицы учёта. Должно совпадать с полным символом/названием. Для поиска знака доллара напишите"
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "match tags, or tag and value"
@@ -2490,23 +2439,14 @@ msgstr "Все"
 #~ msgid "General"
 #~ msgstr "Общее"
 
-#~ msgid ""
-#~ "The Journal view shows general journal entries, representing zero-sum "
-#~ "movements of money (or other commodity) between hierarchical accounts"
-#~ msgstr ""
-#~ "Вид журнала показывает записи общего журнала — сбалансированные "
-#~ "перемещения денег (или других единиц учёта) между иерархическими счетами"
+#~ msgid "The Journal view shows general journal entries, representing zero-sum movements of money (or other commodity) between hierarchical accounts"
+#~ msgstr "Вид журнала показывает записи общего журнала — сбалансированные перемещения денег (или других единиц учёта) между иерархическими счетами"
 
 #~ msgid "The sidebar shows the resulting accounts and their final balances"
 #~ msgstr "Боковая панель показывает получившиеся счета и их конечные сальдо"
 
-#~ msgid ""
-#~ "The sidebar's report links show the balance sheet, income statement, and "
-#~ "cashflow statement, each linking to the other reports"
-#~ msgstr ""
-#~ "Ссылки на отчёты на боковой панели показывают баланс, отчёт о прибылях и "
-#~ "убытках и отчёт о движении денежных средств, каждая со ссылками на другие "
-#~ "отчёты"
+#~ msgid "The sidebar's report links show the balance sheet, income statement, and cashflow statement, each linking to the other reports"
+#~ msgstr "Ссылки на отчёты на боковой панели показывают баланс, отчёт о прибылях и убытках и отчёт о движении денежных средств, каждая со ссылками на другие отчёты"
 
 #~ msgid "Parent account balances include subaccount balances"
 #~ msgstr "Сальдо родительских счетов включают сальдо субсчетов"
@@ -2514,32 +2454,17 @@ msgstr "Все"
 #~ msgid "Multiple currencies in balances are displayed one above the other"
 #~ msgstr "Несколько валют в сальдо отображаются одна над другой"
 
-#~ msgid ""
-#~ "Click account name links to see transactions affecting that account, with "
-#~ "running balance"
-#~ msgstr ""
-#~ "Нажмите на ссылку с названием счёта, чтобы увидеть транзакции по этому "
-#~ "счёту с нарастающим сальдо"
+#~ msgid "Click account name links to see transactions affecting that account, with running balance"
+#~ msgstr "Нажмите на ссылку с названием счёта, чтобы увидеть транзакции по этому счёту с нарастающим сальдо"
 
-#~ msgid ""
-#~ "Click an amount to see the transactions it is made of, in a register "
-#~ "ending on that amount"
-#~ msgstr ""
-#~ "Нажмите на сумму, чтобы увидеть в регистре транзакции, из которых она "
-#~ "складывается, с итогом на эту сумму"
+#~ msgid "Click an amount to see the transactions it is made of, in a register ending on that amount"
+#~ msgstr "Нажмите на сумму, чтобы увидеть в регистре транзакции, из которых она складывается, с итогом на эту сумму"
 
 #~ msgid "Click date links to see journal entries on that date"
-#~ msgstr ""
-#~ "Нажмите на ссылку с датой, чтобы увидеть записи журнала за этот день"
+#~ msgstr "Нажмите на ссылку с датой, чтобы увидеть записи журнала за этот день"
 
-#~ msgid ""
-#~ "The balance sheet and income statement show liabilities, equity, and "
-#~ "revenues as positive amounts; their registers show them negative, as "
-#~ "hledger does"
-#~ msgstr ""
-#~ "Баланс и отчёт о прибылях и убытках показывают обязательства, капитал и "
-#~ "доходы как положительные суммы; их регистры показывают их отрицательными, "
-#~ "как это делает hledger"
+#~ msgid "The balance sheet and income statement show liabilities, equity, and revenues as positive amounts; their registers show them negative, as hledger does"
+#~ msgstr "Баланс и отчёт о прибылях и убытках показывают обязательства, капитал и доходы как положительные суммы; их регистры показывают их отрицательными, как это делает hledger"
 
 #~ msgctxt "help heading"
 #~ msgid "Search"
