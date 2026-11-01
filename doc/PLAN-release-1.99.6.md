@@ -43,7 +43,7 @@ Then the riskiest and most time-consuming work.
 | **Sat Oct 31** | Translation deadline 20:00 UTC. Merge translations as they arrive, and fill the gaps, on main. Re-run `just changelogs` for late commits; `just changelogs-finalise`; `just relnotes` + summary; `doc/ANNOUNCE`; all on main. Then `just relbranch 1.99.6` (the release branch is cut late, so main's release work needs no cherry-picking). On the branch: `doc/ghrelnotes`; Install page updates; manuals snapshot (`make -C site snapshot-1.99.6`, site.js / Makefile / caddy). Last: `just ghbin` (30-40 min), after the translation deadline. |
 | **Sun Nov 1** | Check the binaries' `--version`. `just reltags`; push ⚠; `just ghrel`, publish ⚠; site render; announce ⚠. |
 
-## Tasks
+## Pre-release tasks
 
 In order.
 
@@ -69,11 +69,13 @@ In order.
 - [x] Options help, manuals, anchor check (Oct 31; also shortened --chart's help)
 - [x] Changelogs, with a Breaking changes section and the #2648 bounty mention (polished Oct 30-31; final reread Sunday)
 - [x] Release notes summary drafted: doc/SUMMARY.md (uncommitted; paste into relnotes.md after `just relnotes`)
-- [x] ANNOUNCE and ANNOUNCE.mastodon drafted (uncommitted; review and commit)
+- [x] ANNOUNCE and ANNOUNCE.short drafted (uncommitted; review and commit)
 - [x] Trial `just ghbin` build on Saturday, to find errors and warm the CI caches
-- [ ] Push main
 - [ ] Release branch (`just relbranch 1.99.6`), `just changelogs-finalise`, `just relnotes` + summary
 - [ ] ghrelnotes, Install page updates
+- [ ] finalise announcements
 - [ ] Manuals snapshot on the site
 - [ ] Binaries from the final commit (check `--version`), tags, push, github release
-- [ ] Site render, announcements
+- [ ] Push main
+- [ ] Push/render site
+- [ ] announce
