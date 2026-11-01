@@ -177,7 +177,7 @@ General help flags:
      --color=YNA --colour   use ANSI color ? y/yes, n/no, or auto (default)
      --lang=LANG            select the user interface language:
                             en (default), de, es, fr, ga, haw, it, ja, pt-BR,
-                            ru, zh, or auto
+                            ru, uk, zh, or auto
 ```
 }} )m4_dnl '
 m4_dnl
@@ -293,7 +293,7 @@ General help flags:
      --color=YNA --colour   use ANSI color ? y/yes, n/no, or auto (default)
      --lang=LANG            select the user interface language:
                             en (default), de, es, fr, ga, haw, it, ja, pt-BR,
-                            ru, zh, or auto
+                            ru, uk, zh, or auto
 ```
 }} )m4_dnl '
 m4_dnl
