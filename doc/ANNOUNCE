@@ -20,8 +20,8 @@ https://hledger.org)
 - roi computes TWR more robustly
 - hledger-web is much more powerful, with charts, a holdings report,
   a report options panel, and hledger-ui-like keyboard shortcuts
-- eleven UI languages: Brazilian Portuguese, Chinese, English, French,
-  German, Hawaiian, Irish, Italian, Japanese, Russian and Spanish.
+- twelve UI languages: Brazilian Portuguese, Chinese, English, French,
+  German, Hawaiian, Irish, Italian, Japanese, Russian, Spanish and Ukrainian.
 
 For details, see the release notes:
 

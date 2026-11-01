@@ -256,8 +256,8 @@ In brief; each is described more fully in its section below.
 
 ## Translations
 
-- hledger, hledger-ui and hledger-web can now be shown in 11 languages:
-  English, Brazilian Portuguese, Chinese, French, German, Hawaiian, Irish, Italian, Japanese, Russian and Spanish.
+- hledger, hledger-ui and hledger-web can now be shown in 12 languages:
+  English, Brazilian Portuguese, Chinese, French, German, Hawaiian, Irish, Italian, Japanese, Russian, Spanish and Ukrainian.
   Gaps in human translations are filled by machine translations, which are marked for review.
   Native speakers' help is welcome; see [TRANSLATING](TRANSLATING.md).
   (Daniil Iaitskov (Russian), Diego Depaoli (Italian), Henning Thielemann (German), Simon Michael)
