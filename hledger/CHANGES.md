@@ -32,10 +32,6 @@ In brief; each is described more fully in its section below.
 - activity now shows transactions per week, as a chart; `activity --postings -D -0` gives the old report.
   (Reports)
 
-- holdings' tree mode now groups holdings into account sections,
-  and its csv, tsv and json output is the same as list mode's.
-  (Holdings)
-
 ## Command line
 
 - Fixed: stats with `-o FILE` wrote only the last part of its output (the run time line) to the file.
@@ -297,7 +293,6 @@ In brief; each is described more fully in its section below.
 [#2733]: https://github.com/hledgerorg/hledger/issues/2733
 [#2769]: https://github.com/hledgerorg/hledger/issues/2769
 [#2772]: https://github.com/hledgerorg/hledger/issues/2772
-[#2773]: https://github.com/hledgerorg/hledger/issues/2773
 [#2779]: https://github.com/hledgerorg/hledger/issues/2779
 [#2824]: https://github.com/hledgerorg/hledger/issues/2824
 [#2825]: https://github.com/hledgerorg/hledger/issues/2825
