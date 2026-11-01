@@ -8576,7 +8576,7 @@ If needed, you can set the variable for them too, until the next reboot, with
 
 It can be easier to create a default file at `C:\Users\USER\.hledger.journal`,
 and have it [include](hledger.md#include-directive) your other files.
-See [I'm on Windows, how do I keep my files in AppData\Roaming ?](faq.md#im-on-windows-how-do-i-keep-my-files-in-appdataroaming-)
+See [I'm on Windows, how do I keep my files in `AppData\Roaming` ?](faq.md#im-on-windows-how-do-i-keep-my-files-in-appdataroaming-)
 
 Otherwise: using the gui is easiest:
 
