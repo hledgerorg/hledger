@@ -295,8 +295,8 @@ def group_of(e):
 
 # Entries whose mistranslation would mislead about money or data, not just
 # read oddly: statement and section names, what a total means, stock vs
-# flow, valuation, gains, status, posting kinds, direction, and destructive
-# actions. Each gets KEY_TERM_NOTE, so translators take care with them and
+# flow, valuation, gains, status, posting kinds, and destructive actions;
+# one representative of each concept. Each gets KEY_TERM_NOTE, so translators take care with them and
 # reviewers check them first. As (msgctxt, msgid); --check fails if one no
 # longer exists.
 KEY_TERM_NOTE = 'Key term'
@@ -306,35 +306,21 @@ KEY_TERM_DEF = ('"Key term" marks an entry whose mistranslation would mislead ab
                 'use your country\'s standard accounting term (eg from official IFRS translations), '
                 'and review these first.')
 KEY_TERMS = {(None, m) for m in [
+    # one representative of each concept; translators will translate its variants the same way
     # statements and their sections
     "Balance Sheet", "Balance Sheet With Equity", "Income Statement", "Cashflow Statement",
-    "Balance sheet", "Income statement", "Cashflow statement",
-    "Assets", "Liabilities", "Equity", "Revenues", "Expenses",
-    "Asset", "Liability", "Revenue", "Expense",
-    # what a total means
-    "Net:", "Net, at cost:", "Net flows:", "Unbooked gains:",
+    "Assets", "Liabilities", "Equity", "Revenues", "Expenses", "Net:",
     # stock vs flow
-    "Balance changes", "Ending balances", "Cumulative totals",
-    "(Balance Changes)", "(Cumulative Ending Balances)", "(Historical Ending Balances)",
-    "Ending balances (cumulative)", "Ending balances (historical)", "Balance brought forward",
+    "Balance changes", "Ending balances",
     # valuation
-    "Cost", "Value", "At cost", "At market value", "No market price",
-    ", converted to cost", ", valued at posting date", ", valued at period ends",
-    ", current value", ", valued at {date}",
-    "Unit price", "Total cost", "Total value",
+    "Cost", "Value", "At cost", "At market value",
     # gains
-    "Unrealised gain", "Unrealised loss", "Unrealized gain", "Gain",
-    "Incremental gain", "Cumulative gain", "Historical gain", "UGain", "UGain%", "RGain",
-    # status, and kinds of posting and account
-    "Cleared", "Pending", "Unmarked", "cleared", "pending", "unmarked",
-    "Real", "Virtual", "Imbalance", "Conversion",
+    "Unrealised gain", "Gain",
+    # status, and kinds of posting
+    "Cleared", "Pending", "Unmarked", "Real", "Virtual",
     # destructive actions
     "Are you sure? This will overwrite your journal!",
-]} | {
-    ("amounts", "Cost"), ("amounts", "Value"),
-    ("column heading", "Historical Total"), ("column heading", "Period Total"),
-    ("column heading", "To/From Account(s)"), ("column heading", "Amount Out/In"),
-}
+]}
 
 
 def render(entries, pseudo=False):

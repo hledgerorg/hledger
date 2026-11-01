@@ -216,50 +216,42 @@ msgstr "(Ganancia acumulada)"
 msgid "(Historical Gain)"
 msgstr "(Ganancia histórica)"
 
-#. Key term
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Balance Changes)"
 msgstr "(Cambios de saldo)"
 
-#. Key term
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Cumulative Ending Balances)"
 msgstr "(Saldos finales acumulados)"
 
-#. Key term
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Historical Ending Balances)"
 msgstr "(Saldos finales históricos)"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", converted to cost"
 msgstr ", con conversión a costo"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at posting date"
 msgstr ", con valoración a la fecha de cada movimiento"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at period ends"
 msgstr ", con valoración al cierre de cada período"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", current value"
 msgstr ", a valor actual"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
@@ -293,17 +285,14 @@ msgstr "Cambios de valor al cierre de período"
 msgid "Cumulative period-end value changes"
 msgstr "Cambios de valor acumulados al cierre de período"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Incremental gain"
 msgstr "Ganancia incremental"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Cumulative gain"
 msgstr "Ganancia acumulada"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Historical gain"
 msgstr "Ganancia histórica"
@@ -336,12 +325,10 @@ msgstr "Número de transacciones"
 msgid "Balance changes"
 msgstr "Cambios de saldo"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (cumulative)"
 msgstr "Saldos finales (acumulados)"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (historical)"
 msgstr "Saldos finales (históricos)"
@@ -580,13 +567,11 @@ msgid "Unrealised gain"
 msgstr "Ganancia no realizada"
 
 # machine-translated, please review
-#. Key term
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Unrealised loss"
 msgstr "Pérdida no realizada"
 
 # machine-translated, please review
-#. Key term
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "No market price"
 msgstr "Sin precio de mercado"
@@ -776,7 +761,6 @@ msgid "Go to the previous report"
 msgstr "Ir al informe anterior"
 
 # machine-translated, please review
-#. Key term
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Net, at cost:"
@@ -789,7 +773,6 @@ msgid "The sum of every account, converted to cost: zero for balanced books; any
 msgstr "La suma de todas las cuentas, convertida al costo: cero si los libros cuadran; cualquier resto proviene de movimientos virtuales no balanceados."
 
 # machine-translated, please review
-#. Key term
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Unbooked gains:"
@@ -802,7 +785,6 @@ msgid "The sum of every account at market value: appreciation not booked by any 
 msgstr "La suma de todas las cuentas a valor de mercado: la apreciación no contabilizada en ningún asiento. Si las ganancias realizadas están contabilizadas, son las ganancias no realizadas."
 
 # machine-translated, please review
-#. Key term
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Net flows:"
@@ -814,7 +796,6 @@ msgstr "Flujos netos:"
 msgid "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities."
 msgstr "La suma de todas las cuentas: las posiciones abiertas en cada unidad y el efectivo con que se pagaron. Cero cuando nada cruza entre unidades."
 
-#. Key term
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Balance sheet"
@@ -825,7 +806,6 @@ msgstr "Balance general"
 msgid "Show assets, liabilities, and net worth"
 msgstr "Mostrar activos, pasivos y patrimonio neto"
 
-#. Key term
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Income statement"
@@ -836,7 +816,6 @@ msgstr "Estado de resultados"
 msgid "Show revenues and expenses"
 msgstr "Mostrar ingresos y gastos"
 
-#. Key term
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Cashflow statement"
@@ -999,7 +978,6 @@ msgid "Show each balance at the end of each period, including everything before 
 msgstr "Mostrar cada saldo al final de cada período, incluyendo todo lo anterior"
 
 # machine-translated, please review
-#. Key term
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/ReportPage.hs
@@ -1145,7 +1123,6 @@ msgid "Units"
 msgstr "Unidades"
 
 # machine-translated, please review
-#. Key term
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
@@ -1153,7 +1130,6 @@ msgid "Unit price"
 msgstr "Precio unitario"
 
 # machine-translated, please review
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1162,7 +1138,6 @@ msgid "Total cost"
 msgstr "Costo total"
 
 # machine-translated, please review
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1178,7 +1153,6 @@ msgid "Weight"
 msgstr "Peso"
 
 # machine-translated, please review
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1187,7 +1161,6 @@ msgid "UGain"
 msgstr "Gan. NR"
 
 # machine-translated, please review
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1196,7 +1169,6 @@ msgid "UGain%"
 msgstr "Gan. NR %"
 
 # machine-translated, please review
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1275,14 +1247,12 @@ msgstr "todas las cuentas"
 msgid "{account} (excluding subaccounts)"
 msgstr "{account} (sin subcuentas)"
 
-#. Key term
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
 msgid "Historical Total"
 msgstr "Total histórico"
 
-#. Key term
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
@@ -1525,7 +1495,6 @@ msgid "As recorded"
 msgstr "Como se registraron"
 
 # machine-translated, please review
-#. Key term
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "amounts"
@@ -1533,7 +1502,6 @@ msgid "Cost"
 msgstr "Al costo"
 
 # machine-translated, please review
-#. Key term
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "amounts"
@@ -1896,7 +1864,6 @@ msgid "Show how period-end market values changed (--valuechange)"
 msgstr "Mostrar cómo cambiaron los valores de mercado al cierre de cada período (--valuechange)"
 
 # machine-translated, please review
-#. Key term
 #. the depth limit, in the list of options in effect.
 #. the label before a report's calculation links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -2124,7 +2091,6 @@ msgid "All"
 msgstr "Todos"
 
 # machine-translated, please review
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Asset"
@@ -2137,7 +2103,6 @@ msgid "Show only asset accounts (type:A)"
 msgstr "Mostrar solo las cuentas de activo (type:A)"
 
 # machine-translated, please review
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Liability"
@@ -2156,7 +2121,6 @@ msgid "Show only equity accounts (type:E)"
 msgstr "Mostrar solo las cuentas de patrimonio (type:E)"
 
 # machine-translated, please review
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Revenue"
@@ -2169,7 +2133,6 @@ msgid "Show only revenue accounts (type:R)"
 msgstr "Mostrar solo las cuentas de ingresos (type:R)"
 
 # machine-translated, please review
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Expense"
@@ -2194,7 +2157,6 @@ msgid "Show only cash accounts (type:C)"
 msgstr "Mostrar solo las cuentas de efectivo (type:C)"
 
 # machine-translated, please review
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Conversion"
@@ -2220,7 +2182,6 @@ msgid "Show only capital gain accounts (type:G)"
 msgstr "Mostrar solo las cuentas de ganancias de capital (type:G)"
 
 # machine-translated, please review
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Imbalance"
@@ -2435,19 +2396,16 @@ msgid "daily"
 msgstr "diario"
 
 # machine-translated, please review
-#. Key term
 #: hledger-web/templates/default-layout.hamlet
 msgid "unmarked"
 msgstr "sin marcar"
 
 # machine-translated, please review
-#. Key term
 #: hledger-web/templates/default-layout.hamlet
 msgid "pending"
 msgstr "pendientes"
 
 # machine-translated, please review
-#. Key term
 #: hledger-web/templates/default-layout.hamlet
 msgid "cleared"
 msgstr "conciliadas"
@@ -2718,13 +2676,11 @@ msgstr "Mostrar las transacciones más antiguas"
 msgid "Older"
 msgstr "Más antiguas"
 
-#. Key term
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "To/From Account(s)"
 msgstr "Cuenta(s) de origen/destino"
 
-#. Key term
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "Amount Out/In"
@@ -2734,7 +2690,6 @@ msgstr "Importe salida/entrada"
 msgid "Show this entry and the other journal entries on its date"
 msgstr "Mostrar este asiento y los demás asientos de su fecha"
 
-#. Key term
 #: hledger-web/templates/register.hamlet
 msgid "Balance brought forward"
 msgstr "Saldo anterior"

@@ -218,50 +218,42 @@ msgstr "(Gnóthachan Carnach)"
 msgid "(Historical Gain)"
 msgstr "(Gnóthachan Stairiúil)"
 
-#. Key term
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Balance Changes)"
 msgstr "(Athruithe Iarmhéide)"
 
-#. Key term
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Cumulative Ending Balances)"
 msgstr "(Iarmhéideanna Deiridh Carnacha)"
 
-#. Key term
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Historical Ending Balances)"
 msgstr "(Iarmhéideanna Deiridh Stairiúla)"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", converted to cost"
 msgstr ", i gcostas"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at posting date"
 msgstr ", luacháil ar dháta na postála"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at period ends"
 msgstr ", luacháil ag deireadh gach tréimhse"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", current value"
 msgstr ", luach reatha"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
@@ -295,17 +287,14 @@ msgstr "Athruithe luacha ag deireadh tréimhse"
 msgid "Cumulative period-end value changes"
 msgstr "Athruithe carnacha luacha ag deireadh tréimhse"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Incremental gain"
 msgstr "Gnóthachan incriminteach"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Cumulative gain"
 msgstr "Gnóthachan carnach"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Historical gain"
 msgstr "Gnóthachan stairiúil"
@@ -338,12 +327,10 @@ msgstr "Líon idirbheart"
 msgid "Balance changes"
 msgstr "Athruithe iarmhéide"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (cumulative)"
 msgstr "Iarmhéideanna deiridh (carnach)"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (historical)"
 msgstr "Iarmhéideanna deiridh (stairiúil)"
@@ -579,12 +566,10 @@ msgstr "Costas"
 msgid "Unrealised gain"
 msgstr "Gnóthachan neamhréadaithe"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Unrealised loss"
 msgstr "Caillteanas neamhréadaithe"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "No market price"
 msgstr "Gan praghas margaidh"
@@ -768,7 +753,6 @@ msgstr "An tuarascáil roimhe seo"
 msgid "Go to the previous report"
 msgstr "Téigh go dtí an tuarascáil roimhe seo"
 
-#. Key term
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Net, at cost:"
@@ -779,7 +763,6 @@ msgstr "Glan, i gcostas:"
 msgid "The sum of every account, converted to cost: zero for balanced books; anything left comes from unbalanced virtual postings."
 msgstr "Suim gach cuntais, i gcostas: nialas do leabhair chothromaithe; tagann aon rud a fhanann ó phostálacha fíorúla neamhchothromaithe."
 
-#. Key term
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Unbooked gains:"
@@ -790,7 +773,6 @@ msgstr "Gnóthachain neamhthaifeadta:"
 msgid "The sum of every account at market value: appreciation not booked by any entry. If realized gains are booked, this is the unrealized gains."
 msgstr "Suim gach cuntais ag luach margaidh: luachmhéadú nach bhfuil taifeadta ag aon iontráil. Má thaifeadtar gnóthachain réadaithe, is iad seo na gnóthachain neamhréadaithe."
 
-#. Key term
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Net flows:"
@@ -801,7 +783,6 @@ msgstr "Glansreabhadh:"
 msgid "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities."
 msgstr "Suim gach cuntais: na suíomhanna oscailte i ngach aonad, agus an t-airgead a d'íoc astu. Nialas nuair nach dtrasnaíonn aon rud ó aonad go haonad."
 
-#. Key term
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Balance sheet"
@@ -812,7 +793,6 @@ msgstr "Clár comhardaithe"
 msgid "Show assets, liabilities, and net worth"
 msgstr "Taispeáin sócmhainní, dliteanais, agus glanfhiúchas"
 
-#. Key term
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Income statement"
@@ -823,7 +803,6 @@ msgstr "Ráiteas ioncaim"
 msgid "Show revenues and expenses"
 msgstr "Taispeáin ioncam agus speansais"
 
-#. Key term
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Cashflow statement"
@@ -981,7 +960,6 @@ msgstr "Iarmhéideanna deiridh"
 msgid "Show each balance at the end of each period, including everything before it"
 msgstr "Taispeáin gach iarmhéid ag deireadh gach tréimhse, lena n-áirítear gach rud roimhe"
 
-#. Key term
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/ReportPage.hs
@@ -1111,14 +1089,12 @@ msgstr "Aois"
 msgid "Units"
 msgstr "Aonaid"
 
-#. Key term
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Unit price"
 msgstr "Praghas aonaid"
 
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1126,7 +1102,6 @@ msgstr "Praghas aonaid"
 msgid "Total cost"
 msgstr "Costas iomlán"
 
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1140,7 +1115,6 @@ msgstr "Luach iomlán"
 msgid "Weight"
 msgstr "Ualach"
 
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1148,7 +1122,6 @@ msgstr "Ualach"
 msgid "UGain"
 msgstr "Gnóth. neamhr."
 
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1156,7 +1129,6 @@ msgstr "Gnóth. neamhr."
 msgid "UGain%"
 msgstr "Gnóth. neamhr. %"
 
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1230,14 +1202,12 @@ msgstr "gach cuntas"
 msgid "{account} (excluding subaccounts)"
 msgstr "{account} (gan fochuntais)"
 
-#. Key term
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
 msgid "Historical Total"
 msgstr "Iomlán Stairiúil"
 
-#. Key term
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
@@ -1459,14 +1429,12 @@ msgstr "Méideanna:"
 msgid "As recorded"
 msgstr "Mar a taifeadadh"
 
-#. Key term
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "amounts"
 msgid "Cost"
 msgstr "Costas"
 
-#. Key term
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "amounts"
@@ -1774,7 +1742,6 @@ msgstr "Athrú luacha"
 msgid "Show how period-end market values changed (--valuechange)"
 msgstr "Taispeáin conas a d'athraigh luachanna margaidh ag deireadh tréimhse (--valuechange)"
 
-#. Key term
 #. the depth limit, in the list of options in effect.
 #. the label before a report's calculation links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -1966,7 +1933,6 @@ msgctxt "account type"
 msgid "All"
 msgstr "Uile"
 
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Asset"
@@ -1977,7 +1943,6 @@ msgstr "Sócmhainn"
 msgid "Show only asset accounts (type:A)"
 msgstr "Taispeáin cuntais shócmhainne amháin (type:A)"
 
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Liability"
@@ -1993,7 +1958,6 @@ msgstr "Taispeáin cuntais dhliteanais amháin (type:L)"
 msgid "Show only equity accounts (type:E)"
 msgstr "Taispeáin cuntais chothromais amháin (type:E)"
 
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Revenue"
@@ -2004,7 +1968,6 @@ msgstr "Ioncam"
 msgid "Show only revenue accounts (type:R)"
 msgstr "Taispeáin cuntais ioncaim amháin (type:R)"
 
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Expense"
@@ -2025,7 +1988,6 @@ msgstr "Airgead"
 msgid "Show only cash accounts (type:C)"
 msgstr "Taispeáin cuntais airgid amháin (type:C)"
 
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Conversion"
@@ -2047,7 +2009,6 @@ msgstr "Gnóthachan"
 msgid "Show only capital gain accounts (type:G)"
 msgstr "Taispeáin cuntais ghnóthachain chaipitiúil amháin (type:G)"
 
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Imbalance"
@@ -2238,17 +2199,14 @@ msgstr "seachtainiúil"
 msgid "daily"
 msgstr "laethúil"
 
-#. Key term
 #: hledger-web/templates/default-layout.hamlet
 msgid "unmarked"
 msgstr "gan mharcáil"
 
-#. Key term
 #: hledger-web/templates/default-layout.hamlet
 msgid "pending"
 msgstr "ar feitheamh"
 
-#. Key term
 #: hledger-web/templates/default-layout.hamlet
 msgid "cleared"
 msgstr "glanta"
@@ -2499,13 +2457,11 @@ msgstr "Taispeáin na hidirbhearta níos sine"
 msgid "Older"
 msgstr "Níos sine"
 
-#. Key term
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "To/From Account(s)"
 msgstr "Chuig/Ó Chuntas"
 
-#. Key term
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "Amount Out/In"
@@ -2515,7 +2471,6 @@ msgstr "Méid Amach/Isteach"
 msgid "Show this entry and the other journal entries on its date"
 msgstr "Taispeáin an iontráil seo agus iontrálacha eile na dialainne ar a dáta"
 
-#. Key term
 #: hledger-web/templates/register.hamlet
 msgid "Balance brought forward"
 msgstr "Iarmhéid tugtha ar aghaidh"

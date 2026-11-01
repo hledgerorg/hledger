@@ -80,7 +80,7 @@ place to start reviewing. In Poedit, search for `machine-translated`.
 Once you have checked or corrected one, delete that comment line.
 
 If you have only a few minutes, check the entries marked "Key term"
-first. They are the seventy or so whose
+first. They are the two dozen whose
 mistranslation would mislead about money or data: the statement and
 section names (Assets, Equity, ...), what a total means, balances vs
 changes, cost vs value, gains, transaction status, and the warning before

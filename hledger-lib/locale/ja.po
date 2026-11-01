@@ -214,50 +214,42 @@ msgstr "(含み損益の累計)"
 msgid "(Historical Gain)"
 msgstr "(繰越込み含み損益)"
 
-#. Key term
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Balance Changes)"
 msgstr "(残高の増減)"
 
-#. Key term
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Cumulative Ending Balances)"
 msgstr "(累計期末残高)"
 
-#. Key term
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Historical Ending Balances)"
 msgstr "(繰越込み期末残高)"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", converted to cost"
 msgstr "、原価換算"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at posting date"
 msgstr "、転記日時点の時価"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at period ends"
 msgstr "、各期末時点の時価"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", current value"
 msgstr "、現在の時価"
 
-#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
@@ -291,17 +283,14 @@ msgstr "期末評価額の増減"
 msgid "Cumulative period-end value changes"
 msgstr "期末評価額の累計増減"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Incremental gain"
 msgstr "含み損益の増減"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Cumulative gain"
 msgstr "含み損益の累計"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Historical gain"
 msgstr "繰越込み含み損益"
@@ -334,12 +323,10 @@ msgstr "取引件数"
 msgid "Balance changes"
 msgstr "残高の増減"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (cumulative)"
 msgstr "期末残高 (累計)"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (historical)"
 msgstr "期末残高 (繰越込み)"
@@ -575,12 +562,10 @@ msgstr "取得原価"
 msgid "Unrealised gain"
 msgstr "含み益"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Unrealised loss"
 msgstr "含み損"
 
-#. Key term
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "No market price"
 msgstr "市場価格なし"
@@ -764,7 +749,6 @@ msgstr "前のレポート"
 msgid "Go to the previous report"
 msgstr "前のレポートへ移動"
 
-#. Key term
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Net, at cost:"
@@ -775,7 +759,6 @@ msgstr "純額 (原価):"
 msgid "The sum of every account, converted to cost: zero for balanced books; anything left comes from unbalanced virtual postings."
 msgstr "全勘定科目の原価換算での合計。帳簿が釣り合っていればゼロになり、残りは釣り合っていない仮想転記によるものです。"
 
-#. Key term
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Unbooked gains:"
@@ -786,7 +769,6 @@ msgstr "未計上の損益:"
 msgid "The sum of every account at market value: appreciation not booked by any entry. If realized gains are booked, this is the unrealized gains."
 msgstr "全勘定科目の時価での合計。どの仕訳にも計上されていない評価損益です。実現損益を計上している場合、これが含み損益になります。"
 
-#. Key term
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Net flows:"
@@ -797,7 +779,6 @@ msgstr "純フロー:"
 msgid "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities."
 msgstr "全勘定科目の合計。各単位の未決済ポジションと、その支払いに使った現金です。単位をまたぐものがなければゼロになります。"
 
-#. Key term
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Balance sheet"
@@ -808,7 +789,6 @@ msgstr "貸借対照表"
 msgid "Show assets, liabilities, and net worth"
 msgstr "資産、負債、正味資産を表示"
 
-#. Key term
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Income statement"
@@ -819,7 +799,6 @@ msgstr "損益計算書"
 msgid "Show revenues and expenses"
 msgstr "収益と費用を表示"
 
-#. Key term
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Cashflow statement"
@@ -977,7 +956,6 @@ msgstr "期末残高"
 msgid "Show each balance at the end of each period, including everything before it"
 msgstr "各期末の残高を、それ以前のすべてを含めて表示"
 
-#. Key term
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/ReportPage.hs
@@ -1107,14 +1085,12 @@ msgstr "保有期間"
 msgid "Units"
 msgstr "数量"
 
-#. Key term
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Unit price"
 msgstr "単価"
 
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1122,7 +1098,6 @@ msgstr "単価"
 msgid "Total cost"
 msgstr "取得原価合計"
 
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1136,7 +1111,6 @@ msgstr "評価額合計"
 msgid "Weight"
 msgstr "比率"
 
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1144,7 +1118,6 @@ msgstr "比率"
 msgid "UGain"
 msgstr "含み損益"
 
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1152,7 +1125,6 @@ msgstr "含み損益"
 msgid "UGain%"
 msgstr "含み損益%"
 
-#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1226,14 +1198,12 @@ msgstr "すべての勘定科目"
 msgid "{account} (excluding subaccounts)"
 msgstr "{account} (下位勘定科目を除く)"
 
-#. Key term
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
 msgid "Historical Total"
 msgstr "繰越込み合計"
 
-#. Key term
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
@@ -1455,14 +1425,12 @@ msgstr "金額:"
 msgid "As recorded"
 msgstr "記録どおり"
 
-#. Key term
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "amounts"
 msgid "Cost"
 msgstr "原価"
 
-#. Key term
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "amounts"
@@ -1770,7 +1738,6 @@ msgstr "評価額の増減"
 msgid "Show how period-end market values changed (--valuechange)"
 msgstr "各期末の時価の増減を表示 (--valuechange)"
 
-#. Key term
 #. the depth limit, in the list of options in effect.
 #. the label before a report's calculation links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -1962,7 +1929,6 @@ msgctxt "account type"
 msgid "All"
 msgstr "すべて"
 
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Asset"
@@ -1973,7 +1939,6 @@ msgstr "資産"
 msgid "Show only asset accounts (type:A)"
 msgstr "資産勘定のみ表示 (type:A)"
 
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Liability"
@@ -1989,7 +1954,6 @@ msgstr "負債勘定のみ表示 (type:L)"
 msgid "Show only equity accounts (type:E)"
 msgstr "純資産勘定のみ表示 (type:E)"
 
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Revenue"
@@ -2000,7 +1964,6 @@ msgstr "収益"
 msgid "Show only revenue accounts (type:R)"
 msgstr "収益勘定のみ表示 (type:R)"
 
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Expense"
@@ -2021,7 +1984,6 @@ msgstr "現金"
 msgid "Show only cash accounts (type:C)"
 msgstr "現金勘定のみ表示 (type:C)"
 
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Conversion"
@@ -2043,7 +2005,6 @@ msgstr "損益"
 msgid "Show only capital gain accounts (type:G)"
 msgstr "キャピタルゲイン勘定のみ表示 (type:G)"
 
-#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Imbalance"
@@ -2234,17 +2195,14 @@ msgstr "週次"
 msgid "daily"
 msgstr "日次"
 
-#. Key term
 #: hledger-web/templates/default-layout.hamlet
 msgid "unmarked"
 msgstr "未マーク"
 
-#. Key term
 #: hledger-web/templates/default-layout.hamlet
 msgid "pending"
 msgstr "保留"
 
-#. Key term
 #: hledger-web/templates/default-layout.hamlet
 msgid "cleared"
 msgstr "確定"
@@ -2495,13 +2453,11 @@ msgstr "古い取引を表示"
 msgid "Older"
 msgstr "古い方"
 
-#. Key term
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "To/From Account(s)"
 msgstr "相手勘定科目"
 
-#. Key term
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "Amount Out/In"
@@ -2511,7 +2467,6 @@ msgstr "出金/入金"
 msgid "Show this entry and the other journal entries on its date"
 msgstr "この仕訳と、同じ日付の他の仕訳を表示"
 
-#. Key term
 #: hledger-web/templates/register.hamlet
 msgid "Balance brought forward"
 msgstr "前期繰越"
