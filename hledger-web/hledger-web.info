@@ -18,7 +18,7 @@ plain text accounting app.
 or
 'hledger web [OPTS] [QUERY]'
 
-   This manual is for hledger's web interface, version 1.99.  See also
+   This manual is for hledger's web interface, version 1.99.6.  See also
 the hledger manual for common concepts and file formats.
 
    hledger is a robust, user-friendly, cross-platform set of programs
@@ -876,22 +876,22 @@ shortcuts, sidebar toggle and folding don't work.
 
 Tag Table:
 Node: Top223
-Node: OPTIONS2578
-Node: WEB UI14080
-Node: PERMISSIONS18645
-Node: EDITING UPLOADING DOWNLOADING19899
-Node: REPORTS20935
-Node: Options22146
-Node: Charts24578
-Node: From a report to its transactions25174
-Node: Holdings26173
-Node: URL PARAMETERS26979
-Node: RELOADING28800
-Node: JSON API29366
-Node: DEBUG OUTPUT35109
-Node: LANGUAGE35648
-Node: ENVIRONMENT36773
-Node: BUGS37007
+Node: OPTIONS2580
+Node: WEB UI14082
+Node: PERMISSIONS18647
+Node: EDITING UPLOADING DOWNLOADING19901
+Node: REPORTS20937
+Node: Options22148
+Node: Charts24580
+Node: From a report to its transactions25176
+Node: Holdings26175
+Node: URL PARAMETERS26981
+Node: RELOADING28802
+Node: JSON API29368
+Node: DEBUG OUTPUT35111
+Node: LANGUAGE35650
+Node: ENVIRONMENT36775
+Node: BUGS37009
 
 End Tag Table
 
