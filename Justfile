@@ -581,9 +581,29 @@ CHARTS_FILE := env('CHARTS_FILE', 'examples/bcexample.journal')
 # Show the representative charts on one html page in the browser, using the current build, adding any general hledger ARGS to each command
 @chartsdemo-html *ARGS:
     hl=$({{ STACK }} exec -- which hledger); \
-    { echo "echo hledger charts demo, using $(echo $CHARTS_FILE {{ ARGS }})"; \
-      just _charts-list "$hl" "$CHARTS_FILE" | while read -r name rest; do echo "echo ${rest#*# }"; echo "${rest%% #*}"; done; \
-    } | $hl -f "$CHARTS_FILE" run --view {{ ARGS }}
+    just _charts-script "$hl" "$CHARTS_FILE" {{ ARGS }} | $hl -f "$CHARTS_FILE" run --view {{ ARGS }}
+
+# Save the html page chartsdemo-html shows to FILE (eg site/src/charts-demo.html), using the current build, adding any general hledger ARGS to each command
+@chartsdemo-page FILE *ARGS:
+    hl=$({{ STACK }} exec -- which hledger); \
+    just _charts-script "$hl" "$CHARTS_FILE" {{ ARGS }} | $hl -f "$CHARTS_FILE" run -o '{{ FILE }}' {{ ARGS }}
+
+# the representative charts as a script for the run command (using the given HLEDGER and FILE, and naming any ARGS in its heading):
+# each chart's description, then its command
+@_charts-script HLEDGER FILE *ARGS:
+    echo "echo hledger charts demo, using $(echo '{{ FILE }}' {{ ARGS }})"; \
+    just _charts-list '{{ HLEDGER }}' '{{ FILE }}' | while read -r name rest; do echo "echo ${rest#*# }"; echo "${rest%% #*}"; done
+
+# (Each chart is saved as NAME.svg, and as NAME.png at 2x for places that can't show SVG, eg chat; the PNGs need rsvg-convert, from librsvg.)
+# Save the representative charts as images in DIR (eg site/src/images/charts), using the current build, adding any hledger ARGS to each command
+@chartsdemo-images DIR *ARGS:
+    hl=$({{ STACK }} exec -- which hledger); \
+    mkdir -p '{{ DIR }}'; \
+    while read -r name rest <&3; do \
+        args=$(echo ${rest%% #*}); f='{{ DIR }}'/$name; \
+        $hl -f "$CHARTS_FILE" $args {{ ARGS }} -o $f.svg </dev/null && rsvg-convert -z 2 $f.svg -o $f.png 2>/dev/null \
+          && echo "$f.svg $f.png" || echo "failed: $name"; \
+    done 3< <(just _charts-list "$hl" "$CHARTS_FILE")
 
 # list the chart commands, with LASTYEAR and LASTMONTH filled in from FILE's last transaction (using the given HLEDGER)
 @_charts-list HLEDGER FILE:
