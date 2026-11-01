@@ -78,4 +78,4 @@ In order.
 - [x] Binaries from the final commit (check `--version`), tags, push, github release
 - [x] Push main (branch doc commits cherry-picked)
 - [x] Push/render site (stale out2/1.99.5 on the server had to be removed first)
-- [ ] announce
+- [x] announce
