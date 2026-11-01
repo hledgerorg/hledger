@@ -60,28 +60,41 @@ h2, h2:last-child > h3 { margin-top:4em; }
 
 User-visible changes in the core hledger tools.
 
-**Note: hledger 1 and 2:**
-Both hledger 1 and 2 (the 1.99.x preview releases) are suitable for daily use.
-hledger 1 is receiving only essential fixes;
-the hledger 2 preview releases are strictly better, highly compatible,
-and by using the latest, you help make 2.0 (later this year) better.
+**A reminder of current status**
 
-**Note: AI usage:**
-Here is our current [AI policy](https://hledger.org/AI.html).
-If you disagree with it, please be patient while we navigate this period..
-In summary:
+hledger 1 is receiving only essential fixes; the hledger 2 preview releases are
+strictly better, and normally require no changes to your hledger 1 data.
+hledger 2's goals have been:
 
-- hledger 1 (up to 1.52.1) was developed without AI assistance. ([Level 0][levels])
+- continue and improve 1.x's reliability
+- provide excellent lot tracking and capital gains calculation
+- explore ethical use of AI as a dev tool
+- more cleanup and simplification of code, docs, process, finance
+- more speed
+- more interoperability
+- more use of jj for version management
+- easier contribution
 
-- hledger 1.52.2+ has used a couple of small, fully reviewed, AI-generated security fixes copied from 2.x. ([Level 2-4][levels])
+Our current AI policy is here: https://hledger.org/AI.html
+If you disagree with it, please continue enjoying hledger 1,
+and be patient while we navigate this period. In summary:
 
-- hledger 2 (1.99.1+) is exploring careful AI-assisted development. ([Level 5][levels])
+- hledger, hledger-ui and hledger-web do not use AI at runtime.
 
-In 2026 Q2 & Q3 we used a 6-month OSS credit from Anthropic,
-to implement lot tracking and other features, and to improve quality generally.
-The latest hledger is better tested, better documented, more robust, more secure, and faster than any previous version.
+- hledger 1.52.1 and below had no AI-assisted development.
+  (Level 0, https://www.visidata.org/blog/2026/ai/#self-assessed-ai-level-for-contributions)
 
-[levels]: https://www.visidata.org/blog/2026/ai/#self-assessed-ai-level-for-contributions
+- hledger 1.52.2+ contains a few small security fixes backported from 2.x
+  (Level 2-4)
+
+- hledger 2 uses careful AI-assisted development (Level 5).
+  As a result, it has become more secure, more correct, better tested, better documented,
+  and much faster.
+
+- Providing an efficient tool that AI users will use, can help reduce
+  wasteful AI computation, offsetting resource usage during development.
+  See the AI policy and usage reports for more on this:
+  https://github.com/hledgerorg/hledger/tree/main/doc/ai
 
 
 ## 2026-11-01 hledger-1.99.6
