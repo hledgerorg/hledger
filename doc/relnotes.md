@@ -568,6 +568,7 @@ Daniil Iaitskov,
 Diego Depaoli,
 Patrick van de Glind,
 Chunhui Ouyang.
+The amount expressions work was a bounty funded by James Shubin.
 
 
 
