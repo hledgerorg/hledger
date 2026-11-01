@@ -348,7 +348,7 @@ In brief; each is described more fully in its section below.
   English, Brazilian Portuguese, Chinese, French, German, Hawaiian, Irish, Italian, Japanese, Russian, Spanish and Ukrainian.
   Gaps in human translations are filled by machine translations, which are marked for review.
   Native speakers' help is welcome; see [TRANSLATING](TRANSLATING.md).
-  (Daniil Iaitskov (Russian), Diego Depaoli (Italian), Henning Thielemann (German), Simon Michael)
+  (Daniil Iaitskov (Russian), Diego Depaoli (Italian), Henning Thielemann (German), Chunhui Ouyang (Chinese), Simon Michael)
 
 - `hledger --write-lang=LANG` writes the current po file for a supported language,
   or a starter po file for a new language, into hledger's config directory.
@@ -566,7 +566,8 @@ Dmitry Astapov,
 Martin,
 Daniil Iaitskov,
 Diego Depaoli,
-Patrick van de Glind.
+Patrick van de Glind,
+Chunhui Ouyang.
 
 
 
