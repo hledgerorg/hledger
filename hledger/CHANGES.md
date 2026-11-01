@@ -9,7 +9,7 @@
 
 User-visible changes in the hledger command line tool and library.
 
-# 79c2b7b1
+# e773997a
 
 ## Breaking changes
 
@@ -103,7 +103,10 @@ User-visible changes in the hledger command line tool and library.
 - Fixed: roi's TWR is now computed from the investment's value at the end of each day, exactly, at daily granularity.
   The previous linked-IRR method's choice of valuation dates was error-prone, and its solving could fail.
   Results change for most journals with cash flows between valuations; if you record valuations only occasionally
-  (eg with `--pnl` transactions), record one around large deposits and withdrawals. See the roi docs.
+  (eg with `--pnl` transactions), record one around large deposits and withdrawals.
+  Also, cash flows are now measured from the investment's perspective (other postings in the transaction, eg fees, no longer affect them),
+  a holding without a market price is valued at its cost, and `--cashflow` shows each cash flow and the TWR steps, for checking the results.
+  See the roi docs.
   (Dmitry Astapov, [#2824], [#2825])
 
 - `--view` opens a report in the system's default viewer for the report's format.
@@ -233,7 +236,7 @@ User-visible changes in the hledger command line tool and library.
 ## Translations
 
 - hledger, hledger-ui and hledger-web can now be shown in eight more languages.
-  The German and Chinese translations have been improved, and we now also have
+  The German, Russian and Chinese translations have been improved and completed (the new text machine-filled, marked for review), and we now also have
   Irish, Spanish, Italian, French, Brazilian Portuguese, Russian, Japanese, and Hawaiian.
   Russian was contributed by Daniil Iaitskov ([#2773]), and Italian is based on Diego Depaoli's draft;
   the rest are machine-made, and awaiting review by native speakers.

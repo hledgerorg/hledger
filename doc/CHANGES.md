@@ -20,7 +20,7 @@ General changes in the hledger project.
 For package-specific changes, see the hledger package changelogs.
 
 
-# 79c2b7b1
+# e773997a
 
 ## Docs
 

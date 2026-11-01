@@ -16,7 +16,11 @@ User-visible changes in hledger-ui.
 See also the hledger changelog.
 
 
-# 79c2b7b1
+# e773997a
+
+
+
+
 
 Fixes
 
