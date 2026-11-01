@@ -63,7 +63,7 @@ User-visible changes in the core hledger tools.
 **A reminder of current status**
 
 hledger 1 is receiving only essential fixes; the hledger 2 preview releases are
-strictly better, and normally require no changes to your hledger 1 data.
+strictly better, and [normally require no changes](upgrading.md) to your hledger 1 data.
 hledger 2's goals have been:
 
 - continue and improve 1.x's reliability
