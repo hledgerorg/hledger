@@ -74,6 +74,16 @@ to avoid interfering with branch switching; RELEASING.md should be updated from 
 
 ### Phase 1: prepare main
 
+1. **(major or preview release) plan the release, several days ahead:** write `doc/PLAN-release-VER.md` with the
+   scope, decisions, a day-by-day schedule and a task list to tick off (see `doc/PLAN-release-1.99.6.md`).
+   Leave several days for the changelogs: updating and rewriting them, the research they need, and the fixes
+   and dev tasks they turn up.
+1. **(major or preview release) the day before: draft, and trial-build:** draft the relnotes summary paragraph
+   (as untracked `doc/SUMMARY.md`) and the announcements, so that release day only finalises them; and run a
+   trial `just ghbin`, which finds build errors early and warms the CI caches, making release day's real build fast.
+   A late addition (eg a new language, ~90 minutes on 1.99.6's release day) must come before the options help,
+   manuals and changelog steps below; a language count appears in the changelog, the announcements, the summary
+   and the manual's Languages section.
 1. **main: finish fixes/features/docs/issues/prs**
 1. **(major or preview release) main: message freeze and translation sprint:**
    `tools/i18n-extract.py --reorder -o hledger-lib/locale/hledger.pot` (restores source order, which between freezes
@@ -93,6 +103,8 @@ to avoid interfering with branch switching; RELEASING.md should be updated from 
    `just i18n-check` then shows none untranslated; try the catalogs (see the translations skill) and commit.
 1. **main: begin/fix release builds:** `just oldest` (and `just ghbin` if needed)
 1. **main: update general flags help:** `just generaloptionshelp` (updates doc/common.m4 from the build's --help output; review the diff)
+   - finish any help text changes (eg option help wording) first; a later one means rerunning this and `just manuals`,
+     with another round of generated-doc commits.
 1. **main: update command docs and manuals ?** `just manuals`; check the manuals' internal links: `just anchortest`
 1. **(major release) main: update website manuals:** `just manuals-site`
 1. **(major release) main: update website scripts/redirects:** update `site/Makefile`, `site/js/site.js`, `site/hledger.org.caddy`
@@ -117,7 +129,8 @@ to avoid interfering with branch switching; RELEASING.md should be updated from 
      commit, run `tools/relnotes`. Then the branch inherits them and nothing needs cherry-picking back.
    - it's normal for some packages to have zero changes in a bugfix release - `just relnotes` emits a one-line
      "Uses PKG X.Y.Z" for them; not a problem for downstream packagers.
-1. **(major or preview release) rel: update announcements:** edit `doc/ANNOUNCE` - do this before making the
+1. **(major or preview release) rel: update announcements:** edit `doc/ANNOUNCE`, and the ~500 and ~300 character
+   versions `doc/ANNOUNCE.500` (mastodon) and `doc/ANNOUNCE.300` (bluesky, x) - do this before making the
    release builds below, so that it is included in the release tags. (Preview releases are announced too;
    in general they are treated more like major than minor releases.)
    Show the drafted ANNOUNCE to the maintainer for editing/confirmation before committing it.
@@ -180,7 +193,8 @@ Everything before this phase is revisable (nothing shared beyond scratch CI bran
 1. **(major release) main: update dev version:** `just devver`
 1. **main: update manuals:** `just manuals`
 1. **main: update changelogs:** `just changelogs`; edit
-1. **announce to matrix, irc, mail list, mastodon, forum, pta.o** ⚠
+1. **announce to matrix, irc, mail list, mastodon, forum, pta.o** ⚠ (`doc/ANNOUNCE` for the mail list and forum,
+   `doc/ANNOUNCE.500` for mastodon, `doc/ANNOUNCE.300` for bluesky and x)
 1. **(if this release fixes a previously-embargoed security issue)**
    - keep the GHSA draft private until the release is out and installable
    - publish the advisory once the fix has had a little time to propagate; don't gate on CVE grant, that's a separate
