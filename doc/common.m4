@@ -91,7 +91,8 @@ General input flags:
                             hledger-ui, also make future-dated transactions
                             visible at startup.
      --ignore-assertions    don't check balance assertions by default
-     --ignore-lots          don't do lot tracking or checking by default
+     --ignore-lots          don't track lots: skip lot checks, inferred cost
+                            bases and gain postings
   -I                        shortcut for --ignore-assertions --ignore-lots
      --txn-tolerance=...    how much imbalance to allow in transactions:
                             'entry':   - the entry's precision (default)
@@ -169,11 +170,14 @@ General help flags:
      --version              show version information
      --test[=PATTERN]       run built-in tests (those matching PATTERN) and
                             exit
+     --write-lang=LANG      write LANG's PO file to the config directory, for
+                            editing translations, and exit
      --debug=[1-9]          show this much debug output (default: 1)
      --pager=YN             use a pager when needed ? y/yes (default) or n/no
      --color=YNA --colour   use ANSI color ? y/yes, n/no, or auto (default)
-     --lang=LANG            language for the user interface:
-                            en (default), de, es, ru, zh, or auto
+     --lang=LANG            select the user interface language:
+                            en (default), de, es, fr, ga, haw, it, ja, pt-BR,
+                            ru, zh, or auto
 ```
 }} )m4_dnl '
 m4_dnl
@@ -205,7 +209,8 @@ General input flags:
                             hledger-ui, also make future-dated transactions
                             visible at startup.
      --ignore-assertions    don't check balance assertions by default
-     --ignore-lots          don't do lot tracking or checking by default
+     --ignore-lots          don't track lots: skip lot checks, inferred cost
+                            bases and gain postings
   -I                        shortcut for --ignore-assertions --ignore-lots
      --txn-tolerance=...    how much imbalance to allow in transactions:
                             'entry':   - the entry's precision (default)
@@ -281,11 +286,14 @@ General help flags:
      --webman               show this command's manual on the web
      --examples             show examples for this command
      --version              show version information
+     --write-lang=LANG      write LANG's PO file to the config directory, for
+                            editing translations, and exit
      --debug=[1-9]          show this much debug output (default: 1)
      --pager=YN             use a pager when needed ? y/yes (default) or n/no
      --color=YNA --colour   use ANSI color ? y/yes, n/no, or auto (default)
-     --lang=LANG            language for the user interface:
-                            en (default), de, es, ru, zh, or auto
+     --lang=LANG            select the user interface language:
+                            en (default), de, es, fr, ga, haw, it, ja, pt-BR,
+                            ru, zh, or auto
 ```
 }} )m4_dnl '
 m4_dnl
@@ -317,7 +325,8 @@ General input flags:
                             hledger-ui, also make future-dated transactions
                             visible at startup.
      --ignore-assertions    don't check balance assertions by default
-     --ignore-lots          don't do lot tracking or checking by default
+     --ignore-lots          don't track lots: skip lot checks, inferred cost
+                            bases and gain postings
   -I                        shortcut for --ignore-assertions --ignore-lots
      --txn-tolerance=...    how much imbalance to allow in transactions:
                             'entry':   - the entry's precision (default)
@@ -395,6 +404,8 @@ General help flags:
      --version              show version information
      --test[=PATTERN]       run built-in tests (those matching PATTERN) and
                             exit
+     --write-lang=LANG      write LANG's PO file to the config directory, for
+                            editing translations, and exit
      --debug=[1-9]          show this much debug output (default: 1)
      --pager=YN             use a pager when needed ? y/yes (default) or n/no
      --color=YNA --colour   use ANSI color ? y/yes, n/no, or auto (default)
