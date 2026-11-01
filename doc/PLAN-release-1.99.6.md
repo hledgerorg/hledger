@@ -71,11 +71,11 @@ In order.
 - [x] Release notes summary drafted: doc/SUMMARY.md (uncommitted; paste into relnotes.md after `just relnotes`)
 - [x] ANNOUNCE and ANNOUNCE.short drafted (uncommitted; review and commit)
 - [x] Trial `just ghbin` build on Saturday, to find errors and warm the CI caches
-- [ ] Release branch (`just relbranch 1.99.6`), `just changelogs-finalise`, `just relnotes` + summary
-- [ ] ghrelnotes, Install page updates
-- [ ] finalise announcements
-- [ ] Manuals snapshot on the site
-- [ ] Binaries from the final commit (check `--version`), tags, push, github release
-- [ ] Push main
+- [x] Release branch (`just relbranch 1.99.6`), `just changelogs-finalise`, `just relnotes` + summary (redone after adding Ukrainian)
+- [x] ghrelnotes (nothing to change), Install page updates
+- [x] finalise announcements
+- [x] Manuals snapshot on the site (1.99.5 snapshot dropped)
+- [x] Binaries from the final commit (check `--version`), tags, push, github release
+- [ ] Push main (branch doc commits cherry-picked)
 - [ ] Push/render site
 - [ ] announce
