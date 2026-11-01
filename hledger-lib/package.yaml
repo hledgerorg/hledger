@@ -42,6 +42,7 @@ extra-source-files:
 - locale/ja.po
 - locale/pt-BR.po
 - locale/ru.po
+- locale/uk.po
 - locale/zh-Hans.po
 - test/unittest.hs
 - test/doctests.hs

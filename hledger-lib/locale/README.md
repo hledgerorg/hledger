@@ -36,6 +36,7 @@ and the maintainer as committer, with the commit message saying how it arrived.
 | [ja](#japanese) | | machine-made, not yet checked by a native speaker |
 | [pt-BR](#brazilian-portuguese) | | machine-made, not yet checked by a native speaker |
 | [ru](#russian) | Daniil Iaitskov (@yaitskov) | some entries machine-made; these are marked |
+| [uk](#ukrainian) | | machine-made, not yet checked by a native speaker |
 | [zh-Hans](#simplified-chinese) | Chunhui Ouyang (@jack9603301) | some entries machine-made; these are marked |
 
 Also interested in hledger's i18n: Arthur Cinader (@acinader), who built
@@ -178,6 +179,42 @@ Regional tags like `ru-RU` or `ru_RU` select it too.
 | Journal (hledger-web's view) | Журнал |
 | Balance changes / Ending balances | Изменения сальдо / Конечные сальдо |
 | Budget performance | Исполнение бюджета |
+
+## Ukrainian
+
+Machine-made (Claude Fable 5.1), not yet checked by a native speaker;
+corrections are welcome. Regional tags like `uk-UA` or `uk_UA` select it too.
+Terms follow Ukraine's national accounting standards (НП(С)БО) where
+they have a short form, otherwise the Russian catalog's choices.
+
+| English | Ukrainian |
+|---|---|
+| Balance Sheet / With Equity | Баланс / Баланс з капіталом |
+| Income Statement | Звіт про фінансові результати |
+| Cashflow Statement | Звіт про рух грошових коштів |
+| Assets / Liabilities / Equity | Активи / Зобов'язання / Капітал |
+| Revenues / Expenses | Доходи / Витрати |
+| Net: | Чистий підсумок: |
+| Total / Average | Разом / Середнє |
+| Balance (an account's) | Сальдо |
+| Commodity | Одиниця обліку |
+| Cost (cost basis) / Value | Вартість придбання / Вартість |
+| converted to cost / current value | у цінах угод / за поточною вартістю |
+| Account / Amount | Рахунок / Сума |
+| transaction / posting / lot | транзакція / проводка / лот |
+| Register / Holdings | Реєстр / Позиції |
+| Charts | Діаграми |
+| Upload / Download | Вивантажити / Завантажити |
+| Months | Січень ... Грудень; short forms Січ, Лют ... Гру |
+
+Choices to check:
+
+- Звіт про фінансові результати (the НП(С)БО name) for Income Statement,
+  rather than Звіт про прибутки та збитки.
+- Сальдо for balance and Разом for totals, as in Ukrainian accounting
+  software; Підсумок where "total" is the sum being shown.
+- Transaction statuses: Без позначки / Очікувані / Звірені.
+- The shortened holdings column headings (Нереал. приб., Реал. приб.).
 
 ## Simplified Chinese
 

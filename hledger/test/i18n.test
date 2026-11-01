@@ -207,7 +207,14 @@ Bilancio trimestrale 2008-03-31..2008-12-31
 $ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal is --lang it_CH | head -1
 Conto economico 2008
 
-# ** 21. --write-lang writes a catalog to translate into the config directory, where --lang finds it:
+# ** 21. Ukrainian is built in, and regional tags fall back to it.
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal bs --lang uk | head -1
+Баланс 2008-12-31
+
+$ XDG_CONFIG_HOME=/nonexistent hledger -f sample.journal cf -M --lang uk_UA | head -1
+Щомісячний звіт про рух грошових коштів 2008
+
+# ** 22. --write-lang writes a catalog to translate into the config directory, where --lang finds it:
 # the built-in catalog for a language that has one, as it is,
 $ d=$(mktemp -d) && XDG_CONFIG_HOME=$d hledger --write-lang de_AT | head -1 | sed 's,/.*/,DIR/,' && cmp $d/hledger/locale/de.po ../../hledger-lib/locale/de.po && echo same; rm -rf $d
 Wrote hledger's built-in de catalog to DIR/de.po.

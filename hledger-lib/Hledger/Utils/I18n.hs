@@ -259,6 +259,7 @@ builtinCatalogSources =
   , ("ja",      $(embedFileRelativeBytes "locale/ja.po"))
   , ("pt-BR",   $(embedFileRelativeBytes "locale/pt-BR.po"))
   , ("ru",      $(embedFileRelativeBytes "locale/ru.po"))
+  , ("uk",      $(embedFileRelativeBytes "locale/uk.po"))
   , ("zh-Hans", $(embedFileRelativeBytes "locale/zh-Hans.po"))
   ]
 
