@@ -27,8 +27,7 @@ State on Oct 28:
 - Machine-made catalogs need not be labelled as such; their quality probably
   falls into the same range as human translations'.
 - Translations are due by Sat Oct 31, 20:00 UTC (10:00 HST); later ones go into the next release.
-- Sunday is kept to the minimum: tag, publish, announce.
-- #2648's bounty is settled; mention it in that changelog entry.
+- Sunday's work is minimised: ideally tag, publish, announce.
 
 ## Schedule
 
@@ -40,116 +39,41 @@ Then the riskiest and most time-consuming work.
 |---|---|
 | **Wed Oct 28** | #2821/#2807 review/discussion/merge. Single-period bs SVG net mark fix. Cache-busting. Message freeze; collect translator addresses; send the translation request. |
 | **Thu Oct 29** | Start `just oldest`. Doc updates: Post-release translation process, Upgrading page, Ledger and Beancount pages. Charts page and screenshots. |
-| **Fri Oct 30** | `just generaloptionshelp`, `just manuals`, `just anchortest`. `just relbranch 1.99.6`. Changelogs (`just changelogs`, edit, `just changelogs-finalise` - allow most of a day.) Draft announcements. |
-| **Sat Oct 31** | Translation deadline 20:00 UTC. Merge translations as they arrive (on main, cherry-pick to the release branch). `just relnotes` + summary; `doc/ANNOUNCE`; `doc/ghrelnotes`; Install page updates; manuals snapshot (`make -C site snapshot-1.99.6`, site.js / Makefile / caddy). Cherry-pick docs back to main. Last: `just ghbin` (30-40 min), after the translation deadline. |
+| **Fri Oct 30** | `just generaloptionshelp`, `just manuals`, `just anchortest`. Changelogs, on main (`just changelogs`, edit - allow most of a day). Draft announcements. |
+| **Sat Oct 31** | Translation deadline 20:00 UTC. Merge translations as they arrive, and fill the gaps, on main. Re-run `just changelogs` for late commits; `just changelogs-finalise`; `just relnotes` + summary; `doc/ANNOUNCE`; all on main. Then `just relbranch 1.99.6` (the release branch is cut late, so main's release work needs no cherry-picking). On the branch: `doc/ghrelnotes`; Install page updates; manuals snapshot (`make -C site snapshot-1.99.6`, site.js / Makefile / caddy). Last: `just ghbin` (30-40 min), after the translation deadline. |
 | **Sun Nov 1** | Check the binaries' `--version`. `just reltags`; push ⚠; `just ghrel`, publish ⚠; site render; announce ⚠. |
 
 ## Tasks
 
 In order.
 
-- [x] **#2821 review/merge/redo** (web refactor). First, since it may touch web text, and so CI can shake it out.
-  Discussed and done for now (Oct 28);  #2821 (cosmetic) is set aside in favour of #2807;
-  if there's time, revisit for inclusion in this release.
-- [x] **Single-period bs SVG net mark**: the net is a one-point polyline, so invisible;
-  it now shows in hledger-web's balance sheet page too. Fix, with a test.
-  Done (Oct 28, b8c247a07): marked across the bars; any other lone line point is drawn as a dash.
-- [x] **hledger-web static file cache-busting**: this release changes hledger.js a lot, and on Oct 27
-  Safari kept a stale copy, silently disabling the report keys.
-  Done (Oct 28): static files are served with `Cache-Control: no-cache` (and their ETag), so browsers
-  check them before each use, at the cost of a cheap 304 per file per page view.
-  `?etag=HASH` URLs with long caching were considered and set aside: wai-app-static 3.2.1 ignores the
-  query, so it would need TH hashing in `staticFileRoute`, a per-request max-age and a dev-mode exception,
-  and it would mainly speed up remote instances, which are uncommon. Revisit if they become common.
-- [x] **Request new translations**
-  - Message freeze: `just i18n-pot`, `just i18n-merge`, `just i18n-check`; commit and push the template and catalogs,
-    so translators work from main. Avoid changing translatable text until the release.
-    Merged Oct 28: each catalog has 220 untranslated entries (~870 words, nearly all hledger-web; 173 have notes).
-    Translator list: hledger-lib/locale/README.md, Translators.
-  - Collect translator addresses: authors of past catalog work (`git log` on hledger-lib/locale/*.po;
-    eg Daniil Iaitskov for ru, Chunhui Ouyang for zh), participants in the i18n PRs/issues (#2735, #2736, #2806),
-    and a call for a native Spanish reviewer (es.po is machine-made) and a German translator if none is known,
-    on matrix and the forum.
-  - Compose and send the mail: per-language gap counts from `just i18n-check`, the deadline (Sat Oct 31, 20:00 UTC),
-    a link to TRANSLATING.md, how to send the result back (PR, or the .po file by mail),
-    and that partial translations are welcome.
-- [x] **Design/document an easy process for users to update and submit translations after release**,
-  on all platforms, without building hledger. TRANSLATING.md already covers translating against an installed
-  release (user catalogs in the config directory); what's missing is an easy way to get the current template
-  and to send the result back. Options to weigh: a "submit" section in TRANSLATING.md (attach the .po to a
-  github issue, or mail it); a github issue template for translations; hosted Weblate (free for libre projects;
-  web-based, so works everywhere, but another service to maintain). Link it from the release notes and
-  announcement.
-  Done (Oct 28): `hledger --write-lang=LANG` writes the built-in catalog, or a filled-in template, to the
-  config directory, matching the installed version; TRANSLATING.md is rewritten around it, with mail as the
-  main way to send a file back, and says how to review machine-translated entries.
-  Deferred: a github submission workflow (issue template; .po attachments may be refused), and Weblate
-  (another service, and its continuous .po commits would need fitting to the pot-only policy).
-  Still to do: the release notes / announcement line inviting translations. Draft (update the names from the
-  README's Translators table once the translations are in):
-
-  > **Translations.** hledger, hledger-ui and hledger-web can show their own text in ten languages besides
-  > English: German (Arthur Cinader, Henning Thielemann), Russian (Daniil Iaitskov), Simplified Chinese
-  > (Chunhui Ouyang) and Italian (Diego Depaoli, a draft completed by machine); and Spanish, French,
-  > Brazilian Portuguese, Japanese, Irish and Hawaiian, machine-made drafts not yet checked by a native
-  > speaker. Text new in this release that translators didn't reach in time is machine-translated too, and
-  > marked for review.
-  > Choose one with `--lang`, eg `hledger bs --lang ja`; hledger-web follows your browser's language unless
-  > started with `--lang en`.
-  > If you speak one of these languages, a few minutes' review helps: start with the entries marked
-  > "Key term". To start a new language, run `hledger --write-lang=LANG`. See https://hledger.org/TRANSLATING.html.
-  > Thanks to [this release's translators].
-- [x] **Review/update affected docs** (site repo)
-  - [x] **Upgrading to hledger 2** (site/src/upgrading.md): the breaking changes, for 1.x users:
-    `test` -> `--test`, `activity` output, amounts that may now read as expressions,
-    alias vs apply account order, repeated commodity declarations, holdings tree layout.
-  - [x] **Ledger page** (site/src/ledger.md): differences affected by this release, eg alias / apply account
-    order now as in Ledger (#2733), amount expressions.
-  - [x] **Beancount page** (site/src/beancount.md): differences affected by this release, eg amount expressions.
-  - [x] **Charts page** (site/src/charts.md): bring up to date with the CLI, html, `run` and hledger-web charts;
-    add screenshots (a terminal `--chart`, an SVG chart, a hledger-web report page), reusable in the announcement.
-    Done (Oct 29, site ac96c4e17): the terminal chart stays a text block; images/charts-hledger.svg regenerated;
-    images/charts-hledger-web.png is now the monthly income statement page (light scheme).
-- [ ] **Merge translations** (until Sat Oct 31 20:00 UTC), for each catalog received:
-  - put it in hledger-lib/locale/ (or merge the PR); merge it with the latest template if it is behind
-    (`msgmerge --update --no-fuzzy-matching`), so translators needn't track late text changes;
-    `just i18n-check` (placeholders, stale entries)
-    Files made before Oct 29 have the help text "match with a boolean query (and, or, not, ()", since fixed to
-    "... ())": after the merge, copy any translation of it from the obsolete `#~` entry, adding the `)`.
-  - try it in the CLI (`--lang`), hledger-ui and hledger-web (see the translations skill)
-  - commit on main with the translator as author (`git commit --author`); cherry-pick to the release branch
-  - add each translator to the language's list in hledger-lib/locale/README.md (Translators) and its catalog
-    header (`# Translators: ...`), and credit them in the changelog / release notes
-  - add additional languages. Done (Oct 29): Irish, Japanese, Hawaiian, French and Brazilian Portuguese, machine-made, and Italian (Diego Depaoli's draft, completed by machine), built in and labelled
-    unreviewed in their README sections; still to do: ask for native reviewers. They follow the template,
-    so `just i18n-merge` keeps them current like the others, and the gap filling covers them.
-- [ ] **Late text changes**: the freeze is soft. Prefer fixes that don't change text; any that do land by
-  Sat morning, with `just i18n-pot` and `just i18n-merge` (during the freeze the catalogs on main
-  follow the template, so translators' files stay current). No follow-up request unless there are several and time allows.
-- [x] **Mark the human catalogs' machine-made entries**, as promised to Henning once he finished.
-  Done (Oct 29): de 18, ru 12, zh-Hans 10 entries marked `# machine-translated, please review`, with a header
-  note. They are the entries whose current text first appeared in a maintainer commit (found by tracing each
-  msgstr through the file's history, as blame is muddied by msgmerge reflows): the chart strings, run's page
-  links, "Report details", the zero-balances message, and in de the "Transaktionspreis" cost entries.
-  Not marked: Dmitry Astapov's ru wording review (812f719b2), and trims or fixes of human text
-  (the shortened help lines, the boolean-query parenthesis).
-  At Henning's request, de's 121 untranslated entries were then machine-filled and marked the same way,
-  so he can review them before the deadline.
-- [ ] **Fill the gaps** (after the deadline, before `just ghbin`): `just i18n-pot`, `just i18n-merge`
-  (which now unwraps the catalogs, one line per string: a one-off layout diff, kept separate in its own commit), then
-  machine-translate every entry still untranslated in every catalog, each marked with the translator comment
-  `# machine-translated, please review` (msgmerge keeps it; not fuzzy, which hledger would ignore);
-  `just i18n-check` shows 0 untranslated; try them as above; commit on main and cherry-pick.
+- [x] **#2821 review/merge/redo** (web refactor): set aside in favour of #2807 (Oct 28); revisit after the release.
+- [x] **Single-period bs SVG net mark** fixed, with a test (Oct 28, b8c247a07).
+- [x] **hledger-web static file cache-busting**: static files are served with `Cache-Control: no-cache` (Oct 28).
+  `?etag=HASH` URLs set aside unless remote instances become common.
+- [x] **Request new translations**: message freeze, template and catalogs merged, translators mailed (Oct 28).
+- [x] **Easy post-release translation process**: `hledger --write-lang=LANG` plus a rewritten TRANSLATING.md,
+  with mail as the way to send a file back (Oct 28). Deferred: a github submission workflow, Weblate.
+- [x] **Docs updated** (site repo): Upgrading, Ledger, Beancount and Charts pages (Oct 29-30).
+- [x] **Merge translations**: none arrived by the deadline (Sat Oct 31 20:00 UTC). Six more languages were
+  added machine-made on Oct 29 (it from Diego Depaoli's draft; fr, ga, haw, ja, pt-BR), labelled unreviewed.
+- [x] **Late text changes**: holdings' CLI headings made translatable (Oct 31); template and catalogs updated.
+- [x] **Mark the human catalogs' machine-made entries** (Oct 29); de's gaps filled at Henning's request.
+- [x] **Fill the gaps** (Oct 31): es, ru and zh-Hans's 219 untranslated entries each, and the new holdings
+  entries in all catalogs, machine-translated and marked `# machine-translated, please review`;
+  `just i18n-check` shows 0 untranslated everywhere. The "Key term" mark shortened and trimmed to 24 terms.
 
 ## Release process
 
-- [ ] `just oldest` CI passes
-- [ ] Options help, manuals, anchor check
-- [ ] Release branch
-- [ ] Changelogs, with a Breaking changes section and the #2648 bounty mention
-- [ ] Release notes and summary (confirm the summary with the maintainer)
-- [ ] ANNOUNCE and ANNOUNCE.mastodon (confirm with the maintainer)
+- [x] `just oldest` CI passes
+- [x] Options help, manuals, anchor check (Oct 31; also shortened --chart's help)
+- [x] Changelogs, with a Breaking changes section and the #2648 bounty mention (polished Oct 30-31; final reread Sunday)
+- [x] Release notes summary drafted: doc/SUMMARY.md (uncommitted; paste into relnotes.md after `just relnotes`)
+- [x] ANNOUNCE and ANNOUNCE.mastodon drafted (uncommitted; review and commit)
+- [x] Trial `just ghbin` build on Saturday, to find errors and warm the CI caches
+- [ ] Push main
+- [ ] Release branch (`just relbranch 1.99.6`), `just changelogs-finalise`, `just relnotes` + summary
 - [ ] ghrelnotes, Install page updates
 - [ ] Manuals snapshot on the site
-- [ ] Binaries (after the translation deadline), tags, push, github release
+- [ ] Binaries from the final commit (check `--version`), tags, push, github release
 - [ ] Site render, announcements
