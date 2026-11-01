@@ -75,14 +75,14 @@ hledger 2's goals have been:
 - more use of jj for version management
 - easier contribution
 
-Our current AI policy is here: https://hledger.org/AI.html
+Our current AI policy is here: <https://hledger.org/AI.html>
 If you disagree with it, please continue enjoying hledger 1,
 and be patient while we navigate this period. In summary:
 
 - hledger, hledger-ui and hledger-web do not use AI at runtime.
 
 - hledger 1.52.1 and below had no AI-assisted development.
-  (Level 0, https://www.visidata.org/blog/2026/ai/#self-assessed-ai-level-for-contributions)
+  (Level 0, <https://www.visidata.org/blog/2026/ai/#self-assessed-ai-level-for-contributions>)
 
 - hledger 1.52.2+ contains a few small security fixes backported from 2.x
   (Level 2-4)
@@ -94,7 +94,7 @@ and be patient while we navigate this period. In summary:
 - Providing an efficient tool that AI users will use, can help reduce
   wasteful AI computation, offsetting resource usage during development.
   See the AI policy and usage reports for more on this:
-  https://github.com/hledgerorg/hledger/tree/main/doc/ai
+  <https://github.com/hledgerorg/hledger/tree/main/doc/ai>
 
 
 ## 2026-11-01 hledger-1.99.6
