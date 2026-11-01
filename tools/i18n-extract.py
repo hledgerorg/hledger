@@ -258,6 +258,8 @@ def template_keys(path):
 
 HEADER = '''# Translation template for hledger.
 # This file is distributed under the same license as hledger.
+# "Key term" marks an entry whose mistranslation would mislead about money or data:
+# use your country's standard accounting term, and review these first.
 #
 #, fuzzy
 msgid ""
@@ -297,9 +299,12 @@ def group_of(e):
 # actions. Each gets KEY_TERM_NOTE, so translators take care with them and
 # reviewers check them first. As (msgctxt, msgid); --check fails if one no
 # longer exists.
-KEY_TERM_NOTE = ('Key term: a mistranslation here would mislead about money or data. '
-                 'For an accounting term, use your country\'s standard one (eg from official '
-                 'IFRS translations). Reviewers, check these first.')
+KEY_TERM_NOTE = 'Key term'
+# Defines the mark, once, in a note on the first entry (and in the template's header comment),
+# so that every catalog carries the definition without repeating it on each key term.
+KEY_TERM_DEF = ('"Key term" marks an entry whose mistranslation would mislead about money or data: '
+                'use your country\'s standard accounting term (eg from official IFRS translations), '
+                'and review these first.')
 KEY_TERMS = {(None, m) for m in [
     # statements and their sections
     "Balance Sheet", "Balance Sheet With Equity", "Income Statement", "Cashflow Statement",
@@ -338,9 +343,12 @@ def render(entries, pseudo=False):
     for e in entries:
         block = []
         if group_of(e) != group:
+            first = group is None
             group = group_of(e)
             if group in GROUP_NOTES:
                 block.append('#. ' + GROUP_NOTES[group])
+            if first:
+                block.append('#. ' + KEY_TERM_DEF)
         if (e.ctx, e.msgid) in KEY_TERMS:
             block.append('#. ' + KEY_TERM_NOTE)
         for c in e.comments:

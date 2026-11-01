@@ -14,6 +14,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #. ---- Entries for the hledger command line (some, like month names, also shown by hledger-ui and hledger-web). ----
+#. "Key term" marks an entry whose mistranslation would mislead about money or data: use your country's standard accounting term (eg from official IFRS translations), and review these first.
 #. stand-alone (nominative) month names, as used in a column heading.
 #: hledger-lib/Hledger/Utils/I18n.hs
 msgctxt "month"
@@ -170,7 +171,7 @@ msgstr "Huina"
 msgid "Balance"
 msgstr "Koena"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/Chart.hs hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "Net:"
 msgstr "Maʻemaʻe:"
@@ -215,50 +216,50 @@ msgstr "(Puka Hōʻuluʻulu)"
 msgid "(Historical Gain)"
 msgstr "(Puka Mai ka Hoʻomaka)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Balance Changes)"
 msgstr "(Nā Loli Koena)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Cumulative Ending Balances)"
 msgstr "(Nā Koena Hope Hōʻuluʻulu)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 msgid "(Historical Ending Balances)"
 msgstr "(Nā Koena Hope Mai ka Hoʻomaka)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", converted to cost"
 msgstr ", ma ke kumukūʻai"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at posting date"
 msgstr ", ma ke kumukūʻai mākeke o ka lā o ka laina"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", valued at period ends"
 msgstr ", ma ke kumukūʻai mākeke o ka hopena o kēlā me kēia wā"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid ", current value"
 msgstr ", ma ke kumukūʻai mākeke o kēia manawa"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the budget report title, eg "Budget performance in 2024, valued at period ends:".
 #: hledger/Hledger/Cli/CompoundBalanceCommand.hs
 #: hledger/Hledger/Cli/Commands/Balance.hs
@@ -292,17 +293,17 @@ msgstr "Nā loli kumukūʻai ma ka hopena o ka wā"
 msgid "Cumulative period-end value changes"
 msgstr "Nā loli kumukūʻai hōʻuluʻulu ma ka hopena o ka wā"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Incremental gain"
 msgstr "Puka o ka wā"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Cumulative gain"
 msgstr "Puka hōʻuluʻulu"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Historical gain"
 msgstr "Puka mai ka hoʻomaka"
@@ -326,7 +327,7 @@ msgstr "Ka nui o nā laina (mai ka hoʻomaka)"
 msgid "Transaction counts"
 msgstr "Ka nui o nā hana kālā"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
 #: hledger/Hledger/Cli/Commands/Balance.hs
@@ -335,12 +336,12 @@ msgstr "Ka nui o nā hana kālā"
 msgid "Balance changes"
 msgstr "Nā loli koena"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (cumulative)"
 msgstr "Nā koena hope (hōʻuluʻulu)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/Commands/Balance.hs
 msgid "Ending balances (historical)"
 msgstr "Nā koena hope (mai ka hoʻomaka)"
@@ -371,7 +372,7 @@ msgctxt "column heading"
 msgid "Average"
 msgstr "Awelika"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Balancesheet.hs
 msgid "Balance Sheet"
@@ -427,21 +428,21 @@ msgstr "Pepa Kaulike o nā Makahiki ʻElua"
 msgid "Periodic Balance Sheet"
 msgstr "Pepa Kaulike o ka Wā"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Balancesheet.hs
 #: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Assets"
 msgstr "Nā Waiwai"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Balancesheet.hs
 #: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Liabilities"
 msgstr "Nā ʻAiʻē"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
 msgid "Balance Sheet With Equity"
@@ -497,7 +498,7 @@ msgstr "Pepa Kaulike o nā Makahiki ʻElua me ke Kumu Waiwai"
 msgid "Periodic Balance Sheet With Equity"
 msgstr "Pepa Kaulike o ka Wā me ke Kumu Waiwai"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger/Hledger/Cli/Commands/Balancesheetequity.hs
@@ -505,7 +506,7 @@ msgstr "Pepa Kaulike o ka Wā me ke Kumu Waiwai"
 msgid "Equity"
 msgstr "Kumu Waiwai"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Cashflow.hs
 msgid "Cashflow Statement"
@@ -566,27 +567,27 @@ msgstr "Hōʻike Kahe Kālā o ka Wā"
 msgid "Cash flows"
 msgstr "Kahe kālā"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Cost"
 msgstr "Kumukūʻai"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Unrealised gain"
 msgstr "Puka i loaʻa ʻole"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Unrealised loss"
 msgstr "Poho i loaʻa ʻole"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "No market price"
 msgstr "ʻAʻohe kumukūʻai mākeke"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Value"
 msgstr "Kumukūʻai mākeke"
@@ -609,7 +610,7 @@ msgstr "Kumukūʻai kumu o ke ana/awelika"
 msgid "Unit cost"
 msgstr "Kumukūʻai kumu o ke ana"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Income Statement"
@@ -665,13 +666,13 @@ msgstr "Hōʻike Loaʻa a me Hoʻolilo o nā Makahiki ʻElua"
 msgid "Periodic Income Statement"
 msgstr "Hōʻike Loaʻa a me Hoʻolilo o ka Wā"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Revenues"
 msgstr "Loaʻa"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Incomestatement.hs
 msgid "Expenses"
@@ -765,7 +766,7 @@ msgstr "Hōʻike ma mua"
 msgid "Go to the previous report"
 msgstr "Hele i ka hōʻike ma mua"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Net, at cost:"
@@ -776,7 +777,7 @@ msgstr "Maʻemaʻe, ma ke kumukūʻai:"
 msgid "The sum of every account, converted to cost: zero for balanced books; anything left comes from unbalanced virtual postings."
 msgstr "Ka huina o nā moʻokālā a pau, ma ke kumukūʻai: he ʻole no nā puke kaulike; ʻo ke koena, no nā laina maoli ʻole kaulike ʻole ia."
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Unbooked gains:"
@@ -787,7 +788,7 @@ msgstr "Nā puka i kākau ʻole ʻia:"
 msgid "The sum of every account at market value: appreciation not booked by any entry. If realized gains are booked, this is the unrealized gains."
 msgstr "Ka huina o nā moʻokālā a pau ma ke kumukūʻai mākeke: ka piʻi ʻana o ke kumukūʻai i kākau ʻole ʻia e kekahi komo. Inā kākau ʻia nā puka i loaʻa, ʻo kēia nā puka i loaʻa ʻole."
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the go menu's items for the next and previous page, and their tooltips.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Net flows:"
@@ -798,7 +799,7 @@ msgstr "Kahe maʻemaʻe:"
 msgid "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities."
 msgstr "Ka huina o nā moʻokālā a pau: nā kūlana hāmama ma kēlā me kēia ana, a me ke kālā i uku ʻia no lākou. He ʻole inā ʻaʻohe mea e hele ma waena o nā ana."
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Balance sheet"
@@ -809,7 +810,7 @@ msgstr "Pepa kaulike"
 msgid "Show assets, liabilities, and net worth"
 msgstr "Hōʻike i nā waiwai, nā ʻaiʻē, a me ka waiwai maʻemaʻe"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Income statement"
@@ -820,7 +821,7 @@ msgstr "Hōʻike loaʻa a me hoʻolilo"
 msgid "Show revenues and expenses"
 msgstr "Hōʻike i nā loaʻa a me nā hoʻolilo"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Cashflow statement"
@@ -965,7 +966,7 @@ msgstr "Hōʻike i hoʻokahi kolamu no kēlā me kēia lā"
 msgid "Show how much each balance changed in each period"
 msgstr "Hōʻike i ka nui o ka loli ʻana o kēlā me kēia koena i kēlā me kēia wā"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/ReportPage.hs
@@ -978,7 +979,7 @@ msgstr "Nā koena hope"
 msgid "Show each balance at the end of each period, including everything before it"
 msgstr "Hōʻike i kēlā me kēia koena ma ka hopena o kēlā me kēia wā, me nā mea a pau ma mua"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/ReportPage.hs
@@ -1108,14 +1109,14 @@ msgstr "Lōʻihi"
 msgid "Units"
 msgstr "Nā ana"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Unit price"
 msgstr "Kumukūʻai o ke ana"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1123,7 +1124,7 @@ msgstr "Kumukūʻai o ke ana"
 msgid "Total cost"
 msgstr "Huina kumukūʻai"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1137,7 +1138,7 @@ msgstr "Huina kumukūʻai mākeke"
 msgid "Weight"
 msgstr "Kaumaha"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1145,7 +1146,7 @@ msgstr "Kaumaha"
 msgid "UGain"
 msgstr "Puka L.ʻO."
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1153,7 +1154,7 @@ msgstr "Puka L.ʻO."
 msgid "UGain%"
 msgstr "Puka L.ʻO.%"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs
@@ -1227,14 +1228,14 @@ msgstr "nā moʻokālā a pau"
 msgid "{account} (excluding subaccounts)"
 msgstr "{account} (me nā moʻokālā lalo ʻole)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
 msgid "Historical Total"
 msgstr "Huina Mai ka Hoʻomaka"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the hint below the commodity filter row.
 #: hledger-web/Hledger/Web/Handler/RegisterR.hs
 msgctxt "column heading"
@@ -1456,14 +1457,14 @@ msgstr "Nā nui:"
 msgid "As recorded"
 msgstr "E like me ke kākau ʻia"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "amounts"
 msgid "Cost"
 msgstr "Kumukūʻai"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the depth limit, in the list of options in effect.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "amounts"
@@ -1475,7 +1476,7 @@ msgstr "Kumukūʻai mākeke"
 msgid "Show amounts in the commodities they were recorded in"
 msgstr "Hōʻike i nā nui ma nā ana i kākau ʻia ai"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before a report's amount conversion links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "At cost"
@@ -1486,7 +1487,7 @@ msgstr "Ma ke kumukūʻai"
 msgid "Show amounts converted to their cost, as recorded in transactions (-B)"
 msgstr "Hōʻike i nā nui i hoʻololi ʻia i ko lākou kumukūʻai, e like me ke kākau ʻia ma nā hana kālā (-B)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before a report's amount conversion links, and the links' text and tooltips.
 #. the label before the holdings page's valuation links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -1558,7 +1559,7 @@ msgctxt "status"
 msgid "All"
 msgstr "A pau"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before a report's status filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Unmarked"
@@ -1569,7 +1570,7 @@ msgstr "Kaha ʻole ʻia"
 msgid "Show only unmarked transactions (status:)"
 msgstr "Hōʻike i nā hana kālā kaha ʻole ʻia wale nō (status:)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before a report's status filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Pending"
@@ -1580,7 +1581,7 @@ msgstr "E kali ana"
 msgid "Show only pending transactions (status:!)"
 msgstr "Hōʻike i nā hana kālā e kali ana wale nō (status:!)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before a report's status filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Cleared"
@@ -1608,7 +1609,7 @@ msgctxt "postings"
 msgid "All"
 msgstr "A pau"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before a report's real/virtual filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Real"
@@ -1619,7 +1620,7 @@ msgstr "Maoli"
 msgid "Show only real postings, as -R does (real:1)"
 msgstr "Hōʻike i nā laina maoli wale nō, e like me -R (real:1)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before a report's real/virtual filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Virtual"
@@ -1771,7 +1772,7 @@ msgstr "Loli kumukūʻai"
 msgid "Show how period-end market values changed (--valuechange)"
 msgstr "Hōʻike i ka loli ʻana o nā kumukūʻai mākeke ma ka hopena o ka wā (--valuechange)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the depth limit, in the list of options in effect.
 #. the label before a report's calculation links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
@@ -1963,7 +1964,7 @@ msgctxt "account type"
 msgid "All"
 msgstr "A pau"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Asset"
@@ -1974,7 +1975,7 @@ msgstr "Waiwai"
 msgid "Show only asset accounts (type:A)"
 msgstr "Hōʻike i nā moʻokālā waiwai wale nō (type:A)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Liability"
@@ -1990,7 +1991,7 @@ msgstr "Hōʻike i nā moʻokālā ʻaiʻē wale nō (type:L)"
 msgid "Show only equity accounts (type:E)"
 msgstr "Hōʻike i nā moʻokālā kumu waiwai wale nō (type:E)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Revenue"
@@ -2001,7 +2002,7 @@ msgstr "Loaʻa"
 msgid "Show only revenue accounts (type:R)"
 msgstr "Hōʻike i nā moʻokālā loaʻa wale nō (type:R)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Expense"
@@ -2022,7 +2023,7 @@ msgstr "Kālā"
 msgid "Show only cash accounts (type:C)"
 msgstr "Hōʻike i nā moʻokālā kālā wale nō (type:C)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Conversion"
@@ -2033,7 +2034,7 @@ msgstr "Hoʻololi"
 msgid "Show only conversion accounts (type:V)"
 msgstr "Hōʻike i nā moʻokālā hoʻololi wale nō (type:V)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Gain"
@@ -2044,7 +2045,7 @@ msgstr "Puka"
 msgid "Show only capital gain accounts (type:G)"
 msgstr "Hōʻike i nā moʻokālā puka kumu waiwai wale nō (type:G)"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #. the label before the account type filter links, and the links' text and tooltips.
 #: hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Imbalance"
@@ -2235,17 +2236,17 @@ msgstr "i ka pule"
 msgid "daily"
 msgstr "i ka lā"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger-web/templates/default-layout.hamlet
 msgid "unmarked"
 msgstr "kaha ʻole ʻia"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger-web/templates/default-layout.hamlet
 msgid "pending"
 msgstr "e kali ana"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger-web/templates/default-layout.hamlet
 msgid "cleared"
 msgstr "paʻa"
@@ -2417,7 +2418,7 @@ msgstr "kekahi ala ʻē aʻe e hoʻonoho ai i ka palena hohonu (hiki ke hana no 
 msgid "Edit file"
 msgstr "Hoʻoponopono i ka faila"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger-web/templates/edit-form.hamlet
 #: hledger-web/templates/upload-form.hamlet
 msgid "Are you sure? This will overwrite your journal!"
@@ -2496,13 +2497,13 @@ msgstr "Hōʻike i nā hana kālā kahiko aʻe"
 msgid "Older"
 msgstr "Kahiko aʻe"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "To/From Account(s)"
 msgstr "I/Mai ka Moʻokālā"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger-web/templates/register.hamlet
 msgctxt "column heading"
 msgid "Amount Out/In"
@@ -2512,7 +2513,7 @@ msgstr "Ka nui Puka/Komo"
 msgid "Show this entry and the other journal entries on its date"
 msgstr "Hōʻike i kēia komo a me nā komo ʻē aʻe o ka puke moʻolelo ma kona lā"
 
-#. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. Key term
 #: hledger-web/templates/register.hamlet
 msgid "Balance brought forward"
 msgstr "Koena i lawe ʻia mai"

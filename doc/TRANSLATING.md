@@ -79,8 +79,8 @@ filled in by a machine translation before a release, so they are a good
 place to start reviewing. In Poedit, search for `machine-translated`.
 Once you have checked or corrected one, delete that comment line.
 
-If you have only a few minutes, check the entries whose developer note
-begins "Key term:" first. They are the seventy or so whose
+If you have only a few minutes, check the entries marked "Key term"
+first. They are the seventy or so whose
 mistranslation would mislead about money or data: the statement and
 section names (Assets, Equity, ...), what a total means, balances vs
 changes, cost vs value, gains, transaction status, and the warning before
