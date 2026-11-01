@@ -110,6 +110,11 @@ to avoid interfering with branch switching; RELEASING.md should be updated from 
 1. **rel: update changelogs:** `just changelogs`; edit by hand; `just changelogs-finalise`
 1. **rel: update relnotes:** `just relnotes`; edit (add summary); commit
    - (major release) show the drafted summary to the maintainer and get it confirmed before committing.
+   - the credits list is made from git authors, so add contributors who have no commits (eg translators
+     who sent files by mail), and expand short git author names; it should match ANNOUNCE's contributor list.
+   - (preview release) these and `changelogs-finalise` can instead be done by hand on main just before cutting
+     the branch (the recipes refuse to run there and would use main's version): write the `# VER DATE` headings,
+     commit, run `tools/relnotes`. Then the branch inherits them and nothing needs cherry-picking back.
    - it's normal for some packages to have zero changes in a bugfix release - `just relnotes` emits a one-line
      "Uses PKG X.Y.Z" for them; not a problem for downstream packagers.
 1. **(major or preview release) rel: update announcements:** edit `doc/ANNOUNCE` - do this before making the
@@ -122,13 +127,15 @@ to avoid interfering with branch switching; RELEASING.md should be updated from 
    release branch's version).
 1. **(preview release) site: update the Install page's preview lines:** `site/src/install.md`'s "current preview
    release" line, preview binaries badge and link, by hand (`just installpage` handles only non-preview releases).
-1. **(preview release) site: snapshot the manuals:** `make -C site snapshot-VER` (renders them from VER-branch,
-   and commits them in the site repo as `site/src/VER/`); then add VER to `site/js/site.js`'s version links,
-   `site/Makefile`'s `all` list and `site/hledger.org.caddy`'s paths, and commit. (Major releases do this
-   in phase 1, with `just manuals-site`.)
+1. **(preview release) site: snapshot the manuals:** `make -C site snapshot-VER`, from the main repo's root
+   (renders them from VER-branch, and commits them in the site repo as `site/src/VER/`); then add VER to
+   `site/js/site.js`'s version links, `site/Makefile`'s `all` list and `site/hledger.org.caddy`'s paths, and commit.
+   (Major releases do this in phase 1, with `just manuals-site`.) Only the latest preview's snapshot is kept:
+   remove the previous one (`git rm -r site/src/OLDVER` and its three entries) in the same commit.
 1. **rel: make release builds:** `just ghbin` - do this last, once the release branch has all its commits, so the
    binaries are built from the commit that will be tagged. Takes 30-40 minutes; watch with `just ghbin-open`.
-   If more commits land on the branch afterwards, re-run it.
+   If more commits land on the branch afterwards, re-run it. (An agent in auto mode can't run it: its
+   force-push to the binaries branch is blocked; the maintainer runs it.)
 1. **main: cherry-pick changelogs, relnotes, announcement, other relevant updates from relbranch** `jjui -r ::`
    - this happens on main and doesn't affect the release branch, so it can be done while the binaries build.
 
@@ -166,6 +173,8 @@ Everything before this phase is revisable (nothing shared beyond scratch CI bran
 1. **(major release) main: activate website scripts/redirects:** `just site-restart`
 1. **(new manuals snapshot) site server: render and serve it:** `make build3-VER && make build`, and
    `make caddy-reload` if the caddy config changed. (Not `make all`, which re-renders every version.)
+   If a snapshot was removed, first `rm -rf out2/OLDVER` on the server, or `make build`'s sitemap step fails
+   with "cp: target 'out/OLDVER': No such file or directory".
    A failed build leaves `src/SUMMARY.md` and `theme/index.hbs` rewritten, making the next build fail with
    "Duplicate file in SUMMARY.md"; restore them with `git checkout -- src/SUMMARY.md theme/index.hbs`.
 1. **(major release) main: update dev version:** `just devver`

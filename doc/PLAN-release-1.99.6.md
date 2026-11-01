@@ -76,6 +76,6 @@ In order.
 - [x] finalise announcements
 - [x] Manuals snapshot on the site (1.99.5 snapshot dropped)
 - [x] Binaries from the final commit (check `--version`), tags, push, github release
-- [ ] Push main (branch doc commits cherry-picked)
-- [ ] Push/render site
+- [x] Push main (branch doc commits cherry-picked)
+- [x] Push/render site (stale out2/1.99.5 on the server had to be removed first)
 - [ ] announce
