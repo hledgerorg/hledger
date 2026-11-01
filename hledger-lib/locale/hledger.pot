@@ -575,6 +575,21 @@ msgstr ""
 msgid "Value"
 msgstr ""
 
+#. the holdings table's cost column heading, translated where it is displayed.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "Avg cost"
+msgstr ""
+
+#. the holdings table's cost column heading, translated where it is displayed.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "Unit/Avg cost"
+msgstr ""
+
+#. the holdings table's cost column heading, translated where it is displayed.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "Unit cost"
+msgstr ""
+
 #. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the report title, with its reporting interval if any. Each is a whole phrase, so put the words in the order and form your language needs.
 #: hledger/Hledger/Cli/Commands/Incomestatement.hs
@@ -800,12 +815,25 @@ msgstr ""
 msgid "Show the balances of all accounts, by period, like the balance command"
 msgstr ""
 
+#. ---- Entries for the hledger command line (some, like month names, also shown by hledger-ui and hledger-web). ----
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #. the browser tab title of this page.
-#: hledger-web/Hledger/Web/App.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/App.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Holdings"
 msgstr ""
 
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "Holdings at period ends"
+msgstr ""
+
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+#, python-brace-format
+msgid "Holdings at period ends, {dates}"
+msgstr ""
+
+#. ---- Entries for hledger-web. ----
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
 msgid "Show investment holdings, lots, and gains"
@@ -1012,78 +1040,92 @@ msgstr ""
 msgid "holdings - hledger-web"
 msgstr ""
 
+#. ---- Entries for the hledger command line (some, like month names, also shown by hledger-ui and hledger-web). ----
 #. the holdings page's heading; {date} is the report date.
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 #, python-brace-format
 msgid "Holdings on {date}"
 msgstr ""
 
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Date"
 msgstr ""
 
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Age"
 msgstr ""
 
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Units"
 msgstr ""
 
 #. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Unit price"
 msgstr ""
 
 #. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Total cost"
 msgstr ""
 
 #. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Total value"
 msgstr ""
 
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Weight"
 msgstr ""
 
 #. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "UGain"
 msgstr ""
 
 #. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "UGain%"
 msgstr ""
 
 #. Key term: a mistranslation here would mislead about money or data. For an accounting term, use your country's standard one (eg from official IFRS translations). Reviewers, check these first.
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "RGain"
 msgstr ""
 
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "XIRR"
 msgstr ""
 
+#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+msgid "(no holdings)"
+msgstr ""
+
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Account"
 msgstr ""
 
+#. ---- Entries for hledger-web. ----
 #. the tooltip of an account heading or lot's register link.
 #: hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Show this account's register"
@@ -1094,11 +1136,13 @@ msgstr ""
 msgid "Show this holding's register"
 msgstr ""
 
+#. ---- Entries for the hledger command line (some, like month names, also shown by hledger-ui and hledger-web). ----
 #. the heading of the holdings table's totals row.
-#: hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Total:"
 msgstr ""
 
+#. ---- Entries for hledger-web. ----
 #: hledger-web/Hledger/Web/Handler/JournalR.hs
 msgid "General Journal"
 msgstr ""

@@ -905,11 +905,12 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     -- belong to AVERAGE/AVERAGEALL pools (whose per-lot rows show the
     -- pool's average cost); "Unit cost" when each lot shows its own cost;
     -- "Unit/Avg cost" when both kinds of lot are shown.
+    -- TRANSLATORS: the holdings table's cost column heading, translated where it is displayed.
     unitcostheading :: T.Text
     unitcostheading
-      | not showlots || allavg = "Avg cost"
-      | anyavg = "Unit/Avg cost"
-      | otherwise = "Unit cost"
+      | not showlots || allavg = I18n.i18n "Avg cost"
+      | anyavg = I18n.i18n "Unit/Avg cost"
+      | otherwise = I18n.i18n "Unit cost"
       where
         avgs = [ fst (resolveReductionMethodForAccount j (lotBaseAccount sub) c)
                  `elem` [AVERAGE, AVERAGEALL]
@@ -1079,7 +1080,7 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
            "csv"  -> printCSV pcsvoutput
            "tsv"  -> printTSV pcsvoutput
            "html" -> (<>"\n") $ htmlAsLazyText $ titledTableHtml ptitle phtmltable
-           "fods" -> printFods IO.localeEncoding $ M.singleton "Holdings" ((1,0), pfodstable)
+           "fods" -> printFods IO.localeEncoding $ M.singleton (tr "Holdings") ((1,0), pfodstable)
            "json" -> (<>"\n") $ toJsonText $ map (uncurry periodTotalsJson) ptotals
            fmt    -> error' $ unsupportedOutputFormatError fmt
        | otherwise -> writeOutputLazyText opts $ case outputFormatFromOpts opts of
@@ -1087,13 +1088,15 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
            "csv"  -> printCSV csvoutput
            "tsv"  -> printTSV csvoutput
            "html" -> (<>"\n") $ htmlAsLazyText $ titledTableHtml title htmltable
-           "fods" -> printFods IO.localeEncoding $ M.singleton "Holdings" ((1,0), fodstable)
+           "fods" -> printFods IO.localeEncoding $ M.singleton (tr "Holdings") ((1,0), fodstable)
            "json" -> (<>"\n") $ toJsonText $ map holdingJson holdingrecords
            fmt    -> error' $ unsupportedOutputFormatError fmt
   where
     -- Amounts are displayed normalised to their commodity's display
     -- precision by default; --round can choose another rounding strategy.
     rounding = fromMaybe HardRounding $ roundFromRawOpts rawopts
+    tr = I18n.tr (translations_ ropts)
+    trf = I18n.trf (translations_ ropts)
 
     rpt = holdingsReport
       HoldingsReportOpts{hroLots = boolopt "lots" rawopts, hroRounding = rounding}
@@ -1111,10 +1114,11 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     rspecEndingAt e = rspec{ _rsQuery = And [filterQuery (not . queryIsDateOrDate2) (_rsQuery rspec), Date $ DateSpan Nothing (Just e)]
                            , _rsReportOpts = ropts{accountlistmode_ = ALFlat} }
     ptotals = [(hrDate r, (hrStyles r, hrTotals r)) | (_, r) <- periodrpts]
+    -- TRANSLATORS: the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
     ptitle = effectiveTitle ropts $ case map fst ptotals of
-      [] -> "Holdings at period ends"
-      ds -> "Holdings at period ends, " <> showDate (minimum ds) <> ".." <> showDate (maximum ds)
-    pcolheadings = ["Total cost", "Total value", "UGain", "UGain%", "RGain", "XIRR"]
+      [] -> tr "Holdings at period ends"
+      ds -> trf "Holdings at period ends, {dates}" [("dates", showDate (minimum ds) <> ".." <> showDate (maximum ds))]
+    pcolheadings = [tr "Total cost", tr "Total value", tr "UGain", tr "UGain%", tr "RGain", tr "XIRR"]
     -- a period's cells: those of the totals row's cells which make sense over time
     -- (Units and Avg cost are shown only for a single commodity, and Weight is always 100%)
     periodcells (styles, tot) = [ps | (i, ps) <- zip [0 :: Int ..] (totalsCellParts styles tot), i `elem` [5, 6, 8, 9, 10, 11]]
@@ -1124,7 +1128,7 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
          t  -> TL.fromStrict t <> "\n\n")
       <>
       if null ptotals
-      then "(no holdings)\n"
+      then TL.fromStrict (tr "(no holdings)") <> "\n"
       else renderTable def{tableBorders=False} (textCell TopLeft) (textCell TopRight) (textCell TopRight) $ Table
         (Group NoLine [Header $ showDate d | (d, _) <- ptotals])
         (Group NoLine $ map Header pcolheadings)
@@ -1134,7 +1138,7 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     -- spreadsheet-shaped tables for the html and fods output, like the text table
     pspreadsheetWith :: forall content. (T.Text -> content) -> (Bool -> [T.Text] -> content) -> [[Ods.Cell Ods.NumLines content]]
     pspreadsheetWith plain parts =
-      addHeaderBorders [plain <$> (headerCell t){Ods.cellClass = Ods.Class cls} | (t, cls) <- zip ("Date" : pcolheadings) pcolclasses]
+      addHeaderBorders [plain <$> (headerCell t){Ods.cellClass = Ods.Class cls} | (t, cls) <- zip (tr "Date" : pcolheadings) pcolclasses]
       : [ (Ods.defaultCell (plain $ showDate d)){Ods.cellType = Ods.TypeString, Ods.cellClass = Ods.Class "date"}
           : [ (Ods.defaultCell (parts isamount ps)){Ods.cellType = Ods.TypeMixedAmount, Ods.cellClass = Ods.Class cls}
             | (isamount, ps, cls) <- zip3 [True, True, True, False, True, False] (periodcells st) (drop 1 pcolclasses) ]
@@ -1144,14 +1148,14 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     pfodstable = pspreadsheetWith id (\_ -> T.intercalate ", " . filter (not . T.null))
 
     -- The default title can be customised or suppressed with --title.
-    title = effectiveTitle ropts ("Holdings on " <> showDate reportdate)
+    title = effectiveTitle ropts (trf "Holdings on {date}" [("date", showDate reportdate)])
     txtoutput =
       (case title of
          "" -> ""
          t  -> TL.fromStrict t <> "\n\n")
       <>
       if null rowlines
-      then "(no holdings)\n"
+      then TL.fromStrict (tr "(no holdings)") <> "\n"
       else renderTable
         def{tableBorders=False}
         (textCell TopLeft)
@@ -1166,7 +1170,8 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
       where
         addtotalrow totalrow tbl' = concatTables SingleLine tbl' $
           Table (Group NoLine [Header ""]) (Header []) [totalrow]
-    colheadings = ["Date", "Age", "Units", hrUnitCostHeading rpt, "Unit price", "Total cost", "Total value", "Weight", "UGain", "UGain%", "RGain", "XIRR"]
+    -- TRANSLATORS: the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
+    colheadings = [tr "Date", tr "Age", tr "Units", tr (hrUnitCostHeading rpt), tr "Unit price", tr "Total cost", tr "Total value", tr "Weight", tr "UGain", tr "UGain%", tr "RGain", tr "XIRR"]
     displaylines = hrLines rpt
 
     -- A display line's account cell: indented display names in tree
@@ -1244,13 +1249,13 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     spreadsheetWith :: forall content. (T.Text -> content) -> (Bool -> [T.Text] -> content)
                     -> [[Ods.Cell Ods.NumLines content]]
     spreadsheetWith plain parts =
-      addHeaderBorders (zipWith hcell colclasses ("Account" : colheadings))
+      addHeaderBorders (zipWith hcell colclasses (tr "Account" : colheadings))
       : [ zipWith3 bodycell [0..] (lineclasses l)
             (plain (acctcell l) : zipWith parts amountcols (linecells l))
         | l <- displaylines ]
       ++ maybe [] (\tot -> addTotalBorders
            [zipWith3 totalcell [0..] colclasses
-              (plain "Total:" : zipWith parts amountcols tot) :: [Ods.Cell () content]])
+              (plain (tr "Total:") : zipWith parts amountcols tot) :: [Ods.Cell () content]])
            mtotalrowparts
       where
         -- per-column css classes, so the html cells can be styled
