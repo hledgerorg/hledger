@@ -62,19 +62,12 @@ Flags:
                             cache directory, and open it in the system's
                             default viewer for its format (eg a web browser for
                             html). The default format is html.
-     --chart[=KIND,SCALE]   show a chart instead of the report table (with
-                            txt output), a chart above the table (with html
-                            output), or the chart's data (with csv, tsv or json
-                            output). svg output always shows a chart. KIND can
-                            be: auto (the default), or for compound reports
-                            grouped (sections side by side; the default for
-                            changes) or diverging (sections in one bar, above
-                            and below zero; the default for end balances).
-                            SCALE fixes the chart's scale, so that charts can
-                            be compared: it is the amount that fills the chart
-                            (eg 1000, or 1000 USD to set it for one commodity's
-                            chart; several can be given). Larger amounts are
-                            clipped.
+     --chart[=KIND,SCALE]   show a chart: instead of the table (txt), above
+                            it (html), or as data (csv, tsv, json). KIND:
+                            grouped (sections side by side) or diverging (above
+                            and below zero). SCALE: the amount that fills the
+                            chart (eg 1000 or 1000 USD; one per commodity), for
+                            comparable charts.
   -w --width=N              with --chart: draw the chart N characters wide
                             (default: the terminal width)
 ```

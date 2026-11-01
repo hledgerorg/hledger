@@ -34,8 +34,8 @@ Flags:
                             with this prefix. (Usually the base url shown by
                             hledger-web; can also be relative.)
   -O --output-format=FMT    select the output format. Supported formats:
-                            txt, ledger, beancount, csv, tsv, html, fods, json,
-                            sql.
+                            journal, ledger, beancount, csv, tsv, html, fods,
+                            json, sql.
   -o --output-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
      --view                 write output to FILE, or to view.FMT in hledger's
@@ -182,7 +182,7 @@ used; but with other methods, or lots: NONE accounts, the missing
 declarations will change how they are read. (--export output keeps lot
 entries as written, since it reproduces the declarations.) To suppress
 errors from these, we often use the -I flag (short for
---ignore-assertions --ignore-lots. So any time you are reading from
+--ignore-assertions --ignore-lots). So any time you are reading from
 standard input with -f-, consider adding -I also.
 
 print export mode
@@ -221,19 +221,19 @@ regenerating a journal file. Some details:
   and comments are kept.
 - Transactions from non-journal files (eg an included CSV file) are
   added at the end.
-- The txt (default), ledger and beancount output formats are supported.
-  With -O ledger, transactions use Ledger's lot syntax, and directives
-  which hledger accepts but Ledger does not (decimal-mark, a one-line
-  commodity directive with an amount, a periodic transaction rule with a
-  description, an auto posting rule with *N amount multipliers) are
-  commented out, with an explanatory comment. Other hledger-specific
-  syntax may remain; see Ledger output. With -O beancount, Beancount
-  option, commodity, open and price directives are generated from the
-  journal's declarations and data, other directives (which have no
-  Beancount equivalent) are dropped, and comments are converted to
-  Beancount comments; see Beancount output. Note for both Ledger and
-  Beancount, manual fixups may still be required in some cases; but the
-  export will be a good start.
+- The journal (default), ledger and beancount output formats are
+  supported. With -O ledger, transactions use Ledger's lot syntax, and
+  directives which hledger accepts but Ledger does not (decimal-mark, a
+  one-line commodity directive with an amount, a periodic transaction
+  rule with a description, an auto posting rule with *N amount
+  multipliers) are commented out, with an explanatory comment. Other
+  hledger-specific syntax may remain; see Ledger output. With
+  -O beancount, Beancount option, commodity, open and price directives
+  are generated from the journal's declarations and data, other
+  directives (which have no Beancount equivalent) are dropped, and
+  comments are converted to Beancount comments; see Beancount output.
+  Note for both Ledger and Beancount, manual fixups may still be
+  required in some cases; but the export will be a good start.
 
 print, other features
 
@@ -258,10 +258,10 @@ transaction, as a tag.
 print output format
 
 This command also supports the output destination and output format
-options The output formats supported are txt, ledger, beancount, csv,
-tsv, html, fods, json and sql.
+options The output formats supported are journal (the default; txt is
+also accepted), ledger, beancount, csv, tsv, html, fods, json and sql.
 
-The ledger format is currently the same as txt except it renders
+The ledger format is currently the same as journal except it renders
 amounts' cost basis using Ledger's lot syntax ([DATE] (LABEL) {COST})
 instead of hledger's ({DATE, "LABEL", COST}).
 

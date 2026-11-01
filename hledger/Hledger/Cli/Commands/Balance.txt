@@ -77,19 +77,10 @@ Flags:
                             cache directory, and open it in the system's
                             default viewer for its format (eg a web browser for
                             html). The default format is html.
-     --chart[=KIND,SCALE]   show a chart instead of the report table (with
-                            txt output), a chart above the table (with html
-                            output), or the chart's data (with csv, tsv or json
-                            output). svg output always shows a chart. KIND can
-                            be: auto (the default), or for compound reports
-                            grouped (sections side by side; the default for
-                            changes) or diverging (sections in one bar, above
-                            and below zero; the default for end balances).
-                            SCALE fixes the chart's scale, so that charts can
-                            be compared: it is the amount that fills the chart
-                            (eg 1000, or 1000 USD to set it for one commodity's
-                            chart; several can be given). Larger amounts are
-                            clipped.
+     --chart[=SCALE]        show a chart: instead of the table (txt), above
+                            it (html), or as data (csv, tsv, json). SCALE: the
+                            amount that fills the chart (eg 1000 or 1000 USD;
+                            one per commodity), for comparable charts.
   -w --width=N              with --chart: draw the chart N characters wide
                             (default: the terminal width)
 
@@ -1063,8 +1054,9 @@ Feb  481.48 USD  ████████████████▓▓▓▓▓
 Mar  603.32 USD  ██████████████████████▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
 
 - A multi-period report of balance changes is charted as stacked bars
-  per period, showing the net total as the value (and in graphical
-  charts, as a line mark).
+  per period, showing the net total as the value (and as a line mark, ┃
+  in text, when it isn't just the end of the bar, eg with amounts of
+  both signs).
 - A multi-period report of end balances (--cumulative, -H) is charted
   the same way in text (and as lines in graphical charts).
 - A single-period report is charted as one bar per account.
@@ -1073,26 +1065,28 @@ Negative amounts grow left from an axis, positive amounts right. Each
 account has its own colour (when colour is enabled) and fill character;
 fill characters repeat after four accounts. The legend lists the
 accounts visible in the chart (an account too small to fill a character
-cell is left out). When a chart shows accounts of several account types,
-they are coloured by type, with conventional colours: assets blue,
-liabilities amber, equity violet, revenues green, expenses red; several
-accounts of one type get different shades of its colour. (In terminals
-which advertise 24-bit colour support, by setting COLORTERM=truecolor,
-these are the same exact colours as in SVG charts; otherwise they are
-the terminal's basic blue, yellow, magenta, green and red, whose shades
-depend on its colour theme.) When a chart's accounts are all of one
-type, or of unknown type, they get distinct colours instead. A chart
-showing just a total (eg with -0, or of all accounts' transaction
-counts) is cyan, a colour no account type uses. Colours and fill
-characters are chosen by account name, not by position, so an account
-usually keeps its colour in other charts: with or without -S, or when
-you exclude other accounts to see more detail. (Not always, since there
-are only a few colours: an account may get a different one when some
-accounts are added or removed.) The chart fills the terminal width, or
-the width set by -w/--width (except for posting counts, with --count,
-which use at most one character per posting). It is drawn with unicode
-block characters, or with ASCII characters if the system's text encoding
-is not UTF-8.
+cell is left out). When a chart shows accounts of several account types
+(in any of its panels), they are coloured by type, with conventional
+colours: assets blue, liabilities amber, equity violet, revenues green,
+expenses red; several accounts of one type get different shades of its
+colour. (In terminals which advertise 24-bit colour support, by setting
+COLORTERM=truecolor, these are the same exact colours as in SVG charts;
+otherwise they are the terminal's basic blue, yellow, magenta, green and
+red, whose shades depend on its colour theme.) When a chart's accounts
+are all of one type, or of unknown type, they get distinct colours
+instead. But when it shows just one account (in each panel), there is
+nothing to tell apart, so the account has its type's colour, or if its
+type is unknown, cyan, a colour no account type uses. A chart showing
+just a total (eg with -0, or of all accounts' transaction counts) is
+also cyan. Colours and fill characters are chosen by account name, not
+by position, so an account usually keeps its colour in other charts:
+with or without -S, or when you exclude other accounts to see more
+detail. (Not always, since there are only a few colours: an account may
+get a different one when some accounts are added or removed.) The chart
+fills the terminal width, or the width set by -w/--width (except for
+posting counts, with --count, which use at most one character per
+posting). It is drawn with unicode block characters, or with ASCII
+characters if the system's text encoding is not UTF-8.
 
 There is one chart panel per commodity. You can reduce this by
 converting to one commodity (eg -X USD) or selecting some (eg cur:USD);
@@ -1101,12 +1095,15 @@ each account's own amounts are stacked, excluding its subaccounts', so
 that nothing is counted twice. At most 8 accounts are shown per panel;
 the smallest are combined into "other" series, one for each account type
 (so eg assets and liabilities are never combined), and each type keeps
-at least its largest account. The total is omitted with -N or --percent.
+at least its largest account. "other" series are grey, or when coloured
+by type, a greyed version of their type's colour. The total is omitted
+with -N or --percent.
 
 In a chart of balance changes per period, -T/--row-total and
 -A/--average show the net total's total and average per period on a line
 below the chart, eg Total 11, Average 0.9; and in graphical charts, the
-average is also drawn as a dashed line across the chart.
+average is also drawn as a dashed line across the chart, with an entry
+in the legend.
 
 Each chart is scaled to fit its values. To draw charts at a fixed scale
 instead, so that you can compare them (eg this month's chart with last
@@ -1118,9 +1115,12 @@ mark at the edge (▸ or ◂ in text, a small triangle in SVG); lines go off
 the edge. A SCALE with a commodity symbol (eg --chart='5000 USD')
 applies to that commodity's panel, and one without, to the others. SCALE
 can follow KIND, and several SCALEs can be given, separated by commas
-(eg --chart='auto,5000 USD,4000 EUR'); so write SCALE without digit
-group marks. For the same scale in text charts, use the same width too
-(-w).
+(eg --chart='auto,5000 USD,4000 EUR'); so a SCALE can't contain a comma:
+write it without digit group marks, or with spaces or periods (eg
+10 000 EUR). A number like 10.000 is read using that commodity's decimal
+mark, as it is shown in the report: eg in a journal where EUR is written
+with a decimal comma, 10.000 EUR is ten thousand. For the same scale in
+text charts, use the same width too (-w).
 
 With SVG output (-o FILE.svg or -O svg), balance always shows a chart,
 as a graphical image. Time runs along the x axis, and end balances are

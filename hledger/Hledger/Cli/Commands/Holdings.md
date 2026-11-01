@@ -26,8 +26,14 @@ Flags:
                                    to match precision
                             hard - round amounts to precision (default)
                             all  - also round cost amounts to precision
+     --chart[=SCALE]        show a chart: instead of the table (txt), above
+                            it (html), or as data (csv, tsv, json). SCALE: the
+                            amount that fills the chart (eg 1000 or 1000 USD;
+                            one per commodity), for comparable charts.
+  -w --width=N              with --chart: draw the chart N characters wide
+                            (default: the terminal width)
   -O --output-format=FMT    select the output format. Supported formats:
-                            txt, csv, tsv, html, fods, json.
+                            txt, csv, tsv, html, fods, json, svg.
   -o --output-file=FILE     write output to FILE. A file extension matching
                             one of the above formats selects that format.
      --view                 write output to FILE, or to view.FMT in hledger's
