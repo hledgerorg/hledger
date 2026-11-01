@@ -1,4 +1,7 @@
-Additional notes about the hledger project's AI usage, complementing ../AI.md.
+# AI usage reports
+
+Additional notes about the hledger project's AI usage,
+complementing the [AI policy](https://hledger.org/AI.html).
 
 Related scripts are in Justfile: run `just ai help` (or `just help` in this directory)
 
