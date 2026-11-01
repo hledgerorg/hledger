@@ -9,7 +9,7 @@
 
 User-visible changes in the hledger command line tool and library.
 
-# e773997a
+# 1.99.6 2026-11-01
 
 ## Breaking changes
 
