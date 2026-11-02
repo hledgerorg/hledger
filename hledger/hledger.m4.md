@@ -7112,7 +7112,7 @@ from the transaction's other postings - so even a bare positive posting (no `{}`
 
 The other postings show what funded the basis, such as:
 
-- cash for what you paid (including fees if you want those capitalised in the basis)
+- cash for what you paid (including fees if you want those capitalised in the basis; see [Capitalising fees](#capitalising-fees))
 - an expense posting for any part of what you paid that isn't basis (a fee you don't want to capitalise)
 - an income or equity posting for any part you didn't pay (as with a gift's carryover basis or shares received as compensation).
 
@@ -7138,6 +7138,22 @@ it does not affect balancing, it is informational for the user and records a mar
 (in Beancount, this requires the implicit_prices plugin).
 In hledger, `@` always means the transacted cost, what you actually paid, so in an acquisition it must agree with `{}`;
 to declare a different market price on that day, use a [`P` directive](#p-directive) instead.
+
+#### Capitalising fees
+
+hledger does not automatically capitalise fees into cost basis
+(as some tax treatments allow, for purchase or transfer fees).
+To capitalise an acquisition fee, fold it into the acquisition cost:
+
+```journal
+2026-01-15 buy 10 AAPL at $50, plus a $10 commission, capitalised
+    assets:stocks     10 AAPL @@ $510
+    assets:cash      -$510
+```
+
+This lot's cost basis is $51 per share.
+(Recording the commission as a separate expense posting would instead keep it out of the basis.)
+Capitalising an in-kind transfer fee is possible too, but fiddly; see [Other lot events](#other-lot-events).
 
 ### Transfer
 
@@ -7183,22 +7199,6 @@ give it a real or dummy cost basis (or price) annotation, which keeps it out of 
     expenses:fees   -0.001 ETH
     assets:broker2   0.001 ETH {$0}
 ```
-
-#### Capitalising fees
-
-hledger does not automatically capitalise fees into cost basis
-(as some tax treatments allow, for purchase or transfer fees).
-To capitalise an acquisition fee, fold it into the acquisition cost:
-
-```journal
-2026-01-15 buy 10 AAPL at $50, plus a $10 commission, capitalised
-    assets:stocks     10 AAPL @@ $510
-    assets:cash      -$510
-```
-
-This lot's cost basis is $51 per share.
-(Recording the commission as a separate expense posting would instead keep it out of the basis.)
-Capitalising an in-kind transfer fee is possible too, but fiddly; see [Other lot events](#other-lot-events).
 
 ### Dispose
 
