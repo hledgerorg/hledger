@@ -92,7 +92,7 @@ import Text.Printf (printf)
 
 import Hledger.Data
 import Hledger.Utils
-import Hledger.Read.Common (aliasesFromOpts, Reader(..), InputOpts(..), AmountParseKind(..), amountp, postingamountp, setDefaultCommodityAndStyle, statusp, includeFileParser, journalFinalise, accountnamep, transactioncommentp, postingcommentp )
+import Hledger.Read.Common (aliasesFromOpts, Reader(..), InputOpts(..), AmountParseKind(..), amountp, amountp', postingamountp, statusp, includeFileParser, journalFinalise, accountnamep, transactioncommentp, postingcommentp )
 import Hledger.Write.Csv
 
 --- ** doctest setup
@@ -2265,22 +2265,17 @@ getBalance errpfx rules record currency n = do
     fieldval = fmap T.strip . hledgerFieldValue rules record :: HledgerFieldName -> Maybe Text
 
 -- | Given a non-empty amount string (from CSV) to parse, along with a
--- possibly non-empty currency symbol to prepend,
+-- possibly non-empty currency rule value (see parseCurrency),
 -- parse as a hledger MixedAmount (as in journal format), or raise an error.
 -- The whole CSV record is provided for the error message.
 parseAmount :: Text -> CsvRules -> CsvRecordGroup -> Text -> Text -> MixedAmount
 parseAmount errpfx rules record currency s =
     either mkerror mixedAmount $
     if isAmountExpression s
-    then runParser (evalStateT (setcurrency >> postingamountp OrdinaryAmount <* eof) journalparsestate) "" s
-    else runParser (evalStateT (amountp <* eof) journalparsestate) "" $ currency <> simplifySign s
+    then runCsvAmountParser rules mcs (postingamountp OrdinaryAmount) s
+    else runCsvAmountParser rules mcs amountp (simplifySign s)
   where
-    journalparsestate = nulljournal{jparsedecimalmark=parseDecimalMark rules}
-    -- An expression gets the currency like a D directive: applied to the result if it has no commodity.
-    setcurrency = unless (T.null currency) $
-      case runParser (evalStateT (amountp <* eof) journalparsestate) "" (currency <> "1") of
-        Right a -> setDefaultCommodityAndStyle (acommodity a, astyle a)
-        Left _  -> pure ()
+    mcs = parseCurrency errpfx rules record currency
     mkerror e = error' . T.unpack $ errpfx <> T.unlines
       ["could not parse \"" <> s <> "\" as an amount"
       ,showRecordFields rules record
@@ -2325,16 +2320,41 @@ withRulesPos txt =
 parseBalanceAmount :: Text -> CsvRules -> CsvRecordGroup -> Text -> Int -> Text -> Amount
 parseBalanceAmount errpfx rules record currency n s =
   either (mkerror n s) id $
-    runParser (evalStateT (amountp <* eof) journalparsestate) "" $
-    currency <> simplifySign s
+    runCsvAmountParser rules (parseCurrency errpfx rules record currency) amountp (simplifySign s)
   where
-    journalparsestate = nulljournal{jparsedecimalmark=parseDecimalMark rules}
     mkerror n' s' e = error' . T.unpack $ errpfx <> T.unlines
       ["could not parse \"" <> s' <> "\" as balance"<> T.pack (show n') <> " amount"
       ,showRecordFields rules record
       ,showRules rules record
       -- ,"the default-currency is: "++fromMaybe "unspecified" mdefaultcurrency
       ,"the parse error is:      "<> T.pack (customErrorBundlePretty e)
+      ]
+
+-- | Run a journal amount parser on a CSV amount value, with the rules' decimal mark
+-- and the given default commodity and style (if any) in effect, as with a D directive.
+runCsvAmountParser :: CsvRules -> Maybe (CommoditySymbol, AmountStyle) -> StateT Journal SimpleTextParser Amount -> Text -> Either HledgerParseErrors Amount
+runCsvAmountParser rules mcs p =
+  runParser (evalStateT (p <* eof) nulljournal{jparsedecimalmark=parseDecimalMark rules, jparsedefaultcommodity=mcs}) ""
+
+-- | Parse a currency rule's value, if non-empty, as a default commodity and style
+-- (like a D directive's): either an amount like "1 USD" or "USD 1", whose symbol
+-- and style are used (its decimal mark need not match the decimal-mark rule, as with
+-- a D directive), or just a commodity symbol, placed on the left with no space.
+-- Raises an error if it is neither; the record is provided for the error message.
+parseCurrency :: Text -> CsvRules -> CsvRecordGroup -> Text -> Maybe (CommoditySymbol, AmountStyle)
+parseCurrency errpfx rules record currency
+  | T.null currency = Nothing
+  | otherwise = Just $ fromMaybe mkerror $ asDefault currency <|> asDefault (currency <> "1")
+  where
+    asDefault t = case runCsvAmountParser rules Nothing (amountp' StyleAmount) t of
+      Right a | not (T.null $ acommodity a) -> Just (acommodity a, astyle a)
+      _ -> Nothing
+    mkerror = error' . T.unpack $ errpfx <> T.unlines
+      ["could not parse \"" <> currency <> "\" as a currency"
+      ,showRecordFields rules record
+      ,showRules rules record
+      ,"a currency rule's value should be a commodity symbol, like USD or \"Some Fund\","
+      ,"or an amount showing the symbol's position, like 1 USD"
       ]
 
 -- | The start of an error message about a CSV record, in hledger's standard error format:

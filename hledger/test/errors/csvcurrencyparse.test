@@ -1,0 +1,11 @@
+$ hledger check -f csvcurrencyparse.csv
+>2 /hledger: Error: .*csvcurrencyparse\.csv:2:
+2 \| 2022-01-01,1
+
+could not parse "123" as a currency
+record: 2022-01-01,1
+(.*
+)*a currency rule's value should be a commodity symbol, like USD or "Some Fund",
+or an amount showing the symbol's position, like 1 USD
+/
+>= 1

@@ -4051,11 +4051,22 @@ TLDR: if `import` is not generating the precisions or styles you want, add a `co
 
 ### currency field
 
-`currency` sets a currency symbol, to be prepended to all postings' amounts.
+`currency` sets a default commodity symbol, to be used for any posting (or balance) amounts which don't have one.
 You can use this if the CSV amounts do not have a currency symbol, eg if it is in a separate column.
-(If an amount is an [amount expression](#amount-expressions), the symbol is applied to its result, if that has no symbol.)
+(You can also set the symbol within an amount assignment, like `amount %amt USD`,
+but sometimes it's more convenient to set it this way.)
+The value can be:
 
-`currencyN` prepends a currency symbol to just the Nth posting's amount.
+- a commodity symbol, like `USD` or `$` or `"Some Fund"`; this is placed on the left of the number, with no space (`USD5`).
+- or a dummy amount with that symbol, like `1 USD` or `USD 1` or `1USD`, showing the symbol's position and spacing to use.
+  (The amount's number style, if any, like `1.000,00 EUR`, is also used as a default
+  [display style](#commodity-display-style) for that commodity.)
+
+Note the symbol's placement and display style don't matter much when using `import`,
+since that command applies the journal's existing commodity styles to the new entries
+(see [Amount decimal places](#amount-decimal-places)).
+
+`currencyN` does the same for just the Nth posting's amount.
 
 #### Setting currency/commodity
 
@@ -4082,10 +4093,10 @@ If the currency is provided as a separate CSV field:
 2023-01-01,foo,USD,123.00
 ```
 
-You can assign that to the `currency` pseudo-field, which has the
-special effect of prepending itself to every amount in the
-transaction (on the left, with no separating space):
-  
+You can name that field `currency`; this is a special rule, which sets the
+commodity of every amount in the transaction which doesn't have one
+(placing the symbol on the left, with no separating space):
+
 ```rules
 fields date,description,currency,amount
 ```
@@ -4094,25 +4105,21 @@ fields date,description,currency,amount
     expenses:unknown       USD123.00
     income:unknown        USD-123.00
 ```
-<!-- a special case, I don't remember exactly where:
-If you write a trailing space after the symbol, there will be a space
-between symbol and amount (an exception to the usual whitespace stripping).
--->
 
-Or, you can use a field assignment to construct the amount yourself, with more control.
-Eg to put the symbol on the right, and separated by a space:
+To put the symbol on the right, separated by a space, give the `currency` rule a dummy amount showing that:
 
 ```rules
 fields date,description,cur,amt
-amount %amt %cur
+currency 1 %cur
+amount %amt
 ```
 ```journal
 2023-01-01 foo
     expenses:unknown        123.00 USD
     income:unknown         -123.00 USD
 ```
-Note we used a temporary field name (`cur`) that is not `currency` -
-that would trigger the prepending effect, which we don't want here.
+
+Or, you can use a field assignment to construct the amount yourself: `amount %amt %cur`.
 
 ### balance field
 
