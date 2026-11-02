@@ -323,7 +323,7 @@ transaction plus a fixed 30 MB: 100k transactions need about 0.6 GB and a millio
 **Entry shape.** Parsing is about half of a run. Entries with dates, status marks, a code, a
 description, comments and tags, account names and amounts (optionally with a cost) take a fast
 path in the parser and parse about a third faster than others; balance assertions take it too,
-unless a tab precedes them on the line. Entries with lot annotations, quoted commodity symbols,
+unless a tab precedes them on the line. Entries with lot annotations,
 exponents, or bracketed dates in posting comments use
 the general parser (`--debug=1` reports how many, and why). Long descriptions and account names,
 and numbers with digit group marks, cost little extra.

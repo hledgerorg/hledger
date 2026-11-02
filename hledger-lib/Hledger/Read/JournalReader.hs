@@ -1268,7 +1268,7 @@ data SimpleAssertion = SimpleAssertion {
 --   possibly with tags including date tags, but with no bracketed dates; optionally a balance
 --   assertion or assignment (with no tab before it on the line); no lot annotation;
 -- - amounts whose number is digits, with or without digit group marks, a decimal mark and decimal
---   digits (as rawnumberp accepts; but no exponent), with an optional sign, an optional unquoted
+--   digits (as rawnumberp accepts; but no exponent), with an optional sign, an optional
 --   commodity symbol on either side, and an optional @ or @@ cost of the same form;
 --   and when there is no symbol, no default commodity directive in effect;
 -- - no CR characters.
@@ -1322,7 +1322,7 @@ internSimpleAmount a = do
     internCost (TotalCost ca) = TotalCost <$> internSimpleAmount ca
 
 -- | A fast path for the commonest kind of market price directive, like fasttransactionp:
--- P, a date, an optional time of day (ignored), an unquoted commodity symbol, and a simple
+-- P, a date, an optional time of day (ignored), a commodity symbol, and a simple
 -- amount (as described there), separated by spaces, then optionally other text, which is
 -- ignored (as marketpricedirectivep does). Declines otherwise.
 fastmarketpricedirectivep :: JournalParser m (Either Text PriceDirective)
@@ -1344,8 +1344,7 @@ fastmarketpricedirectivep = do
 -- consumed (through the line's newline). Mirrors marketpricedirectivep: P, optional spaces, a
 -- date, at least one space, optionally a time of day and at least one space, the commodity
 -- symbol, at least one space, the amount; and then the rest of the line is ignored, whatever it
--- is (as restofline does there). Declines if the symbol is quoted, or if a cost or lot
--- annotation follows the amount.
+-- is (as restofline does there). Declines if a cost or lot annotation follows the amount.
 scanSimplePrice :: Journal -> Text -> Either Text (Day, CommoditySymbol, Amount, Int)
 scanSimplePrice j s = do
   (line, _, n) <- orDecline "CR line ending" $ scanSimpleLine s  -- (the text is not empty: it begins with P)
@@ -1359,10 +1358,7 @@ scanSimplePrice j s = do
       declineIf (not $ startsWithSpace r) "malformed price directive"
       Right $ T.dropWhile isNonNewlineSpace r
     _ -> Right $ T.dropWhile isNonNewlineSpace r1
-  (c, _) <- orDecline "malformed price directive" $ T.uncons r2
-  declineIf (c == '"') "quoted commodity symbol"
-  declineIf (isNonsimpleCommodityChar c) "malformed price directive"
-  let (sym, r3) = T.span (not . isNonsimpleCommodityChar) r2
+  (sym, r3) <- orDecline "malformed price directive" $ scanCommoditySymbol r2
   declineIf (not $ startsWithSpace r3) "malformed price directive"
   (amt, r4) <- scanSimpleAmount j $ T.dropWhile isNonNewlineSpace r3
   -- a cost or lot annotation on the price: decline; anything else is ignored
@@ -1623,24 +1619,23 @@ scanSimpleAmountAndCost j t = do
     _ -> Right (a, r2)
 
 -- | An amount without cost, as simpleamountp parses simple ones, and the text after it: an
--- optional sign, then either an unquoted commodity symbol, optional spaces, an optional second
--- sign and a number; or a number, optional spaces and an optional unquoted symbol. The number
+-- optional sign, then either a commodity symbol, optional spaces, an optional second
+-- sign and a number; or a number, optional spaces and an optional symbol. The number
 -- is interpreted by interpretRawNumber with the same suggested style and required decimal mark
 -- that simpleamountp would use, so decimal-mark and commodity directives have their usual effect,
--- and the amount's style is built as there. Declines on a quoted symbol, on an exponent, and
+-- and the amount's style is built as there. Declines on an exponent, and
 -- on a symbol-less amount when a default commodity (D) directive is in effect (simpleamountp
 -- would apply that commodity and its style).
 scanSimpleAmount :: Journal -> Text -> Either Text (Amount, Text)
 scanSimpleAmount j t0 = do
   let (sign1, t1) = scanSign t0
   (c, _) <- orDecline malformed $ T.uncons t1
-  declineIf (c == '"') "quoted commodity symbol"
   -- in a posting, (... is an amount expression, which postingamountp evaluates
   declineIf (c == '(') "possible amount expression"
-  if not (isNonsimpleCommodityChar c)
+  if c == '"' || not (isNonsimpleCommodityChar c)
   then do  -- symbol on the left
-    let (sym, t2) = T.span (not . isNonsimpleCommodityChar) t1
-        (spaced, t3) = scanSpaces t2
+    (sym, t2) <- orDecline malformed $ scanCommoditySymbol t1
+    let (spaced, t3) = scanSpaces t2
         (sign2, t4) = scanSign t3
     (raw, t5) <- orDecline malformed $ scanSimpleNumber t4
     (q, p, mdec, mgrps) <- interpret (suggestedStyle sym) raw
@@ -1651,11 +1646,10 @@ scanSimpleAmount j t0 = do
     (raw, t2) <- orDecline malformed $ scanSimpleNumber t1
     let (spaced, t3) = scanSpaces t2
     case T.uncons t3 of
-      Just (c2, _) | c2 == '"' -> Left "quoted commodity symbol"
                    -- in a posting, 10 /2 is a division, which postingamountp evaluates
-                   | c2 == '/' -> Left "possible amount expression"
-                   | not (isNonsimpleCommodityChar c2) -> do  -- symbol on the right
-        let (sym, t4) = T.span (not . isNonsimpleCommodityChar) t3
+      Just (c2, _) | c2 == '/' -> Left "possible amount expression"
+                   | c2 == '"' || not (isNonsimpleCommodityChar c2) -> do  -- symbol on the right
+        (sym, t4) <- orDecline malformed $ scanCommoditySymbol t3
         (q, p, mdec, mgrps) <- interpret (suggestedStyle sym) raw
         Right (nullamt{acommodity=sym, aquantity=sign1 q, acost=Nothing
                       ,astyle=amountstyle{ascommodityside=R, ascommodityspaced=spaced, asprecision=Precision p, asdecimalmark=mdec, asdigitgroups=mgrps}}
@@ -1671,6 +1665,18 @@ scanSimpleAmount j t0 = do
     malformed = "malformed amount, or number with an exponent"
     suggestedStyle sym = journalDecimalMarkStyle j <|> journalAmountStyleFor j sym
     interpret msuggested raw = either (const $ Left "invalid number") Right $ interpretRawNumber (jparsedecimalmark j) msuggested raw Nothing
+
+-- | A commodity symbol as commoditysymbolp parses it, and the text after it: a double-quoted symbol
+-- (returned without the quotes, and which may be empty, but can't contain a semicolon or newline),
+-- or one or more simple commodity symbol characters. Or Nothing, if neither of those is here.
+scanCommoditySymbol :: Text -> Maybe (CommoditySymbol, Text)
+scanCommoditySymbol t = case T.uncons t of
+  Just ('"', r) -> do
+    let (sym, r') = T.span (\c -> c /= ';' && c /= '\n' && c /= '"') r
+    (sym,) <$> T.stripPrefix "\"" r'
+  _ -> case T.span (not . isNonsimpleCommodityChar) t of
+    (sym, r) | T.null sym -> Nothing
+             | otherwise  -> Just (sym, r)
 
 -- | An optional sign, as signp parses it (a - or +, then optional spaces), as a function to
 -- apply to the quantity; and the text after it.
