@@ -20,6 +20,7 @@ import Data.Time.Calendar
 import Text.Printf
 import Data.Bifunctor (second)
 import Data.List
+import Data.Maybe (fromMaybe)
 import Numeric.RootFinding
 import Data.Decimal
 import Data.Map qualified as M
@@ -213,12 +214,12 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
 
         let -- show a quantity of the span's (single) commodity, styled
             showAmt q = T.pack $ showMixedAmountOneLineWithoutCost False $ styleAmounts styles $
-              mixedAmount nullamt{acommodity = maybe "" id (S.lookupMin spanCommodities), aquantity = q}
+              mixedAmount nullamt{acommodity = fromMaybe "" (S.lookupMin spanCommodities), aquantity = q}
         (irrdetails, eirr) <- internalRateOfReturn styles showCashFlow prettyTables flowDetails thisSpan
-        (twrdetails, (periodTwr, annualizedTwr)) <- timeWeightedReturn showCashFlow prettyTables showAmt holdingsAt valueOn thisSpan
+        (twrdetails, etwr) <- timeWeightedReturn showCashFlow prettyTables showAmt holdingsAt valueOn thisSpan
         let cashFlowAmt = maNegate . maSum $ map snd cashFlow
         let smallIsZero x = if abs x < 0.01 then 0.0 else x
-        let spanrow irr = [ showDate b
+        let spanrow irr (periodTwr, annualizedTwr) = [ showDate b
                , showDate (addDays (-1) e)
                , T.pack $ showMixedAmountOneLineWithoutCost False $ styleAmounts styles $ valueBefore
                , T.pack $ showMixedAmountOneLineWithoutCost False $ styleAmounts styles $ cashFlowAmt
@@ -234,7 +235,7 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
                , T.pack $ printf "%0.2f%%" $ smallIsZero irr
                , T.pack $ printf "%0.2f%%" $ smallIsZero periodTwr
                , T.pack $ printf "%0.2f%%" $ smallIsZero annualizedTwr ]
-        return (irrdetails <> twrdetails, spanrow <$> eirr)
+        return (irrdetails <> twrdetails, spanrow <$> eirr <*> etwr)
 
   (perioddetails, periodRows) <- unzip <$> forM spans processSpan
   (totaldetails, totalRow) <- case periodRows of
@@ -308,25 +309,27 @@ timeWeightedReturn showCashFlow prettyTables showAmt holdingsAt valueOn (OneSpan
          :  go (d, endValue) rest
 
     rowReturn (b, e, part, v0, dep, wdr, v1)
-      | base == 0 && final == 0 = 0
-      | base == 0 = 0  -- nothing invested at the start
-      | base < 0  = error' $ "Cannot compute the time-weighted return for "
+      | base == 0 = Right 0  -- nothing invested at the start
+      | base < 0  = Left $ "Cannot compute the time-weighted return for "
                     ++ T.unpack (if b == e then showDate b else showDate b <> " to " <> showDate e) ++ " (" ++ T.unpack part ++ "): "
                     ++ "the investment's value at the start (" ++ T.unpack (showAmt v0) ++ ") plus deposits ("
                     ++ T.unpack (showAmt dep) ++ ") is negative."
-      | otherwise = realToFrac final / realToFrac base - 1 :: Double
+      | otherwise = Right (realToFrac final / realToFrac base - 1 :: Double)
       where base = v0 + dep; final = v1 - wdr
 
     rows    = dbg3 "twr rows" $ go (addDays (-1) begin, valueAt (addDays (-1) begin)) (M.toAscList flowsByDay)
     returns = map rowReturn rows
-    cumulative = drop 1 $ scanl (\acc r -> (1 + acc) * (1 + r) - 1) 0 returns
-    twr     = dbg3 "twr" $ if null cumulative then 0 else last cumulative
+    -- once a row's return can't be computed, neither can the cumulative returns from there on
+    cumulative = drop 1 $ scanl (\acc r -> (\a x -> (1 + a) * (1 + x) - 1) <$> acc <*> r) (Right 0) returns
+    etwr    = dbg3 "twr" $ if null cumulative then Right 0 else last cumulative
 
     years = fromIntegral (diffDays end begin) / 365.25 :: Double
-    periodTWR     = roundTo 2 (100 * realToFrac twr :: Decimal)
-    annualizedTWR = 100 * ((1 + twr) ** (1 / years) - 1) :: Double
+    result = flip fmap etwr $ \twr ->
+      let periodTWR     = roundTo 2 (100 * realToFrac twr :: Decimal)
+          annualizedTWR = 100 * ((1 + twr) ** (1 / years) - 1) :: Double
+      in (realToFrac periodTWR :: Double, annualizedTWR)
 
-    showPercent r = T.pack (showDecimal (roundTo 2 (realToFrac r * 100 :: Decimal)))
+    showPercent = either (const "error") $ \r -> T.pack (showDecimal (roundTo 2 (realToFrac r * 100 :: Decimal)))
     details = if not showCashFlow then "" else
       TL.pack (printf "\nTWR returns for period %s - %s\n" (showDate begin) (showDate lastDay))
       <> Tab.render prettyTables T.pack id id
@@ -340,11 +343,14 @@ timeWeightedReturn showCashFlow prettyTables showAmt holdingsAt valueOn (OneSpan
            , showAmt v0, showAmt dep, showAmt wdr, showAmt v1
            , showPercent r, showPercent c ]
          | ((b, e, part, v0, dep, wdr, v1), r, c) <- zip3 rows returns cumulative ])
-      <> TL.pack (printf "Each row's return is (Value (end) - Withdrawals) / (Value (begin) + Deposits) - 1; they are chained.\n")
-      <> TL.pack (printf "Total period TWR: %s%%.\nPeriod: %.2f years.\nAnnualized TWR: %.2f%%\n\n"
-           (showDecimal periodTWR) years annualizedTWR)
+      <> "Each row's return is (Value (end) - Withdrawals) / (Value (begin) + Deposits) - 1; they are chained.\n"
+      <> case result of
+           Right (periodTWR, annualizedTWR) ->
+             TL.pack (printf "Total period TWR: %.2f%%.\nPeriod: %.2f years.\nAnnualized TWR: %.2f%%\n\n"
+               periodTWR years annualizedTWR)
+           Left _ -> "\n"
 
-  return (details, ((realToFrac periodTWR) :: Double, annualizedTWR))
+  return (details, result)
 
 internalRateOfReturn styles showCashFlow prettyTables flowDetails (OneSpan begin end valueBefore valueAfter cashFlow _pnl) = do
   let prefix = (begin, maNegate valueBefore)
