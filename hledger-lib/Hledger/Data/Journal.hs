@@ -953,7 +953,8 @@ journalInferPostingsTransactedCost j = journalMapTransactions inferTxn j
       where
         p' = p{pamount = mapMixedAmount amountInferTransactedCost $ pamount p}
         -- a lot inflow: positive, or negative in a liability account (a short lot)
-        needsInference a = aquantity a * lotsign > 0 && isNothing (acost a) && hasCostBasisCost a
+        -- (the cheap checks first; few amounts have a cost basis, and multiplying Decimals is slow)
+        needsInference a = hasCostBasisCost a && isNothing (acost a) && aquantity a * lotsign > 0
                         && not (hasTransferFromCounterpart t p a)
                         && not (hasTransferGroupShape t p (acommodity a))
         lotsign = maybe 1 lotDirectionSign (journalAccountType j (paccount p) >>= accountTypeLotDirection)
