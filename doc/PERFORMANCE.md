@@ -322,8 +322,9 @@ transaction plus a fixed 30 MB: 100k transactions need about 0.6 GB and a millio
 
 **Entry shape.** Parsing is about half of a run. Entries with dates, status marks, a code, a
 description, comments and tags, account names and amounts (optionally with a cost) take a fast
-path in the parser and parse about a third faster than others. Entries with balance assertions,
-lot annotations, quoted commodity symbols, exponents, or bracketed dates in posting comments use
+path in the parser and parse about a third faster than others; balance assertions take it too,
+unless a tab precedes them on the line. Entries with lot annotations, quoted commodity symbols,
+exponents, or bracketed dates in posting comments use
 the general parser (`--debug=1` reports how many, and why). Long descriptions and account names,
 and numbers with digit group marks, cost little extra.
 
@@ -606,10 +607,11 @@ The details:
   can still hold an unevaluated Char, keeping parser data alive.
 - Balance assertions: the first one in a journal makes the balancer do its second pass over all
   postings (0.14s and 316 MB at 100k, about 0.7µs and 1.6 KB per posting); each further ordinary
-  assertion costs under 1µs to check but about 3µs to parse (asserted postings take the general
-  parser); inclusive assertions (`=*`) fold over all accounts per check (20k of them on a
-  10k-transaction, 1000-account journal: 0.36s, 13x the ordinary kind). Extending the fast path to
-  assertions is a remaining idea (see NOTE-performance).
+  assertion costs under 1µs to check; inclusive assertions (`=*`) fold over all accounts per check
+  (20k of them on a 10k-transaction, 1000-account journal: 0.36s, 13x the ordinary kind).
+  Asserted postings took the general parser until the fast path learned them, which matters on
+  assertion-heavy journals: a synthetic 38k-transaction journal with assertions on 55% of
+  transactions went from 2.05s to 1.09s (and 2.8 GB to 1.15 GB allocated).
 - The fast path's remaining allocation, about 27 KB per transaction and price pair against 1.5 KB
   retained, is not worth chasing: computing source positions by arithmetic instead of walking the
   text gained 3% of parse time for 36 lines and was dropped, and the parser has no hot spot, spending

@@ -297,7 +297,7 @@ $ HLEDGER_FASTPATH=check hledger -f- print
     b
 
 2024-01-04 declined
-    c  1 = 1
+	c  1 = 1
     b
 
 2024-01-05 declined
@@ -307,7 +307,7 @@ $ HLEDGER_FASTPATH=check hledger -f- print
 P 2024-01-01 A 1 B
 P 2024-01-02 "A B" 1 B
 $ hledger -f- --debug=1 stats 2>&1 | grep '^fast path'
-fast path was used for 60% of 5 transactions, 50% of 2 prices; declined: 1 balance assertion or assignment, 1 posting comment with bracketed date, 1 quoted commodity symbol
+fast path was used for 60% of 5 transactions, 50% of 2 prices; declined: 1 balance assertion after a tab, 1 posting comment with bracketed date, 1 quoted commodity symbol
 
 # ** 7. Tags and posting dates in comments are parsed by the fast path; the register shows the posting dates.
 <
@@ -352,3 +352,67 @@ inued
 tag
 b
 2024/2/3 spaced value
+
+# ** 9. Balance assertions and assignments are parsed by the fast path, in all forms and positions. Check mode compares them with the general parser's, including their source positions.
+<
+2024-01-01 forms
+    a  1 USD = 1 USD
+    a  1 USD == 2 USD
+    a  1 USD =* 3 USD
+    a  1 USD ==* 4 USD
+    a  1 USD=5 USD
+    a  1=1
+    a  1 =  1
+    b  -5 USD ; comment
+
+2024-01-02 assignments  ; a comment before the postings
+    ; on two lines
+    c  = 10 USD
+    ; continued on the next line
+    d  == 20 USD  ; with a same-line comment
+    e  =5 EUR
+    f
+
+2024-01-03 costs, styles, signs, other symbol forms
+    g  $1,000.50 = $1,000.50 @ 2 EUR
+    h  -1 X = -1 X @@ 2 EUR
+    i  1 Y =+1 Y
+    j  - 1 Z = - 1 Z
+    (k)  1 = 1
+    [l]  1 = 1
+    m:n o  1 Q = 1 Q  ; tag:val
+    * p  1 R = 1 R
+    r
+
+2024-01-04 non-ascii text before the assertion: the column counts characters
+    счёт  1 € = 1 €
+    s
+$ HLEDGER_FASTPATH=check hledger -f- --debug=1 print 2>&1 | grep '^fast path'
+fast path was used for 100% of 4 transactions
+
+# ** 10. A balance assertion error shows the position calculated by the fast path, here line 5 column 11.
+<
+2024-01-01 x  ; comment
+    ; comment
+    a  1 ; comment
+    ; comment
+    a  1  = 3
+    b
+$ hledger -f- print 2>&1 | grep '^hledger: Error' | sed -E 's/.*:([0-9]+:[0-9]+):$/\1/'
+5:11
+
+# ** 11. A tab before a balance assertion is left to the general parser.
+<
+2024-01-01 tabs
+	a  1 = 1
+    b	  1 = 2
+    c  -2
+$ HLEDGER_FASTPATH=check hledger -f- --debug=1 print 2>&1 | grep '^fast path'
+fast path was used for 0% of 1 transactions; declined: 1 balance assertion after a tab
+
+# ** 12. So is a lot annotation in a balance assignment, which is an error.
+<
+2024-01-01 x
+    a  = 1 X {2 Y}
+$ HLEDGER_FASTPATH=check hledger -f- print 2>&1 | grep -c "unexpected '{'"
+1
