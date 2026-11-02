@@ -307,7 +307,7 @@ $ HLEDGER_FASTPATH=check hledger -f- print
 P 2024-01-01 A 1 B
 P 2024-01-02 "A B" 1 B
 $ hledger -f- --debug=1 stats 2>&1 | grep '^fast path'
-fast path was used for 60% of 5 transactions, 50% of 2 prices; declined: 1 balance assertion after a tab, 1 posting comment with bracketed date, 1 quoted commodity symbol
+fast path was used for 60% of 5 transactions, 100% of 2 prices; declined: 1 balance assertion after a tab, 1 posting comment with bracketed date
 
 # ** 7. Tags and posting dates in comments are parsed by the fast path; the register shows the posting dates.
 <
@@ -415,4 +415,50 @@ fast path was used for 0% of 1 transactions; declined: 1 balance assertion after
 2024-01-01 x
     a  = 1 X {2 Y}
 $ HLEDGER_FASTPATH=check hledger -f- print 2>&1 | grep -c "unexpected '{'"
+1
+
+# ** 13. Quoted commodity symbols are parsed by the fast path, in amounts, costs, balance assertions and price directives.
+<
+P 2024-01-01 "A B" 1 USD
+P 2024-01-01 "C" 1 "D E"
+P 2024-01-01 12:00 "F1" "G 1" 2
+P 2024-01-01 "" 1 USD
+
+2024-01-01 right and left, spaced and not
+    a  1 "A B"
+    a  "A B" 2
+    a  "A B"3
+    a  1"A B"
+    a  -"A B"1
+    a  "A B"-1
+    b
+
+2024-01-02 costs and balance assertions
+    c  1 "A B" @ 2 "C D"
+    d  -1 "A B" @@ 2 "C D"
+    e  1 "E1" = 1 "E1"
+    f  = "F 1" 2 ; comment
+    g
+
+2024-01-03 an empty symbol, with digits and other things in symbols
+    h  1 ""
+    i  1 "2"
+    j  "x:y" 1
+    k  1 "a-b+c"
+    l
+$ HLEDGER_FASTPATH=check hledger -f- --debug=1 print 2>&1 | grep '^fast path'
+fast path was used for 100% of 3 transactions, 100% of 4 prices
+
+# ** 14. Quoted symbols which would be errors are left to the general parser.
+<
+2024-01-01 a semicolon in a quoted symbol
+    a  1 "A;B"
+    b
+$ HLEDGER_FASTPATH=check hledger -f- print 2>&1 | grep -c '^unexpected'
+1
+
+# ** 15. So is an unclosed one.
+<
+P 2024-01-01 "A 1 USD
+$ HLEDGER_FASTPATH=check hledger -f- print 2>&1 | grep -c '^unexpected'
 1

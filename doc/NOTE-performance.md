@@ -41,8 +41,8 @@ Expected gains are for the 100k balance run; "general" means every command pays 
    (HashMap update and period data insertion per posting), and it computes amount widths more than
    once. print's own rendering is about 0.9s at 100k, and is shared by exports, hledger-ui and
    hledger-web: profile it.
-2. Parser fast path: still declined: balance assertions after a tab on the line, quoted commodity
-   symbols, bracketed dates in posting comments, symbol-less amounts under a D directive.
+2. Parser fast path: still declined: balance assertions after a tab on the line,
+   bracketed dates in posting comments, symbol-less amounts under a D directive.
 3. Remaining lot overhead on lot journals, ~0.36s: calculateLots still sorts, rebuilds and re-ties
    every transaction (0.135s); basis-from-account-name and transacted-cost inference search every
    account name (0.07s); commodity tags, method coherence.
