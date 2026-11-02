@@ -1236,10 +1236,22 @@ data SimplePosting = SimplePosting {
   ,spAccount  :: !AccountName       -- ^ with aliases and the parent account applied, and brackets removed
   ,spRealness :: !PostingRealness
   ,spAmount   :: !(Maybe Amount)
+  ,spAssertion :: !(Maybe SimpleAssertion)
   ,spComment  :: !Text
   ,spTags     :: ![Tag]
   ,spDate     :: !(Maybe Day)       -- ^ from a date: tag, if any
   ,spDate2    :: !(Maybe Day)       -- ^ from a date2: tag, if any
+  }
+
+-- | The parts of a balance assertion or assignment recognised by scanSimpleAssertion.
+-- Its position is relative to the transaction, since the scanners don't know where that is
+-- in the file; fasttransactionp makes it absolute.
+data SimpleAssertion = SimpleAssertion {
+   saAmount     :: !Amount
+  ,saTotal      :: !Bool
+  ,saInclusive  :: !Bool
+  ,saLineOffset :: !Int  -- ^ how many lines after the transaction's first line
+  ,saColumn     :: !Int  -- ^ the column of the first = (1-based)
   }
 
 -- | A fast path for the commonest kind of transaction: if the input begins with one, parse
@@ -1253,8 +1265,8 @@ data SimplePosting = SimplePosting {
 --   and optionally a comment (same-line and/or on following indented lines), possibly with tags;
 -- - zero or more postings, each an indented line with an optional status mark, an account name
 --   (possibly in parens or brackets), optionally an amount, and optionally a comment (as above),
---   possibly with tags including date tags, but with no bracketed dates; no balance assertion
---   or lot annotation;
+--   possibly with tags including date tags, but with no bracketed dates; optionally a balance
+--   assertion or assignment (with no tab before it on the line); no lot annotation;
 -- - amounts whose number is digits, with or without digit group marks, a decimal mark and decimal
 --   digits (as rawnumberp accepts; but no exponent), with an optional sign, an optional unquoted
 --   commodity symbol on either side, and an optional @ or @@ cost of the same form;
@@ -1273,7 +1285,7 @@ fasttransactionp = do
     Right (stxn, consumed) -> do
       startpos <- getSourcePos'
       -- share the account names, symbols and styles with identical earlier ones, as postingp does
-      ps <- mapM internPosting $ stPostings stxn
+      ps <- mapM (internPosting startpos) $ stPostings stxn
       -- consume the scanned text; megaparsec computes source positions from the offset on demand,
       -- so updating the input and the offset is all that is needed
       updateParserState $ \st -> st{stateInput = T.drop consumed s, stateOffset = stateOffset st + consumed}
@@ -1283,11 +1295,17 @@ fasttransactionp = do
       return $ Right $ txnTieKnot $ Transaction 0 "" (startpos, endpos) (stDate stxn) (stDate2 stxn) (stStatus stxn) (stCode stxn)
         (stDescription stxn) (stComment stxn) (stTags stxn) ps
   where
-    internPosting sp = do
+    internPosting startpos sp = do
       acct' <- shareText $ spAccount sp
       mamt' <- traverse internSimpleAmount $ spAmount sp
+      massertion <- traverse (internAssertion startpos) $ spAssertion sp
       return posting{pdate=spDate sp, pdate2=spDate2 sp, pstatus=spStatus sp, paccount=acct'
-                    ,pamount=maybe missingmixedamt mixedAmount mamt', pcomment=spComment sp, preal=spRealness sp, ptags=spTags sp}
+                    ,pamount=maybe missingmixedamt mixedAmount mamt', pcomment=spComment sp, preal=spRealness sp, ptags=spTags sp
+                    ,pbalanceassertion=massertion}
+    internAssertion (SourcePos f l _) SimpleAssertion{saAmount, saTotal, saInclusive, saLineOffset, saColumn} = do
+      a <- internSimpleAmount saAmount
+      let !pos = SourcePos f (mkPos $ unPos l + saLineOffset) (mkPos saColumn)
+      return BalanceAssertion{baamount=a, batotal=saTotal, bainclusive=saInclusive, baposition=pos}
 
 -- | Share a scanned amount's commodity symbol and style (and its cost amount's) with identical
 -- ones parsed earlier, as simpleamountp does, so that equal values point to one heap object.
@@ -1397,20 +1415,20 @@ scanSimpleTransaction j s0 = do
       msameline = T.stripPrefix ";" r7
       !(commentlines, s2, n2) = scanCommentLines s1
       year = first3 $ toGregorian date  -- the default year for partial dates in the postings' date tags
-  (sps, n) <- scanPostings year s2 (n1 + n2) []
+  (sps, n) <- scanPostings year (1 + length commentlines) s2 (n1 + n2) []
   Right (SimpleTransaction{stDate=date, stDate2=mdate2, stStatus=status, stCode=code, stDescription=T.strip desc
                           ,stComment=commentText msameline commentlines
                           ,stTags=concatMap scanTransactionTags $ maybeToList msameline ++ commentlines
                           ,stPostings=sps}, n)
   where
     modifyacct = accountNameApplyModifiers (jparsealiases j) (concatAccountNames $ reverse $ jparseparentaccounts j) (jparseoptaliases j)
-    scanPostings year s !n acc = case scanSimpleLine s of
+    scanPostings year !lineoffset s !n acc = case scanSimpleLine s of
       Just (line, s', k)
         | isIndented line -> do
             -- a posting line, and any following indented comment lines (its comment's continuation)
             let !(commentlines, s'', k') = scanCommentLines s'
-            p <- scanSimplePosting j year modifyacct line commentlines
-            scanPostings year s'' (n + k + k') (p : acc)
+            p <- scanSimplePosting j year lineoffset modifyacct line commentlines
+            scanPostings year (lineoffset + 1 + length commentlines) s'' (n + k + k') (p : acc)
         | otherwise -> Right (reverse acc, n)
       -- the end of the text, or a line with a CR: in an indented (posting) line that declines,
       -- since the general parser would accept the posting; any other line just ends the postings
@@ -1504,16 +1522,17 @@ startsWithSpace :: Text -> Bool
 startsWithSpace = maybe False (isNonNewlineSpace . fst) . T.uncons
 
 -- | A simple posting line (see fasttransactionp), scanned as postingp parses it: indentation,
--- an optional status mark, the account name, optionally an amount with cost, and optionally a
--- same-line comment; and given the texts of its following comment lines (see scanCommentLines).
+-- an optional status mark, the account name, optionally an amount with cost, optionally a balance
+-- assertion or assignment, and optionally a same-line comment; and given the line's position within
+-- the transaction, and the texts of its following comment lines (see scanCommentLines).
 -- Returns the status, the account name (with aliases and the parent account applied by the
 -- given function, as modifiedaccountnamep does, and virtual posting brackets removed, as postingp does), the
--- posting type, the amount if any, the comment text, and the comment's tags and posting dates
+-- posting type, the amount and balance assertion if any, the comment text, and the comment's tags and posting dates
 -- (the transaction's year is given for partial dates in those). Declines on a bracketed date
 -- in the comment (which postingcommentp would interpret), a date tag whose value is not a
--- simple date, a balance assertion or assignment, or anything else after the amount.
-scanSimplePosting :: Journal -> Year -> (AccountName -> Either RegexError AccountName) -> Text -> [Text] -> Either Text SimplePosting
-scanSimplePosting j year modifyacct line commentlines = do
+-- simple date, a balance assertion it does not handle, or anything else after the amount.
+scanSimplePosting :: Journal -> Year -> Int -> (AccountName -> Either RegexError AccountName) -> Text -> [Text] -> Either Text SimplePosting
+scanSimplePosting j year lineoffset modifyacct line commentlines = do
   -- an optional status mark, as statusp parses it, then spaces
   let (status, body) = case T.uncons $ T.dropWhile isNonNewlineSpace line of
         Just ('*', r) -> (Cleared, T.dropWhile isNonNewlineSpace r)
@@ -1524,16 +1543,19 @@ scanSimplePosting j year modifyacct line commentlines = do
       r2 = T.dropWhile isNonNewlineSpace r1
   -- a status mark and nothing else is an error (accountnamep needs at least one character)
   declineIf (T.null name) "malformed posting"
-  -- a balance assignment (= AMT with no amount before it): decline
-  declineIf (T.isPrefixOf "=" r2) "balance assertion or assignment"
   (mamt, r3) <-
-    if T.null r2 || T.isPrefixOf ";" r2
+    -- no amount (a following = begins a balance assignment)
+    if T.null r2 || T.isPrefixOf ";" r2 || T.isPrefixOf "=" r2
     then Right (Nothing, r2)
     else do (a, r) <- scanSimpleAmountAndCost j r2; Right (Just a, r)
-  -- then a balance assertion: decline; or an optional same-line comment; anything else is an error
+  -- then an optional balance assertion or assignment
   let r4 = T.dropWhile isNonNewlineSpace r3
-  declineIf (T.isPrefixOf "=" r4) "balance assertion or assignment"
-  msameline <- case T.uncons r4 of
+  (massertion, r5) <-
+    if T.isPrefixOf "=" r4
+    then do (a, r) <- scanSimpleAssertion j lineoffset line r4; Right (Just a, r)
+    else Right (Nothing, r4)
+  -- then an optional same-line comment; anything else is an error
+  msameline <- case T.uncons r5 of
     Nothing       -> Right Nothing
     Just (';', r) -> Right (Just r)
     _             -> Left "unexpected text after the amount"
@@ -1545,9 +1567,24 @@ scanSimplePosting j year modifyacct line commentlines = do
   let dates = concatMap snd tagsanddates
   -- as modifiedaccountnamep and postingp do (an alias error declines, to be reported there)
   full <- either (const $ Left "account alias error") Right $ modifyacct name
-  Right SimplePosting{spStatus=status, spAccount=textUnbracket full, spRealness=accountNamePostingType full, spAmount=mamt
+  Right SimplePosting{spStatus=status, spAccount=textUnbracket full, spRealness=accountNamePostingType full, spAmount=mamt, spAssertion=massertion
                      ,spComment=commentText msameline commentlines, spTags=concatMap fst tagsanddates
                      ,spDate=lookup "date" dates, spDate2=lookup "date2" dates}
+
+-- | A balance assertion or assignment as balanceassertionp parses it, and the text after it,
+-- given the posting's line offset within the transaction, the whole line, and the part of the
+-- line beginning with the first =. That is =, ==, =* or ==*, optional spaces, and an amount with
+-- an optional cost. Declines if a tab precedes the = on the line, rather than copy megaparsec's
+-- tab stop rule for calculating its column; and on anything scanSimpleAmountAndCost declines.
+scanSimpleAssertion :: Journal -> Int -> Text -> Text -> Either Text (SimpleAssertion, Text)
+scanSimpleAssertion j lineoffset line t = do
+  let before = T.length line - T.length t
+  declineIf (T.any (== '\t') $ T.take before line) "balance assertion after a tab"
+  let r1 = T.drop 1 t
+      (istotal, r2)     = maybe (False, r1) (True,) $ T.stripPrefix "=" r1
+      (isinclusive, r3) = maybe (False, r2) (True,) $ T.stripPrefix "*" r2
+  (a, r4) <- scanSimpleAmountAndCost j $ T.dropWhile isNonNewlineSpace r3
+  Right (SimpleAssertion{saAmount=a, saTotal=istotal, saInclusive=isinclusive, saLineOffset=lineoffset, saColumn=before + 1}, r4)
 
 -- | An account name as accountnamep parses it, and the text after it: one or more
 -- non-whitespace parts, separated by single spaces (a single tab also separates parts, and

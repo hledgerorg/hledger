@@ -41,15 +41,8 @@ Expected gains are for the 100k balance run; "general" means every command pays 
    (HashMap update and period data insertion per posting), and it computes amount widths more than
    once. print's own rendering is about 0.9s at 100k, and is shared by exports, hledger-ui and
    hledger-web: profile it.
-2. Parser fast path, balance assertions: the one common syntax it still declines (14% of entries
-   in the real journal above; everything in a journal that asserts every posting). Decided not
-   worth the code for now (2026-09-26); it would matter for assertion-heavy journals, where an
-   assertion costs about 3us in the general parser against 0.5us for a fast-path amount, so up to
-   20% of a run. About forty lines: mirror balanceassertionp (=, ==, =*, then the existing
-   amount-with-cost scanner), compute the = character's source position for the BalanceAssertion
-   (line offset within the entry plus column; decline when a tab precedes it, to avoid
-   megaparsec's tab-stop rule), and intern the asserted amount. Check mode covers the positions.
-   Also still declined: bracketed dates in posting comments, symbol-less amounts under a D directive.
+2. Parser fast path: still declined: balance assertions after a tab on the line, quoted commodity
+   symbols, bracketed dates in posting comments, symbol-less amounts under a D directive.
 3. Remaining lot overhead on lot journals, ~0.36s: calculateLots still sorts, rebuilds and re-ties
    every transaction (0.135s); basis-from-account-name and transacted-cost inference search every
    account name (0.07s); commodity tags, method coherence.
