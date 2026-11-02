@@ -1145,3 +1145,80 @@ Annualized TWR: 220.68%
 +---++------------+------------++---------------+----------+-------------+------++---------++------------+----------+
 
 >= 0
+
+# ** 42. With lots, the investment's cash flows are at cost basis, so a realised gain counts only when --pnl matches its posting
+<
+2024-01-01 buy
+    assets:cash        -$100
+    assets:broker      10 AAPL {$10}
+
+P 2024-06-01 AAPL $15
+
+2024-06-01 sell
+    assets:broker      -10 AAPL {$10} @ $15
+    assets:cash         $150
+    revenues:gain      -$50
+
+$ hledger -f - roi --inv assets:broker --pnl revenues:gain --value=then,$ -Y
++---++------------+------------++---------------+----------+-------------+-----++---------++------------+----------+
+|   ||      Begin |        End || Value (begin) | Cashflow | Value (end) | PnL ||     IRR || TWR/period | TWR/year |
++===++============+============++===============+==========+=============+=====++=========++============+==========+
+| 1 || 2024-01-01 | 2024-12-31 ||             0 |     $-50 |           0 | $50 || 164.94% ||     50.00% |   49.88% |
++---++------------+------------++---------------+----------+-------------+-----++---------++------------+----------+
+
+>= 0
+
+# ** 43. Without --pnl, the same sale is a withdrawal of its cost basis only, and the gain is not counted
+<
+2024-01-01 buy
+    assets:cash        -$100
+    assets:broker      10 AAPL {$10}
+
+P 2024-06-01 AAPL $15
+
+2024-06-01 sell
+    assets:broker      -10 AAPL {$10} @ $15
+    assets:cash         $150
+    revenues:gain      -$50
+
+$ hledger -f - roi --inv assets:broker --value=then,$ -Y
++---++------------+------------++---------------+----------+-------------+-----++-------++------------+----------+
+|   ||      Begin |        End || Value (begin) | Cashflow | Value (end) | PnL ||   IRR || TWR/period | TWR/year |
++===++============+============++===============+==========+=============+=====++=======++============+==========+
+| 1 || 2024-01-01 | 2024-12-31 ||             0 |        0 |           0 |   0 || 0.00% ||      0.00% |    0.00% |
++---++------------+------------++---------------+----------+-------------+-----++-------++------------+----------+
+
+>= 0
+
+# ** 44. When TWR can't be computed, --cashflow still shows the details first, to help troubleshoot
+<
+2024-01-10 short sale
+    investment    -10 F @ $100
+    assets:cash
+
+P 2024-01-20 F $90
+
+$ hledger -f - roi --inv investment --value=then,$ -b 2024-01 -e 2024-04 --cashflow
+
+IRR cash flows for 2024-01-01 - 2024-03-31
++------------++--------------------------------+---------------------+-------------+--------+
+|            ||                    Description | Investment, at cost | Profit/loss | Amount |
++============++================================+=====================+=============+========+
+| 2024-01-10 ||                     short sale |              $-1000 |           0 |  $1000 |
+| 2024-04-01 || value at the end of 2024-03-31 |                     |             |  $-900 |
++------------++--------------------------------+---------------------+-------------+--------+
+Amounts are from your point of view: what you put in is negative, what you take out (or still have) positive.
+
+
+TWR returns for period 2024-01-01 - 2024-03-31
++---++------------+------------+---------------++---------------+----------+-------------+-------------++-----------+---------------+
+|   ||      Begin |        End |          Part || Value (begin) | Deposits | Withdrawals | Value (end) || Return, % | Cumulative, % |
++===++============+============+===============++===============+==========+=============+=============++===========+===============+
+| 1 || 2024-01-01 | 2024-01-09 | no cash flows ||             0 |        0 |           0 |           0 ||      0.00 |          0.00 |
+| 2 || 2024-01-10 | 2024-01-10 |    cash flows ||             0 |        0 |      $-1000 |      $-1000 ||      0.00 |          0.00 |
+| 3 || 2024-01-11 | 2024-03-31 | no cash flows ||        $-1000 |        0 |           0 |       $-900 ||     error |         error |
++---++------------+------------+---------------++---------------+----------+-------------+-------------++-----------+---------------+
+Each row's return is (Value (end) - Withdrawals) / (Value (begin) + Deposits) - 1; they are chained.
+
+>2 /Cannot compute the time-weighted return for 2024-01-11 to 2024-03-31/
+>= 1
