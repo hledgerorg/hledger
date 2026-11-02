@@ -152,7 +152,11 @@ postings in the example below would be classifed as:
 If your journal records [lots](#lots-and-capital-gains), each disposal transaction has a
 realised gain posting, by default to `revenues:gain`. Make sure `--pnl`
 matches that account, eg `--pnl revenues:gain`, so realised gains are
-counted as profit rather than as cash flows out of the investment.
+counted as profit. Cash flows are measured at the investment postings'
+cost, which for lots is their cost basis, so without `--pnl` a sale is
+a withdrawal of its cost basis only, and its gain is not counted at
+all: IRR and TWR will understate the return (eg showing 0% for a buy
+and a sale at a profit).
 
 ### IRR and TWR explained
 
@@ -285,13 +289,15 @@ reports, or in a spreadsheet:
 
 The values can be checked with `hledger balance`: the value at the end
 of a day D is the investment's historical balance at the end of that
-day, valued then. For example, with `--value=then,$`:
+day, valued then. For example, if you ran `roi --value=then,$`, check
+the value at the end of day D with:
 
 ```cli
 $ hledger balance --historical --value=end,$ -e D+1 INVESTMENTQUERY
 ```
 
-(where `D+1` is the day after D). Holdings which have no market price
+(where `D+1` is the day after D; `--value=end` values at the end of
+the report period, which is day D). Holdings which have no market price
 are the exception, as `roi` values them at the price of their latest
 purchase or sale.
 
