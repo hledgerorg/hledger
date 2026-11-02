@@ -2170,6 +2170,82 @@ $  ./csvtest.sh
 
 >=0
 
+# ** 116. The currency rule sets a default commodity: amounts which already have one keep it.
+<
+2026-01-15,5,€7
+RULES
+fields date, a, b
+currency $
+account1 x
+amount1  %a
+account2 y
+amount2  %b
+account3 z
+$  ./csvtest.sh
+2026-01-15
+    x                                             $5
+    y                                             €7
+    z
+
+>=0
+
+# ** 117. Amounts given the currency keep their own digit groups and decimal mark,
+# in plain values and in expressions.
+<
+2026-01-15,"1,000.00",50.00
+RULES
+fields date, a, b
+currency $
+account1 x
+amount1  %a
+account2 y
+amount2  -(%b + 0)
+account3 z
+$  ./csvtest.sh
+2026-01-15
+    x                                         $1,000.00
+    y                                           $-50.00
+    z
+
+>=0
+
+# ** 118. A currency rule's value can be an amount showing the symbol's position and spacing.
+<
+2026-01-15,5,6
+RULES
+fields date, a, b
+currency1 1 USD
+currency2 1EUR
+account1 x
+amount1  %a
+account2 y
+amount2  %b
+account3 z
+$  ./csvtest.sh
+2026-01-15
+    x                                              5 USD
+    y                                              6EUR
+    z
+
+>=0
+
+# ** 119. Such an amount's number style is a default for the amounts' display style too.
+<
+2026-01-15,5
+RULES
+fields date, a
+decimal-mark .
+currency 1.000,00 EUR
+account1 x
+amount1  %a
+account2 y
+$  ./csvtest.sh
+2026-01-15
+    x                                              5,00 EUR
+    y
+
+>=0
+
 # ** .
 #<
 #$  ./csvtest.sh

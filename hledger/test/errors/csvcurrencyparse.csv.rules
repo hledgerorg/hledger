@@ -1,0 +1,4 @@
+skip 1
+date %1
+amount %2
+currency 123

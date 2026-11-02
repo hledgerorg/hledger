@@ -1292,10 +1292,14 @@ simpleamountp' mdepth kind =
         let msuggestedStyle = mdecmarkStyle <|> mcommodityStyle <|> mdefaultStyle
         (q,prec,mdec,mgrps) <- interpretNumber numRegion msuggestedStyle ambiguousRawNum mExponent
         -- if a default commodity has been set, apply it and its style to this amount
-        -- (unless it's a multiplier in an automated posting)
+        -- (unless it's a multiplier in an automated posting);
+        -- the number's own decimal mark and digit groups are kept where the default style has none
         defcs <- getDefaultCommodityAndStyle
         let (c,s) = case defcs of
-              Just (defc,defs) | kind /= MultiplierAmount -> (defc, defs{asprecision=max (asprecision defs) prec})
+              Just (defc,defs) | kind /= MultiplierAmount ->
+                (defc, defs{asprecision=max (asprecision defs) prec
+                           ,asdecimalmark=asdecimalmark defs <|> mdec
+                           ,asdigitgroups=asdigitgroups defs <|> mgrps})
               _ -> ("", amountstyle{asprecision=prec, asdecimalmark=mdec, asdigitgroups=mgrps})
         s' <- shareAmountStyle s
         return nullamt{acommodity=c, aquantity=sign q, astyle=s', acost=Nothing}
@@ -1360,7 +1364,9 @@ amountexprp kind = do
       defcs <- getDefaultCommodityAndStyle
       case defcs of
         Just (defc, defs) -> do
-          s <- shareAmountStyle defs{asprecision = max (asprecision defs) (asprecision $ astyle a)}
+          s <- shareAmountStyle defs{asprecision = max (asprecision defs) (asprecision $ astyle a)
+                                    ,asdecimalmark = asdecimalmark defs <|> asdecimalmark (astyle a)
+                                    ,asdigitgroups = asdigitgroups defs <|> asdigitgroups (astyle a)}
           pure a{acommodity = defc, astyle = s}
         Nothing -> pure a
 
@@ -1800,11 +1806,12 @@ disambiguateNumber msuggestedStyle (AmbiguousNumber grp1 sep grp2) =
   then NoSeparators grp1 (Just (sep, grp2))
   else WithSeparators sep [grp1, grp2] Nothing
   where
+    -- A style with neither a decimal mark nor digit groups (eg from a CSV currency rule
+    -- like "currency $", unlike a D or commodity directive) says nothing about the number.
     isValidDecimalBy :: Char -> AmountStyle -> Bool
     isValidDecimalBy c = \case
       AmountStyle{asdecimalmark = Just d} -> d == c
       AmountStyle{asdigitgroups = Just (DigitGroups g _)} -> g /= c
-      AmountStyle{asprecision = Precision 0} -> False
       _ -> True
 
 -- | Parse and interpret the structure of a number without external hints.
