@@ -280,7 +280,9 @@ In brief; each is described more fully in its section below.
   Results change for most journals with cash flows between valuations; if you record valuations only occasionally
   (eg with `--pnl` transactions), record one around large deposits and withdrawals.
   Also, cash flows are now measured from the investment's perspective (other postings in the transaction, eg fees, no longer affect them),
-  a holding without a market price is valued at its cost, and `--cashflow` shows each cash flow and the TWR steps, for checking the results.
+  a holding without a market price is valued at the price of its latest purchase or sale, the value at the end of a period uses the prices of its last day,
+  and `--cashflow` shows each cash flow and the TWR steps, for checking the results.
+  These can change IRR results too, eg with fees not matched by `--pnl`.
   See the roi docs.
   (Dmitry Astapov, [#2824], [#2825])
 
