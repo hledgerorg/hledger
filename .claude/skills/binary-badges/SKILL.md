@@ -12,8 +12,9 @@ install hledger via OS/distro package managers, each with a version badge.
 its own remotes `origin` → `hledger_site.git` and `hledgerorg`). Commit
 changes to `install.md` there — `cd site && git add src/install.md && git
 commit ...` — not in the main repo. That repo's commit messages are plain
-(no `;category:` prefix, no AI-disclosure line); match its existing log
-style, e.g. `install: update packaged-binary version badges`.
+(no `;category:` prefix, but with the usual `AI usage:` line, as in every
+AI-assisted hledger commit); match its existing log style, e.g.
+`install: update packaged-binary version badges`.
 
 ## Temporary state since 2026-09-20: repology badges are static
 
