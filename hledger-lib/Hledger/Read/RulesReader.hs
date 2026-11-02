@@ -92,7 +92,7 @@ import Text.Printf (printf)
 
 import Hledger.Data
 import Hledger.Utils
-import Hledger.Read.Common (aliasesFromOpts, Reader(..), InputOpts(..), amountp, statusp, includeFileParser, journalFinalise, accountnamep, transactioncommentp, postingcommentp )
+import Hledger.Read.Common (aliasesFromOpts, Reader(..), InputOpts(..), AmountParseKind(..), amountp, postingamountp, setDefaultCommodityAndStyle, statusp, includeFileParser, journalFinalise, accountnamep, transactioncommentp, postingcommentp )
 import Hledger.Write.Csv
 
 --- ** doctest setup
@@ -2117,8 +2117,9 @@ transactionFromCsvRecord timesarezoned mtzin tzout sourcepospair rules record =
 
     ----------------------------------------------------------------------
     -- 4. Build the transaction (and name it, so the postings can reference it).
+    -- Amounts calculated with * or / in an amount expression are rounded, as in journal format.
 
-    t = nulltransaction{
+    t = transactionRoundCalculatedAmounts nulltransaction{
            tsourcepos        = sourcepospair  -- the CSV file line(s) this transaction came from
           ,tdate             = date'
           ,tdate2            = mdate2'
@@ -2270,10 +2271,16 @@ getBalance errpfx rules record currency n = do
 parseAmount :: Text -> CsvRules -> CsvRecordGroup -> Text -> Text -> MixedAmount
 parseAmount errpfx rules record currency s =
     either mkerror mixedAmount $
-    runParser (evalStateT (amountp <* eof) journalparsestate) "" $
-    currency <> simplifySign s
+    if isAmountExpression s
+    then runParser (evalStateT (setcurrency >> postingamountp OrdinaryAmount <* eof) journalparsestate) "" s
+    else runParser (evalStateT (amountp <* eof) journalparsestate) "" $ currency <> simplifySign s
   where
     journalparsestate = nulljournal{jparsedecimalmark=parseDecimalMark rules}
+    -- An expression gets the currency like a D directive: applied to the result if it has no commodity.
+    setcurrency = unless (T.null currency) $
+      case runParser (evalStateT (amountp <* eof) journalparsestate) "" (currency <> "1") of
+        Right a -> setDefaultCommodityAndStyle (acommodity a, astyle a)
+        Left _  -> pure ()
     mkerror e = error' . T.unpack $ errpfx <> T.unlines
       ["could not parse \"" <> s <> "\" as an amount"
       ,showRecordFields rules record
@@ -2442,6 +2449,30 @@ unknownExpenseAccount = "expenses:unknown"
 unknownIncomeAccount  = "income:unknown"
 
 type CsvAmountString = Text
+
+-- | Does this CSV amount value contain an arithmetic operator, making it an amount expression ?
+-- That means a * or / anywhere, or a + or - which is not a leading sign
+-- (preceded only by spaces, opening parentheses or other signs)
+-- or an exponent sign (immediately preceded by a digit and e or E, as in 1e-5).
+-- Double-quoted text is ignored.
+--
+-- >>> map isAmountExpression ["5", "-5", "+5", "(5)", "-(5)", "--5", "1 + 2", "-(1 + 2)", "(1) + 2", "2 * 3", "\"A-B\" 1", "(1e-5)", "5 e-3"]
+-- [False,False,False,False,False,False,True,True,True,True,False,False,True]
+isAmountExpression :: Text -> Bool
+isAmountExpression = go [] . T.unpack
+  where
+    -- the first argument is the preceding characters, most recent first
+    go _ [] = False
+    go prevs ('"':cs) = go ('"':prevs) $ drop 1 $ dropWhile (/= '"') cs
+    go prevs (c:cs)
+      | c `elem` ['*','/'] = True
+      | c `elem` ['+','-'], isOperator prevs = True
+      | otherwise = go (c:prevs) cs
+    -- is a sign after these characters an operator, not a leading sign or an exponent sign ?
+    isOperator (e:d:_) | e `elem` ['e','E'], isDigit d = False
+    isOperator prevs = case dropWhile (== ' ') prevs of
+      []    -> False
+      (p:_) -> p `notElem` ['(','+','-']
 
 -- | Canonicalise the sign in a CSV amount string.
 -- Such strings can have a minus sign, parentheses (equivalent to minus),

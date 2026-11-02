@@ -2031,6 +2031,145 @@ $  ./csvtest.sh
 
 >=0
 
+# ** 108. An amount value containing an arithmetic operator is an amount expression.
+# After a minus sign, parentheses group the expression rather than meaning negative.
+<
+2026-01-15,15000,2.25
+RULES
+fields date, cost, duty
+account1 assets:broker
+amount1  ₹%cost + ₹%duty
+account2 assets:cash
+amount2  -(₹%cost + ₹%duty)
+$  ./csvtest.sh
+2026-01-15
+    assets:broker                             ₹15002.25
+    assets:cash                              ₹-15002.25
+
+>=0
+
+# ** 109. Values without an operator keep the CSV sign conventions:
+# parentheses mean negative, doubled signs cancel, a plus sign is dropped.
+# An exponent's sign is not an operator.
+<
+2026-01-15,(5),-(6),--7,+8,(1e-5)
+RULES
+fields date, a, b, c, d, e
+account1 x
+amount1  %a
+account2 y
+amount2  %b
+account3 z
+amount3  %c
+account4 w
+amount4  %d
+account5 u
+amount5  %e
+account6 v
+$  ./csvtest.sh
+2026-01-15
+    x                                             -5
+    y                                              6
+    z                                              7
+    w                                              8
+    u                                             -0.00001
+    v
+
+>=0
+
+# ** 110. In an expression, a parenthesised value groups rather than negates.
+<
+2026-01-15,(5)
+RULES
+fields date, a
+account1 x
+amount1  %a + 2
+account2 y
+$  ./csvtest.sh
+2026-01-15
+    x                                              7
+    y
+
+>=0
+
+# ** 111. The currency rule applies to an expression's result when it has no commodity,
+# so the expression can begin with a parenthesis, or mix plain numbers with symbols.
+<
+2026-01-15,5,2
+RULES
+fields date, a, b
+currency $
+account1 x
+amount1  (%a + %b)
+account2 y
+amount2  -%a - $%b
+$  ./csvtest.sh
+2026-01-15
+    x                                             $7
+    y                                            $-7
+
+>=0
+
+# ** 112. Results of * are rounded to the entry's precision, as in journal format.
+<
+2026-01-15,800.00
+RULES
+fields date, a
+account1 expenses:tax
+amount1  %a * 0.05
+account2 liabilities:card
+$  ./csvtest.sh
+2026-01-15
+    expenses:tax                                  40.00
+    liabilities:card
+
+>=0
+
+# ** 113. Likewise results of /.
+<
+2026-01-15,100.00
+RULES
+fields date, a
+account1 x
+amount1  %a / 3
+account2 y
+$  ./csvtest.sh
+2026-01-15
+    x                                             33.33
+    y
+
+>=0
+
+# ** 114. An -out field's expression result is negated, like a plain value.
+<
+2026-01-15,10,5
+RULES
+fields date, a, b
+account1 x
+amount1-out  %a + %b
+account2 y
+$  ./csvtest.sh
+2026-01-15
+    x                                            -15
+    y
+
+>=0
+
+# ** 115. A cost can follow an expression, and applies to its result.
+<
+2026-01-15,10,5
+RULES
+fields date, a, b
+account1 x
+amount1  %a + %b EUR @ $2
+account2 y
+$  ./csvtest.sh
+2026-01-15
+    x                                             15 EUR @ $2
+    y
+
+>=0
+
 # ** .
 #<
 #$  ./csvtest.sh

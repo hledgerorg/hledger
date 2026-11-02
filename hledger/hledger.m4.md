@@ -2793,8 +2793,8 @@ Likely to prevent other apps from reading your journal.
   `/` needs a plain number on the right, eg `$100.00 / 3`.
 - A cost, lot annotation or balance assertion can follow an expression, and applies to its result:
   `10 EUR + 5 EUR @ $1.10` is 15 EUR, costing $1.10 each.
-- Expressions can be used only in posting amounts, not in costs, balance assertions, directives,
-  or auto posting rule multipliers (`*AMT`).
+- Expressions can be used only in posting amounts (in journal format, or in [CSV rules](#amount-field)),
+  not in costs, balance assertions, directives, or auto posting rule multipliers (`*AMT`).
 
 #### Amount expression rounding
 
@@ -3945,6 +3945,9 @@ There are several ways to set posting amounts from CSV, useful in different situ
 
 If the CSV numbers have digit group marks (like `1,000.00`), see [`decimal-mark`](#decimal-mark).
 
+An amount value can be an [amount expression](#amount-expressions), eg `amount1 %price + %fee`
+(see [Amount signs](#amount-signs) for how this interacts with sign handling).
+
 #### Setting amounts
 
 Which amount fields to use depends on how the CSV shows amounts:
@@ -4020,6 +4023,11 @@ There is some special handling making it easier to parse and to reverse amount s
 - **If an amount value contains just a sign (or just a set of parentheses):**\
   that is removed, making it an empty value. `"+"` or `"-"` or `"()"` becomes `""`.
 
+These rules don't apply to a value containing an arithmetic operator
+(`*`, `/`, or a `+` or `-` which is not a leading sign or an exponent sign as in `1e-5`),
+which is read as an [amount expression](#amount-expressions) instead.
+In an expression, parentheses group rather than negate: `-(%price + %fee)` is minus the sum.
+
 To set an amount to its absolute value, ie discard its sign, use the [`abs`](#functions) function, eg `amount1 %{abs(%amt)}`.
 
 #### Amount decimal places
@@ -4045,6 +4053,7 @@ TLDR: if `import` is not generating the precisions or styles you want, add a `co
 
 `currency` sets a currency symbol, to be prepended to all postings' amounts.
 You can use this if the CSV amounts do not have a currency symbol, eg if it is in a separate column.
+(If an amount is an [amount expression](#amount-expressions), the symbol is applied to its result, if that has no symbol.)
 
 `currencyN` prepends a currency symbol to just the Nth posting's amount.
 
