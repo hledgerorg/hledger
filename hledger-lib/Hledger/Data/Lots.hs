@@ -294,10 +294,11 @@ journalAveragePoolCosts j mend =
 -- this function only identifies candidates so they can be validated uniformly.
 splitLotSubaccount :: AccountName -> Maybe (AccountName, Text)
 splitLotSubaccount a = do
+  -- check this first: it's cheap, and rules out almost all account names. (breakOnEnd reverses the text.)
+  guard $ "}" `T.isSuffixOf` a
   let (prefix, leaf) = T.breakOnEnd ":" a
   guard $ not (T.null prefix)
   guard $ "{" `T.isPrefixOf` leaf
-  guard $ "}" `T.isSuffixOf` leaf
   Just (T.dropEnd 1 prefix, leaf)
 
 -- | Strip any trailing lot subaccount (a final @:{...}@ component) from an
