@@ -80,9 +80,10 @@ postingsReport rspec@ReportSpec{_rsReportOpts=ropts@ReportOpts{..}} j = items
       (precedingps, reportps) = matchedPostingsBeforeAndDuring rspec j reportspan
 
       -- Postings, or summary postings with their subperiod's end date, to be displayed.
+      -- Without --empty, zero-amount postings are omitted.
       displayps :: [(Posting, Maybe Period)]
         | multiperiod = [(p', Just period') | (p', period') <- summariseps reportps]
-        | otherwise   = [(p', Nothing) | p' <- reportps]
+        | otherwise   = [(p', Nothing) | p' <- reportps, showempty || not (mixedAmountLooksZero $ pamount p')]
         where
           summariseps = summarisePostingsByInterval whichdate depthSpec showempty colspans
           showempty = empty_ || average_

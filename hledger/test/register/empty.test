@@ -1,0 +1,29 @@
+# * register command zero-amount postings
+
+<
+2021-01-01 x
+  assets:assigned  = 0
+  assets:other     1 USD
+  equity
+
+2021-01-02 y
+  assets:explicit  0
+  assets:other     1 USD
+  equity
+
+# ** 1. Zero-amount postings are hidden by default,
+# including amounts inferred from a balance assignment. (#2836)
+$ hledger -f- register
+2021-01-01 x                    assets:other                 1 USD         1 USD
+                                equity                      -1 USD             0
+2021-01-02 y                    assets:other                 1 USD         1 USD
+                                equity                      -1 USD             0
+
+# ** 2. -E shows them.
+$ hledger -f- register -E
+2021-01-01 x                    assets:assigned                  0             0
+                                assets:other                 1 USD         1 USD
+                                equity                      -1 USD             0
+2021-01-02 y                    assets:explicit                  0             0
+                                assets:other                 1 USD         1 USD
+                                equity                      -1 USD             0

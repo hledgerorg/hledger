@@ -43,7 +43,7 @@ $ hledger -ftimedot:- print
 >=
 
 # ** 2. And this register.
-$ hledger -ftimedot:- reg -w80
+$ hledger -ftimedot:- reg -E -w80
 2023-01-01 transaction descr..  (biz:research)                1.00          1.00
                                 (inc:client1)                 1.50          2.50
 2023-01-01 different transac..  (fos:haskell)                 1.00          3.50

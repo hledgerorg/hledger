@@ -6,7 +6,7 @@
 <
 2000/1/2
    a  0   ; date: 3/4,  date: 4-5, date:6.7
-$ hledger -f- register
+$ hledger -f- register -E
 > /^2000-03-04/
 
 # ** 2. If the date: or date2: tags do not have a valid simple date
@@ -23,7 +23,7 @@ end comment
    b  0
        ; date: 3.32
 
-$ hledger -f- register
+$ hledger -f- register -E
 >2 /10:16/
 >= 1
 
@@ -33,7 +33,7 @@ $ hledger -f- register
 <
 2000/1/2
    a  0   ; [=3-4]
-$ hledger -f- register --date2
+$ hledger -f- register -E --date2
 > /^2000-03-04/
 
 # ** 4. Date parsing and error reporting activates for square brackets
@@ -49,7 +49,7 @@ end comment
 2000/1/2
    b  0   ; [1/1=1/2/3/4] bad second date, should error
 
-$ hledger -f- register
+$ hledger -f- register -E
 >2 /-:9:21/
 >= 1
 
@@ -76,5 +76,5 @@ This transaction is unbalanced.
 2000/1/2
    a  0   ; date:
    b  0   ; date2: , c:d
-$ hledger -f- register --date2 tag:date2
+$ hledger -f- register -E --date2 tag:date2
 2000-01-02                      b                                0             0

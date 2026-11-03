@@ -63,6 +63,9 @@ $ hledger register checking
 
 With `--date2`, it shows and sorts by secondary date instead.
 
+Postings with a zero amount (including amounts inferred from a balance assignment)
+are not shown by default; use the `--empty`/`-E` flag to see them.
+
 For performance reasons, column widths are chosen based on the first 1000 lines;
 this means unusually wide values in later lines can cause visual discontinuities
 as column widths are adjusted. If you want to ensure perfect alignment, 
@@ -118,7 +121,7 @@ $ hledger register --monthly income
 2008/01                 income:salary                          $-1          $-1
 2008/06                 income:gifts                           $-1          $-2
 ```
-Periods with no activity, and summary postings with a zero amount, are
+Here too, periods with no activity, and summary postings with a zero amount, are
 not shown by default; use the `--empty`/`-E` flag to see them:
 
 ```cli
