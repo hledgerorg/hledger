@@ -173,33 +173,50 @@ renderColumns :: TableOpts  -- ^ rendering options for the table
               -> Builder
 renderColumns TableOpts{prettyTable=pretty, tableBorders=borders, borderSpaces=spaces} is h =
     mconcat . intersperse "\n"                   -- Put each line on its own line
-    . map (addBorders . mconcat) . transpose     -- Change to a list of lines and add borders
-    . map (either hsep padCell) . flattenHeader  -- We now have a matrix of strings
-    . zipHeader 0 is $ padRow <$> h  -- Pad cell height and add width marker
+    . map (addBorders . finishLine)              -- Add borders
+    . foldr (zipWith ($)) (replicate nLines (PartialLine 0 mempty))  -- Build each line, from right to left
+    . map (either hsep cellLines) . flattenHeader
+    . zipHeader 0 is $ h                         -- Add width marker
   where
-    -- Pad each cell to have the appropriate width
-    padCell (w, Cell TopLeft     ls) = map (\x -> wbBuilder x <> fromText (T.replicate (w - wbWidth x) " ")) ls
-    padCell (w, Cell BottomLeft  ls) = map (\x -> wbBuilder x <> fromText (T.replicate (w - wbWidth x) " ")) ls
-    padCell (w, Cell TopRight    ls) = map (\x -> fromText (T.replicate (w - wbWidth x) " ") <> wbBuilder x) ls
-    padCell (w, Cell BottomRight ls) = map (\x -> fromText (T.replicate (w - wbWidth x) " ") <> wbBuilder x) ls
+    -- Each column's contribution to each line (having the same number of lines as the others,
+    -- with blank lines added according to the cell's vertical alignment).
+    cellLines (w, Cell TopLeft     ls) = map (leftAligned w) ls  ++ blankLines w ls
+    cellLines (w, Cell BottomLeft  ls) = blankLines w ls ++ map (leftAligned w) ls
+    cellLines (w, Cell TopRight    ls) = map (rightAligned w) ls ++ blankLines w ls
+    cellLines (w, Cell BottomRight ls) = blankLines w ls ++ map (rightAligned w) ls
 
+    blankLines w ls = replicate (nLines - length ls) (addSpaces w)
 
-    -- Pad each cell to have the same number of lines
-    padRow (Cell TopLeft     ls) = Cell TopLeft     $ ls ++ replicate (nLines - length ls) mempty
-    padRow (Cell TopRight    ls) = Cell TopRight    $ ls ++ replicate (nLines - length ls) mempty
-    padRow (Cell BottomLeft  ls) = Cell BottomLeft  $ replicate (nLines - length ls) mempty ++ ls
-    padRow (Cell BottomRight ls) = Cell BottomRight $ replicate (nLines - length ls) mempty ++ ls
-
-    hsep :: Properties -> [Builder]
-    hsep NoLine     = replicate nLines $ if spaces then "  " else ""
-    hsep SingleLine = replicate nLines $ midBar pretty spaces
-    hsep DoubleLine = replicate nLines $ doubleMidBar pretty spaces
+    hsep :: Properties -> [PartialLine -> PartialLine]
+    hsep NoLine     = replicate nLines $ if spaces then addSpaces 2 else id
+    hsep SingleLine = replicate nLines $ addText $ midBar pretty spaces
+    hsep DoubleLine = replicate nLines $ addText $ doubleMidBar pretty spaces
 
     addBorders xs | borders   = leftBar pretty spaces <> xs <> rightBar pretty spaces
                   | spaces    = fromText " " <> xs <> fromText " "
                   | otherwise = xs
 
     nLines = fromMaybe 0 . maximumMay . map (\(Cell _ ls) -> length ls) $ headerContents h
+
+-- | A table line being built from right to left: some leading spaces, kept as a count so that
+-- runs of them from blank cells can be merged, and the text after those. Table rows are often
+-- mostly blank (eg a register row with a many-commodity balance), so this saves a lot of work.
+data PartialLine = PartialLine !Int Builder
+
+addSpaces :: Int -> PartialLine -> PartialLine
+addSpaces w (PartialLine n b) = PartialLine (n + w) b
+
+addText :: Builder -> PartialLine -> PartialLine
+addText t l = PartialLine 0 (t <> finishLine l)
+
+leftAligned, rightAligned :: Int -> WideBuilder -> PartialLine -> PartialLine
+leftAligned  w x = addText (wbBuilder x) . addSpaces (max 0 $ w - wbWidth x)
+rightAligned w x = addSpaces (max 0 $ w - wbWidth x) . addText (wbBuilder x)
+
+finishLine :: PartialLine -> Builder
+finishLine (PartialLine n b)
+  | n <= 0    = b
+  | otherwise = fromText (T.replicate n " ") <> b
 
 renderHLine :: VPos
             -> Bool  -- ^ show outer borders
