@@ -2484,9 +2484,9 @@ processDisposePosting styles verbosetags j t lotState p = do
                   disposeAmt = (amountSetQuantity (closesign * consumedQty) lotAmt){acostbasis = Just lotCb}
               let -- For bare disposes without a price (e.g. fee deductions), keep no cost.
                   -- When splitting across multiple lots, normalize TotalCost to UnitCost
-                  -- (since TotalCost would be wrong for the split quantity).
+                  -- (since TotalCost would be wrong for the split quantity) (#2839).
                   disposeAmt' | isNothing (acost lotAmt) = disposeAmt{acost = Nothing}
-                              | isBare && length selected > 1 = disposeAmt{acost = amountNormalizeCostToUnit lotAmt}
+                              | length selected > 1 = disposeAmt{acost = amountNormalizeCostToUnit lotAmt}
                               | otherwise = disposeAmt
               Right p{ paccount  = acctWithLot
                      , pamount   = mixedAmount disposeAmt'

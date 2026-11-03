@@ -1554,3 +1554,56 @@ $ hledger -f- print desc:sell
     revenues:zz gains                          $-100
 
 >=
+
+# ** 77. A disposal written with {} and a total price (@@) which spans several lots
+# apportions the total across the lots (shown as a unit price), like a bare disposal (#2839).
+<
+commodity AAPL  ; lots:
+account revenues:gain  ; type: G
+
+2026-01-01 buy low
+    assets:stocks      10 AAPL @ $50
+    assets:cash       $-500
+
+2026-02-01 buy high
+    assets:stocks      10 AAPL @ $60
+    assets:cash       $-600
+
+2026-03-01 sell
+    assets:stocks    -15 AAPL {} @@ $1050
+    assets:cash      $1050
+
+$ hledger -f- print -x --lots desc:sell
+2026-03-01 sell
+    assets:stocks:{2026-01-01, $50}              -10 AAPL {2026-01-01, $50} @ $70
+    assets:stocks:{2026-02-01, $60}               -5 AAPL {2026-02-01, $60} @ $70
+    assets:cash                                $1050
+    revenues:gain                              $-250
+
+>=
+
+# ** 78. And a written gain is checked against the apportioned total (#2839).
+<
+commodity AAPL  ; lots:
+account revenues:gain  ; type: G
+
+2026-01-01 buy low
+    assets:stocks      10 AAPL @ $50
+    assets:cash       $-500
+
+2026-02-01 buy high
+    assets:stocks      10 AAPL @ $60
+    assets:cash       $-600
+
+2026-03-01 sell
+    assets:stocks    -15 AAPL {} @@ $1050
+    assets:cash      $1050
+    revenues:gain    $-250
+
+$ hledger -f- print desc:sell
+2026-03-01 sell
+    assets:stocks                                -15 AAPL {} @@ $1050
+    assets:cash                                $1050
+    revenues:gain                              $-250
+
+>=
