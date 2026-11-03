@@ -1,0 +1,238 @@
+# * Text.Tabular.AsciiWide's table rendering, as used by various reports:
+# vertical and horizontal cell alignment, multi-line cells, wide characters, overflowing cells, borders.
+
+# ** 1. Register, where a row's amount has more lines than its balance: the amount is top-aligned, the balance bottom-aligned.
+<
+2024-01-01 first
+    a   1 A
+    b
+
+2024-02-01 second
+    a   -1 A
+    a   1 B
+    b   1 A
+    b   -1 B
+$ hledger -f- register a -M
+2024-01   a                                                    1 A           1 A
+2024-02   a                                                   -1 A              
+                                                               1 B           1 B
+
+# ** 2. Register, where a row's balance has more lines than its amount.
+<
+2024-01-01 日本語の説明です
+    資産:銀行:口座  1000 円
+    費用:食費
+
+2024-01-02 x
+    a  1 USD
+    a  2 EUR
+    b
+$ hledger -f- register
+2024-01-01 日本語の説明です     資産:銀行:口座             1000 円       1000 円
+                                費用:食費                 -1000 円             0
+2024-01-02 x                    a                            1 USD         1 USD
+                                a                            2 EUR         2 EUR
+                                                                           1 USD
+                                b                           -2 EUR              
+                                                            -1 USD             0
+
+# ** 3. The same with a monthly report, whose date column is wider.
+<
+2024-01-01 日本語の説明です
+    資産:銀行:口座  1000 円
+    費用:食費
+
+2024-01-02 x
+    a  1 USD
+    a  2 EUR
+    b
+$ hledger -f- register -M
+2024-01   a                                                  2 EUR         2 EUR
+                                                             1 USD         1 USD
+          b                                                 -2 EUR              
+                                                            -1 USD             0
+          費用:食費                                       -1000 円      -1000 円
+          資産:銀行:口座                                   1000 円             0
+
+# ** 4. Aregister with a many-line balance.
+<
+2024-01-01 first
+    a  1 USD
+    b
+
+2024-01-02 second
+    a  2 EUR
+    b
+$ hledger -f- aregister a
+Transactions in a and subaccounts:
+2024-01-01 first                b                            1 USD         1 USD
+2024-01-02 second               b                            2 EUR         2 EUR
+                                                                           1 USD
+
+# ** 5. Register amounts wider than their columns are not clipped or padded, and text cells are clipped.
+<
+2024-01-01 a long description that needs to be clipped by the column
+    assets:some:very:long:account:name:indeed  123456789012.34 USD
+    b
+
+2024-01-02 virtual postings
+    (c)  1 EUR
+    [d]  1 GBP
+    [e]  -1 GBP
+$ hledger -f- register -w 40
+2024-01-01 ..  ..  123456789012.34 USD  123456789012.34 USD
+               b   -123456789012.34 USD          0
+2024-01-02 ..  ..       1 EUR      1 EUR
+               ..       1 GBP      1 EUR
+                                   1 GBP
+               ..      -1 GBP      1 EUR
+
+# ** 6. Colours don't count towards the column widths.
+<
+2024-01-01 first
+    a   1 A
+    b
+
+2024-02-01 second
+    a   -1 A
+    a   1 B
+    b   1 A
+    b   -1 B
+$ hledger -f- register --color=y -M
+2024-01   a                                                    1 A           1 A
+          b                                                   [31m-1 A[m             0
+2024-02   a                                                   [31m-1 A[m          [31m-1 A[m
+                                                               1 B           1 B
+          b                                                    1 A              
+                                                              [31m-1 B[m             0
+
+# ** 7. A balance report with many-line cells, without borders.
+<
+2024-01-01 日本語の説明です
+    資産:銀行:口座  1000 円
+    費用:食費
+
+2024-01-02 x
+    a  1 USD
+    a  2 EUR
+    b
+$ hledger -f- balance -M
+Balance changes in 2024-01:
+
+                ||            Jan 
+================++================
+ a              ||   2 EUR, 1 USD 
+ b              || -2 EUR, -1 USD 
+ 費用:食費      ||       -1000 円 
+ 資産:銀行:口座 ||        1000 円 
+----------------++----------------
+                ||              0 
+
+# ** 8. The same with --pretty, with box drawing lines and wide characters.
+<
+2024-01-01 日本語の説明です
+    資産:銀行:口座  1000 円
+    費用:食費
+
+2024-01-02 x
+    a  1 USD
+    a  2 EUR
+    b
+$ hledger -f- balance -M -T --pretty
+Balance changes in 2024-01:
+
+┌────────────────╥────────────────┬────────────────┐
+│                ║            Jan │          Total │
+╞════════════════╬════════════════╪════════════════╡
+│ a              ║   2 EUR, 1 USD │   2 EUR, 1 USD │
+│ b              ║ -2 EUR, -1 USD │ -2 EUR, -1 USD │
+│ 費用:食費      ║       -1000 円 │       -1000 円 │
+│ 資産:銀行:口座 ║        1000 円 │        1000 円 │
+├────────────────╫────────────────┼────────────────┤
+│                ║              0 │              0 │
+└────────────────╨────────────────┴────────────────┘
+
+# ** 9. With row totals and averages, in the tall layout, each column having its own width.
+<
+2024-01-01 日本語の説明です
+    資産:銀行:口座  1000 円
+    費用:食費
+
+2024-01-02 x
+    a  1 USD
+    a  2 EUR
+    b
+$ hledger -f- balance -M -T -A --tree -N --layout=tall
+Balance changes in 2024-01:
+
+                ||      Jan     Total   Average 
+================++==============================
+ a              ||    2 EUR     2 EUR     2 EUR 
+ a              ||    1 USD     1 USD     1 USD 
+ b              ||   -2 EUR    -2 EUR    -2 EUR 
+ b              ||   -1 USD    -1 USD    -1 USD 
+ 費用:食費      || -1000 円  -1000 円  -1000 円 
+ 資産:銀行:口座 ||  1000 円   1000 円   1000 円 
+
+# ** 10. A balance sheet, which joins several tables, with --pretty.
+<
+2024-01-01 x
+    assets:銀行  1000 円
+    assets:cash  5 USD
+    liabilities:card  -2 EUR
+    equity
+$ hledger -f- balancesheet -M --pretty
+Monthly Balance Sheet 2024-01-31
+
+┌──────────────────╥────────────────────────┐
+│                  ║             2024-01-31 │
+╞══════════════════╬════════════════════════╡
+│ Assets           ║                        │
+├──────────────────╫────────────────────────┤
+│ assets:cash      ║                  5 USD │
+│ assets:銀行      ║                1000 円 │
+├──────────────────╫────────────────────────┤
+│                  ║         5 USD, 1000 円 │
+╞══════════════════╬════════════════════════╡
+│ Liabilities      ║                        │
+├──────────────────╫────────────────────────┤
+│ liabilities:card ║                  2 EUR │
+├──────────────────╫────────────────────────┤
+│                  ║                  2 EUR │
+╞══════════════════╬════════════════════════╡
+│ Net:             ║ -2 EUR, 5 USD, 1000 円 │
+└──────────────────╨────────────────────────┘
+
+# ** 11. Print, which aligns amounts using table rows.
+<
+2024-01-01 日本語の説明です
+    資産:銀行:口座  1000 円
+    費用:食費
+
+2024-01-02 x
+    a  1 USD
+    a  2 EUR
+    b
+$ hledger -f- print
+2024-01-01 日本語の説明です
+    資産:銀行:口座                              1000 円
+    費用:食費
+
+2024-01-02 x
+    a                                              1 USD
+    a                                              2 EUR
+    b
+
+>=
+
+# ** 12. Print with a cost and a balance assertion.
+<
+2024-01-01 x
+    a  1 AAA @ $2 = 1 AAA
+    b  $-2
+$ hledger -f- print
+2024-01-01 x
+    a                                              1 AAA @ $2 = 1 AAA
+    b                                            $-2
+
+>=
