@@ -1171,16 +1171,23 @@ the negative posting is split:
   is priceless - lots are still reduced, but no gain is calculated (as with
   any priceless bare disposal).
 
-Any balance assertion on the original posting is kept only on the dispose
-portion posted last, so it is still checked after the full original
-quantity.
+The dispose portion comes first, then the transfer portion, which keeps any
+balance assertion on the original posting, so it is still checked after the
+full original quantity.
 
 During lot calculation, the fee's dispose portion selects lots *before* the
-transfer pair does (`processTransaction` handles fee-split disposes first):
-the disposal method in effect thus applies to the full pre-transfer lot set -
-under default FIFO the fee consumes the oldest lot - and the transfer carries
-the remainder (#2692). Other disposes still run after transfers, so a lot
-transferred in can be disposed in the same transaction.
+transfer pair does (`processTransaction` handles fee-split disposes first,
+whatever their position): the disposal method in effect thus applies to the
+full pre-transfer lot set - under default FIFO the fee consumes the oldest
+lot - and the transfer carries the remainder (#2692).
+
+Otherwise, a transaction's lot postings are processed in the order written,
+with a transfer group processed when its first posting is reached. So the
+same entry written out by hand (fee disposal first, then the transfer
+postings), or re-read from `print -x` output (which shows the fee fragment
+first), selects the same lots; and a lot transferred in, or acquired, can be
+disposed later in the same transaction. Posting order only matters when
+postings in the same account and commodity share a transaction.
 
 Auto-splitting also works when the outflow amount is inferred by balancing
 (eg from a balance assignment): after resolving a transaction's balance

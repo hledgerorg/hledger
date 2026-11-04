@@ -378,8 +378,8 @@ commodity A  ; lots:
 
 $ hledger -f- print --lots -x desc:transfer
 2026-02-17 transfer with fee
-    assets:x1:{2026-01-15, $100}                  -1.00 A {2026-01-15, $100}
     assets:x1:{2026-01-15, $100}                  -0.05 A {2026-01-15, $100}
+    assets:x1:{2026-01-15, $100}                  -1.00 A {2026-01-15, $100}
     expenses:fees                                  0.05 A
     assets:x2:{2026-01-15, $100}                   1.00 A {2026-01-15, $100}
 
@@ -462,8 +462,8 @@ commodity A  ; lots:
 
 $ hledger -f- print --lots -x desc:transfer
 2026-02-17 transfer with priced fee
-    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
     assets:x1:{2026-01-15, $100}                  -0.05 A {2026-01-15, $100} @ $150
+    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
     expenses:fees                                  0.05 A @ $150
     assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
     revenues:gain                                $-2.50
@@ -488,8 +488,8 @@ commodity A  ; lots:
 
 $ hledger -f- print desc:transfer
 2026-02-17 transfer with priced fee
-    assets:x1                                     -0.95 A {2026-01-15, $100}
     assets:x1                                     -0.05 A {2026-01-15, $100} @ $150
+    assets:x1                                     -0.95 A {2026-01-15, $100}
     expenses:fees                                  0.05 A @ $150
     assets:x2                                      0.95 A {2026-01-15, $100}
     revenues:gain                                $-2.50
@@ -511,8 +511,8 @@ commodity A  ; lots:
 
 $ hledger -f- print --lots desc:transfer
 2026-02-17 transfer with priced fee
-    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
     assets:x1:{2026-01-15, $100}                  -0.05 A {2026-01-15, $100} @ $150
+    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
     expenses:fees                                  0.05 A @ $150
     assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
     revenues:gain                                $-2.50
@@ -561,8 +561,8 @@ commodity A  ; lots:
 
 $ hledger -f- print --lots -x desc:transfer
 2026-02-17 transfer with fee
-    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
     assets:x1:{2026-01-15, $100}                  -0.05 A {2026-01-15, $100}
+    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
     expenses:fees                                  0.05 A
     assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
 
@@ -606,8 +606,8 @@ commodity A  ; lots:
 
 $ hledger -f- print --lots -x desc:transfer
 2026-02-17 transfer with priced fee
-    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
     assets:x1:{2026-01-15, $100}                  -0.05 A {2026-01-15, $100} @ $150
+    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
     assets:x1                                      0 A                              =* 0 A
     expenses:fees                                  0.05 A @ $150
     assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
@@ -632,8 +632,8 @@ commodity ABC ; lots:
 
 $ hledger -f- print -a date:2026-02
 2026-02-01 transfer with fee
-    assets:broker1:{2026-01-01, $4.34782609}      -2.0 ABC {2026-01-01, $4.34782609}  ; ptype: transfer-from
     assets:broker1:{2026-01-01, $4.34782609}      -0.3 ABC {2026-01-01, $4.34782609}  ; ptype: dispose, generated-posting:, feesplit-posting:
+    assets:broker1:{2026-01-01, $4.34782609}      -2.0 ABC {2026-01-01, $4.34782609}  ; ptype: transfer-from
     assets:broker1                                 0 ABC                             =* 0 ABC  ; generated-posting:, lot-parent-assertion:
     assets:broker2:{2026-01-01, $4.34782609}       2.0 ABC {2026-01-01, $4.34782609}  ; ptype: transfer-to
     expenses:fees                                  0.3 ABC
@@ -657,8 +657,8 @@ commodity A  ; lots:
 
 $ hledger -f- print --lots -x desc:transfer
 2026-02-17 transfer with priced fee
-    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
     assets:x1:{2026-01-15, $100}                  -0.05 A {2026-01-15, $100} @ $150
+    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
     assets:x1                                      0 A                              =* 0 A
     assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
     expenses:fees                                  0.05 A @ $150
@@ -805,8 +805,8 @@ $ hledger -f- print -x
     assets:transfers                               5 ABC {2020-03-08}
 
 2020-04-05 four
-    assets:transfers                              -4.9 ABC {2020-03-08}
     assets:transfers                              -0.1 ABC {2020-03-08, "0001", $5}
+    assets:transfers                              -4.9 ABC {2020-03-08}
     assets:broker2                                 4.9 ABC {2020-03-08}
     expenses:fees                                  0.1 ABC
 
@@ -832,9 +832,9 @@ commodity ABC ; lots:
      expenses:fees
 $ hledger -f- print --lots -x date:2020-04
 2020-04-05 transfer with fee
+    assets:broker1:{2020-03-08, "0001", $5}           -0.1 ABC {2020-03-08, "0001", $5}
     assets:broker1:{2020-03-08, "0001", $5}           -1.9 ABC {2020-03-08, "0001", $5}
     assets:broker1:{2020-03-08, "0002", $3.33333333}  -3 ABC {2020-03-08, "0002", $3.33333333}
-    assets:broker1:{2020-03-08, "0001", $5}           -0.1 ABC {2020-03-08, "0001", $5}
     assets:broker1                                     0 ABC                                   =* 0 ABC
     assets:broker2:{2020-03-08, "0001", $5}            1.9 ABC {2020-03-08, "0001", $5}
     assets:broker2:{2020-03-08, "0002", $3.33333333}   3 ABC {2020-03-08, "0002", $3.33333333}
@@ -952,8 +952,8 @@ $ hledger -f- bal --lots -N
      expenses:fees       0.1 ABC
 $ hledger -f- print --lots -x date:2020-04
 2020-04-04 transfer with fee
-    assets:broker1:{2020-03-08, $2}               -4.9 ABC {2020-03-08, $2}
     assets:broker1:{2020-03-08, $2}               -0.1 ABC {2020-03-08, $2}
+    assets:broker1:{2020-03-08, $2}               -4.9 ABC {2020-03-08, $2}
     assets:broker2:{2020-03-08, $2}                4.9 ABC {2020-03-08, $2}
     expenses:fees                                  0.1 ABC
 
@@ -1124,3 +1124,55 @@ $ hledger -f- print --verbose-tags desc:transfer
     assets:broker:USD                            632.83 USD {2024-09-09}  ; ptype: transfer-to
 
 >=
+
+# ** 49. A transfer fee written out by hand, as print -x shows it (the fee
+# disposal before the transfer postings), selects the same lots as the
+# auto-split form, since lot postings are processed in the order written.
+<
+commodity ABC ; lots:
+
+2020-03-08 one
+     assets:cash         -$10
+     assets:broker1      2 ABC
+
+2020-03-08 two
+     assets:cash         -$10
+     assets:broker1      3 ABC
+
+2020-04-05 transfer with fee
+     assets:broker1     -0.1 ABC {2020-03-08, "0001", $5}
+     assets:broker1     -4.9 ABC
+     assets:broker2      4.9 ABC
+     expenses:fees       0.1 ABC
+$ hledger -f- print --lots -x date:2020-04
+2020-04-05 transfer with fee
+    assets:broker1:{2020-03-08, "0001", $5}           -0.1 ABC {2020-03-08, "0001", $5}
+    assets:broker1:{2020-03-08, "0001", $5}           -1.9 ABC {2020-03-08, "0001", $5}
+    assets:broker1:{2020-03-08, "0002", $3.33333333}  -3 ABC {2020-03-08, "0002", $3.33333333}
+    assets:broker2:{2020-03-08, "0001", $5}            1.9 ABC {2020-03-08, "0001", $5}
+    assets:broker2:{2020-03-08, "0002", $3.33333333}   3 ABC {2020-03-08, "0002", $3.33333333}
+    expenses:fees                                      0.1 ABC
+
+>=
+
+# ** 50. With the transfer postings written first, the transfer selects lots
+# first, and the fee's specific lot is no longer available.
+<
+commodity ABC ; lots:
+
+2020-03-08 one
+     assets:cash         -$10
+     assets:broker1      2 ABC
+
+2020-03-08 two
+     assets:cash         -$10
+     assets:broker1      3 ABC
+
+2020-04-05 transfer with fee
+     assets:broker1     -4.9 ABC
+     assets:broker2      4.9 ABC
+     assets:broker1     -0.1 ABC {2020-03-08, "0001", $5}
+     expenses:fees       0.1 ABC
+$ hledger -f- print --lots -x date:2020-04
+>2 /no lots matching \{2020-03-08, "0001", \$5\} for commodity ABC in account assets:broker1 on 2020-04-05/
+>=1

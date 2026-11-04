@@ -153,8 +153,8 @@ $ hledger -f - print -I -x
     assets:wallet1                                10 ETH {$2000} @ $2000
 
 2026-02-01 transfer with fee
-    assets:wallet1                                -9.99 ETH
     assets:wallet1                                -0.01 ETH @ $2100
+    assets:wallet1                                -9.99 ETH
     expenses:fees                                  0.01 ETH @ $2100
     assets:wallet2                                 9.99 ETH
 

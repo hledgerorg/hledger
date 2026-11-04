@@ -124,7 +124,7 @@ module Hledger.Data.Lots (
 import Control.Applicative ((<|>))
 import Data.Bifunctor (first)
 import Control.Monad (foldM, guard, unless, when)
-import Data.List (dropWhileEnd, intercalate, partition, sortOn)
+import Data.List (dropWhileEnd, intercalate, partition, sort, sortOn)
 import Data.Ord (Down(..))
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
@@ -653,11 +653,11 @@ transactionHasLotfulAmounts lotfulcomms = any (any lotful . amountsRaw . pamount
 -- The dispose portion is tagged `_feesplit-posting` so plain print hides it,
 -- and `_generated-posting` to mark its provenance; -x or --verbose-tags
 -- reveals it.
--- The original posting's balance assertion is kept only on the dispose
--- portion (the last of the two), so it is still checked after the full
--- original quantity has been posted.
-transactionAutoSplitFeeOutflows
-  :: Bool
+-- The dispose portion(s) come first, then the transfer portion, which keeps
+-- the original posting's balance assertion, so it is still checked after
+-- the full original quantity has been posted.
+transactionAutoSplitFeeOutflows ::
+     Bool
   -> (AccountName -> Maybe AccountType)
   -> (CommoditySymbol -> Bool)
   -> (AccountName -> Bool)
@@ -703,18 +703,19 @@ transactionAutoSplitFeeOutflows verbosetags lookupAccountType commodityIsLotful 
       guard $ toQty > 0 && feeQty > 0
       feeAmts <- findFeeCounterparts comm feeQty
       let origP = originalPosting p
+          -- The fee portions come first, then the transfer portion, which
+          -- keeps any balance assertion (checked after the full original
+          -- quantity has been posted). This order also shows, and re-reads,
+          -- the lot processing order (fee disposals before the transfer).
           p1    = p{ pamount = mixedAmount (amountSetQuantity (negate toQty)  a)
-                   , poriginal = Just origP
-                   , pbalanceassertion = Nothing }
-          -- Any balance assertion is kept only on the last portion posted.
-          mkFeePart islast fa
+                   , poriginal = Just origP }
+          mkFeePart fa
                 = addTag feesplitPostingTagName
                 $ addTag generatedPostingTagName
                 $ p{ pamount = mixedAmount (amountSetQuantity (negate (aquantity fa)) a){ acost = acost fa }
                    , poriginal = Just origP
-                   , pbalanceassertion = if islast then pbalanceassertion p else Nothing }
-          n = length feeAmts
-      Just (p1 : [mkFeePart (i == n) fa | (i, fa) <- zip [1..] feeAmts])
+                   , pbalanceassertion = Nothing }
+      Just (map mkFeePart feeAmts ++ [p1])
 
     addTag name = postingAddHiddenAndMaybeVisibleTag False verbosetags (name, "")
 
@@ -2069,10 +2070,10 @@ processTransaction styles verbosetags j needsLabels (ls, acc) t = do
         -- oldest lot - and the transfer carries the remainder. (#2692)
         (ls0, disposeMap) <- foldM processOneFeeDispose (ls, M.empty) indexedFeeDisposes
         groups <- groupIndexedTransferPostings t indexedFroms indexedTos
-        -- Then transfer groups, building an IntMap from original index to expanded postings.
-        (ls', transferMap) <- foldM processOneGroup (ls0, M.empty) groups
-        -- Walk all postings in original order, substituting expanded results.
-        (ls'', allPs) <- foldMPostings ls' [] (zip [0..] (tpostings t)) (M.union transferMap disposeMap)
+        -- Then walk all postings in original order, processing each transfer
+        -- group when its first posting is reached, and substituting expanded results.
+        let groupsByFirst = M.fromList [(i, g) | g@(_, ifroms, itos) <- groups, i <- take 1 (sort (map fst (ifroms ++ itos)))]
+        (ls'', allPs) <- foldMPostings ls0 [] (zip [0..] (tpostings t)) disposeMap groupsByFirst
         return (ls'', t{tpostings = reverse allPs} : acc)
   where
     txnDate = tdate t
@@ -2082,28 +2083,28 @@ processTransaction styles verbosetags j needsLabels (ls, acc) t = do
       (st', newPs) <- processDisposePosting styles verbosetags j t st p
       return (st', M.insert i newPs m)
 
-    -- Process one commodity's transfer group; record expanded postings keyed by original index.
-    processOneGroup (st, m) g = do
-      (st', m') <- processTransferGroup styles verbosetags j t st g
-      return (st', M.union m m')
-
-    -- Walk postings in original order, looking up transfer results or processing normally.
-    foldMPostings :: LotState -> [Posting] -> [(Int, Posting)] -> M.Map Int [Posting]
+    -- Walk postings in original order, looking up already-processed results,
+    -- processing a transfer group when its first posting is reached, or
+    -- processing the posting normally.
+    foldMPostings :: LotState -> [Posting] -> [(Int, Posting)] -> M.Map Int [Posting] -> M.Map Int (CommoditySymbol, [(Int, Posting)], [(Int, Posting)])
                   -> Either String (LotState, [Posting])
-    foldMPostings st acc' [] _ = Right (st, acc')
-    foldMPostings st acc' ((i,p):ps) tmap
+    foldMPostings st acc' [] _ _ = Right (st, acc')
+    foldMPostings st acc' ips@((i,p):ps) tmap groups
+      | Just g <- M.lookup i groups = do
+          (st', m') <- processTransferGroup styles verbosetags j t st g
+          foldMPostings st' acc' ips (M.union tmap m') (M.delete i groups)
       | Just expanded <- M.lookup i tmap =
-          foldMPostings st (reverse expanded ++ acc') ps tmap
+          foldMPostings st (reverse expanded ++ acc') ps tmap groups
       | isAcquirePosting p = do
           (st', p') <- processAcquirePosting styles j needsLabels txnDate t st i p
-          foldMPostings st' (p':acc') ps tmap
+          foldMPostings st' (p':acc') ps tmap groups
       | isDisposePosting p = do
           (st', newPs) <- processDisposePosting styles verbosetags j t st p
-          foldMPostings st' (reverse newPs ++ acc') ps tmap
+          foldMPostings st' (reverse newPs ++ acc') ps tmap groups
       | isUnclassifiedLotfulPosting j p =
           Left (unclassifiedLotWarning j t i p)
       | otherwise =
-          foldMPostings st (p:acc') ps tmap
+          foldMPostings st (p:acc') ps tmap groups
 
 -- | True if the posting is in an equity account.
 isEquityPosting :: Journal -> Posting -> Bool

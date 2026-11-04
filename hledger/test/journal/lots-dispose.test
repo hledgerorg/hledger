@@ -533,8 +533,8 @@ commodity 1.000000 ETH  ; lots:
 
 $ hledger -f- print -x --lots desc:transfer
 2026-03-09 transfer
-    assets:custodial:{2026-03-06, $1,980.78}      -0.999601 ETH {2026-03-06, $1,980.78}
     assets:custodial:{2026-03-06, $1,980.78}      -0.000399 ETH {2026-03-06, $1,980.78} @ $1,992.36
+    assets:custodial:{2026-03-06, $1,980.78}      -0.999601 ETH {2026-03-06, $1,980.78}
     assets:cold wallet:{2026-03-06, $1,980.78}     0.999601 ETH {2026-03-06, $1,980.78}
     expenses:fees:trading                          0.000399 ETH @ $1,992.36
     revenues:gain                                 $0

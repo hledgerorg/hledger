@@ -199,8 +199,8 @@ commodity A  ; lots:
 
 $ hledger -f- print -x --lots desc:transfer
 2026-02-17 transfer with priced fee
-    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
     assets:x1:{2026-01-15, $100}                  -0.05 A {2026-01-15, $100} @ $150
+    assets:x1:{2026-01-15, $100}                  -0.95 A {2026-01-15, $100}
     assets:x1                                      0 A                              =* 0 A
     assets:x2:{2026-01-15, $100}                   0.95 A {2026-01-15, $100}
     expenses:fees                                  0.05 A @ $150
