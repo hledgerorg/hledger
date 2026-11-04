@@ -84,7 +84,7 @@ import Data.Either (fromRight)
 import Data.Either.Extra (eitherToMaybe)
 import Data.Functor.Identity (Identity(..))
 import Data.List (partition)
-import Data.List.Extra (find, isPrefixOf, nubSort, stripPrefix)
+import Data.List.Extra (find, isPrefixOf, nubSort, stripPrefix, stripSuffix)
 import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
 import Data.Text qualified as T
 import Data.Time.Calendar (Day, addDays)
@@ -608,7 +608,7 @@ valuationTypeFromRawOpts rawopts = case (balancecalcopt rawopts, directval) of
     directval = lastMay $ collectopts valuationfromrawopt rawopts
     valuationfromrawopt (n,v)  -- option name, value
       | n == "V"     = Just $ AtEnd Nothing
-      | n == "X"     = Just $ AtEnd (Just $ T.pack v)
+      | n == "X"     = Just $ AtEnd (Just $ commodityarg v)
       | n == "value" = valueopt v
       | otherwise    = Nothing
     valueopt v
@@ -620,11 +620,13 @@ valuationTypeFromRawOpts rawopts = case (balancecalcopt rawopts, directval) of
             Just d  -> Just $ AtDate d mc
             Nothing -> usageError $ "could not parse \""++t++"\" as valuation type, should be: cost|transacted|then|end|now|c|t|e|n|YYYY-MM-DD"
       where
-        -- parse --value's value: TYPE[,COMM]
+        -- parse --value's value: TYPE[,COMM]. A comma with nothing after it selects the no-symbol commodity.
         (t,c') = break (==',') v
-        mc     = case drop 1 c' of
+        mc     = case c' of
                    "" -> Nothing
-                   c  -> Just $ T.pack c
+                   c  -> Just $ commodityarg $ drop 1 c
+    -- A commodity symbol may be written in double quotes, as in journals; "" is the no-symbol commodity.
+    commodityarg s = T.pack $ fromMaybe s $ stripPrefix "\"" s >>= stripSuffix "\""
 
 -- | Parse the type of costing to be performed, if any, specified by -B/--cost
 -- or --value flags. If there's more than one costing type, the rightmost flag

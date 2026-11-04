@@ -6613,6 +6613,10 @@ a comma, then the target commodity's symbol. Eg: **`--value=now,EUR`**.
 hledger will do its best to convert amounts to this commodity, deducing
 [market prices](#p-directive) as described above.
 
+The symbol may be written in double quotes, as in a journal.
+To select the [no-symbol commodity](#commodity), write it as `""`, or leave the symbol empty:
+**`--value=now,'""'`**, **`--value=now,`**, **`-X '""'`** and **`-X ''`** all work.
+
 ## Valuation examples
 
 Here are some quick examples of `-V`:

@@ -261,6 +261,7 @@ reportflags = [
       ,"YYYY-MM-DD: value on given date"
       ,"'cost':     cost basis, or else transacted cost (same as -B)"
       ,"'transacted': transacted cost/sale amount (@/@@) only"
+      ,"COMM may be written in double quotes; '\"\"' or an empty COMM means the no-symbol commodity."
       ])
 
   -- display

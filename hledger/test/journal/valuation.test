@@ -666,3 +666,26 @@ $ hledger -f- print -V
     b                                             -1 C
 
 >=0
+
+# ** 55. --value=WHEN, with an empty commodity selects the no-symbol commodity. (#2844)
+<
+P 2025-01-01 B 10 A
+P 2025-01-01 A 50
+
+2025-01-01
+   (a)  1 B
+
+$ hledger -f- bal -N --value=now,
+                 500  a
+
+# ** 56. The valuation commodity can be written in double quotes, as in a journal; "" is the no-symbol commodity.
+$ hledger -f- bal -N --value='now,""'
+                 500  a
+
+# ** 57. Likewise with -X.
+$ hledger -f- bal -N -X '""'
+                 500  a
+
+# ** 58. --value=WHEN without a comma still uses each commodity's default valuation commodity.
+$ hledger -f- bal -N --value=now
+                10 A  a
