@@ -28,7 +28,6 @@ module Hledger.Web.Widget.Common
   , columnsLinks
   , sortLinks
   , percentLinks
-  , calcLinks
   , costsLinks
   , lotsLinks
   , closedLinks
@@ -490,19 +489,6 @@ percentLinks trs route kept pct =
     [ (trc trs "numbers" "Amounts", tr trs "Show the amounts", (route, kept), not pct)
     , (tr trs "Percentages", tr trs "Show each amount as a percentage of its column's total (-%)", (route, kept ++ [("pct", "1")]), pct)
     ]
-
--- | Links choosing what the report's cells calculate, as the balance
--- commands' --valuechange, --gain, and --count flags do.
-calcLinks :: Translations -> r -> [(Text, Text)] -> BalanceCalculation -> HtmlUrl r
-calcLinks trs route kept calc =
-  -- TRANSLATORS: the label before a report's calculation links, and the links' text and tooltips.
-  linksRow (tr trs "Calculate:")
-    [ (trc trs "calculation" "Sums", tr trs "Show sums of postings", (route, kept), calc == CalcChange)
-    , (tr trs "Value change", tr trs "Show how period-end market values changed (--valuechange)", link "valuechange", calc == CalcValueChange)
-    , (tr trs "Unrealized gain", tr trs "Show unrealized capital gains: market value minus cost (--gain)", link "gain", calc == CalcGain)
-    , (tr trs "Posting counts", tr trs "Count the postings instead of summing them (--count)", link "count", calc == CalcPostingsCount)
-    ]
-  where link w = (route, kept ++ [("calc", w)])
 
 -- | Links showing or hiding the costs recorded with a register's
 -- amounts (10 AAPL @ $95), keeping the given parameters.

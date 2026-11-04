@@ -40,6 +40,7 @@ module Hledger.Web.ReportPage (
   relinkDateHeaders,
   reportLinks,
   intervalLinks,
+  calcLinks,
   accumulationLinks,
   reportTable,
   chartReportSpec,
@@ -47,14 +48,18 @@ module Hledger.Web.ReportPage (
 ) where
 
 import Control.Exception qualified as E
-import Control.Monad (mfilter, unless)
+import Control.Monad (mfilter, unless, (<=<))
 import Data.Foldable (find, for_, traverse_)
 import Data.List (mapAccumL, stripPrefix)
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Either (partitionEithers)
+import Data.Either.HT (mapLeft)
+import Data.Maybe (fromMaybe, listToMaybe, maybeToList)
 import Data.Text.Encoding qualified as TE
 import Network.HTTP.Types.URI (urlEncode)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Map.Strict qualified as Map
+import Data.Map.Strict (Map)
 import Data.Set qualified as Set
 import Text.Blaze.Html5 ((!))
 import Text.Blaze.Html5 qualified as H
@@ -67,7 +72,7 @@ import Yesod (HtmlUrl)
 import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor (dateTerm, renderPeriodHeading)
-import Hledger.Web.Widget.Common (AmountMode(..), accumWord, linksRowClass, listWord, removeDates, valueWord)
+import Hledger.Web.Widget.Common (AmountMode(..), accumWord, linksRow, linksRowClass, listWord, removeDates, valueWord)
 import Hledger.Query qualified as Query
 import Hledger.Write.Html (Html, formatCell, nl)
 import Hledger.Write.Spreadsheet (Cell(..), Class(..), NumLines, textFromClass)
@@ -89,6 +94,7 @@ data ReportParams = ReportParams {
       --   as it says.
 }
 
+-- ToDo: Why is BadAccum a custom constructor and Calc is handled by generic BadParamValue?
 -- | A parameter the page cannot use, with what was given; or a
 -- combination of parameters that contradict each other.
 data ReportParamError
@@ -245,6 +251,71 @@ startupUrlState rspec@ReportSpec{_rsReportOpts = ropts} = (params, rspec')
 parseInterval :: Text -> Either HledgerParseErrors Interval
 parseInterval = parsewith (skipNonNewlineSpaces *> reportingintervalp <* skipNonNewlineSpaces <* eof) . T.toLower
 
+
+-- Yesod.Option extended by help text and internal value moved to surrounding pair
+data Option external =
+  Option {
+    optionDisplay, optionHelp :: Translations -> Text,
+    -- ToDo: alternatively we could use a NonEmpty list here
+    optionExternalValue :: external,
+    optionExternalValueAlt :: [external]
+  }
+
+parseOption :: ParamDict a -> Maybe Text -> Either Text a
+parseOption dict mkey =
+  case mkey of
+    Nothing -> Right $ snd $ pdNothing dict
+    Just key -> maybe (Left key) (Right . snd) $ Map.lookup key $ pdMap dict
+
+{- |
+This is essentially a @Map (Maybe Text) (Option (Maybe Text), a)@
+with a guaranteed value for the 'Nothing' key.
+-}
+data ParamDict a =
+  ParamDict {
+    pdNothing :: (Option (Maybe Text), a),
+    pdMap :: Map Text (Option (Maybe Text), a)
+  }
+dictFromOptions :: [(Option (Maybe Text), a)] -> ParamDict a
+dictFromOptions opts =
+  (\(nothings, justs) ->
+    ParamDict
+      (case nothings of
+        [opt] -> opt
+        _ -> error "there must be exactly one Nothing case")
+      (Map.fromList justs)) $
+  partitionEithers $ do
+    optA@(opt,_a) <- opts
+    mExtVal <- optionExternalValue opt : optionExternalValueAlt opt
+    return $
+      case mExtVal of
+        Nothing -> Left optA
+        Just extVal -> Right (extVal, optA)
+
+parseOptionWithDefault ::
+  Map Text (Option Text, a) -> Maybe Text -> Either Text (Maybe a)
+parseOptionWithDefault dict mkey =
+  case mkey of
+    Nothing -> Right Nothing
+    Just "" -> Right Nothing
+    Just key -> maybe (Left key) (Right . Just . snd) $ Map.lookup key dict
+
+mapFromOptionFunc ::
+  (Enum a, Bounded a, Ord external) =>
+  (a -> Option external) -> Map external (Option external, a)
+mapFromOptionFunc = mapFromOptionRange [minBound .. maxBound]
+
+mapFromOptionRange ::
+  (Ord external) =>
+  [a] -> (a -> Option external) -> Map external (Option external, a)
+mapFromOptionRange as f =
+  Map.fromList $ do
+    a <- as
+    let opt = f a
+    extVal <- optionExternalValue opt : optionExternalValueAlt opt
+    return (extVal, (opt, a))
+
+
 -- | A period expression naming the given reporting interval, none for
 -- NoInterval: the inverse of parseInterval.
 intervalPeriodExpr :: Interval -> Maybe Text
@@ -310,35 +381,38 @@ intervalLinks trs route kept qparam current =
     link mword =
       (route, [("q", qparam) | not (T.null qparam)] ++ kept ++ [("interval", w) | Just w <- [mword]])
 
+accumulationOption :: BalanceAccumulation -> Option Text
+accumulationOption = \case
+  -- The H key toggles Ending balances, the second link (hledger.js).
+  -- TRANSLATORS: the label before a report's accumulation mode links, and the links' text and tooltips.
+  PerPeriod ->
+    Option (\trs -> tr trs "Balance changes") (\trs -> tr trs "Show how much each balance changed in each period") "change" [""]
+  Historical ->
+    Option (\trs -> tr trs "Ending balances") (\trs -> tr trs "Show each balance at the end of each period, including everything before it") "historical" []
+  Cumulative ->
+    Option (\trs -> tr trs "Cumulative totals") (\trs -> tr trs "Show each balance's change since the start of the report (--cumulative)") "cumulative" []
+
+-- ToDo: should be in the same module as calcLinks et.al.
 -- | Links to the same report page for each accumulation mode: balance
 -- changes, ending balances, or cumulative totals. They keep the given
 -- parameters; the page's own default mode needs none. The mode being
 -- shown is marked.
 accumulationLinks :: Translations -> r -> [(Text, Text)] -> BalanceAccumulation -> BalanceAccumulation -> HtmlUrl r
 accumulationLinks trs route kept dflt current =
-  -- The H key toggles Ending balances, the second link (hledger.js).
-  -- TRANSLATORS: the label before a report's accumulation mode links, and the links' text and tooltips.
-  linksRowClass "accum" (tr trs "Show:")
-    [ (tr trs "Balance changes", tr trs "Show how much each balance changed in each period",
-        link PerPeriod, current == PerPeriod)
-    , (tr trs "Ending balances", tr trs "Show each balance at the end of each period, including everything before it",
-        link Historical, current == Historical)
-    , (tr trs "Cumulative totals", tr trs "Show each balance's change since the start of the report (--cumulative)",
-        link Cumulative, current == Cumulative)
-    ]
+  linksRowClass "accum" (tr trs "Show:") $
+  flip map [minBound .. maxBound] $ \a ->
+    let opt = accumulationOption a in
+    (optionDisplay opt trs, optionHelp opt trs, link a, current == a)
   where link m = (route, kept ++ [("accum", accumWord m) | m /= dflt])
 
+-- ToDo: deduplicate from ReportOptions.balanceAccumulationOverride
 -- | The accum parameter: "historical" for ending balances, "change" for
 -- balance changes, "cumulative" for totals since the report's start, or
 -- none for the page's default.
 parseAccum :: Maybe Text -> Either ReportParamError (Maybe BalanceAccumulation)
-parseAccum = \case
-  Nothing           -> Right Nothing
-  Just ""           -> Right Nothing
-  Just "historical" -> Right $ Just Historical
-  Just "change"     -> Right $ Just PerPeriod
-  Just "cumulative" -> Right $ Just Cumulative
-  Just other        -> Left $ BadAccum other
+parseAccum =
+  let m = mapFromOptionFunc accumulationOption
+  in mapLeft BadAccum . parseOptionWithDefault m
 
 -- | The list parameter: show accounts as a "tree" or a "flat" list.
 parseListMode :: Maybe Text -> Either ReportParamError (Maybe AccountListMode)
@@ -371,22 +445,45 @@ parseSort = \case
 -- | The calc parameter: what a report's cells calculate, as the balance
 -- commands' --valuechange, --gain, and --count flags choose.
 parseCalc :: Maybe Text -> Either ReportParamError BalanceCalculation
-parseCalc = \case
-  Nothing            -> Right CalcChange
-  Just ""            -> Right CalcChange
-  Just "change"      -> Right CalcChange
-  Just "valuechange" -> Right CalcValueChange
-  Just "gain"        -> Right CalcGain
-  Just "count"       -> Right CalcPostingsCount
-  Just other         -> Left $ BadParamValue "calc" other
+parseCalc =
+  let m = dictFromOptions $ do a <- [minBound .. maxBound]; opt <- maybeToList $ calcOption a; return (opt,a)
+  in mapLeft (BadParamValue "calc") . parseOption m
+
+-- | Links choosing what the report's cells calculate, as the balance
+-- commands' --valuechange, --gain, and --count flags do.
+calcLinks :: Translations -> r -> [(Text, Text)] -> BalanceCalculation -> HtmlUrl r
+calcLinks trs route kept current =
+  -- TRANSLATORS: the label before a report's calculation links, and the links' text and tooltips.
+  linksRow (tr trs "Calculate:") $
+  do
+    a <- [minBound .. maxBound]
+    opt <- maybeToList $ calcOption a
+    return $
+      (optionDisplay opt trs,
+       optionHelp opt trs,
+       (route,
+          kept ++
+            [("calc", val) |
+                val <- maybeToList $ optionExternalValue opt, a /= CalcChange]),
+       current == a)
+
+calcOption :: BalanceCalculation -> Maybe (Option (Maybe Text))
+calcOption = \case
+  -- TRANSLATORS: the label before a report's calculation links, and the links' text and tooltips.
+  CalcChange ->
+    Just $ Option (\trs -> trc trs "calculation" "Sums") (\trs -> tr trs "Show sums of postings") Nothing (map Just ["","change"])
+  CalcValueChange ->
+    Just $ Option (\trs -> tr trs "Value change") (\trs -> tr trs "Show how period-end market values changed (--valuechange)") (Just "valuechange") []
+  CalcGain ->
+    Just $ Option (\trs -> tr trs "Unrealized gain") (\trs -> tr trs "Show unrealized capital gains: market value minus cost (--gain)") (Just "gain") []
+  CalcPostingsCount ->
+    Just $ Option (\trs -> tr trs "Posting counts") (\trs -> tr trs "Count the postings instead of summing them (--count)") (Just "count") []
+  _ -> Nothing
+
 
 -- | The calc parameter value naming a calculation, for those that have one.
 calcWord :: BalanceCalculation -> Maybe Text
-calcWord = \case
-  CalcValueChange   -> Just "valuechange"
-  CalcGain          -> Just "gain"
-  CalcPostingsCount -> Just "count"
-  _                 -> Nothing
+calcWord = optionExternalValue <=< calcOption
 
 -- | The value parameter, mirroring --value's WHEN[,COMM] syntax:
 -- "none", "cost", or a valuation "end", "then", "now", or a date, each
