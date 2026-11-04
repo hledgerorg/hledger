@@ -936,7 +936,8 @@ journalPostingsAddCommodityTags j
 -- happened yet; transfer destinations - which must not get a transacted
 -- cost - are recognised by shape: a positive cost-basis posting is skipped
 -- when the transaction has an explicit negative amount of the same commodity
--- and quantity in another account (a transfer-from counterpart), or the
+-- and quantity in another account, or unpriced in the same account (a
+-- transfer-from counterpart), or the
 -- commodity's unpriced negative and positive quantities sum to matching
 -- totals (a split or consolidating transfer group, possibly minus a fee),
 -- or an equity posting with no cost-basis amounts (an equity transfer, eg
@@ -966,10 +967,12 @@ journalInferPostingsTransactedCost j = journalMapTransactions inferTxn j
           _ -> False
 
     -- Does another posting have an explicit negative amount of this commodity
-    -- and quantity, in a different account ? Then this looks like a transfer pair.
+    -- and quantity, in a different account, or unpriced in the same account ?
+    -- Then this looks like a transfer pair (mirroring the lot classifier's
+    -- counterpart matching and same-account pairing).
     hasTransferFromCounterpart t p a =
-      any (\q -> paccount q /= paccount p
-              && any (\qa -> acommodity qa == acommodity a && aquantity qa == negate (aquantity a))
+      any (\q -> any (\qa -> acommodity qa == acommodity a && aquantity qa == negate (aquantity a)
+                           && (paccount q /= paccount p || isNothing (acost qa)))
                      (amountsRaw (pamount q)))
           (tpostings t)
 

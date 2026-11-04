@@ -1176,3 +1176,27 @@ commodity ABC ; lots:
 $ hledger -f- print --lots -x date:2020-04
 >2 /no lots matching \{2020-03-08, "0001", \$5\} for commodity ABC in account assets:broker1 on 2020-04-05/
 >=1
+
+# ** 51. A same-account transfer written with explicit cost bases, as print -x
+# shows it, is still read as a transfer: the transfer-to posting gets no
+# transacted cost inferred (which would unbalance the entry).
+<
+commodity A  ; lots:
+
+2026-01-15 buy
+    assets:cc    1 A {$100}
+    assets:cash
+
+2026-02-17 reclassify with fee
+    assets:cc       -1 A {2026-01-15, $100}
+    assets:cc        1 A {2026-01-15, $100}
+    assets:cc    -0.02 A {2026-01-15, $100} @@ $2
+    expenses:fees  $2
+$ hledger -f- print -x --verbose-tags date:2026-02-17
+2026-02-17 reclassify with fee
+    assets:cc                                     -1 A {2026-01-15, $100}  ; ptype: transfer-from
+    assets:cc                                      1 A {2026-01-15, $100}  ; ptype: transfer-to
+    assets:cc                                     -0.02 A {2026-01-15, $100} @@ $2  ; ptype: dispose
+    expenses:fees                                 $2
+
+>=

@@ -595,7 +595,9 @@ which must not get a transacted cost - are recognised by shape. Inference
 is skipped when:
 
 - another account has an explicit negative amount of the same commodity
-  and quantity (an exact transfer-from counterpart), or
+  and quantity, or the same account has an unpriced one (an exact
+  transfer-from counterpart, as the classifier's same-account pairing
+  would see it), or
 - the commodity's unpriced negative and positive quantities sum to matching
   totals, with a negative in another account (a split or consolidating
   transfer group, possibly minus a fee; priced amounts are excluded on both
