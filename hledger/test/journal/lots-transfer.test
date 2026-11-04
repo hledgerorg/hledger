@@ -801,13 +801,13 @@ $ hledger -f- print -x
     assets:broker1                                 3 ABC {$3.33333333} @@ $10
 
 2020-04-04 three
-    assets:broker1                                -5 ABC {}
-    assets:transfers                               5 ABC {}
+    assets:broker1                                -5 ABC {2020-03-08}
+    assets:transfers                               5 ABC {2020-03-08}
 
 2020-04-05 four
-    assets:transfers                              -4.9 ABC {}
+    assets:transfers                              -4.9 ABC {2020-03-08}
     assets:transfers                              -0.1 ABC {2020-03-08, "0001", $5}
-    assets:broker2                                 4.9 ABC {}
+    assets:broker2                                 4.9 ABC {2020-03-08}
     expenses:fees                                  0.1 ABC
 
 >=

@@ -1675,14 +1675,23 @@ journalCollapseLotDetail j
                   -- lose the amount entirely) or when a fee portion was split
                   -- off (using the original would double-count the retained
                   -- feesplit posting's amount). (#2692)
-                  -- Summing several fragments drops their (differing) cost
-                  -- bases; show an unspecified basis instead, meaning lots
-                  -- selected by method, which re-reads equivalently under
-                  -- the default method.
+                  -- Summing several fragments drops their cost bases; show
+                  -- instead the basis fields on which all the fragments'
+                  -- lots agree (eg the date and cost, when only the labels
+                  -- differ), as a selector which re-reads equivalently: it
+                  -- is at least as specific as the user's, and the method
+                  -- still picks the same lots first (#2843).
                   merged = maSum (map pamount (p:run))
-                  hadBasis = any (any (isJust . acostbasis) . amountsRaw . pamount) (p:run)
-                  survivor = (untagLotsplit p){pamount = if null run || not hadBasis then merged else mapMixedAmount unspecifiedBasis merged}
-                  unspecifiedBasis a = a{acostbasis = Just (CostBasis Nothing Nothing Nothing)}
+                  cbs = [cb | a <- concatMap (amountsRaw . pamount) (p:run), Just cb <- [acostbasis a]]
+                  survivor = (untagLotsplit p){pamount = if null run || null cbs then merged else mapMixedAmount commonBasis merged}
+                  commonBasis a = a{acostbasis = Just CostBasis
+                    { cbDate  = agreed cbDate
+                    , cbLabel = agreed cbLabel
+                    , cbCost  = agreed cbCost
+                    }}
+                  agreed f = case map f cbs of
+                    (v:vs) | all (== v) vs -> v
+                    _ -> Nothing
               in survivor : go rest
           | otherwise = p : go ps
         untagLotsplit p = p{ptags = filter ((/= lotsplitPostingTagName) . fst) (ptags p)}

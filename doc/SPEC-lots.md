@@ -824,8 +824,8 @@ amount with a cost basis to that basis (`amountCostBasis`), else to its
 transacted cost, so a disposal converts to what the units cost and cost
 reports balance; `--value=transacted` (`ToTransactedCost`) converts at
 transacted cost only. Since collapsing lot detail (when `--lots` is off)
-merges a multi-lot disposal's fragments into one amount with an unspecified
-basis, the -B conversion is applied before collapsing, in
+merges a multi-lot disposal's fragments into one amount with a partial or
+unspecified basis, the -B conversion is applied before collapsing, in
 `journalTransform` (`maybeConvertToCostBasis`); the later per-report
 conversion is then a no-op for those amounts.
 
@@ -1253,9 +1253,11 @@ Display behaviour:
   reverts to `poriginal`, so the user sees their single original posting - but
   with the cost basis annotation inferred by lot processing added when they
   wrote none (`{$50}` on an acquire, `{2026-01-15, $50}` on a single-lot
-  disposal or transfer, `{}` on a multi-lot disposal), so the printed entry
-  is self-describing and re-reads without the commodity's `lots:` declaration
-  under the default method. (With `--lots`, the subaccount name carries the
+  disposal or transfer; on a multi-lot disposal or transfer, the fields all
+  the consumed lots agree on, eg `{2026-01-15}` or `{}`, which is at least
+  as specific as the user's selector and still picks the same lots first
+  (#2843)), so the printed entry is self-describing and re-reads without the
+  commodity's `lots:` declaration under the default method. (With `--lots`, the subaccount name carries the
   basis, so amounts are shown without it.)
 - `print --lots` keeps the fragments visible and renders each with its lot
   subaccount and per-lot quantity, but with the user's original cost basis

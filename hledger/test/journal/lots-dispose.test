@@ -1607,3 +1607,36 @@ $ hledger -f- print desc:sell
     revenues:gain                              $-250
 
 >=
+
+# ** 79. When a disposal spanning several lots is collapsed to one posting
+# (without --lots), its cost basis keeps the fields all the consumed lots
+# agree on, here the date and cost (only the labels differ); print -x and the
+# data output formats show this, rather than an empty {} (#2843).
+<
+commodity AAPL  ; lots:
+account revenues:gain  ; type: G
+
+2026-01-01 buy
+    assets:stocks      20 AAPL {$50}
+    assets:cash
+
+2026-01-01 buy again
+    assets:stocks      11 AAPL {$50}
+    assets:cash
+
+2026-03-01 sell
+    assets:stocks    -31 AAPL {2026-01-01, $50} @ $70
+    assets:cash
+
+$ hledger -f- print -x desc:sell
+2026-03-01 sell
+    assets:stocks                                -31 AAPL {2026-01-01, $50} @ $70
+    assets:cash                                $2170
+    revenues:gain                              $-620
+
+>=
+
+# ** 80. The same in JSON output.
+$ hledger -f- print -O json desc:sell | grep -E '"cbDate"|"cbLabel"'
+              "cbDate": "2026-01-01",
+              "cbLabel": null
