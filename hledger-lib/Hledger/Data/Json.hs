@@ -158,6 +158,7 @@ instance ToJSON TimeclockEntry
 
 -- Journal's jparse* fields are transient parser state, not journal data,
 -- so we omit them from the JSON.
+instance ToJSON JournalFile
 instance ToJSON Journal where
   toJSON = object . journalKV
   toEncoding = pairs . mconcat . journalKV

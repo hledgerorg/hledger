@@ -88,8 +88,8 @@ import Hledger.Query qualified as Query
 
 journalFile404 :: FilePath -> Journal -> HandlerFor m (FilePath, Text)
 journalFile404 f j =
-  case find ((== f) . fst) (jfiles j) of
-    Just (_, txt) -> pure (takeFileName f, txt)
+  case find ((== f) . jfpath) (jfiles j) of
+    Just jf -> pure (takeFileName f, jftext jf)
     Nothing -> notFound
 
 fromFormSuccess :: Applicative m => m a -> FormResult a -> m a

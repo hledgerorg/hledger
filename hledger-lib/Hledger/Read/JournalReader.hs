@@ -505,7 +505,8 @@ includedirectivep iopts = do
 
       -- Parse the file (and its own includes, if any) to a Journal
       -- with file path and source text attached. Or throw an error.
-      updatedChildj <- journalAddFile (filepath, childInput) <$>
+      -- Its include depth is the length of the parent's include file stack (which includes the parent).
+      updatedChildj <- journalAddFile (JournalFile filepath childInput (length $ jparseincludefilestack parentj)) <$>
                         parseIncludeFile parser initChildj filepath childInput
 
       -- Child journal was parsed successfully; now merge it into the parent journal.

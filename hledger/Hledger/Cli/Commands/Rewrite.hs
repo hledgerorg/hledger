@@ -11,7 +11,7 @@ where
 import Control.Monad (unless)
 import Data.Either (partitionEithers)
 import Data.Functor.Identity
-import Data.List (dropWhileEnd, sortOn)
+import Data.List (dropWhileEnd, find, sortOn)
 import Data.Map qualified as M
 import Data.Maybe (isJust)
 import Data.Text (Text)
@@ -113,7 +113,7 @@ diffOutput postinglayout opts j j' = do
         -- showTransaction* adds a trailing blank line; the source lines don't include one.
         newlines = dropWhileEnd T.null . T.lines $ showTransactionWithLayout postinglayout t'
 
-    fileDiff (fp, es) = case lookup fp $ jfiles j of
+    fileDiff (fp, es) = case jftext <$> find ((== fp) . jfpath) (jfiles j) of
       Nothing -> ""
       Just contents -> unifiedDiff fp oldlines $ applyEdits (sortOn first3 es) oldlines
         where oldlines = T.lines contents

@@ -412,10 +412,10 @@ nulljournal = Journal {
   }
 
 journalFilePath :: Journal -> FilePath
-journalFilePath = fst . mainfile
+journalFilePath = jfpath . mainfile
 
 journalFilePaths :: Journal -> [FilePath]
-journalFilePaths = map fst . jfiles
+journalFilePaths = map jfpath . jfiles
 
 -- | All the files this journal's data was read from: its data files
 -- (journalFilePaths) and any auxiliary files such as CSV rules files (jauxfiles).
@@ -423,8 +423,8 @@ journalFilePaths = map fst . jfiles
 journalAllFilePaths :: Journal -> [FilePath]
 journalAllFilePaths j = journalFilePaths j <> jauxfiles j
 
-mainfile :: Journal -> (FilePath, Text)
-mainfile = headDef ("(unknown)", "") . jfiles
+mainfile :: Journal -> JournalFile
+mainfile = headDef (JournalFile "(unknown)" "" 0) . jfiles
 
 addTransaction :: Transaction -> Journal -> Journal
 addTransaction t j@Journal{jtxns=ts} = let ts' = t : ts in ts' `seq` j { jtxns = ts' }

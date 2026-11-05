@@ -9,7 +9,7 @@
           _{HMsgc "column heading" "File"}
         <th>
       <tbody>
-        $forall (path, _) <- jfiles j
+        $forall path <- journalFilePaths j
           <tr>
             <td .filename>
               #{path}

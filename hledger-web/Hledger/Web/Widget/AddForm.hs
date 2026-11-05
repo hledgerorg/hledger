@@ -48,7 +48,7 @@ addForm j today = identifyForm "add" $ \extra -> do
   trs <- lift requestTranslations
   let  -- bindings used in add-form.hamlet
     descriptions = foldMap S.fromList [journalPayeesDeclaredOrUsed j, journalDescriptions j]
-    files = fst <$> jfiles j
+    files = journalFilePaths j
     deffile = journalFilePath j
     accountPlaceholder = tr trs "Account {n}"
     amountPlaceholder = tr trs "Amount {n}"

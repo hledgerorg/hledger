@@ -347,7 +347,7 @@ readPossibleJournalFile iopts prefixedfile = do
       exists <- liftIO $ doesFileExist f
       if exists
         then readJournalFile iopts prefixedfile
-        else return $ nulljournal{jfiles = [(f, "")]}
+        else return $ nulljournal{jfiles = [JournalFile f "" 0]}
 
 -- | Like readJournalFiles, but if the first file does not exist, provides an empty
 -- journal with that file path set. Other files must exist as normal.

@@ -2464,6 +2464,8 @@ For convenience, `include` always excludes the current file. So, you can do
 Note `*` and `**` usually won't match dot files or dot directories, with one exception: `**` does search non-top-level dot directories.
 If this causes problems, make your glob pattern more specific (eg `**.journal` instead of `**`).
 
+To see all the files being read, and which file includes each one, run `hledger files --tree`.
+
 If you are using many, or deeply nested, include files, and have an error that's hard to pinpoint:
 a good troubleshooting command is `hledger files --debug=6` (or 7).
 

@@ -439,7 +439,7 @@ journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,i
 
       -- Setup
       &   timed  "journalSetLastReadTime" (journalSetLastReadTime t)              -- save the last read time
-      &   timed  "journalAddFile" (journalAddFile (f, txt))                       -- save the main file's info
+      &   timed  "journalAddFile" (journalAddFile (JournalFile f txt 0))                    -- save the main file's info
       &   timed  "journalReverse" journalReverse                                  -- convert all lists to the order they were parsed
 
       -- Account types and amount styles
@@ -749,7 +749,7 @@ getAccountAliases = fmap jparsealiases get
 --   modify' (\j -> j{jparsetransactioncount=jparsetransactioncount j + 1})
 --   getTransactionCount
 
-journalAddFile :: (FilePath,Text) -> Journal -> Journal
+journalAddFile :: JournalFile -> Journal -> Journal
 journalAddFile f j@Journal{jfiles=fs} = j{jfiles=fs++[f]}
   -- append, unlike the other fields, even though we do a final reverse,
   -- to compensate for additional reversal due to including/monoid-concatting

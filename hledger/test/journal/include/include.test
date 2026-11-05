@@ -341,3 +341,17 @@ include norules.csv
 $ hledger -f - print 2>&1 | sed 's|/.*/||'
 hledger: Error: in file included from -,
 norules.csv.rules: openFile: does not exist (No such file or directory)
+
+# ** 34. files --tree shows each included file indented below the file that includes it,
+# with its path relative to that file's directory.
+$ hledger -f tree/main.j files --tree | sed -E 's|/.*/include/tree/||'
+main.j
+  a.j
+    common.j
+  sub/b.j
+    ../common.j
+
+# ** 35. files --tree with a regex also shows the files including a matched file.
+$ hledger -f tree/main.j files -t b.j | sed -E 's|/.*/include/tree/||'
+main.j
+  sub/b.j

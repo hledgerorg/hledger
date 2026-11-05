@@ -739,11 +739,8 @@ data Journal = Journal {
   ,jitems                   :: [JournalItem]                          -- ^ All top-level items of the journal file(s), in parse order,
                                                                       --   including directives, comment lines and blank lines as written.
                                                                       --   Used to reproduce the journal (print --export).
-  ,jfiles                   :: [(FilePath, Text)]                     -- ^ the file path and raw text of the main and
-                                                                      --   any included journal files. The main file is first,
+  ,jfiles                   :: [JournalFile]                          -- ^ the main and any included journal files. The main file is first,
                                                                       --   followed by any included files in the order encountered.
-                                                                      --   TODO: FilePath is a sloppy type here, don't assume it's a
-                                                                      --   real file; values like "" or "-" can be seen
   ,jauxfiles                :: [FilePath]                             -- ^ paths of other files which affected this journal's data,
                                                                       --   but are not journal data files (currently: CSV rules files,
                                                                       --   and any rules files they include). Watched for changes,
@@ -772,6 +769,14 @@ data JournalItem
   | JIInclude !Text               -- ^ an include directive line; the included file's items follow it
   | JIBlank                       -- ^ one or more blank lines
   deriving (Eq, Generic, Show)
+
+-- | One of the files a journal was read from.
+data JournalFile = JournalFile {
+   jfpath  :: FilePath  -- ^ the file's path. TODO: FilePath is a sloppy type here, don't assume it's a
+                        --   real file; values like "" or "-" can be seen
+  ,jftext  :: Text      -- ^ the file's raw text
+  ,jfdepth :: Int       -- ^ the file's include depth: 0 for a main file, 1 for a file it includes, and so on
+  } deriving (Eq, Generic, Show)
 
 -- | A journal in the process of being parsed, not yet finalised.
 -- The data is partial, and list fields are in reverse order.
@@ -914,6 +919,7 @@ instance NFData EFDay
 instance NFData FastPathStats
 instance NFData Interval
 instance NFData Journal
+instance NFData JournalFile
 instance NFData JournalItem
 instance NFData ParsePos
 instance NFData LotId
