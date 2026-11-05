@@ -191,3 +191,20 @@ $ hledger -f- accounts --show-aliases
 assets:bank:checking        ; alias: checking, alias: chk
 assets:bank:checking:sub
 expenses:food               ; alias: food
+
+# ** 21. --locations shows where declared accounts were declared, and where undeclared accounts were first used.
+<
+account a
+
+2024-01-01
+    b    1
+    ; a comment on posting b
+    a
+
+2024-01-02
+    c    1
+    b
+$ hledger -f- accounts --locations
+a    ; declared at -:1, overall declaration order 1
+b    ; undeclared, first used at -:4
+c    ; undeclared, first used at -:9

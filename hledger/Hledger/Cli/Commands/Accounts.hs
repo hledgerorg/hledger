@@ -21,6 +21,7 @@ module Hledger.Cli.Commands.Accounts (
 ) where
 
 import Data.List
+import Data.Map qualified as M
 import Data.Text qualified as T
 import System.Console.CmdArgs.Explicit as C
 
@@ -39,7 +40,7 @@ accountsmode = hledgerCommandMode
   ,flagNone ["unused"]       (setboolopt "unused")     "list accounts declared but not used"
   ,flagNone ["find"]         (setboolopt "find")       "list the first account matched by the first argument (a case-insensitive infix regexp)"
   ,flagNone ["directives"]   (setboolopt "directives") "show as account directives, for use in journals"
-  ,flagNone ["locations"]    (setboolopt "locations")  "also show where accounts were declared"
+  ,flagNone ["locations"]    (setboolopt "locations")  "also show where accounts were declared, or first used"
   ,flagNone ["types"]        (setboolopt "types")      "also show account types when known"
   ,flagNone ["show-aliases"] (setboolopt "show-aliases") "also show account aliases declared with alias: tags"
   ]
@@ -134,10 +135,18 @@ accounts opts@CliOpts{rawopts_=rawopts, reportspec_=ReportSpec{_rsQuery=query,_r
         aliasitems = ["alias: " <> v | directives || showaliases, (n, v) <- journalAccountTags j a, T.toLower n == "alias"]
         locationitem
           | locations = [case lookup a $ jdeclaredaccounts j of
-              Just adi -> "declared at " <> (T.pack $ sourcePosPretty $ adisourcepos adi) <>  -- TODO: hide the column number
-                          ", overall declaration order " <> (T.pack $ show $ adideclarationorder adi)
-              Nothing  -> "undeclared"]
+              Just adi -> "declared at " <> T.pack (sourcePosFileLine $ adisourcepos adi) <>
+                          ", overall declaration order " <> T.pack (show $ adideclarationorder adi)
+              Nothing  -> "undeclared" <> maybe "" (", first used at " <>) (M.lookup a firstuses)]
           | otherwise = []
+    -- The FILE:LINE where each account was first posted to, for --locations.
+    -- (makePostingErrorExcerptByIndex's excerpt is not used, so it is not rendered.)
+    firstuses = M.fromListWith (\_ earlier -> earlier)
+      [ (paccount p, T.pack $ f ++ ":" ++ show l)
+      | t <- jtxns j
+      , (i,p) <- zip [0..] $ tpostings t
+      , let (f, l, _, _) = makePostingErrorExcerptByIndex t i Nothing
+      ]
     pad a = T.replicate (maxwidth - T.length (showName a)) " "
     maxwidth = maximum $ map (T.length . showName) clippedaccts
 

@@ -13,7 +13,8 @@ Flags:
      --find                 list the first account matched by the first
                             argument (a case-insensitive infix regexp)
      --directives           show as account directives, for use in journals
-     --locations            also show where accounts were declared
+     --locations            also show where accounts were declared, or first
+                            used
      --types                also show account types when known
      --show-aliases         also show account aliases declared with alias:
                             tags
@@ -43,6 +44,7 @@ to satisfy `hledger check accounts`.
 With `--locations`, it also shows the file and line number of each
 account's declaration, if any, and the account's overall declaration order;
 these may be useful when troubleshooting account display order.
+For an undeclared account, it shows where the account was first used (posted to), if anywhere.
 
 With `--types`, it also shows each account's type, if it's known.
 (See Declaring accounts > Account types.)
