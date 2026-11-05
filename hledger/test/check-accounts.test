@@ -97,3 +97,41 @@ $ hledger -f- check accounts --infer-imbalance
 $ hledger -f- check accounts
 >2 /-:2:/
 >=1
+
+# ** 10. An undeclared account which is an out-of-scope account alias gets an explanation.
+# Here the alias is declared in a separate file tree.
+<
+2024-01-01
+    food    1
+    expenses:food
+
+$ hledger -f check-accounts-alias.j -f- check accounts
+>2 /account "food" has not been declared.
+"food" is an alias of account "expenses:food", declared at .*check-accounts-alias.j:1,
+but that alias does not apply here. An account alias affects only the entries after it,
+/
+>=1
+
+# ** 11. Also when the alias is declared after the entry.
+<
+2024-01-01
+    food    1
+    expenses:food
+
+account expenses:food  ; alias: food
+$ hledger -f- check accounts
+>2 /"food" is an alias of account "expenses:food", declared at -:5/
+>=1
+
+# ** 12. Also for a subaccount of the alias, used after end aliases.
+<
+account expenses:food  ; alias: food
+end aliases
+
+2024-01-01
+    food:snacks    1
+    expenses:food
+$ hledger -f- check accounts
+>2 /account "food:snacks" has not been declared.
+"food" is an alias of account "expenses:food"/
+>=1
