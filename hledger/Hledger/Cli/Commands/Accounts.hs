@@ -41,6 +41,7 @@ accountsmode = hledgerCommandMode
   ,flagNone ["directives"]   (setboolopt "directives") "show as account directives, for use in journals"
   ,flagNone ["locations"]    (setboolopt "locations")  "also show where accounts were declared"
   ,flagNone ["types"]        (setboolopt "types")      "also show account types when known"
+  ,flagNone ["show-aliases"] (setboolopt "show-aliases") "also show account aliases declared with alias: tags"
   ]
   ++ flattreeflags False ++
   [flagReq  ["drop"] (\s opts -> Right $ setopt "drop" s opts) "N" "flat mode: omit N leading account name parts"]
@@ -59,6 +60,7 @@ accounts opts@CliOpts{rawopts_=rawopts, reportspec_=ReportSpec{_rsQuery=query,_r
       directives = boolopt "directives" rawopts
       locations = boolopt "locations" rawopts
       types = boolopt "types" rawopts
+      showaliases = boolopt "show-aliases" rawopts
       -- Modified queries. These may not work with boolean queries (#2371).
       -- a depth limit will clip and exclude account names later, but we don't want to exclude accounts at this stage
       nodepthq = dbg4 "nodepthq" $ filterQuery (not . queryIsDepth) query
@@ -122,14 +124,14 @@ accounts opts@CliOpts{rawopts_=rawopts, reportspec_=ReportSpec{_rsQuery=query,_r
       where
         indent      = T.replicate (2 * (max 0 (accountNameLevel a - drop_ ropts) - 1)) " "
         droppedName = accountNameDrop (drop_ ropts) a
-    -- the account's type (with --types), aliases (with --directives) and declaration location (with --locations),
+    -- the account's type (with --types), aliases (with --directives or --show-aliases) and declaration location (with --locations),
     -- as a comment
     showComment a = case typeitem ++ aliasitems ++ locationitem of
       []    -> ""
       items -> pad a <> "    ; " <> T.intercalate ", " items
       where
         typeitem   = ["type: " <> T.pack (show t) | types, Just t <- [journalAccountType j a]]
-        aliasitems = ["alias: " <> v | directives, (n, v) <- journalAccountTags j a, T.toLower n == "alias"]
+        aliasitems = ["alias: " <> v | directives || showaliases, (n, v) <- journalAccountTags j a, T.toLower n == "alias"]
         locationitem
           | locations = [case lookup a $ jdeclaredaccounts j of
               Just adi -> "declared at " <> (T.pack $ sourcePosPretty $ adisourcepos adi) <>  -- TODO: hide the column number

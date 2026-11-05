@@ -179,3 +179,15 @@ equity:trading:A-B:B
 account equity:imbalance
 $ hledger -f- accounts --types
 equity:imbalance    ; type: M
+
+# ** 20. --show-aliases shows the aliases declared with alias: tags or Ledger-style alias subdirectives,
+# but not inherited by subaccounts.
+<
+account assets:bank:checking  ; alias: checking, alias: chk
+account assets:bank:checking:sub
+account expenses:food
+    alias food
+$ hledger -f- accounts --show-aliases
+assets:bank:checking        ; alias: checking, alias: chk
+assets:bank:checking:sub
+expenses:food               ; alias: food

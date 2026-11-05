@@ -15,6 +15,8 @@ Flags:
      --directives           show as account directives, for use in journals
      --locations            also show where accounts were declared
      --types                also show account types when known
+     --show-aliases         also show account aliases declared with alias:
+                            tags
   -l --flat                 list/tree mode: show accounts as a flat list
                             (default)
   -t --tree                 list/tree mode: show accounts as a tree
@@ -44,6 +46,9 @@ these may be useful when troubleshooting account display order.
 
 With `--types`, it also shows each account's type, if it's known.
 (See Declaring accounts > Account types.)
+
+With `--show-aliases`, it also shows each account's [aliases](#account-aliases), declared with `alias:` tags.
+(Aliases from `alias` directives or `--alias` options are not shown.)
 
 It shows a flat list by default. With `--tree`, it uses indentation to show the account hierarchy.
 In flat mode you can add `--drop N` to omit the first few account name components.

@@ -1818,6 +1818,7 @@ Subaccounts are rewritten too: `checking:pending` becomes `assets:bank:checking:
 To declare multiple aliases, add more `alias:` tags.
 A Ledger-style `alias` subdirective, indented below the account directive, is also accepted,
 and treated as an `alias:` tag.
+To list the accounts with their aliases, run `hledger accounts --show-aliases`.
 
 An alias affects the entries which follow it, in the current file and any files it includes
 (see [directive scopes](#directive-scopes)), until an [`end aliases`](#end-aliases-directive) directive.
