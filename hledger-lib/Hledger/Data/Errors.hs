@@ -174,8 +174,9 @@ makePostingErrorExcerpt p findpostingerrorcolumns =
         errrelline = case mpindex of
           Nothing -> 0
           Just pindex ->
+            -- the posting's own comment lines follow it, so count only the earlier postings' lines
             commentExtraLines (tcomment t) +
-            sum (map postingLines $ take pindex $ tpostings t)
+            sum (map postingLines $ take (pindex - 1) $ tpostings t) + 1
             where
               -- How many lines are used to render this posting ?
               postingLines p' = 1 + commentExtraLines (pcomment p')
@@ -216,8 +217,9 @@ makePostingErrorExcerptByIndex t idx mcols = (f, errabsline, mcols, ex)
   where
     (SourcePos f tl _) = fst $ tsourcepos t
     errrelline =
+      -- the posting's own comment lines follow it, so count only the earlier postings' lines
       commentExtraLines (tcomment t) +
-      sum (map postingLines $ take (idx + 1) $ tpostings t)
+      sum (map postingLines $ take idx $ tpostings t) + 1
       where
         postingLines p' = 1 + commentExtraLines (pcomment p')
         commentExtraLines c = max 0 (length (T.lines c) - 1)

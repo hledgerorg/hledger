@@ -86,3 +86,14 @@ account a
 $ hledger -f- check accounts --infer-imbalance
 >2 /account "equity:imbalance" has not been declared/
 >=1
+
+# ** 9. The error points at the undeclared account's posting, even when it is followed by a comment line.
+<
+2024-01-01
+    a    1
+    ; a comment on posting a
+    b
+
+$ hledger -f- check accounts
+>2 /-:2:/
+>=1
