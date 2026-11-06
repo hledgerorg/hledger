@@ -108,7 +108,7 @@ $ hledger -f- check accounts
 $ hledger -f check-accounts-alias.j -f- check accounts
 >2 /account "food" has not been declared.
 "food" is an alias of account "expenses:food", declared at .*check-accounts-alias.j:1,
-but that alias does not apply here. An account alias affects only the entries after it,
+but that alias does not apply here. An account alias affects only the entries after it
 /
 >=1
 
