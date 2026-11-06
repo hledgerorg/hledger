@@ -570,8 +570,9 @@ translateRulePositions sourcelines rules =
        , rblocksassigning   = mkBlocksAssigning cbs
        }
   where
-    cbs = [cb{cbAssignments = map translate $ cbAssignments cb} | cb <- rconditionalblocks rules]
-    translate a = a{faPos = faPos a >>= \(_,l) -> atMay sourcelines (l-1)}
+    cbs = [cb{cbAssignments = map translate $ cbAssignments cb, cbPos = translatePos $ cbPos cb} | cb <- rconditionalblocks rules]
+    translate a = a{faPos = translatePos $ faPos a}
+    translatePos p = p >>= \(_,l) -> atMay sourcelines (l-1)
 
 -- | Adjust this parse error bundle's position state, using the line sources
 -- returned by expandIncludes, so that the (first) error is reported at the
@@ -762,10 +763,16 @@ dbgShowMatcher (FieldMatcher p f r) = unwords [dbgShowMatcherPrefix p, T.unpack 
 data ConditionalBlock = CB {
    cbMatchers    :: [Matcher]
   ,cbAssignments :: [FieldAssignment]
-  } deriving (Show, Eq)
+  ,cbPos         :: Maybe (FilePath, Int)  -- ^ rules file and line number of the if (or ifs table row), if known
+  } deriving (Show)
+
+instance Eq ConditionalBlock where
+  a == b = (cbMatchers a, cbAssignments a) == (cbMatchers b, cbAssignments b)
 
 dbgShowConditionalBlock :: ConditionalBlock -> String
-dbgShowConditionalBlock = unwords . map dbgShowMatcher . cbMatchers
+dbgShowConditionalBlock cb =
+  maybe "" (\(f,l) -> f ++ ":" ++ show l ++ ": ") (cbPos cb)
+  ++ unwords (map dbgShowMatcher $ cbMatchers cb)
 
 defrules :: CsvRulesParsed
 defrules = CsvRules' {
@@ -1260,7 +1267,8 @@ conditionalblockp = do
   lift $ dbgparse 8 "trying conditionalblockp"
   -- "if\nMATCHER" or "if    \nMATCHER" or "if MATCHER"
   start <- getOffset
-  onifline <- string "if" >> ( (newline >> return False)
+  pos <- getRulesPos
+  onifline <- string "if" >>( (newline >> return False)
                               <|> (lift skipNonNewlineSpaces1 >> isNothing <$> optional newline))
   -- one or more matchers, one per line; with comment lines possibly interspersed.
   -- A matcher on the same line as "if" may begin with a comment character;
@@ -1288,7 +1296,7 @@ conditionalblockp = do
           ])
   when (null as) $
     customFailure $ parseErrorAt start $  "start of if rule found, but no assignment rules afterward\n(assignment rules in an if rule should be indented)"
-  return $ CB{cbMatchers=ms, cbAssignments=as}
+  return $ CB{cbMatchers=ms, cbAssignments=as, cbPos=pos}
   <?> "if rule"
 
 -- An ifs table (AKA if table, conditional table): "ifs" (or "if") followed by separator, followed by some field names,
@@ -1317,7 +1325,7 @@ conditionaltablep = do
     customFailure $ parseErrorAt start $ "start of ifs table found, but no table rows afterward"
   return $ flip map body $ \(ms,vs,pos) ->
     -- values have surrounding whitespace removed, so they can be aligned; blank values don't assign
-    CB{cbMatchers=ms, cbAssignments=[FieldAssignment f v pos | (f, v) <- zip fields (map T.strip vs), not $ T.null v]}
+    CB{cbMatchers=ms, cbAssignments=[FieldAssignment f v pos | (f, v) <- zip fields (map T.strip vs), not $ T.null v], cbPos=pos}
   <?> "ifs table"
   where
     bodylinep :: Char -> [Text] -> CsvRulesParser ([Matcher],[FieldTemplate],Maybe (FilePath,Int))
@@ -2564,12 +2572,12 @@ tests_RulesReader = testGroup "RulesReader" [
 
     ,testCase "assignment with empty value" $
       parseWithState' defrules rulesp "account1 \nif foo\n  account2 foo\n" @?=
-        (Right (mkrules $ defrules{rassignments = [fa "account1" ""], rconditionalblocks = [CB{cbMatchers=[RecordMatcher Or (toRegex' "foo")],cbAssignments=[fa "account2" "foo"]}]}))
+        (Right (mkrules $ defrules{rassignments = [fa "account1" ""], rconditionalblocks = [CB{cbMatchers=[RecordMatcher Or (toRegex' "foo")],cbAssignments=[fa "account2" "foo"],cbPos=Nothing}]}))
    ]
   ,testGroup "conditionalblockp" [
     testCase "space after conditional" $
       parseWithState' defrules conditionalblockp "if a\n account2 b\n \n" @?=
-        (Right $ CB{cbMatchers=[RecordMatcher Or $ toRegexCI' "a"],cbAssignments=[fa "account2" "b"]})
+        (Right $ CB{cbMatchers=[RecordMatcher Or $ toRegexCI' "a"],cbAssignments=[fa "account2" "b"],cbPos=Nothing})
   ],
 
   testGroup "csvfieldreferencep" [
@@ -2623,7 +2631,7 @@ tests_RulesReader = testGroup "RulesReader" [
 
   , let matchers = [RecordMatcher Or (toRegexCI' "A"), RecordMatcher And (toRegexCI' "B")]
         assignments = [fa "account2" "foo", fa "comment2" "bar"]
-        block = CB matchers assignments
+        block = CB matchers assignments Nothing
     in
    testGroup "Combine multiple matchers on the same line" [
     testCase "conditionalblockp" $
@@ -2637,25 +2645,25 @@ tests_RulesReader = testGroup "RulesReader" [
 
     in testCase "toplevel" $ hledgerField rules [["a","b"]] "date" @?= (Just "%csvdate")
 
-   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1)], rconditionalblocks=[CB [FieldMatcher Or "%csvdate" $ toRegex' "a"] [fa "date" "%csvdate"]]}
+   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1)], rconditionalblocks=[CB [FieldMatcher Or "%csvdate" $ toRegex' "a"] [fa "date" "%csvdate"] Nothing]}
     in testCase "conditional" $ hledgerField rules [["a","b"]] "date" @?= (Just "%csvdate")
 
-   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1)], rconditionalblocks=[CB [FieldMatcher Not "%csvdate" $ toRegex' "a"] [fa "date" "%csvdate"]]}
+   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1)], rconditionalblocks=[CB [FieldMatcher Not "%csvdate" $ toRegex' "a"] [fa "date" "%csvdate"] Nothing]}
     in testCase "negated-conditional-false" $ hledgerField rules [["a","b"]] "date" @?= (Nothing)
   
-   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1)], rconditionalblocks=[CB [FieldMatcher Not "%csvdate" $ toRegex' "b"] [fa "date" "%csvdate"]]}
+   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1)], rconditionalblocks=[CB [FieldMatcher Not "%csvdate" $ toRegex' "b"] [fa "date" "%csvdate"] Nothing]}
     in testCase "negated-conditional-true" $ hledgerField rules [["a","b"]] "date" @?= (Just "%csvdate")
 
-   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1),("description",2)], rconditionalblocks=[CB [FieldMatcher Or "%csvdate" $ toRegex' "a", FieldMatcher Or "%description" $ toRegex' "b"] [fa "date" "%csvdate"]]}
+   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1),("description",2)], rconditionalblocks=[CB [FieldMatcher Or "%csvdate" $ toRegex' "a", FieldMatcher Or "%description" $ toRegex' "b"] [fa "date" "%csvdate"] Nothing]}
     in testCase "conditional-with-or-a" $ hledgerField rules [["a"]] "date" @?= (Just "%csvdate")
 
-   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1),("description",2)], rconditionalblocks=[CB [FieldMatcher Or "%csvdate" $ toRegex' "a", FieldMatcher Or "%description" $ toRegex' "b"] [fa "date" "%csvdate"]]}
+   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1),("description",2)], rconditionalblocks=[CB [FieldMatcher Or "%csvdate" $ toRegex' "a", FieldMatcher Or "%description" $ toRegex' "b"] [fa "date" "%csvdate"] Nothing]}
     in testCase "conditional-with-or-b" $ hledgerField rules [["_", "b"]] "date" @?= (Just "%csvdate")
 
-   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1),("description",2)], rconditionalblocks=[CB [FieldMatcher Or "%csvdate" $ toRegex' "a", FieldMatcher And "%description" $ toRegex' "b"] [fa "date" "%csvdate"]]}
+   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1),("description",2)], rconditionalblocks=[CB [FieldMatcher Or "%csvdate" $ toRegex' "a", FieldMatcher And "%description" $ toRegex' "b"] [fa "date" "%csvdate"] Nothing]}
     in testCase "conditional.with-and" $ hledgerField rules [["a", "b"]] "date" @?= (Just "%csvdate")
 
-   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1),("description",2)], rconditionalblocks=[CB [FieldMatcher Or "%csvdate" $ toRegex' "a", FieldMatcher And "%description" $ toRegex' "b", FieldMatcher Or "%description" $ toRegex' "c"] [fa "date" "%csvdate"]]}
+   ,let rules = mkrules $ defrules{rcsvfieldindexes=[("csvdate",1),("description",2)], rconditionalblocks=[CB [FieldMatcher Or "%csvdate" $ toRegex' "a", FieldMatcher And "%description" $ toRegex' "b", FieldMatcher Or "%description" $ toRegex' "c"] [fa "date" "%csvdate"] Nothing]}
     in testCase "conditional.with-and-or" $ hledgerField rules [["_", "c"]] "date" @?= (Just "%csvdate")
 
    ]
@@ -2667,9 +2675,11 @@ tests_RulesReader = testGroup "RulesReader" [
           , rassignments=[ fa "account2" "equity", fa "amount1" "1" ]
           -- ConditionalBlocks here are in reverse order: mkrules reverses the list
           , rconditionalblocks=[ CB { cbMatchers=[FieldMatcher Or "%description" (toRegex' "PREFIX (.*) - (.*)")]
-                                    , cbAssignments=[fa "account1" "account:\\1:\\2"] }
+                                    , cbAssignments=[fa "account1" "account:\\1:\\2"]
+                                    , cbPos=Nothing }
                                , CB { cbMatchers=[FieldMatcher Or "%description" (toRegex' "PREFIX (.*)")]
-                                    , cbAssignments=[fa "account1" "account:\\1", fa "comment1" "\\1"] }
+                                    , cbAssignments=[fa "account1" "account:\\1", fa "comment1" "\\1"]
+                                    , cbPos=Nothing }
                                ]
           }
         record = [["2019-02-01","PREFIX Text 1 - Text 2"]]
