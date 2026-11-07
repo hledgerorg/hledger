@@ -191,6 +191,7 @@ See more about this and tracking AI usage in general at [AI usage tracking](ai-u
 - Andy Balaam: <https://artificialworlds.net/blog/2025/12/16/why-i-dont-use-ai/>, <https://artificialworlds.net/blog/2026/09/11/feeling-sad-about-ai/>
 
 ### Policies
+- [Perspectiva Kogui / An Urgent Message On Artificial Intelligence From The Kogui People](https://sonidoselva.com/perspectiva-kogui)
 - [Pope Leo XIV: Magnifica Humanitas: On Safeguarding The Human Person In The Time Of Artificial Intelligence](https://www.vatican.va/content/leo-xiv/en/encyclicals/documents/20260515-magnifica-humanitas.html)
   ([summary](https://www.theregister.com/ai-ml/2026/05/26/pope-leo-warns-ai-boom-can-give-big-tech-and-the-people-who-run-it-too-much-power/5245883))
 - <https://sfconservancy.org/llm-gen-ai/llm-backed-generative-ai-recommendations.html>
