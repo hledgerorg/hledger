@@ -28,6 +28,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import System.Console.CmdArgs.Explicit as CmdArgs
+import System.IO (hFlush, stdout)
 
 import Text.Tabular.AsciiWide as Tab
 
@@ -219,7 +220,10 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
         (twrdetails, etwr) <- timeWeightedReturn showCashFlow prettyTables showAmt holdingsAt valueOn thisSpan
         let cashFlowAmt = maNegate . maSum $ map snd cashFlow
         let smallIsZero x = if abs x < 0.01 then 0.0 else x
-        let spanrow irr (periodTwr, annualizedTwr) = [ showDate b
+        let showPct = either (const "error") (T.pack . printf "%0.2f%%" . smallIsZero)
+        let spanLabel = T.unpack $ showDate b <> " - " <> showDate lastDay
+        let errors = [ spanLabel ++ ": " ++ msg | Left msg <- [() <$ eirr, () <$ etwr] ]
+        let spanrow = [ showDate b
                , showDate (addDays (-1) e)
                , T.pack $ showMixedAmountOneLineWithoutCost False $ styleAmounts styles $ valueBefore
                , T.pack $ showMixedAmountOneLineWithoutCost False $ styleAmounts styles $ cashFlowAmt
@@ -232,14 +236,14 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
                --   -- & dbg0With (lbl "cashflow before styling".showMixedAmountOneLine)
                , T.pack $ showMixedAmountOneLineWithoutCost False $ styleAmounts styles $ valueAfter
                , T.pack $ showMixedAmountOneLineWithoutCost False $ styleAmounts styles $ (valueAfter `maMinus` (valueBefore `maPlus` cashFlowAmt))
-               , T.pack $ printf "%0.2f%%" $ smallIsZero irr
-               , T.pack $ printf "%0.2f%%" $ smallIsZero periodTwr
-               , T.pack $ printf "%0.2f%%" $ smallIsZero annualizedTwr ]
-        return (irrdetails <> twrdetails, spanrow <$> eirr <*> etwr)
+               , showPct eirr
+               , showPct (fst <$> etwr)
+               , showPct (snd <$> etwr) ]
+        return (irrdetails <> twrdetails, spanrow, errors)
 
-  (perioddetails, periodRows) <- unzip <$> forM spans processSpan
-  (totaldetails, totalRow) <- case periodRows of
-    [singleRow] -> return ("", singleRow)
+  (perioddetails, periodRows, periodErrors) <- unzip3 <$> forM spans processSpan
+  (totaldetails, totalRow, totalErrors) <- case periodRows of
+    [singleRow] -> return ("", singleRow, [])
     _           -> processSpan fullPeriod
 
   let rowTitles = Tab.Group Tab.NoLine (map (Header . T.pack . show) (take (length periodRows) [1..]))
@@ -247,12 +251,9 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
   let isSingleSpan = length spans == 1
       details = mconcat perioddetails <> totaldetails
 
-  rows <- case sequence $ if isSingleSpan then periodRows else periodRows ++ [totalRow] of
-    Right rows -> return rows
-    Left e -> do
-      -- show any --cashflow details before the error, to help troubleshoot it
-      unless (TL.null details) $ writeOutput opts $ TL.unpack details
-      error' e
+      rows = if isSingleSpan then periodRows else periodRows ++ [totalRow]
+      -- a rate of return that can't be computed shows as "error" in its cell; the reasons are given after the report
+      errors = nub $ concat periodErrors ++ totalErrors
 
   let table = Table
               (if isSingleSpan
@@ -269,6 +270,10 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
   writeOutput opts $ TL.unpack $ withTitle ropts $
     details <> Tab.render prettyTables id id id table <> "\n"
 
+  -- report errors on stderr, and exit with a nonzero status
+  unless (null errors) $ do
+    hFlush stdout
+    error' $ intercalate "\n" errors
 
 -- | Time-weighted rate of return, computed from the investment's value at the end of each day.
 --
@@ -378,6 +383,14 @@ internalRateOfReturn styles showCashFlow prettyTables flowDetails (OneSpan begin
   -- 0% is always a solution, so require at least something here
   case totalCF of
     [] -> return (details, Right 0)
+    (d, _) : _ | all ((== d) . fst) totalCF ->
+      -- no time passes between the cash flows, so the rate does not matter
+      return . (details,) $
+        if unMix (maSum $ map snd totalCF) == 0 then Right 0
+        else Left $ "Equation for Internal Rate of Return (IRR) can not be solved.\n\
+                    \  All of this period's cash flows (including the values at its start and end) fall on "
+                    ++ T.unpack (showDate d) ++ ",\n\
+                    \  so no time passes for the gain or loss to happen in."
     _  -> return . (details,) . fmap (\r -> (r - 1) * 100) $
             solveIRR (interestSum end totalCF)
               "Equation for Internal Rate of Return (IRR) can not be solved.\n\

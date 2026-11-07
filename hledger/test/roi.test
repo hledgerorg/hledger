@@ -1055,7 +1055,8 @@ Annualized TWR: 186.64%
 
 >= 0
 
-# ** 39. A negative investment value (here, a short position) gives an error naming the part of the period
+# ** 39. A negative investment value (here, a short position) gives a TWR error naming the part of the period;
+# the IRR, and the rest of the report, are still shown
 <
 2024-01-10 short sale
     investment    -10 F @ $100
@@ -1064,6 +1065,12 @@ Annualized TWR: 186.64%
 P 2024-01-20 F $90
 
 $ hledger -f - roi --inv investment --value=then,$ -b 2024-01 -e 2024-04
++---++------------+------------++---------------+----------+-------------+------++---------++------------+----------+
+|   ||      Begin |        End || Value (begin) | Cashflow | Value (end) |  PnL ||     IRR || TWR/period | TWR/year |
++===++============+============++===============+==========+=============+======++=========++============+==========+
+| 1 || 2024-01-01 | 2024-03-31 ||             0 |   $-1000 |       $-900 | $100 || -37.46% ||      error |    error |
++---++------------+------------++---------------+----------+-------------+------++---------++------------+----------+
+
 >2 /Cannot compute the time-weighted return for 2024-01-11 to 2024-03-31 \(no cash flows\): the investment's value at the start \(\$-1000\) plus deposits \(0\) is negative/
 >= 1
 
@@ -1190,7 +1197,7 @@ $ hledger -f - roi --inv assets:broker --value=then,$ -Y
 
 >= 0
 
-# ** 44. When TWR can't be computed, --cashflow still shows the details first, to help troubleshoot
+# ** 44. When TWR can't be computed, --cashflow details and the report are still shown, to help troubleshoot
 <
 2024-01-10 short sale
     investment    -10 F @ $100
@@ -1220,5 +1227,38 @@ TWR returns for period 2024-01-01 - 2024-03-31
 +---++------------+------------+---------------++---------------+----------+-------------+-------------++-----------+---------------+
 Each row's return is (Value (end) - Withdrawals) / (Value (begin) + Deposits) - 1; they are chained.
 
++---++------------+------------++---------------+----------+-------------+------++---------++------------+----------+
+|   ||      Begin |        End || Value (begin) | Cashflow | Value (end) |  PnL ||     IRR || TWR/period | TWR/year |
++===++============+============++===============+==========+=============+======++=========++============+==========+
+| 1 || 2024-01-01 | 2024-03-31 ||             0 |   $-1000 |       $-900 | $100 || -37.46% ||      error |    error |
++---++------------+------------++---------------+----------+-------------+------++---------++------------+----------+
+
 >2 /Cannot compute the time-weighted return for 2024-01-11 to 2024-03-31/
+>= 1
+
+# ** 45. An IRR or TWR that can't be computed shows as error in its cell only, the rest of the report is still shown,
+# and the reasons are given on stderr, with a nonzero exit status. (#2845)
+# Here, all of 2025's cash flows fall on one day, so its IRR has no solution.
+<
+2024-01-01 deposit
+    investment      $100
+    assets:cash
+
+2025-01-01 withdrawal
+    investment     $-100
+    pnl             $-20
+    assets:cash     $120
+
+$ hledger -f - roi --inv investment --pnl pnl -Y
++-------++------------+------------++---------------+----------+-------------+-----++--------++------------+----------+
+|       ||      Begin |        End || Value (begin) | Cashflow | Value (end) | PnL ||    IRR || TWR/period | TWR/year |
++=======++============+============++===============+==========+=============+=====++========++============+==========+
+|     1 || 2024-01-01 | 2024-12-31 ||             0 |     $100 |        $100 |   0 ||  0.00% ||      0.00% |    0.00% |
+|     2 || 2025-01-01 | 2025-12-31 ||          $100 |    $-120 |           0 | $20 ||  error ||     20.00% |   20.01% |
++-------++------------+------------++---------------+----------+-------------+-----++--------++------------+----------+
+| Total || 2024-01-01 | 2025-12-31 ||             0 |     $-20 |           0 | $20 || 19.95% ||     20.00% |    9.54% |
++-------++------------+------------++---------------+----------+-------------+-----++--------++------------+----------+
+
+>2 /2025-01-01 - 2025-12-31: Equation for Internal Rate of Return \(IRR\) can not be solved.
+  All of this period's cash flows \(including the values at its start and end\) fall on 2025-01-01,/
 >= 1

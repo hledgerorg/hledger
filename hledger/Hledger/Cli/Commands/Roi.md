@@ -32,10 +32,14 @@ an annual rate.
 Price directives will be taken into account if you supply appropriate
 `--cost` or `--value` flags (see [Value reporting](https://hledger.org/hledger.html#value-reporting)).
 
-Note, in some cases this report can fail, for these reasons:
+Note, in some cases a rate of return can't be computed. Then its cell in the report shows `error`, the rest of the
+report is still shown, and the reasons (each prefixed with its period) are printed after it, with a nonzero exit status.
+The reasons can be:
 
 - Error (NotBracketed): No solution for Internal Rate of Return (IRR).
   Possible causes: IRR is huge (>1000000%), balance of investment becomes negative at some point in time.
+- Error: No solution for Internal Rate of Return (IRR), because all of a period's cash flows (including the values at
+  its start and end) fall on the same day, so no time passes for the gain or loss to happen in.
 - Error (SearchFailed): Failed to find solution for Internal Rate of Return (IRR).
   Either search does not converge to a solution, or converges too slowly.
 - Error: Cannot compute the time-weighted return for DATES (PART): the investment's value at the start (...) plus
