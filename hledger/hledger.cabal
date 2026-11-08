@@ -145,6 +145,7 @@ library
       Hledger.Cli.Script
       Hledger.Cli.Utils
       Hledger.Cli.Version
+      Hledger.Cli.Xirr
   other-modules:
       Hledger.Cli.Commands.Balance.Internal
       Paths_hledger

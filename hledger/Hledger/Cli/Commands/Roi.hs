@@ -21,7 +21,6 @@ import Text.Printf
 import Data.Bifunctor (second)
 import Data.List
 import Data.Maybe (fromMaybe)
-import Numeric.RootFinding
 import Data.Decimal
 import Data.Map qualified as M
 import Data.Set qualified as S
@@ -35,6 +34,7 @@ import Text.Tabular.AsciiWide as Tab
 import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Utils (warnIfLargeMultiPeriodReport, withTitle, writeOutput)
+import Hledger.Cli.Xirr
 
 
 roimode = hledgerCommandMode
@@ -222,7 +222,8 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
         let smallIsZero x = if abs x < 0.01 then 0.0 else x
         let showPct = either (const "error") (T.pack . printf "%0.2f%%" . smallIsZero)
         let spanLabel = T.unpack $ showDate b <> " - " <> showDate lastDay
-        let errors = [ spanLabel ++ ": " ++ msg | Left msg <- [() <$ eirr, () <$ etwr] ]
+        let errors = [ spanLabel ++ ", " ++ what ++ ":\n" ++ intercalate "\n" (map ("  " ++) (lines msg))
+                     | (what, Left msg) <- [("IRR", () <$ eirr), ("TWR", () <$ etwr)] ]
         let spanrow = [ showDate b
                , showDate (addDays (-1) e)
                , T.pack $ showMixedAmountOneLineWithoutCost False $ styleAmounts styles $ valueBefore
@@ -253,7 +254,7 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
 
       rows = if isSingleSpan then periodRows else periodRows ++ [totalRow]
       -- a rate of return that can't be computed shows as "error" in its cell; the reasons are given after the report
-      errors = nub $ concat periodErrors ++ totalErrors
+      errors = concat periodErrors ++ totalErrors
 
   let table = Table
               (if isSingleSpan
@@ -270,10 +271,10 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
   writeOutput opts $ TL.unpack $ withTitle ropts $
     details <> Tab.render prettyTables id id id table <> "\n"
 
-  -- report errors on stderr, and exit with a nonzero status
+  -- The report did complete, and a rate with no answer is a permanent fact about the journal, so this is a warning.
   unless (null errors) $ do
     hFlush stdout
-    error' $ intercalate "\n" errors
+    warnIO $ intercalate "\n" $ "Some rates of return could not be computed (they are shown as error):" : errors
 
 -- | Time-weighted rate of return, computed from the investment's value at the end of each day.
 --
@@ -380,41 +381,22 @@ internalRateOfReturn styles showCashFlow prettyTables flowDetails (OneSpan begin
            [ [desc, cost, pnl, showMA amt] | (_, desc, cost, pnl, amt) <- rows ])
         <> "Amounts are from your point of view: what you put in is negative, what you take out (or still have) positive.\n\n"
 
-  -- 0% is always a solution, so require at least something here
-  case totalCF of
-    [] -> return (details, Right 0)
-    (d, _) : _ | all ((== d) . fst) totalCF ->
-      -- no time passes between the cash flows, so the rate does not matter
-      return . (details,) $
-        if unMix (maSum $ map snd totalCF) == 0 then Right 0
-        else Left $ "Equation for Internal Rate of Return (IRR) can not be solved.\n\
-                    \  All of this period's cash flows (including the values at its start and end) fall on "
-                    ++ T.unpack (showDate d) ++ ",\n\
-                    \  so no time passes for the gain or loss to happen in."
-    _  -> return . (details,) . fmap (\r -> (r - 1) * 100) $
-            solveIRR (interestSum end totalCF)
-              "Equation for Internal Rate of Return (IRR) can not be solved.\n\
-              \  Possible causes: IRR is huge (>1000000%), balance of investment becomes negative at some point in time."
-              "Equation for Internal Rate of Return (IRR) can not be solved.\n\
-              \  Either search does not converge to a solution, or converges too slowly."
+  return (details, either (Left . irrErrorMessage) Right $ xirr end [ (d, unMix a) | (d, a) <- totalCF ])
+
+irrErrorMessage :: IrrError -> String
+irrErrorMessage e = "Equation for Internal Rate of Return (IRR) can not be solved.\n" ++ case e of
+  IrrNothingPutIn ->
+    "  Money only came out of the investment in this period (or is still in it at the end), and none was put in\n\
+    \  (counting its value at the start as put in), so the IRR is infinite."
+  IrrAllOnOneDay d ->
+    "  All of this period's cash flows (including the values at its start and end) fall on " ++ T.unpack (showDate d) ++ ",\n\
+    \  so no time passes for the gain or loss to happen in."
+  IrrNotBracketed ->
+    "  Possible causes: IRR is huge (>1000000%), balance of investment becomes negative at some point in time."
+  IrrSearchFailed ->
+    "  Either search does not converge to a solution, or converges too slowly."
 
 type CashFlow = [(Day, MixedAmount)]
-
-interestSum :: Day -> CashFlow -> Double -> Double
-interestSum referenceDay cf rate = sum $ map go cf
-  where go (t,m) = realToFrac (unMix m) * rate ** (fromIntegral (referenceDay `diffDays` t) / 365.25)
-
--- Note: Holdings.hs's xirrPct duplicates this solver setup and
--- interestSum's rate convention; keep them in sync, or extract a
--- shared helper.
-solveIRR :: (Double -> Double) -> String -> String -> Either String Double
-solveIRR npv errNotBracketed errSearchFailed =
-  case ridders (RiddersParam 100 (AbsTol 0.00001))
-               (0.000000000001, 10000)
-               npv of
-    Root s       -> Right s
-    NotBracketed -> Left errNotBracketed
-    SearchFailed -> Left errSearchFailed
 
 calculateCashFlow :: WhichDate -> [Transaction] -> Query -> CashFlow
 calculateCashFlow wd trans query =
