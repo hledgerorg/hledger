@@ -32,22 +32,38 @@ an annual rate.
 Price directives will be taken into account if you supply appropriate
 `--cost` or `--value` flags (see [Value reporting](https://hledger.org/hledger.html#value-reporting)).
 
-Note, in some cases a rate of return can't be computed. Then its cell in the report shows `error`, the rest of the
-report is still shown, and the reasons (each prefixed with its period) are printed after it, with a nonzero exit status.
+Some special cases of IRR have no solution in the usual sense, and are reported as:
+
+- 0%, when there are no cash flows, or when they all fall on the same day and add up to zero
+  (nothing is gained or lost, and no time passes)
+- -100%, when money is put in, but nothing comes out of the investment or is left in it (all of it is lost).
+  A total loss is -100% however long the money was invested, even for a day.
+  (But a partial loss within one day is an error, below, since its annual rate depends on how much time passes.)
+
+In some cases a rate of return can't be computed. Then its cell in the report shows `error`, the rest of the
+report is still shown, and the reasons (each with its period) are printed after it as a warning.
 The reasons can be:
 
-- Error (NotBracketed): No solution for Internal Rate of Return (IRR).
+- No solution for Internal Rate of Return (IRR).
   Possible causes: IRR is huge (>1000000%), balance of investment becomes negative at some point in time.
-- Error: No solution for Internal Rate of Return (IRR), because all of a period's cash flows (including the values at
+- No solution for Internal Rate of Return (IRR), because money only came out of the investment in that period (or is
+  still in it at the end), and none was put in (counting its value at the start as put in), so the IRR is infinite.
+- No solution for Internal Rate of Return (IRR), because all of a period's cash flows (including the values at
   its start and end) fall on the same day, so no time passes for the gain or loss to happen in.
-- Error (SearchFailed): Failed to find solution for Internal Rate of Return (IRR).
+- Failed to find solution for Internal Rate of Return (IRR).
   Either search does not converge to a solution, or converges too slowly.
-- Error: Cannot compute the time-weighted return for DATES (PART): the investment's value at the start (...) plus
+- Cannot compute the time-weighted return for DATES (PART): the investment's value at the start (...) plus
   deposits (...) is negative.
   Possible cause: the balance of the investment becomes negative, eg more is sold than is held (a short position).
+
+And in some cases the whole report can't be produced:
+
 - Error: Could not value the investment on DATE: no market price ... is known for COMMODITY on or before that date.
   A holding has no market price, and none of the investment's transactions on or before that date records a price
   for buying or selling it. Add a P directive for it, or record the price of its purchase.
+- Error: Period ... has multiple commodities: ...
+  The investment, its cash flows or its profit and loss are in more than one commodity. Use --value to convert them
+  to one (eg `--value=end,$ --infer-market-prices`).
 
 Examples:
 

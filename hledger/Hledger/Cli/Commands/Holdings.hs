@@ -58,6 +58,7 @@ import Hledger.Cli.CliOptions
 import Hledger.Cli.Commands.Balance.Internal (addTotalBorders)
 import Hledger.Cli.Commands.Print (roundFromRawOpts)
 import Hledger.Cli.Utils (unsupportedOutputFormatError, warnIfLargeMultiPeriodReport, writeOutputLazyText)
+import Hledger.Cli.Xirr (xirr)
 import Hledger.Utils.I18n qualified as I18n
 import Hledger.Write.Chart (Chart(..), ChartLabel(..), Mark(..), Panel(..), BarLayout(..), Series(..), SeriesRole(..), XAxis(..))
 import Hledger.Write.Csv (CSV, printCSV, printTSV)
@@ -65,7 +66,6 @@ import Hledger.Write.Html (Html, htmlAsLazyText, titledTableHtml, toHtml)
 import Hledger.Write.Ods (printFods)
 import Hledger.Write.Spreadsheet (addHeaderBorders, headerCell)
 import Hledger.Write.Spreadsheet qualified as Ods
-import Numeric.RootFinding (RiddersParam(..), Root(..), Tolerance(..), ridders)
 import System.IO qualified as IO
 import Text.Blaze.Html5 ((!))
 import Text.Blaze.Html5 qualified as H
@@ -706,17 +706,11 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
 
     -- The annualised internal rate of return implied by dated cashflows
     -- (negative = money invested) up to the report date, as a percentage,
-    -- calculated like roi's IRR. Nothing if it can not be solved.
-    -- Note: this duplicates the solver setup and rate convention of
-    -- Roi.hs's solveIRR/interestSum (not exported); keep them in sync,
-    -- or extract a shared helper.
+    -- calculated like roi's IRR (see xirr for the special cases, eg -100%
+    -- when nothing is left of the money invested). Nothing if it has no
+    -- solution (eg an infinite rate) or can not be solved.
     xirrPct :: [(Day, Quantity)] -> Maybe Double
-    xirrPct cf =
-      case ridders (RiddersParam 100 (AbsTol 0.00001)) (0.000000000001, 10000) npv of
-        Root rate -> Just $ (rate - 1) * 100
-        _         -> Nothing
-      where
-        npv rate = sum [realToFrac n * rate ** (fromIntegral (diffDays reportdate t) / 365.25) | (t, n) <- cf]
+    xirrPct = either (const Nothing) Just . xirr reportdate
 
     -- XIRR from cashflows plus a final value amount at the report date,
     -- when they are all in one commodity. Not for a short position, whose

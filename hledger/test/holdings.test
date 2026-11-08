@@ -1091,3 +1091,63 @@ $ hledger -f- holdings -M -e 2026-04-01 -O csv
 "2026-01-31","$100","$120","$20","20.0","","820.5"
 "2026-02-28","$60","$90","$30","50.0","$20","1566.4"
 "2026-03-31","$60","$54","$-6","-10.0","$20","108.0"
+
+# ** 61. A holding which has lost all of its value has an XIRR of -100%.
+<
+commodity F  ; lots:
+
+2024-01-01 buy
+    assets:broker    10 F @ $10
+    assets:cash
+
+P 2025-01-01 F $0
+
+$ hledger -f - holdings -e 2025-06-01
+Holdings on 2025-05-31
+
+               ||       Date   Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain   UGain%  RGain     XIRR 
+===============++================================================================================================================
+ assets:broker || 2024-01-01  1.4y   10 F       $10           0        $100           $0          $-100  -100.0%         -100.0% 
+---------------++----------------------------------------------------------------------------------------------------------------
+               ||                    10 F       $10                    $100            0          $-100  -100.0%         -100.0% 
+>= 0
+
+# ** 62. A holding bought on the report date at its market price has an XIRR of 0% (no time has passed).
+<
+commodity F  ; lots:
+
+2025-06-01 buy
+    assets:broker    10 F @ $10
+    assets:cash
+
+P 2025-06-01 F $10
+
+$ hledger -f - holdings -e 2025-06-02
+Holdings on 2025-06-01
+
+               ||       Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain  XIRR 
+===============++===========================================================================================================
+ assets:broker || 2025-06-01   0d   10 F       $10         $10        $100         $100  100.0%     $0    0.0%         0.0% 
+---------------++-----------------------------------------------------------------------------------------------------------
+               ||                   10 F       $10                    $100         $100  100.0%     $0    0.0%         0.0% 
+>= 0
+
+# ** 63. A holding bought on the report date with a partial loss has no XIRR (unlike a total loss; see test 61).
+<
+commodity F  ; lots:
+
+2025-06-01 buy
+    assets:broker    10 F @ $10
+    assets:cash
+
+P 2025-06-01 F $5
+
+$ hledger -f - holdings -e 2025-06-02
+Holdings on 2025-06-01
+
+               ||       Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain  XIRR 
+===============++===========================================================================================================
+ assets:broker || 2025-06-01   0d   10 F       $10          $5        $100          $50  100.0%   $-50  -50.0%              
+---------------++-----------------------------------------------------------------------------------------------------------
+               ||                   10 F       $10                    $100          $50  100.0%   $-50  -50.0%              
+>= 0

@@ -1072,7 +1072,7 @@ $ hledger -f - roi --inv investment --value=then,$ -b 2024-01 -e 2024-04
 +---++------------+------------++---------------+----------+-------------+------++---------++------------+----------+
 
 >2 /Cannot compute the time-weighted return for 2024-01-11 to 2024-03-31 \(no cash flows\): the investment's value at the start \(\$-1000\) plus deposits \(0\) is negative/
->= 1
+>= 0
 
 # ** 40. With --value=end, each period is valued with its own end's prices, so periods show no price changes
 # and don't chain to the total (use --value=then for TWR)
@@ -1234,10 +1234,10 @@ Each row's return is (Value (end) - Withdrawals) / (Value (begin) + Deposits) - 
 +---++------------+------------++---------------+----------+-------------+------++---------++------------+----------+
 
 >2 /Cannot compute the time-weighted return for 2024-01-11 to 2024-03-31/
->= 1
+>= 0
 
 # ** 45. An IRR or TWR that can't be computed shows as error in its cell only, the rest of the report is still shown,
-# and the reasons are given on stderr, with a nonzero exit status. (#2845)
+# and the reasons are given in a warning on stderr. (#2845)
 # Here, all of 2025's cash flows fall on one day, so its IRR has no solution.
 <
 2024-01-01 deposit
@@ -1259,6 +1259,104 @@ $ hledger -f - roi --inv investment --pnl pnl -Y
 | Total || 2024-01-01 | 2025-12-31 ||             0 |     $-20 |           0 | $20 || 19.95% ||     20.00% |    9.54% |
 +-------++------------+------------++---------------+----------+-------------+-----++--------++------------+----------+
 
->2 /2025-01-01 - 2025-12-31: Equation for Internal Rate of Return \(IRR\) can not be solved.
-  All of this period's cash flows \(including the values at its start and end\) fall on 2025-01-01,/
->= 1
+>2
+Warning: Some rates of return could not be computed (they are shown as error):
+2025-01-01 - 2025-12-31, IRR:
+  Equation for Internal Rate of Return (IRR) can not be solved.
+    All of this period's cash flows (including the values at its start and end) fall on 2025-01-01,
+    so no time passes for the gain or loss to happen in.
+>= 0
+
+# ** 46. When money is put in and nothing comes back, the IRR is -100%, even with just one cash flow.
+# (Here, in 2025, the only cash flow is the value at the start; the write-off makes no cash flow.)
+<
+2024-01-01 buy
+    investment      $100
+    assets:cash
+
+2025-06-01 write-off
+    investment     $-100
+    pnl             $100
+
+$ hledger -f - roi --inv investment --pnl pnl -Y
++-------++------------+------------++---------------+----------+-------------+-------++----------++------------+----------+
+|       ||      Begin |        End || Value (begin) | Cashflow | Value (end) |   PnL ||      IRR || TWR/period | TWR/year |
++=======++============+============++===============+==========+=============+=======++==========++============+==========+
+|     1 || 2024-01-01 | 2024-12-31 ||             0 |     $100 |        $100 |     0 ||    0.00% ||      0.00% |    0.00% |
+|     2 || 2025-01-01 | 2025-12-31 ||          $100 |        0 |           0 | $-100 || -100.00% ||   -100.00% | -100.00% |
++-------++------------+------------++---------------+----------+-------------+-------++----------++------------+----------+
+| Total || 2024-01-01 | 2025-12-31 ||             0 |     $100 |           0 | $-100 || -100.00% ||   -100.00% | -100.00% |
++-------++------------+------------++---------------+----------+-------------+-------++----------++------------+----------+
+
+>= 0
+
+# ** 47. When money only comes out (or is left in at the end), and none is put in, the IRR is infinite: an error.
+# The other rates, and the rest of the report, are still shown.
+<
+2024-01-01 buy
+    investment      $100
+    assets:cash
+
+2024-06-01 sell
+    investment     $-100
+    assets:cash
+
+2025-06-01 gain
+    investment     $50
+    pnl             $-50
+
+$ hledger -f - roi --inv investment --pnl pnl -Y
++-------++------------+------------++---------------+----------+-------------+-----++--------++------------+----------+
+|       ||      Begin |        End || Value (begin) | Cashflow | Value (end) | PnL ||    IRR || TWR/period | TWR/year |
++=======++============+============++===============+==========+=============+=====++========++============+==========+
+|     1 || 2024-01-01 | 2024-12-31 ||             0 |        0 |           0 |   0 ||  0.00% ||      0.00% |    0.00% |
+|     2 || 2025-01-01 | 2025-12-31 ||             0 |        0 |         $50 | $50 ||  error ||      0.00% |    0.00% |
++-------++------------+------------++---------------+----------+-------------+-----++--------++------------+----------+
+| Total || 2024-01-01 | 2025-12-31 ||             0 |        0 |         $50 | $50 || 63.93% ||      0.00% |    0.00% |
++-------++------------+------------++---------------+----------+-------------+-----++--------++------------+----------+
+
+>2 /2025-01-01 - 2025-12-31, IRR:
+  Equation for Internal Rate of Return \(IRR\) can not be solved.
+    Money only came out of the investment in this period \(or is still in it at the end\), and none was put in/
+>= 0
+
+# ** 48. Cash flows on one day which add up to zero have an IRR of 0% (nothing was gained or lost).
+<
+2025-03-01 buy
+    investment      $100
+    assets:cash
+
+2025-03-01 sell
+    investment     $-100
+    assets:cash
+
+$ hledger -f - roi --inv investment --pnl pnl -p 2025
++---++------------+------------++---------------+----------+-------------+-----++-------++------------+----------+
+|   ||      Begin |        End || Value (begin) | Cashflow | Value (end) | PnL ||   IRR || TWR/period | TWR/year |
++===++============+============++===============+==========+=============+=====++=======++============+==========+
+| 1 || 2025-01-01 | 2025-12-31 ||             0 |        0 |           0 |   0 || 0.00% ||      0.00% |    0.00% |
++---++------------+------------++---------------+----------+-------------+-----++-------++------------+----------+
+
+>= 0
+
+# ** 49. A partial loss within one day has no IRR, as its annual rate depends on how much time passes
+# (unlike a total loss, which is -100% however little time passes; see test 46).
+<
+2024-01-01 buy
+    investment      $100
+    assets:cash
+
+2025-01-01 sell at a loss
+    investment     $-100
+    pnl             $50
+    assets:cash     $50
+
+$ hledger -f - roi --inv investment --pnl pnl -p 2025
++---++------------+------------++---------------+----------+-------------+------++-------++------------+----------+
+|   ||      Begin |        End || Value (begin) | Cashflow | Value (end) |  PnL ||   IRR || TWR/period | TWR/year |
++===++============+============++===============+==========+=============+======++=======++============+==========+
+| 1 || 2025-01-01 | 2025-12-31 ||          $100 |     $-50 |           0 | $-50 || error ||    -50.00% |  -50.02% |
++---++------------+------------++---------------+----------+-------------+------++-------++------------+----------+
+
+>2 /All of this period's cash flows \(including the values at its start and end\) fall on 2025-01-01/
+>= 0
