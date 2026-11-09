@@ -122,6 +122,7 @@ module Hledger.Read (
 
   -- * Re-exported
   JournalReader.tmpostingrulep,
+  JournalReader.parseAssertDirective,
   findReader,
   splitReaderPrefix,
   runJournalParser,

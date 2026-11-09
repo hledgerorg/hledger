@@ -423,7 +423,51 @@ $ hledger -f- check
 >2 /failed for the period 2025-11: no postings matched/
 >= 1
 
-# ** 32. An account with a matching balance is a row even if it had no postings in the period.
+# ** 32. An assert rule can also be given as a check argument, quoted as one argument.
+# It checks all the files read, combined.
+$ hledger -f directive-assert/rules.j -f directive-assert/negative.j check 'assert none daily  assets balance:<0'
+>2 /check argument:1:
+1 \| assert none daily  assets balance:<0
+
+This assert directive failed on 2026-01-01\./
+>= 1
+
+# ** 33. -I does not disable it.
+<
+2026-01-01
+    assets:cash   -5
+    equity
+$ hledger -f- check -I 'assert none daily  assets balance:<0'
+>2 /This assert directive failed on 2026-01-01/
+>= 1
+
+# ** 34. Several assert rules and check names can be given.
+<
+2026-01-01
+    assets:cash    5
+    equity
+$ hledger -f- check ordereddates 'assert some  assets' 'assert none monthly  assets balance:<0'
+
+# ** 35. Its syntax errors are shown like an assert directive's.
+<
+2026-01-01
+    assets:cash    5
+    equity
+$ hledger -f- check 'assert none  expr:"a or change:>0"'
+>2 /check argument:1:14:(.|
+)*can only be combined with other query terms by AND/
+>= 1
+
+# ** 36. An unquoted assert rule gets a hint.
+<
+2026-01-01
+    assets:cash    5
+    equity
+$ hledger -f- check assert none assets
+>2 /To check an assert rule, quote it as one argument/
+>= 1
+
+# ** 37. An account with a matching balance is a row even if it had no postings in the period.
 <
 2026-01-01
     assets:cash    -5
@@ -441,7 +485,7 @@ These balances matched:
 To see the report: hledger bal -E -H -b 2026-02-01 -e 2026-03-01 assets 'balance:<0'/
 >= 1
 
-# ** 33. change: and balance: can be combined; the failure shows both amounts.
+# ** 38. change: and balance: can be combined; the failure shows both amounts.
 <
 2026-01-01
     assets:cash   100
@@ -459,14 +503,14 @@ These accounts matched \(change, balance\):
 To see the report: hledger bal -E -H -b 2026-01-05 -e 2026-01-06 assets 'change:<-100' 'balance:<0'/
 >= 1
 
-# ** 34. The query must follow two spaces; after one space, it is read as a period expression.
+# ** 39. The query must follow two spaces; after one space, it is read as a period expression.
 <
 assert none assets balance:<0
 $ hledger -f- check
 >2 /could not parse this as a period expression/
 >= 1
 
-# ** 35. The query can be omitted: assert some monthly means every month has postings.
+# ** 40. The query can be omitted: assert some monthly means every month has postings.
 <
 2026-01-01
     assets:cash   100
