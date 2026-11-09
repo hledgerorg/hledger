@@ -520,8 +520,12 @@ journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,i
           -- Equity inference
           <&> (if infer_equity_ then timed  "journalInferEquityFromCosts" (journalInferEquityFromCosts verbose_tags_) else id)  -- maybe infer equity postings from costs; after lot processing, so lot disposals convert at cost basis
 
-        -- Now report any balance assertion failure detected above.
-        maybe (Right j3) Left massertionerr)
+        -- Now report any balance assertion failure detected above,
+        -- then check any assert directives (on the finalised journal, so lot subaccounts are seen).
+        maybe (Right j3) Left massertionerr
+          >>= (if checkassertions && not (null $ jasserts j3)
+                then timedE "journalCheckAssertDirectives" (\j4 -> journalCheckAssertDirectives _ioDay j4 $> j4)
+                else pure))
 
   -- The last stage's timing line appears when its result is forced; with --debug, do that now.
   when (debugLevel > 0) $ liftIO $ void $ evaluate j

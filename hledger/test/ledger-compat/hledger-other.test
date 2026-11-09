@@ -50,7 +50,6 @@ $ hledger -f- print
 <
 apply fixed CAD $0.90
 apply tag tag1:val1
-assert 1
 bucket Assets:Checking
 A Assets:Checking
 C $1 = USD 1

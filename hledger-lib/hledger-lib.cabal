@@ -78,6 +78,7 @@ library
       Hledger.Data.Errors
       Hledger.Data.Journal
       Hledger.Data.JournalChecks
+      Hledger.Data.JournalChecks.Assert
       Hledger.Data.JournalChecks.Ordereddates
       Hledger.Data.JournalChecks.Uniqueleafnames
       Hledger.Data.Json

@@ -23,6 +23,7 @@ module Hledger.Data.Journal (
   addJournalItem,
   addTransactionItem,
   addPeriodicTransaction,
+  addAssertDirective,
   addTransaction,
   journalDbg,
   journalInferMarketPricesFromTransactions,
@@ -247,6 +248,7 @@ journalDbg j@Journal{..} = chomp $ unlines $
   ,"jinferredmarketprices: "     <> shw jinferredmarketprices
   ,"jtxnmodifiers: "             <> shw jtxnmodifiers
   -- ,"jperiodictxns: "          <> shw jperiodictxns
+  ,"jasserts: "                  <> shw jasserts
   ,"jtxns: "                     <> shw jtxns
   ,"jitems: "                    <> shw (length jitems)
   ,"jfiles: "                    <> shw jfiles
@@ -338,6 +340,7 @@ journalConcat j1 j2 =
     ,jinferredmarketprices      = jinferredmarketprices      j1 <> jinferredmarketprices      j2
     ,jtxnmodifiers              = jtxnmodifiers              j1 <> jtxnmodifiers              j2
     ,jperiodictxns              = jperiodictxns              j1 <> jperiodictxns              j2
+    ,jasserts                   = jasserts                   j1 <> jasserts                   j2
     ,jtxns                      = jtxns                      j1 <> jtxns                      j2
     ,jitems                     = jitems                     j1 <> jitems                     j2
     ,jfiles                     = jfiles                     j1 <> jfiles                     j2
@@ -404,6 +407,7 @@ nulljournal = Journal {
   ,jinferredmarketprices      = []
   ,jtxnmodifiers              = []
   ,jperiodictxns              = []
+  ,jasserts                   = []
   ,jtxns                      = []
   ,jitems                     = []
   ,jfiles                     = []
@@ -455,6 +459,11 @@ addTransactionModifier mt j = j { jtxnmodifiers = mt : jtxnmodifiers j }
 
 addPeriodicTransaction :: PeriodicTransaction -> Journal -> Journal
 addPeriodicTransaction pt j = j { jperiodictxns = pt : jperiodictxns j }
+
+deriving instance Show AssertDirective
+
+addAssertDirective :: AssertDirective -> Journal -> Journal
+addAssertDirective ad j = j { jasserts = ad : jasserts j }
 
 addPriceDirective :: PriceDirective -> Journal -> Journal
 addPriceDirective h j@Journal{jpricedirectives=hs} = let hs' = h : hs in hs' `seq` j { jpricedirectives = hs' }  -- XXX #999 keep sorted
@@ -1239,6 +1248,7 @@ journalReverse j =
     ,jitems            = reverse $ jitems j
     ,jtxnmodifiers     = reverse $ jtxnmodifiers j
     ,jperiodictxns     = reverse $ jperiodictxns j
+    ,jasserts          = reverse $ jasserts j
     ,jpricedirectives  = reverse $ jpricedirectives j
     }
 

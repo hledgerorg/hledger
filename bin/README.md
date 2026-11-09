@@ -512,11 +512,6 @@ account assets         ; postable:n
 account assets:cash    ; postable:
 ```
 
-### hledger-check-fancyassertions
-
-[`hledger-check-fancyassertions.hs`](https://github.com/hledgerorg/hledger/blob/main/bin/hledger-check-fancyassertions.hs)
-checks account balances over time in more complex ways than hledger's built-in balance assertions.
-
 ### hledger-combine-balances
 
 [`hledger-combine-balances.hs`](https://github.com/hledgerorg/hledger/blob/main/bin/hledger-combine-balances.hs)
@@ -642,7 +637,7 @@ $ pip install -U hledger-utils
 $ pip install -U hledger-lots
 
 # Check that hledger's command list now includes the bin scripts.
-# Eg "check-fancyassertions" and "swap-dates" should be listed:
+# Eg "check-tagfiles" and "swap-dates" should be listed:
 $ hledger
 ```
 

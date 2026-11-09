@@ -10,7 +10,7 @@ commands_help=$(hledger)
     sed -rn 's/^[[:space:]]([a-z][-a-z]+)[[:space:]]+.*/\1/p; /OTHER ADDONS/q' <<< "$commands_help"
     sed -rn 's/^[[:space:]][a-z][-a-z]+[[:space:]]+\(([a-z][ ,a-z]+)\).*/\1/p' <<< "$commands_help"
 } \
-| sed -r '/(iadd|edit|lots|bar|plot|autosync|interest|pricehist|check-fancyassertions|check-tagfiles|git|pijul)/d;' \
+| sed -r '/(iadd|edit|lots|bar|plot|autosync|interest|pricehist|check-tagfiles|git|pijul)/d;' \
 | sort -u
 
 # Local Variables:

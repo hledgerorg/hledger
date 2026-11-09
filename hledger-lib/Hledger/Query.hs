@@ -54,6 +54,7 @@ module Hledger.Query (
   queryIsBalance,
   queryIsRowTerm,
   queryHasBalance,
+  queryHasChange,
   queryIsStartDateOnly,
   queryIsTransactionRelated,
   -- * accessors
@@ -842,6 +843,10 @@ queryIsRowTerm = liftA2 (||) queryIsChange queryIsBalance
 -- Reports then need the postings before the report start, to know the balances.
 queryHasBalance :: Query -> Bool
 queryHasBalance = queryHasTerm queryIsBalance
+
+-- | Does this query contain a change: term anywhere (possibly negated) ?
+queryHasChange :: Query -> Bool
+queryHasChange = queryHasTerm queryIsChange
 
 -- | Does this query specify a start date and nothing else (that would
 -- filter postings prior to the date) ?

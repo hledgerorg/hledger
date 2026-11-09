@@ -1,7 +1,7 @@
 #!/usr/bin/env stack
 -- stack runghc --verbosity info --package hledger --package string-qq
 -- Run from inside the hledger source tree, or compile with compile.sh.
--- See hledger-check-fancyassertions.hs.
+-- See hledger-check-tagfiles.hs.
 
 
 -- This is an unfinished prototype, see https://github.com/hledgerorg/hledger/issues/1171

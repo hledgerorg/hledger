@@ -102,6 +102,7 @@ import "Glob" System.FilePath.Glob hiding (match)
 -- import "filepattern" System.FilePattern.Directory
 
 import Hledger.Data
+import Hledger.Query (parseQuery, querySplitRowTerms)
 import Hledger.Read.Common
 import Hledger.Utils
 
@@ -307,6 +308,7 @@ directivep iopts = (do
     ,defaultcommoditydirectivep
     ,payeedirectivep
     ,tagdirectivep
+    ,assertdirectivep (_ioDay iopts) >>= modify' . addAssertDirective
     ]
    -- directives which print --export does not reproduce:
    -- those whose effect is already applied to the parsed data,
@@ -319,7 +321,6 @@ directivep iopts = (do
     ,endapplyaccountdirectivep
     ,applyfixeddirectivep
     ,applytagdirectivep
-    ,assertdirectivep
     ,bucketdirectivep
     ,capturedirectivep
     ,checkdirectivep
@@ -784,9 +785,10 @@ commodityaliasesp off sym tags = do
         <|> (simpleamountp MultiplierAmount <* spaces <* eof)
 
 -- More Ledger directives, ignore for now:
--- apply fixed, apply tag, assert, bucket, A, capture, check, define, expr
+-- apply fixed, apply tag, bucket, A, capture, check, define, expr
+-- (Ledger's assert directive is not supported; hledger's assert directive is different, see assertdirectivep.)
 applyfixeddirectivep, endapplyfixeddirectivep, applytagdirectivep, endapplytagdirectivep,
-  assertdirectivep, bucketdirectivep, capturedirectivep, checkdirectivep, 
+  bucketdirectivep, capturedirectivep, checkdirectivep,
   endapplyyeardirectivep, definedirectivep, exprdirectivep, valuedirectivep,
   evaldirectivep, pythondirectivep, commandlineflagdirectivep
   :: JournalParser m ()
@@ -795,7 +797,7 @@ endapplyfixeddirectivep = do string "end apply fixed" >> lift restofline >> retu
 applytagdirectivep      = do string "apply tag" >> lift restofline >> return ()
 endapplytagdirectivep   = do string "end apply tag" >> lift restofline >> return ()
 endapplyyeardirectivep  = do string "end apply year" >> lift restofline >> return ()
-assertdirectivep        = do string "assert"  >> lift restofline >> return ()
+
 bucketdirectivep        = do string "A " <|> string "bucket " >> lift restofline >> return ()
 capturedirectivep       = do string "capture" >> lift restofline >> return ()
 checkdirectivep         = do string "check"   >> lift restofline >> return ()
@@ -1027,6 +1029,57 @@ periodictransactionp = do
     ,pttags=tags
     ,ptpostings=postings
     }
+
+-- | Parse an assert directive:
+--
+-- > assert (none|some)[ PERIODEXPR][  QUERY]  [; COMMENT]
+--
+-- A period expression follows the quantifier after one space,
+-- and a query follows the quantifier or period expression after two or more spaces.
+-- Relative dates in the period expression and the query are relative to the given day (today).
+-- The query is parsed to check it, and kept as text.
+assertdirectivep :: Monad m => Day -> JournalParser m AssertDirective
+assertdirectivep today = do
+  pos <- getSourcePos'
+  line <- T.takeWhile (/= '\n') <$> getInput
+  try (string "assert" <* lift skipNonNewlineSpaces1) <?> "assert directive"
+  quantoff <- getOffset
+  quantword <- lift $ takeWhileP Nothing (not . isSpace)
+  quant <- case quantword of
+    "none" -> pure AssertNone
+    "some" -> pure AssertSome
+    _ -> customFailure $ parseErrorAtRegion quantoff (quantoff + T.length quantword) $
+           "assert should be followed by none or some (and the query must match no rows, or some rows)"
+  mperiod <- optional $ do
+    lift $ try $ singlespacep *> lookAhead (satisfy (\c -> c /= ';' && not (isSpace c)))
+    periodExcerpt <- lift $ excerpt_ $ singlespacedtextsatisfying1p (\c -> c /= ';' && c /= '\n')
+    lift $ reparseExcerpt periodExcerpt $ do
+      pexp <- try (periodexprp today) <|> do
+        offset1 <- getOffset
+        void takeRest
+        offset2 <- getOffset
+        customFailure $ parseErrorAtRegion offset1 offset2 $
+             "could not parse this as a period expression"
+          <> "\none space after none/some begins a period expression;"
+          <> "\nthe query must follow two or more spaces"
+      (<|>) eof $ do
+        offset1 <- getOffset
+        void takeRest
+        offset2 <- getOffset
+        customFailure $ parseErrorAtRegion offset1 offset2 $
+             "remainder of period expression cannot be parsed"
+          <> "\nperhaps you need to terminate the period expression with a double space?"
+          <> "\na double space separates the period expression from the query"
+      pure pexp
+  -- What remains is the query, after two or more spaces (or nothing).
+  lift skipNonNewlineSpaces
+  queryoff <- getOffset
+  querytxt <- lift $ T.strip <$> noncommenttextp
+  queryend <- getOffset
+  let queryerr = customFailure . parseErrorAtRegion queryoff queryend
+  either queryerr (const $ pure ()) $ querySplitRowTerms . fst =<< parseQuery today querytxt
+  void $ lift followingcommentp
+  return AssertDirective{adQuantifier=quant, adPeriod=mperiod, adQueryText=querytxt, adSourceText=line, adSourcePos=pos}
 
 -- | Parse a (possibly unbalanced) transaction.
 transactionp :: JournalParser m Transaction
@@ -2075,6 +2128,37 @@ tests_JournalReader = testGroup "JournalReader" [
     ]
 
   -- directives
+
+  ,let p = assertdirectivep (fromGregorian 2026 11 8)
+       summary ad = (adQuantifier ad, fmap fst (adPeriod ad), adQueryText ad)
+   in testGroup "assertdirectivep" [
+     testCase "no period, comment" $ assertParseEqOn p "assert none  expenses:petty amt:>+500  ; a comment\n" summary
+       (AssertNone, Nothing, "expenses:petty amt:>+500")
+    ,testCase "no period, empty query" $ assertParseEqOn p "assert some\n" summary
+       (AssertSome, Nothing, "")
+    ,testCase "no period, empty query, comment" $ assertParseEqOn p "assert some ; a comment\n" summary
+       (AssertSome, Nothing, "")
+    ,testCase "no period, balance: term" $ assertParseEqOn p "assert none  type:A balance:<0\n" summary
+       (AssertNone, Nothing, "type:A balance:<0")
+    ,testCase "no period, double space inside the query" $ assertParseEqOn p "assert none  desc:'a  b'\n" summary
+       (AssertNone, Nothing, "desc:'a  b'")
+    ,testCase "period with interval" $ assertParseEqOn p "assert none daily  type:A balance:<0\n" summary
+       (AssertNone, Just (Days 1), "type:A balance:<0")
+    ,testCase "period with span only" $ assertParseEqOn p "assert some in 2025  income:salary\n" summary
+       (AssertSome, Just NoInterval, "income:salary")
+    ,testCase "period, empty query" $ assertParseEqOn p "assert some monthly\n" summary
+       (AssertSome, Just (Months 1), "")
+    ,testCase "period, empty query, comment" $ assertParseEqOn p "assert some monthly  ; a comment\n" summary
+       (AssertSome, Just (Months 1), "")
+    ,testCase "a query starting with the word balance" $ assertParseEqOn p "assert none  balance\n" summary
+       (AssertNone, Nothing, "balance")
+    ,testCase "bad quantifier" $ assertParseError p "assert never  expenses\n" "should be followed by none or some"
+    ,testCase "period expression not parseable" $ assertParseError p "assert none dialy  expenses\n" "as a period expression"
+    ,testCase "query needs two spaces" $ assertParseError p "assert some desc:'opening balances'\n" "as a period expression"
+    ,testCase "period expression needs a double space" $ assertParseError p "assert none daily type:A\n" "terminate the period expression with a double space"
+    ,testCase "bad query" $ assertParseError p "assert none  amt:>x\n" ""
+    ,testCase "row terms inside or" $ assertParseError p "assert none monthly  expr:'a or change:>0'\n" "can only be combined"
+    ]
 
   ,testGroup "directivep" [
     testCase "supports !" $ do
