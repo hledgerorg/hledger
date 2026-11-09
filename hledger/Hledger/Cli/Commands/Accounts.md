@@ -51,6 +51,8 @@ With `--types`, it also shows each account's type, if it's known.
 
 With `--show-aliases`, it also shows each account's [aliases](#account-aliases), declared with `alias:` tags.
 (Aliases from `alias` directives or `--alias` options are not shown.)
+Also, account names in the query will match aliases too,
+so eg `hledger accounts --show-aliases chk` shows the account(s) with an alias containing `chk`.
 
 It shows a flat list by default. With `--tree`, it uses indentation to show the account hierarchy.
 In flat mode you can add `--drop N` to omit the first few account name components.

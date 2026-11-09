@@ -63,10 +63,15 @@ accounts opts@CliOpts{rawopts_=rawopts, reportspec_=ReportSpec{_rsQuery=query,_r
       types = boolopt "types" rawopts
       showaliases = boolopt "show-aliases" rawopts
       -- Modified queries. These may not work with boolean queries (#2371).
+      -- with --show-aliases, acct: terms also match account aliases (alias: tags)
+      aliasq = if showaliases then transformQuery matchAliasToo else id
+        where
+          matchAliasToo (Acct r) = Or [Acct r, Tag (toRegexCI' "^alias$") (Just r)]
+          matchAliasToo q        = q
       -- a depth limit will clip and exclude account names later, but we don't want to exclude accounts at this stage
-      nodepthq = dbg4 "nodepthq" $ filterQuery (not . queryIsDepth) query
+      nodepthq = dbg4 "nodepthq" $ aliasq $ filterQuery (not . queryIsDepth) query
       -- just the acct: part of the query will be reapplied later, after clipping
-      acctq = dbg4 "acctq" $ filterQuery queryIsAcct query
+      acctq = dbg4 "acctq" $ aliasq $ filterQuery queryIsAcct query
       dep = dbg4 "depth" $ queryDepth $ filterQuery queryIsDepth query
       -- when finding accounts used by postings, we remove tags that were declared on the posting,
       -- so that a tag: query will match account tags and not posting tags.
@@ -108,7 +113,7 @@ accounts opts@CliOpts{rawopts_=rawopts, reportspec_=ReportSpec{_rsQuery=query,_r
   -- 3. if there's a depth limit, depth-clip and remove any no longer useful items
       clippedaccts =
         dbg4 "clippedaccts" $
-        (if tree then id else filter (matchesAccount acctq)) $  -- in tree mode, keep parent accounts even if they don't match
+        (if tree then id else filter (matchesAccountExtra (journalAccountType j) (journalInheritedAccountTags j) acctq)) $  -- in tree mode, keep parent accounts even if they don't match
         nub $                            -- clipping can leave duplicates (adjacent, hopefully)
         filter (not . T.null) $          -- depth:0 can leave nulls
         map (clipAccountName dep) $      -- clip at depth if specified

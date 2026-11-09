@@ -192,7 +192,31 @@ assets:bank:checking        ; alias: checking, alias: chk
 assets:bank:checking:sub
 expenses:food               ; alias: food
 
-# ** 21. --locations shows where declared accounts were declared, and where undeclared accounts were first used.
+# ** 21. With --show-aliases, query arguments match account aliases too, including those of parent accounts.
+<
+account assets:bank:checking  ; alias: chk
+account assets:bank:checking:pending
+account assets:bank:saving    ; alias: sav
+account expenses:food
+$ hledger -f- accounts --show-aliases chk
+assets:bank:checking            ; alias: chk
+assets:bank:checking:pending
+
+# ** 22. Name matches are still shown.
+<
+account assets:bank:checking  ; alias: chk
+account assets:bank:saving    ; alias: sav
+account expenses:food
+$ hledger -f- accounts --show-aliases sav food
+assets:bank:saving    ; alias: sav
+expenses:food
+
+# ** 23. Without --show-aliases, aliases are not matched.
+<
+account assets:bank:checking  ; alias: chk
+$ hledger -f- accounts chk
+
+# ** 24. --locations shows where declared accounts were declared, and where undeclared accounts were first used.
 <
 account a
 
