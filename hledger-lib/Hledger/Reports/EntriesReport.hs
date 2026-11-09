@@ -22,7 +22,7 @@ import Data.Ord (comparing)
 import Data.Time (fromGregorian)
 
 import Hledger.Data
-import Hledger.Query (Query(..), filterQuery, queryIsDepth)
+import Hledger.Query (Query(..), filterQuery, matchesRowAmounts, queryIsDepth, queryIsNull)
 import Hledger.Reports.ReportOptions
 import Hledger.Utils
 
@@ -39,12 +39,16 @@ entriesReport rspec@ReportSpec{_rsReportOpts=ropts} =
   sortBy (comparing $ transactionDateFn ropts) . entriesReportUnsorted rspec
 
 -- | Select transactions for an entries report, keeping their journal order.
+-- The query's change: and balance: terms, if any, are both tested against each entry's sum of postings
+-- (an entry has no balance), converted to cost as in transaction balancing (see 'transactionBalancingSum'),
+-- regardless of valuation and --invert.
 entriesReportUnsorted :: ReportSpec -> Journal -> EntriesReport
-entriesReportUnsorted rspec@ReportSpec{_rsReportOpts=ropts} =
+entriesReportUnsorted rspec@ReportSpec{_rsReportOpts=ropts, _rsRowQuery=rowq} =
       map  (if invert_ ropts then transactionNegate else id)
     . jtxns
     . journalApplyValuationFromOpts (setDefaultConversionOp NoConversionOp rspec)
     . filterJournalTransactions (filterQuery (not.queryIsDepth) $ _rsQuery rspec)
+    . (if queryIsNull rowq then id else \j -> j{jtxns = filter (\t -> let s = transactionBalancingSum t in matchesRowAmounts rowq s s) $ jtxns j})
 
 tests_EntriesReport = testGroup "EntriesReport" [
   testGroup "entriesReport" [

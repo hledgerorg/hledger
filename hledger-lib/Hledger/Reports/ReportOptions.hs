@@ -367,7 +367,9 @@ rawOptsToReportOpts d usecoloronstdout rawopts =
 data ReportSpec = ReportSpec
   { _rsReportOpts :: ReportOpts  -- ^ The underlying ReportOpts used to generate this ReportSpec
   , _rsDay        :: Day         -- ^ The Day this ReportSpec is generated for
-  , _rsQuery      :: Query       -- ^ The generated Query for the given day
+  , _rsQuery      :: Query       -- ^ The generated Query for the given day, except for any change:/balance: terms
+  , _rsRowQuery   :: Query       -- ^ The query's change: and balance: terms, which reports test against their rows'
+                                 --   (or entries') summed amounts, after aggregating; Any if there are none. See 'querySplitRowTerms'.
   , _rsQueryOpts  :: [QueryOpt]  -- ^ A list of QueryOpts for the given day
   } deriving (Show)
 
@@ -378,6 +380,7 @@ defreportspec = ReportSpec
     { _rsReportOpts = def
     , _rsDay        = nulldate
     , _rsQuery      = Any
+    , _rsRowQuery   = Any
     , _rsQueryOpts  = []
     }
 
@@ -1130,10 +1133,12 @@ reportOptsToSpec day ropts = do
     let ropts' = case intervalFromQueryOpts queryopts of
                    Just i  -> ropts{interval_=i}
                    Nothing -> ropts
+    (rowq, query) <- querySplitRowTerms $ And [queryFromFlags ropts', argsquery]
     return ReportSpec
       { _rsReportOpts = ropts'
       , _rsDay        = day
-      , _rsQuery      = simplifyQuery $ And [queryFromFlags ropts', argsquery]
+      , _rsQuery      = query
+      , _rsRowQuery   = rowq
       , _rsQueryOpts  = queryopts
       }
 

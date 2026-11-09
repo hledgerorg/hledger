@@ -293,7 +293,8 @@ $if elem ViewPermission perms
           <li> <code>desc:REGEX</code> - _{HMsg "match transaction descriptions"}
           <li> <code>payee:REGEX</code> - _{HMsg "match payee part of descriptions"}
           <li> <code>note:REGEX</code> - _{HMsg "match note part of descriptions"}
-          <li> <code>amt:N</code>, <code>amt:&lt;N</code>, <code>amt:&gt;N</code> - _{HMsg "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."}
+          <li> <code>amt:N</code>, <code>amt:&lt;N</code>, <code>amt:&gt;N</code> - _{HMsg "match unsigned magnitudes, or with signed N, signed amounts. N may have a commodity symbol."}
+          <li> <code>change:N</code>, <code>change:&lt;N</code>, <code>balance:N</code>, <code>balance:&gt;N</code> - _{HMsg "match report rows (accounts, periods, transactions) by their change or balance, like amt:. N may have a commodity symbol."}
           <li> <code>cur:REGEX</code> - _{HMsg "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"} <code>\$</code>
           <li> <code>tag:NAME</code>, <code>tag:NAME=REGEX</code> - _{HMsg "match tags, or tag and value"}
           <li> <code>real:BOOL</code> - _{HMsg "match postings' realness/virtualness"}

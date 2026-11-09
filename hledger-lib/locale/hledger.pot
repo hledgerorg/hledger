@@ -2268,7 +2268,11 @@ msgid "match note part of descriptions"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet
-msgid "match unsigned magnitudes, or with signed N, signed amounts. For single-commodity amounts only."
+msgid "match unsigned magnitudes, or with signed N, signed amounts. N may have a commodity symbol."
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet
+msgid "match report rows (accounts, periods, transactions) by their change or balance, like amt:. N may have a commodity symbol."
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet

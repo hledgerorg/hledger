@@ -26,9 +26,11 @@ module Hledger.Reports.MultiBalanceReport (
   makeReportQuery,
   balanceReportStyles,
   getPostings,
+  accountRowAmounts,
   generateMultiBalanceAccount,
   generatePeriodicReport,
   makePeriodicReportRow,
+  rowTotal,
 
   -- -- * Tests
   tests_MultiBalanceReport
@@ -43,6 +45,9 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.Foldable (toList)
 import Data.HashSet qualified as HS
 import Data.List (sortOn)
+#if !MIN_VERSION_base(4,20,0)
+import Data.List (foldl')
+#endif
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe, isJust)
@@ -191,7 +196,7 @@ makeReportQuery rspec reportspan
 
 -- | Gather postings matching the query within the report period.
 getPostings :: ReportSpec -> Journal -> PriceOracle -> DateSpan -> [Posting]
-getPostings rspec@ReportSpec{_rsQuery=query, _rsReportOpts=ropts} j priceoracle reportspan =
+getPostings rspec@ReportSpec{_rsQuery=query, _rsRowQuery=rowq, _rsReportOpts=ropts} j priceoracle reportspan =
     setPostingsCount
     . filter hasAmount  -- omit postings with no definite amount (#2571)
     . journalPostings
@@ -220,7 +225,8 @@ getPostings rspec@ReportSpec{_rsQuery=query, _rsReportOpts=ropts} j priceoracle 
     -- handles the hledger-ui+future txns case above).
     depthlessq = dbg3 "getPostings depthlessq" $ filterQuery (not . queryIsDepth) query
 
-    fullreportspan  = if requiresHistorical ropts then DateSpan Nothing (Exact <$> spanEnd reportspan) else reportspan
+    -- Historical reports, and balance: query terms, need the postings before the report start too.
+    fullreportspan  = if requiresHistorical ropts || queryHasBalance rowq then DateSpan Nothing (Exact <$> spanEnd reportspan) else reportspan
     fullreportspanq = (if date2_ ropts then Date2 else Date) $ case fullreportspan of
         DateSpan Nothing Nothing -> emptydatespan
         a -> a
@@ -233,12 +239,14 @@ generateMultiBalanceAccount rspec@ReportSpec{_rsReportOpts=ropts} j priceoracle 
     mapAccounts (accountSetDeclarationInfo j)
     -- Add declared accounts if called with --declared and --empty
     . (if (declared_ ropts && empty_ ropts) then addDeclaredAccounts rspec j else id)
-    -- Negate amounts if applicable
-    . (if invert_ ropts then fmap (mapBalanceData maNegate) else id)
     -- Mark which accounts are boring and which are interesting
     . markAccountBoring rspec
+    -- Negate amounts if applicable
+    . (if invert_ ropts then fmap (mapBalanceData maNegate) else id)
     -- Process changes into normal, cumulative, or historical amounts, plus value them
     . calculateReportAccount rspec j priceoracle colspans
+    -- Leave out the postings of accounts whose change or balance doesn't match the change:/balance: query terms, if any
+    . applyRowQuery rspec j priceoracle colspans
     -- If counting transactions, keep just one posting per transaction and (clipped) account
     . (if balancecalc_ ropts == CalcTransactionsCount then nubOrdOn txnAndAccount else id)
     -- Clip account names
@@ -264,6 +272,8 @@ addDeclaredAccounts rspec j acct =
     declaredAccounts =
       map (clipOrEllipsifyAccountName depthSpec) .
       filter (matchesAccountExtra (journalAccountType j) (journalAccountTags j) accttypetagsq) $
+      -- they have no postings, so their amount is zero
+      (if matchesRowAmounts (_rsRowQuery rspec) nullmixedamt nullmixedamt then id else const []) $
       journalAccountNamesDeclared j
 
     accttypetagsq  = dbg3 "addDeclaredAccounts accttypetagsq" .
@@ -325,9 +335,43 @@ periodDataValuation ropts j priceoracle colspans =
     valueMixedAmount :: Day -> MixedAmount -> MixedAmount
     valueMixedAmount = mixedAmountApplyValuationAfterSumFromOptsWith ropts j priceoracle
 
+-- | Apply the report query's change: and balance: terms, if any, to these (clipped) postings:
+-- leave out the postings of accounts whose own change over the report period, or own balance
+-- at its end (their list mode row), doesn't match them. This acts like an account filter:
+-- parent accounts' subaccount-inclusive balances, and the report's totals and percentages,
+-- then reflect just the matching accounts. Amounts are tested with their real sign (not as
+-- displayed after --invert or compound reports' sign normalisation), after any cost or value
+-- conversion.
+applyRowQuery :: ReportSpec -> Journal -> PriceOracle -> Maybe DayPartition -> [Posting] -> [Posting]
+applyRowQuery rspec@ReportSpec{_rsRowQuery=rowq} j priceoracle mcolspans ps
+  | queryIsNull rowq = ps
+  | otherwise        = filter ((`HS.member` matching) . paccount) ps
+  where
+    matching = HS.fromList [a | (a, (chg, bal)) <- M.toList $ accountRowAmounts rspec j priceoracle mcolspans ps
+                             , matchesRowAmounts rowq chg bal]
+
+-- | Each account's own change over the report period, and own balance at the end of it,
+-- from these postings (clipped to the report's depth), which may include postings before the
+-- report start (see 'getPostings'); those count in the balances only. If valuation is to be
+-- done after summing, the amounts are valued at the report end date.
+accountRowAmounts :: ReportSpec -> Journal -> PriceOracle -> Maybe DayPartition -> [Posting] -> M.Map AccountName (MixedAmount, MixedAmount)
+accountRowAmounts ReportSpec{_rsReportOpts=ropts} j priceoracle mcolspans ps =
+    M.map (\(RowAmounts chg pre) -> (valued chg, valued $ maPlus pre chg)) $ foldl' add M.empty ps
+  where
+    add m p = M.insertWith (<>) (paccount p) amts m
+      where amts | inPeriod p = RowAmounts (pamount p) nullmixedamt
+                 | otherwise  = RowAmounts nullmixedamt (pamount p)
+    inPeriod p = maybe True (isJust . fst . dayPartitionFind (postingDateOrDate2 (whichDate ropts) p)) mcolspans
+    valued = maybe id (mixedAmountApplyValuationAfterSumFromOptsWith ropts j priceoracle . snd . dayPartitionStartEnd) mcolspans
+
+-- | An account's change in the report period, and its balance before the report period.
+data RowAmounts = RowAmounts !MixedAmount !MixedAmount
+instance Semigroup RowAmounts where
+  RowAmounts c1 p1 <> RowAmounts c2 p2 = RowAmounts (maPlus c1 c2) (maPlus p1 p2)
+
 -- | Mark which nodes of an 'Account' are boring, and so should be omitted from reports.
 markAccountBoring :: ReportSpec -> Account BalanceData -> Account BalanceData
-markAccountBoring ReportSpec{_rsQuery=query,_rsReportOpts=ropts}
+markAccountBoring ReportSpec{_rsQuery=query,_rsRowQuery=rowq,_rsReportOpts=ropts}
     -- If depth 0, all accounts except the top-level account are boring
     | qdepthIsZero = markBoring False . mapAccounts (markBoring True)
     -- Otherwise the top level account is boring, and subaccounts are boring if
@@ -340,7 +384,8 @@ markAccountBoring ReportSpec{_rsQuery=query,_rsReportOpts=ropts}
       where
         tooDeep = d > qdepth                                       -- Throw out anything too deep
         allZeros = isZeroRow balance amts && not keepEmptyAccount  -- Throw away everything with a zero balance in the row, unless..
-        keepEmptyAccount = empty_ ropts && keepWhenEmpty acct      -- We are keeping empty rows and this row meets the criteria
+        keepEmptyAccount = (empty_ ropts || hasbalanceq) && keepWhenEmpty acct  -- We are keeping empty rows (or showing accounts by their balance,
+                                                                                -- which may be unchanged in the period) and this row meets the criteria
 
         amts = pdperiods $ adata acct
         d = accountNameLevel $ aname acct
@@ -368,7 +413,9 @@ markAccountBoring ReportSpec{_rsQuery=query,_rsReportOpts=ropts}
         ALFlat -> hasPostings acct      -- In list mode, keep all accounts that have postings;
           || no_elide_ ropts && accountNameLevel (aname acct) > drop_ ropts && anyAccounts hasPostings acct
                                         -- or with --no-elide, also (undropped) parents of such accounts
-      where hasPostings = any ((0<) . bdnumpostings) . pdperiods . adata
+      where hasPostings a = any ((0<) . bdnumpostings) $ (if hasbalanceq then (pdpre (adata a) :) else id) (toList . pdperiods $ adata a)
+    -- a balance: query term keeps dormant accounts visible: their postings may all be before the report period
+    hasbalanceq = queryHasBalance rowq
     maybeStripPrices = if conversionop_ ropts == Just NoConversionOp then id else mixedAmountStripCosts
 
     qdepthIsZero = depthspec == DepthSpec (Just 0) []
@@ -495,10 +542,14 @@ makePeriodicReportRow nullEntry totalAndAverage ropts balance name acct =
   where
     rowbals = fmap balance . pdperiods $ adata acct
     (total, avg) = totalAndAverage rowbals
-    -- Total for a cumulative/historical report is always the last column.
-    rowtotal = case balanceaccum_ ropts of
-        PerPeriod -> total
-        _         -> maybe nullEntry snd $ M.lookupMax rowbals
+    rowtotal = rowTotal ropts nullEntry total rowbals
+
+-- | A report row's total, given its amounts and their sum (or a null amount, for an empty row):
+-- the sum, or for a cumulative or historical report, the last amount.
+rowTotal :: ReportOpts -> c -> c -> M.Map Day c -> c
+rowTotal ropts nullEntry total rowbals = case balanceaccum_ ropts of
+    PerPeriod -> total
+    _         -> maybe nullEntry snd $ M.lookupMax rowbals
 
 -- | Map the report rows to percentages if needed
 reportPercent :: ReportOpts -> MultiBalanceReport -> MultiBalanceReport

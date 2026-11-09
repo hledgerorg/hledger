@@ -20,6 +20,7 @@ import Data.Bifunctor (bimap)
 import Data.Foldable (toList)
 import Data.List (find, maximumBy, intercalate)
 import Data.Maybe (catMaybes, fromMaybe, isJust)
+import Data.Map qualified as M
 import Data.Ord (comparing)
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -84,7 +85,9 @@ budgetReport rspec bopts reportspan j = dbg4 "sortedbudgetreport" budgetreport
 
     -- The report spec used for selecting budget goals, with the query terms
     -- that describe actual transactions/postings dropped. (#2545)
-    budgetrspec = rspec{_rsQuery = budgetGoalQuery $ _rsQuery rspec}
+    -- The change:/balance: terms are applied below, to the combined rows.
+    budgetrspec = rspec{_rsQuery = budgetGoalQuery $ _rsQuery rspec, _rsRowQuery = Any}
+    actualrspec = rspec{_rsRowQuery = Any}
 
     (_, actualspans) = dbg5 "actualspans" $ reportSpan actualj rspec
     (_, budgetspans) = dbg5 "budgetspans" $ reportSpan budgetj budgetrspec
@@ -96,16 +99,32 @@ budgetReport rspec bopts reportspan j = dbg4 "sortedbudgetreport" budgetreport
         (_,    Nothing) -> actualspans
         (_, Just bspan) -> unionDayPartitions bspan =<< actualspans
 
-    actualps = dbg5 "actualps" $ getPostings rspec actualj priceoracle reportspan
+    actualps = dbg5 "actualps" $ getPostings rspec actualj priceoracle reportspan  -- rspec, so a balance: term fetches the earlier postings
     budgetps = dbg5 "budgetps" $ getPostings budgetrspec budgetj priceoracle reportspan
 
-    actualAcct = dbg5 "actualAcct" $ generateMultiBalanceAccount rspec actualj priceoracle actualspans actualps
+    actualAcct = dbg5 "actualAcct" $ generateMultiBalanceAccount actualrspec actualj priceoracle actualspans actualps
     budgetAcct = dbg5 "budgetAcct" $ generateMultiBalanceAccount budgetrspec budgetj priceoracle budgetspans budgetps
 
-    combinedAcct = dbg5 "combinedAcct" $ if null budgetps
+    combinedAcct = dbg5 "combinedAcct" . hideNonMatchingRows $ if null budgetps
         -- If no budget postings, just use actual account, to avoid unnecssary budget zeros
         then This <$> actualAcct
         else mergeAccounts actualAcct budgetAcct
+
+    -- Apply the change:/balance: terms, if any, by hiding the rows whose actual change over the
+    -- report period, or actual balance at its end (including subaccounts), doesn't match.
+    -- Unlike other balance reports, this doesn't change the other rows or the totals,
+    -- since budget goals are often set on parent accounts.
+    hideNonMatchingRows
+      | queryIsNull rowq = id
+      | otherwise        = mapAccounts $ \a -> if matches a then a else a{aboring = True}
+      where
+        rowq = _rsRowQuery rspec
+        matches a = uncurry (matchesRowAmounts rowq) $ inclusiveRowAmounts (aname a)
+        -- Each account's own change and end balance, from the actual postings (clipped as the report clips them),
+        inclusiveRowAmounts a = (maSum $ map fst amts, maSum $ map snd amts)
+          where amts = [cb | (n, cb) <- M.toList ownRowAmounts, n == a || (a <> ":") `T.isPrefixOf` n]
+        ownRowAmounts = accountRowAmounts rspec actualj priceoracle actualspans
+          [p{paccount = clipOrEllipsifyAccountName (queryDepth $ _rsQuery rspec) $ paccount p} | p <- actualps]
 
     budgetreport = generateBudgetReport ropts allspans combinedAcct
 

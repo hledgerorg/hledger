@@ -5331,6 +5331,7 @@ Here's a quick overview of hledger's queries:
   `cur:USD`\
   `cur:\\$`\
   `amt:'>0'`\
+  `change:'>100'`, `balance:'<0'`  (match report rows or entries by their change or balance, see below) \
   `acct:groceries`  (but `acct:` is the default, so we usually don't bother writing it) \
 
 - To match in any field, or by date, use the `find:` query type, or `::` for short:
@@ -5381,16 +5382,89 @@ Match account names containing this case insensitive [regular expression].\
 This is the default query type, so we usually don't bother writing the "acct:" prefix.
 
 ### amt: query
-**`amt:N, amt:'<N', amt:'<=N', amt:'>N', amt:'>=N'`**\
-Match postings with a single-commodity amount equal to, less than, or greater than N.
-(Postings with multi-commodity amounts are not tested and will always match.)
+**`amt:N, amt:'<N', amt:'<=N', amt:'>N', amt:'>=N'`**, optionally with a commodity symbol, eg `amt:'>$100'` or `amt:'>100 EUR'`\
+Match postings with an amount equal to, less than, or greater than N.
 `amt:` needs quotes to hide the less than/greater than sign from the command line shell.
 
 The comparison has two modes: 
 if N is preceded by a + or - sign (or is 0), the two signed numbers are compared. 
 Otherwise, the absolute magnitudes are compared, ignoring sign.
 
+If N has a commodity symbol (before or after the number, quoted with `"` if needed),
+only amounts in that commodity are compared; a posting with none doesn't match.
+Otherwise, amounts in any commodity are compared.
+A posting whose amount has several commodities matches if any one of them does.
+
 Keep in mind that `amt:` matches posting amounts, not account balances.
+To match accounts, or periods, by their change or balance, use [`change:` or `balance:`](#balance-and-change-queries).
+
+### balance: and change: queries
+**`change:N, change:'<N', change:'<=N', change:'>N', change:'>=N'`**,
+**`balance:N, balance:'<N', balance:'<=N', balance:'>N', balance:'>=N'`**,
+optionally with a commodity symbol, eg `change:'>$100'` or `balance:'<0 EUR'`\
+Match report rows (or entries) by their summed amounts:
+`change:` by the row's change, the sum of its postings;
+`balance:` by the row's balance, the sum of all its postings up to the end of its period.
+Unlike `amt:`, which tests each posting before postings are added up, these test the amounts a report shows after adding them up.
+Eg:
+
+```cli
+$ hledger bal expenses change:'>100'    # expense accounts which changed by more than 100
+$ hledger bal assets balance:'<0'       # asset accounts with a negative balance
+$ hledger reg gifts -M change:'>100'    # months with more than 100 in gift expenses
+$ hledger areg checking balance:'<0'    # the transactions after which checking was overdrawn
+$ hledger print not:change:0            # entries with a tolerated imbalance or unbalanced virtual postings
+```
+
+The comparison works as with [`amt:`](#amt-query): signed if N has a + or - sign (or is 0), otherwise by absolute magnitude.
+Like `amt:`, these test amounts' real signs, not the signs they are displayed with
+(after `--invert`, or the sign normalisation in `balancesheet`, `incomestatement` etc.);
+so `incomestatement change:'<-1000'` finds the large revenues.
+If N has a commodity symbol, only that commodity's part of the amount is compared, and an amount with none of it doesn't match.
+An amount with several commodities matches if any one of them does.
+
+`balance:` always means the actual balance, from the start of the journal (or of the postings matched by the other query terms),
+whether or not the report is a historical (`-H`) one.
+So the amounts a report shows are not always the ones tested; `-H` shows balances.
+A date span (`date:2026`, `-p`, `-b`/`-e`) sets the report period and does not limit the balance, as with `-H`.
+But query terms which exclude postings also exclude them from the balance; this includes `not:date:` and date terms combined with OR.
+
+What is tested depends on the kind of item being matched:
+
+- In balance reports (`balance`, `balancesheet`, `incomestatement`, etc.),
+  each account's own change over the report period, or its own balance at the end of the report period,
+  as shown in list mode (without or with `-H`).
+  In a multi-period report, the change is the row's Total column, and the balance is the last column's (with `-H`).
+  Accounts which don't match are left out, as if excluded by an account query.
+  So in tree mode, a parent account is shown if it has matching subaccounts, with a balance including just those;
+  and the report's totals and percentages include just the matching accounts.
+  To test parent accounts' subaccount-inclusive amounts instead, limit the depth, eg `bal -1 change:'>100'`.
+  An account matched by `balance:` is shown even if it had no postings in the report period.
+
+- In budget reports (`balance --budget`), rows are hidden if their actual change or balance (including subaccounts) doesn't match.
+  The other rows, and the totals, are unchanged, since budget goals are often set on parent accounts.
+
+- In `register`, `change:` tests each posting's amount, or with a report interval, each period's amount;
+  `balance:` tests the running total after it (the actual balance, even without `-H`).
+
+- In `aregister`, `change:` tests each transaction's change to the account; `balance:` tests the account's balance after it.
+
+- In `print` (and `descriptions`, `notes` and `codes`), both test each entry's sum of postings
+  (an entry has no balance), converted to cost as in [transaction balancing](#transaction-balancing),
+  including any unbalanced virtual postings.
+  Since an entry's real postings must balance, this will be zero, or a small [tolerated imbalance](#accumulated-imbalances),
+  plus the amount of any unbalanced virtual postings.
+  (To find large transactions, use `amt:` instead, eg `print amt:'>1000'`.)
+
+- Other commands ignore these terms.
+
+In registers, hidden rows still count in the running total or balance, which is the account's real one.
+(Unlike `amt:`, which excludes the postings themselves, so they don't count.)
+
+`change:` and `balance:` can be combined with other query terms only by AND, and negated with `not:`.
+They can't be used inside OR, a negated group, `any:` or `all:`.
+As with other query terms which aren't OR'd, multiple terms must all match, so `change:'>100' change:'<500'` selects a range,
+and `change:'>100' balance:'<0'` requires both.
 
 ### code: query
 **`code:REGEX`**\
@@ -5603,6 +5677,7 @@ queries see only the new account names. Eg with `alias checking = assets:bank:ch
 
 When amounts are converted to other commodities in [cost](#cost-reporting) or [value](#value-reporting) reports,
 `cur:` and `amt:` match the old commodity symbol and the old amount quantity, not the new ones.
+`change:` and `balance:` match the converted amounts, except in `print` (see [balance: and change: queries](#balance-and-change-queries)).
 
 # Depth
 
@@ -5919,6 +5994,8 @@ Some notes:
 - No imbalance posting is generated if its amount would display as zero (at 8 decimal places, for a repeating decimal).
   This ignores the tiny leftovers of hledger's own division (see [Amount arithmetic](#amount-arithmetic)).
 - The imbalance account need not be declared, even in [strict mode].
+- To list the entries with an imbalance, without generating postings, you can use `hledger print not:change:0` (see [change: query](#balance-and-change-queries)).
+  (This also lists entries with unbalanced virtual postings; `not:change:0 change:'<1'` would list only the small imbalances.)
 - If you use this flag with [`import`](#import), the imbalance postings will be added to your journal too.
 
 ## Avoiding imbalances

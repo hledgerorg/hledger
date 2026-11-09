@@ -24,11 +24,13 @@ module Hledger.Query (
   parseQueryTerm,
   parseAccountType,
   parseDepthSpec,
+  parseAmountQueryArg,
   -- * modifying
   transformQuery,
   simplifyQuery,
   filterQuery,
   filterQueryOrNotQuery,
+  querySplitRowTerms,
   matchesQuery,
   -- * predicates
   queryIsNull,
@@ -48,6 +50,10 @@ module Hledger.Query (
   queryIsAmt,
   queryIsCur,
   queryIsAmtOrCur,
+  queryIsChange,
+  queryIsBalance,
+  queryIsRowTerm,
+  queryHasBalance,
   queryIsStartDateOnly,
   queryIsTransactionRelated,
   -- * accessors
@@ -68,6 +74,7 @@ module Hledger.Query (
   matchesAccountExtra,
   matchesMixedAmount,
   matchesAmount,
+  matchesRowAmounts,
   matchesCommodity,
   matchesCommodityExtra,
   matchesTag,
@@ -81,7 +88,9 @@ module Hledger.Query (
 where
 
 import Control.Applicative
+import Control.Monad (guard)
 import Data.Default (Default(..))
+import Data.Char (isDigit)
 import Data.Either (partitionEithers)
 import Data.List (partition)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
@@ -97,7 +106,7 @@ import Hledger.Utils hiding (words')
 import Hledger.Data.Types
 import Hledger.Data.AccountName
 import Hledger.Data.AccountType
-import Hledger.Data.Amount (amountsRaw, mixedAmount, nullamt, showMixedAmountOneLine, usd)
+import Hledger.Data.Amount (amountsRaw, isNonsimpleCommodityChar, mixedAmount, nullamt, nullmixedamt, showMixedAmountOneLine, usd)
 import Hledger.Data.Dates
 import Hledger.Data.Posting
 import Hledger.Data.Transaction
@@ -122,8 +131,16 @@ data Query =
   | Depth Int                 -- ^ match if account depth is less than or equal to this value (or, sometimes used as a display option)
   | DepthAcct Regexp Int      -- ^ match if the account matches and account depth is less than or equal to this value (usually used as a display option)
   | Real Bool                 -- ^ match postings with this "realness" value
-  | Amt OrdPlus Quantity      -- ^ match if the amount's numeric quantity is less than/greater than/equal to/unsignedly equal to some value
+  | Amt OrdPlus Quantity (Maybe CommoditySymbol)
+                              -- ^ match if the amount's numeric quantity is less than/greater than/equal to/unsignedly equal to some value,
+                              --   considering just amounts in this commodity if one is given
   | Cur Regexp                -- ^ match if the commodity symbol is fully matched by this regexp.
+  | Change OrdPlus Quantity (Maybe CommoditySymbol)
+                              -- ^ like Amt, but matching a report row (or an entry) by its change: the sum of its postings.
+                              --   Not tested against postings; reports apply it after aggregating (see 'querySplitRowTerms').
+  | Balance OrdPlus Quantity (Maybe CommoditySymbol)
+                              -- ^ like Amt, but matching a report row by its balance: the sum of its postings up to the end of its period.
+                              --   Not tested against postings; reports apply it after aggregating (see 'querySplitRowTerms').
   | Find Regexp (Maybe DateSpan) -- ^ match if any visible text field (account, amount, comment, description, code) is infix-matched by this regexp, or if the date is within this span (present when the pattern also parses as a period expression)
   -- compound queries (expr:)
   | Not Query                 -- ^ negate this match
@@ -152,7 +169,7 @@ noteTag = fmap (Tag (toRegexCI' "note")) . maybe (pure Nothing) (fmap Just . toQ
 generatedTransactionTag :: Query
 generatedTransactionTag = Tag (toRegexCI' "generated-transaction") Nothing
 
--- | A more expressive Ord, used for amt: queries. The Abs* variants
+-- | A more expressive Ord, used for amt:, change: and balance: queries. The Abs* variants
 -- compare with the absolute value of a number, ignoring sign.
 data OrdPlus = Lt | LtEq | Gt | GtEq | Eq | AbsLt | AbsLtEq | AbsGt | AbsGtEq | AbsEq
  deriving (Show,Eq)
@@ -220,6 +237,7 @@ parseQueryList d termstrs = do
   eterms <- mapM (parseQueryTerm d) termstrs
   let (pats, optss) = unzip eterms
       q = combineQueriesByType pats
+  _ <- querySplitRowTerms q  -- check change:/balance: terms are used only where they can be applied
   Right (q, concat optss)
 
 combineQueriesByType :: [Query] -> Query
@@ -264,6 +282,8 @@ queryprefixes = map (<>":") [
      "inacctonly"
     ,"inacct"
     ,"amt"
+    ,"change"
+    ,"balance"
     ,"code"
     ,"desc"
     ,"payee"
@@ -324,9 +344,15 @@ parseQueryTerm _ (T.stripPrefix "status:" -> Just s) =
         case parseStatus s of Left e   -> Left $ "\"status:"++T.unpack s++"\" gave a parse error: " ++ e
                               Right st -> Right (StatusQ st, [])
 parseQueryTerm _ (T.stripPrefix "real:" -> Just s) = Right (Real $ parseBool s || T.null s, [])
-parseQueryTerm _ (T.stripPrefix "amt:" -> Just s) = case parseAmountQueryTerm s of
-  Right (ord, q) -> Right (Amt ord q, [])
-  Left err       -> Left err
+parseQueryTerm _ (T.stripPrefix "amt:" -> Just s) = case parseAmountQueryArg "amt" s of
+  Right (ord, q, mc) -> Right (Amt ord q mc, [])
+  Left err           -> Left err
+parseQueryTerm _ (T.stripPrefix "change:" -> Just s) = case parseAmountQueryArg "change" s of
+  Right (ord, q, mc) -> Right (Change ord q mc, [])
+  Left err           -> Left err
+parseQueryTerm _ (T.stripPrefix "balance:" -> Just s) = case parseAmountQueryArg "balance" s of
+  Right (ord, q, mc) -> Right (Balance ord q mc, [])
+  Left err           -> Left err
 parseQueryTerm _ (T.stripPrefix "depth:" -> Just s) = (,[]) <$> parseDepthSpecQuery s
 parseQueryTerm _ (T.stripPrefix "cur:" -> Just s) = (,[]) . Cur <$> toRegexCI ("^" <> s <> "$") -- support cur: as an alias
 parseQueryTerm _ (T.stripPrefix "tag:" -> Just s) = (,[]) <$> parseTag s
@@ -501,6 +527,54 @@ parseAmountQueryTerm amtarg =
     parse :: T.Text -> T.Text -> Maybe Quantity
     parse p s = (T.stripPrefix p . T.strip) s >>= readMay . T.unpack . T.filter (/=' ')
 
+-- | Parse the argument of an amt:, change: or balance: query term: a comparison ([OP][SIGN]NUM,
+-- see 'parseAmountQueryTerm'), optionally with a commodity symbol before or after the number
+-- (and its sign), as in @>$100@, @>-$100@, @>100 EUR@ or @>"AAPL 2026" 5@.
+-- Returns an OrdPlus, a Quantity and the commodity symbol if any,
+-- or if parsing fails, an error message mentioning the given query type.
+--
+-- >>> parseAmountQueryArg "amt" ">100"
+-- Right (AbsGt,100,Nothing)
+-- >>> parseAmountQueryArg "amt" "<-$100"
+-- Right (Lt,-100,Just "$")
+-- >>> parseAmountQueryArg "change" ">= 100 EUR"
+-- Right (AbsGtEq,100,Just "EUR")
+-- >>> parseAmountQueryArg "change" "\"AAPL 2026\"+5"
+-- Right (Eq,5,Just "AAPL 2026")
+parseAmountQueryArg :: String -> T.Text -> Either String (OrdPlus, Quantity, Maybe CommoditySymbol)
+parseAmountQueryArg qtype arg = maybe (Left err) Right $ do
+  let (op, rest) = T.span (`elem` ("<>=" :: String)) $ T.strip arg
+      (sign1, rest1) = takeSign $ T.stripStart rest
+      (msym1, rest2) = takeSymbol rest1
+      (sign2, rest3) = takeSign rest2
+      (num,   rest4) = T.span (\c -> isDigit c || c == '.') rest3
+      (msym2, rest5) = takeSymbol $ T.stripStart rest4
+  guard $ T.null rest5
+  sign <- case (sign1, sign2) of
+    (s1, "") -> Just s1
+    ("", s2) -> Just s2
+    _        -> Nothing
+  msym <- case (msym1, msym2) of
+    (m, Nothing) -> Just m
+    (Nothing, m) -> Just m
+    _            -> Nothing
+  (ord, q) <- either (const Nothing) Just . parseAmountQueryTerm $ op <> sign <> num
+  Just (ord, q, msym)
+  where
+    err = "could not parse \"" ++ qtype ++ ":" ++ T.unpack arg ++ "\": expected a comparison operator"
+          ++ " followed by an optionally-signed number, with an optional commodity symbol"
+    -- a leading + or - sign if any, and the rest with leading spaces removed
+    takeSign t = case T.uncons t of
+      Just (c, t') | c `elem` ("+-" :: String) -> (T.singleton c, T.stripStart t')
+      _                                        -> ("", t)
+    -- a leading double-quoted or simple commodity symbol if any, and the rest with leading spaces removed
+    takeSymbol t = case T.uncons t of
+      Just ('"', t') | (sym, t'') <- T.break (=='"') t', not (T.null sym || T.null t'')
+        -> (Just sym, T.stripStart $ T.drop 1 t'')
+      _ -> case T.span (not . isNonsimpleCommodityChar) t of
+        ("",  _ ) -> (Nothing, t)
+        (sym, t') -> (Just sym, T.stripStart t')
+
 -- | Compile the regular expression argument of a query term, case-insensitively.
 -- An empty argument (which the regex engine rejects) is replaced by an empty
 -- group, so that it matches anything.
@@ -632,6 +706,40 @@ filterQueryOrNotQuery p0 = simplifyQuery . filterQueryOrNotQuery' p0
     filterQueryOrNotQuery' p (Not q) | p q = Not $ filterQueryOrNotQuery p q
     filterQueryOrNotQuery' p q = if p q then q else Any
 
+-- | Split a query into its row terms (change: and balance: terms, including negated ones), and the rest.
+-- Row terms match report rows, after aggregation, so they must be combined with
+-- the rest of the query by AND; one used elsewhere (inside OR, a negated group,
+-- any: or all:) gives an error.
+--
+-- >>> querySplitRowTerms (And [Acct (toRegexCI' "a"), Not (Change AbsGt 1 Nothing)])
+-- Right (Not (Change AbsGt 1 Nothing),Acct (RegexpCI "a"))
+querySplitRowTerms :: Query -> Either String (Query, Query)
+querySplitRowTerms q
+  | any (queryHasTerm queryIsRowTerm) others =
+      Left "change: and balance: can only be combined with other query terms by AND (not inside OR, a negated group, any: or all:)"
+  | otherwise = Right (simplifyQuery $ And rowterms, simplifyQuery $ And others)
+  where
+    (rowterms, others) = partition isRowTerm $ conjuncts q
+    conjuncts (And qs) = concatMap conjuncts qs
+    conjuncts q'       = [q']
+
+-- | Does this query contain a term satisfying the predicate, at any depth ?
+queryHasTerm :: (Query -> Bool) -> Query -> Bool
+queryHasTerm p = go
+  where
+    go q | p q = True
+    go (Not q')          = go q'
+    go (And qs)          = any go qs
+    go (Or qs)           = any go qs
+    go (AnyPosting qs)   = any go qs
+    go (AllPostings qs)  = any go qs
+    go _                 = False
+
+-- | Is this a change: or balance: term, possibly negated ?
+isRowTerm :: Query -> Bool
+isRowTerm (Not q) = isRowTerm q
+isRowTerm q       = queryIsRowTerm q
+
 -- * predicates
 
 -- | Does this simple query predicate match any part of this possibly compound query ?
@@ -708,7 +816,7 @@ queryIsReal (Real _) = True
 queryIsReal _ = False
 
 queryIsAmt :: Query -> Bool
-queryIsAmt (Amt _ _) = True
+queryIsAmt (Amt{}) = True
 queryIsAmt _         = False
 
 queryIsCur :: Query -> Bool
@@ -717,6 +825,23 @@ queryIsCur _       = False
 
 queryIsAmtOrCur :: Query -> Bool
 queryIsAmtOrCur = liftA2 (||) queryIsAmt queryIsCur
+
+queryIsChange :: Query -> Bool
+queryIsChange (Change{}) = True
+queryIsChange _          = False
+
+queryIsBalance :: Query -> Bool
+queryIsBalance (Balance{}) = True
+queryIsBalance _           = False
+
+-- | Is this a change: or balance: term (a "row term", tested against a report row's summed amounts) ?
+queryIsRowTerm :: Query -> Bool
+queryIsRowTerm = liftA2 (||) queryIsChange queryIsBalance
+
+-- | Does this query contain a balance: term anywhere (possibly negated) ?
+-- Reports then need the postings before the report start, to know the balances.
+queryHasBalance :: Query -> Bool
+queryHasBalance = queryHasTerm queryIsBalance
 
 -- | Does this query specify a start date and nothing else (that would
 -- filter postings prior to the date) ?
@@ -874,7 +999,7 @@ matchesAmount (Or qs) a = any (`matchesAmount` a) qs
 matchesAmount (And qs) a = all (`matchesAmount` a) qs
 matchesAmount (AnyPosting  qs) a = all (`matchesAmount` a) qs
 matchesAmount (AllPostings qs) a = all1 (`matchesAmount` a) qs
-matchesAmount (Amt ord n) a = compareAmount ord n a
+matchesAmount (Amt ord n mc) a = maybe True (== acommodity a) mc && compareAmount ord n a
 matchesAmount (Cur r) a = matchesCommodity (Cur r) (acommodity a)
 matchesAmount _ _ = True
 
@@ -891,6 +1016,20 @@ compareAmount ord q Amount{aquantity=aq} = case ord of Lt      -> aq <  q
                                                        AbsGtEq -> abs aq >= abs q
                                                        AbsEq   -> abs aq == abs q
 
+-- | Do the change: and balance: terms of this query match a report row (or an entry)
+-- with this change and this balance ? Each term matches like an amt: term does
+-- (see 'matchesMixedAmount'): if any of the amount's (single-commodity) parts, or with
+-- a commodity symbol, any of its parts in that commodity, passes the comparison.
+-- Other kinds of query term are ignored.
+matchesRowAmounts :: Query -> MixedAmount -> MixedAmount -> Bool
+matchesRowAmounts (Not q) chg bal | isRowTerm q = not $ matchesRowAmounts q chg bal
+matchesRowAmounts (And qs) chg bal = all (\q -> matchesRowAmounts q chg bal) qs
+matchesRowAmounts (Change ord n mc) chg _ = Amt ord n mc `matchesMixedAmount` chg
+matchesRowAmounts (Balance ord n mc) _ bal = Amt ord n mc `matchesMixedAmount` bal
+matchesRowAmounts _ _ _ = True
+
+-- | Does the query match this mixed amount ? It does if it matches any of the
+-- (single-commodity) amounts in it, or for an empty mixed amount, a zero amount.
 matchesMixedAmount :: Query -> MixedAmount -> Bool
 matchesMixedAmount q ma = case amountsRaw ma of
     [] -> q `matchesAmount` nullamt
@@ -960,6 +1099,7 @@ matchesSiblingPostings selector matchfn qs p =
 -- When matching account name, and the posting has been transformed
 -- in some way, we will match either the original or transformed name.
 matchesPosting :: Query -> Posting -> Bool
+matchesPosting (Not q) _ | isRowTerm q = True  -- change:/balance: terms match report rows, not postings
 matchesPosting (Not q) p = not $ q `matchesPosting` p
 matchesPosting (Any) _ = True
 matchesPosting (None) _ = False
@@ -977,18 +1117,21 @@ matchesPosting (StatusQ s) p = postingStatus p == s
 matchesPosting (Real v) p = v == isReal p
 matchesPosting q@(Depth _) Posting{paccount=a} = q `matchesAccount` a
 matchesPosting q@(DepthAcct _ _) Posting{paccount=a} = q `matchesAccount` a
-matchesPosting q@(Amt _ _) Posting{pamount=as} = q `matchesMixedAmount` as
+matchesPosting q@(Amt{}) Posting{pamount=as} = q `matchesMixedAmount` as
 matchesPosting (Cur r) Posting{pamount=as} = any (matchesCommodity (Cur r) . acommodity) $ amountsRaw as
 matchesPosting (Tag n v) p = case (reString n, v) of
   ("payee", Just v') -> maybe False (regexMatchText v' . transactionPayee) $ ptransaction p
   ("note", Just v') -> maybe False (regexMatchText v' . transactionNote) $ ptransaction p
   (_, mv) -> patternsMatchTags n mv $ postingAllTags p
 matchesPosting (Type _) _ = False
+matchesPosting (Change{}) _ = True
+matchesPosting (Balance{}) _ = True
 
 -- | Like matchesPosting, but if the posting's account's type is provided,
 -- any type: terms in the query must match it (and any negated type: terms
 -- must not match it).
 matchesPostingExtra :: (AccountName -> Maybe AccountType) -> Query -> Posting -> Bool
+matchesPostingExtra _     (Not q )  _ | isRowTerm q = True
 matchesPostingExtra atype (Not q )  p = not $ matchesPostingExtra atype q p
 matchesPostingExtra atype (Or  qs)  p = any (\q -> matchesPostingExtra atype q p) qs
 matchesPostingExtra atype (And qs)  p = all (\q -> matchesPostingExtra atype q p) qs
@@ -1007,7 +1150,9 @@ matchesPostingExtra atype (Type ts) p =
 matchesPostingExtra _ q p             = matchesPosting q p
 
 -- | Does the match expression match this transaction ?
+-- change:/balance: terms are ignored; reports apply them to entries' amounts (see Hledger.Reports.EntriesReport).
 matchesTransaction :: Query -> Transaction -> Bool
+matchesTransaction (Not q) _ | isRowTerm q = True
 matchesTransaction (Not q) t = not $ q `matchesTransaction` t
 matchesTransaction (Any) _ = True
 matchesTransaction (None) _ = False
@@ -1023,7 +1168,7 @@ matchesTransaction (Date spn) t = spanContainsDate spn $ tdate t
 matchesTransaction (Date2 spn) t = spanContainsDate spn $ transactionDate2 t
 matchesTransaction (StatusQ s) t = tstatus t == s
 matchesTransaction (Real v) t = v == hasRealPostings t
-matchesTransaction q@(Amt _ _) t = any (q `matchesPosting`) $ tpostings t
+matchesTransaction q@(Amt{}) t = any (q `matchesPosting`) $ tpostings t
 matchesTransaction q@(Depth _) t = any (q `matchesPosting`) $ tpostings t
 matchesTransaction q@(DepthAcct _ _) t = any (q `matchesPosting`) $ tpostings t
 matchesTransaction q@(Cur _) t = any (q `matchesPosting`) $ tpostings t
@@ -1032,11 +1177,14 @@ matchesTransaction (Tag n v) t = case (reString n, v) of
   ("note", Just v') -> regexMatchText v' $ transactionNote t
   (_, v') -> patternsMatchTags n v' $ transactionAllTags t
 matchesTransaction (Type _) _ = False
+matchesTransaction (Change{}) _ = True
+matchesTransaction (Balance{}) _ = True
 
 -- | Like matchesTransaction, but if the journal's account types are provided,
 -- any type: terms in the query must match at least one posting's account type
 -- (and any negated type: terms must match none).
 matchesTransactionExtra :: (AccountName -> Maybe AccountType) -> Query -> Transaction -> Bool
+matchesTransactionExtra _     (Not  q) _ | isRowTerm q = True
 matchesTransactionExtra atype (Not  q) t = not $ matchesTransactionExtra atype q t
 matchesTransactionExtra atype (Or  qs) t = any (\q -> matchesTransactionExtra atype q t) qs
 matchesTransactionExtra atype (And qs) t = all (\q -> matchesTransactionExtra atype q t) qs
@@ -1121,7 +1269,7 @@ matchesPriceDirective (Or qs) p          = any (`matchesPriceDirective` p) qs
 matchesPriceDirective (And qs) p         = all (`matchesPriceDirective` p) qs
 matchesPriceDirective (AnyPosting  qs) p = all (`matchesPriceDirective` p) qs
 matchesPriceDirective (AllPostings qs) p = all1 (`matchesPriceDirective` p) qs
-matchesPriceDirective q@(Amt _ _) p      = matchesAmount q (pdamount p)
+matchesPriceDirective q@(Amt{}) p        = matchesAmount q (pdamount p)
 matchesPriceDirective q@(Cur _) p        = matchesCommodity q (pdcommodity p)
 matchesPriceDirective (Date spn) p       = spanContainsDate spn (pddate p)
 matchesPriceDirective _ _                = True
@@ -1207,8 +1355,11 @@ tests_Query = testGroup "Query" [
      parseQueryTerm nulldate "inacct:a"                         @?= Right (Any, [QueryOptInAcct "a"])
      parseQueryTerm nulldate "tag:a"                            @?= Right (Tag (toRegexCI' "a") Nothing, [])
      parseQueryTerm nulldate "tag:a=some value"                 @?= Right (Tag (toRegexCI' "a") (Just $ toRegexCI' "some value"), [])
-     parseQueryTerm nulldate "amt:<0"                           @?= Right (Amt Lt 0, [])
-     parseQueryTerm nulldate "amt:>10000.10"                    @?= Right (Amt AbsGt 10000.1, [])
+     parseQueryTerm nulldate "amt:<0"                           @?= Right (Amt Lt 0 Nothing, [])
+     parseQueryTerm nulldate "amt:>10000.10"                    @?= Right (Amt AbsGt 10000.1 Nothing, [])
+     parseQueryTerm nulldate "amt:>$100"                        @?= Right (Amt AbsGt 100 (Just "$"), [])
+     parseQueryTerm nulldate "change:<-100 EUR"                 @?= Right (Change Lt (-100) (Just "EUR"), [])
+     parseQueryTerm nulldate "balance:>=+1000"                  @?= Right (Balance GtEq 1000 Nothing, [])
 
   ,testCase "parseAmountQueryTerm" $ do
      parseAmountQueryTerm "<0"        @?= Right (Lt,0) -- special case for convenience, since AbsLt 0 would be always false
@@ -1221,6 +1372,64 @@ tests_Query = testGroup "Query" [
      parseAmountQueryTerm "-0.23"     @?= Right (Eq,(-0.23))
      assertLeft $ parseAmountQueryTerm "-0,23"
      assertLeft $ parseAmountQueryTerm "=.23"
+
+  ,testCase "parseAmountQueryArg" $ do
+     parseAmountQueryArg "change" ">100"         @?= Right (AbsGt,100,Nothing)
+     parseAmountQueryArg "change" "<0"           @?= Right (Lt,0,Nothing)
+     parseAmountQueryArg "change" "0"            @?= Right (AbsEq,0,Nothing)
+     parseAmountQueryArg "change" ">=+100"       @?= Right (GtEq,100,Nothing)
+     parseAmountQueryArg "change" "<-100"        @?= Right (Lt,-100,Nothing)
+     parseAmountQueryArg "change" ">$100"        @?= Right (AbsGt,100,Just "$")
+     parseAmountQueryArg "change" ">-$100"       @?= Right (Gt,-100,Just "$")
+     parseAmountQueryArg "change" ">$-100"       @?= Right (Gt,-100,Just "$")
+     parseAmountQueryArg "change" "> 100 EUR"    @?= Right (AbsGt,100,Just "EUR")
+     parseAmountQueryArg "change" ">100EUR"      @?= Right (AbsGt,100,Just "EUR")
+     parseAmountQueryArg "change" "<EUR 100.5"   @?= Right (AbsLt,100.5,Just "EUR")
+     parseAmountQueryArg "change" "=\"A B\" -5"  @?= Right (Eq,-5,Just "A B")
+     parseAmountQueryArg "change" "5 \"A B\""    @?= Right (AbsEq,5,Just "A B")
+     assertLeft $ parseAmountQueryArg "change" ""
+     assertLeft $ parseAmountQueryArg "change" ">$"
+     assertLeft $ parseAmountQueryArg "change" ">-$-100"
+     assertLeft $ parseAmountQueryArg "change" ">1,000"
+
+  ,testCase "querySplitRowTerms" $ do
+     let c1 = Change AbsGt 1 Nothing
+         b1 = Balance Lt 0 Nothing
+         a = Acct $ toRegexCI' "a"
+     querySplitRowTerms (And [a, c1])             @?= Right (c1, a)
+     querySplitRowTerms (And [a, Not c1, b1])     @?= Right (And [Not c1, b1], a)
+     querySplitRowTerms c1                        @?= Right (c1, Any)
+     querySplitRowTerms a                         @?= Right (Any, a)
+     assertLeft $ querySplitRowTerms (Or [a, c1])
+     assertLeft $ querySplitRowTerms (Not (And [a, b1]))
+     assertLeft $ querySplitRowTerms (AnyPosting [c1])
+     assertLeft $ parseQuery nulldate "expr:'change:>1 or a'"
+     assertRight $ parseQuery nulldate "expr:'not balance:>1 and a'"
+     assertBool "" $ queryHasBalance (And [a, Not b1])
+     assertBool "" $ not $ queryHasBalance (And [a, c1])
+
+  ,testCase "matchesRowAmounts" $ do
+     let c ord n = Change ord n Nothing
+         b ord n = Balance ord n Nothing
+         eur = Just "EUR"
+         usd2 = mixedAmount $ usd 2
+         mixed = mixedAmount (usd 200) <> mixedAmount nullamt{acommodity="EUR", aquantity=1}
+         chg `and'` bal = (chg, bal)
+         matches q (chg, bal) = matchesRowAmounts q chg bal
+     assertBool "" $ matches (c AbsGt 1) (mixedAmount (usd (-2)) `and'` nullmixedamt)
+     assertBool "" $ not $ matches (c Gt 1) (mixedAmount (usd (-2)) `and'` nullmixedamt)
+     assertBool "" $ matches (c AbsEq 0) (nullmixedamt `and'` usd2)
+     assertBool "" $ matches (b Lt 0) (usd2 `and'` mixedAmount (usd (-5)))  -- balance: tests the balance, not the change
+     assertBool "" $ not $ matches (b Lt 0) (mixedAmount (usd (-5)) `and'` usd2)
+     assertBool "" $ matches (c AbsGt 100) (mixed `and'` nullmixedamt)  -- multi-commodity: matches if any part does
+     assertBool "" $ not $ matches (c AbsGt 1000) (mixed `and'` nullmixedamt)
+     assertBool "" $ not $ matches (Change AbsGt 100 eur) (mixed `and'` nullmixedamt)  -- with a symbol, just that commodity's part
+     assertBool "" $ matches (Change AbsLt 100 eur) (mixed `and'` nullmixedamt)
+     assertBool "" $ not $ matches (Change AbsLt 100 eur) (usd2 `and'` nullmixedamt)  -- no amount in that commodity: no match
+     assertBool "" $ not $ matches (Not $ c AbsGt 1) (usd2 `and'` nullmixedamt)
+     assertBool "" $ matches (And [c Gt 1, b Lt 3]) (usd2 `and'` usd2)
+     assertBool "" $ not $ matches (And [c Gt 1, b Gt 3]) (usd2 `and'` usd2)
+     assertBool "" $ matches Any (usd2 `and'` usd2)
 
   ,testCase "queryStartDate" $ do
      let small = Just $ fromGregorian 2000 01 01
@@ -1315,18 +1524,18 @@ tests_Query = testGroup "Query" [
      assertBool "" $ (Tag (toRegex' "postingtag") Nothing) `matchesTransaction` nulltransaction{tpostings=[nullposting{ptags=[("postingtag","")]}]}
 
      -- hledger print expr:'cash and amt:>0' means "show transactions with (at least one posting involving a cash account) and (at least one posting with a positive amount)"
-     let exprq = And [Acct $ toRegex' "cash", Amt Gt 0]
+     let exprq = And [Acct $ toRegex' "cash", Amt Gt 0 Nothing]
      assertBool "" $ exprq `matchesTransaction` nulltransaction{tpostings=[nullposting{paccount="cash", pamount=1}]}
      assertBool "" $ exprq `matchesTransaction` nulltransaction{tpostings = [nullposting{paccount="cash"}, nullposting{paccount="food", pamount=1}]}
 
      -- hledger print any:'cash and amt:>0' means "show transactions where at least one posting posts a positive amount to a cash account".
-     let anyq = AnyPosting [Acct $ toRegex' "cash", Amt Gt 0]
+     let anyq = AnyPosting [Acct $ toRegex' "cash", Amt Gt 0 Nothing]
      assertBool "" $ anyq `matchesTransaction` nulltransaction{tpostings=[nullposting{paccount="cash", pamount=1}]}
      assertBool "" $ not $ anyq `matchesTransaction` nulltransaction{tpostings = [nullposting{paccount="cash"}, nullposting{paccount="food", pamount=1}]}
 
      -- hledger print all:'cash and amt:0' means "show transactions where all postings involve a cash account and have a zero amount".
-     assertBool "" $ AllPostings [Amt Eq 0] `matchesTransaction`
+     assertBool "" $ AllPostings [Amt Eq 0 Nothing] `matchesTransaction`
       nulltransaction{tpostings = [nullposting{paccount = "cash"}, nullposting{paccount = "food"}]}
-     assertBool "" $ not $ AllPostings [Acct $ toRegex' "cash", Amt Eq 0] `matchesTransaction`
+     assertBool "" $ not $ AllPostings [Acct $ toRegex' "cash", Amt Eq 0 Nothing] `matchesTransaction`
       nulltransaction{tpostings = [nullposting{paccount = "cash"}, nullposting{paccount = "food"}]}
  ]
