@@ -2302,6 +2302,8 @@ so like balance assertions they can be disabled with `-I`/`--ignore-assertions`,
 and re-enabled with `-s`/`--strict` or `hledger check assertions`.
 Their scope is the [file tree](#directive-scopes): an assert directive sees all entries in the main file and its included files,
 before and after it, but not entries read by other `-f` options.
+To check some extra rules without adding them to the journal,
+you can give them to the [check](#check) command, as quoted arguments: eg `hledger check 'assert none daily  type:A balance:<0'`.
 
 ### Balance assertions and assert directives
 

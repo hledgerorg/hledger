@@ -64,7 +64,8 @@ module Hledger.Read.JournalReader (
   statusp,
   emptyorcommentlinep,
   followingcommentp,
-  accountaliasp
+  accountaliasp,
+  parseAssertDirective
 
   -- * Tests
   ,tests_JournalReader
@@ -1080,6 +1081,14 @@ assertdirectivep today = do
   either queryerr (const $ pure ()) $ querySplitRowTerms . fst =<< parseQuery today querytxt
   void $ lift followingcommentp
   return AssertDirective{adQuantifier=quant, adPeriod=mperiod, adQueryText=querytxt, adSourceText=line, adSourcePos=pos}
+
+-- | Parse one assert directive given as text, such as a check command argument,
+-- naming its source in error messages with the given name.
+-- Relative dates are relative to the given day (today).
+parseAssertDirective :: Day -> String -> Text -> Either String AssertDirective
+parseAssertDirective today srcname t =
+  first customErrorBundlePretty $
+  runParser (evalStateT (assertdirectivep today <* eof) nulljournal) srcname (T.stripEnd t <> "\n")
 
 -- | Parse a (possibly unbalanced) transaction.
 transactionp :: JournalParser m Transaction

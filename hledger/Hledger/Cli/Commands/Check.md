@@ -17,6 +17,7 @@ Eg:
 hledger check                      # run default checks
 hledger check -s                   # run default and strict checks
 hledger check ordereddates payees  # run default checks and two others
+hledger check 'assert none daily  type:A balance:<0'  # run default checks and a custom rule
 ```
 
 If you are an Emacs user, you can also configure flycheck-hledger to run these checks,
@@ -104,6 +105,22 @@ These are not wanted by everyone, but can be run using the `check` command:
 - **uniqueleafnames** - no two accounts may have the same last account name part
   (eg the `checking` in `assets:bank:checking`).
   This ensures each account can be matched by a unique short name, easier to remember and to type.
+
+### Assert rules
+
+You can also check custom rules, written like [assert directives].
+Give each one as a single quoted argument, written exactly as the directive would be written in the journal. Eg:
+
+```cli
+hledger check 'assert none daily  type:A balance:<0'
+hledger check 'assert some monthly  income:salary' 'assert none  assets:oldbank date:2025-'
+```
+
+This is a convenient way to try out a rule before adding it to the journal, or to check rules you don't want to keep there.
+Unlike assert directives, these rules check all of the data files read, combined (not each file tree separately),
+and they are checked even with `-I`.
+They are checked after any other checks requested.
+(A plain `assert` argument, with nothing after it, is short for the `assertions` check.)
 
 ### Custom checks
 
