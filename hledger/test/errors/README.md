@@ -238,7 +238,7 @@ the asserted balance is:        1
 but the calculated balance is:  0
 (difference: 1)
 To troubleshoot, check this account's running balance with assertions disabled, eg:
-hledger reg -E --ignore-assertions '2022-01-02'a$ cur:'' -e
+hledger reg -E --ignore-assertions 'a$' cur:'' -e 2022-01-02
 ```
 
 

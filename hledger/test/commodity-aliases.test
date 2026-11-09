@@ -404,7 +404,7 @@ the asserted balance is:         h 0.6
 but the calculated balance is:  h 0.50
 (difference: h 0.10)
 To troubleshoot, check this account's running balance with assertions disabled, eg:
-hledger reg -E --ignore-assertions '2026-01-04'time$ cur:h -e
+hledger reg -E --ignore-assertions 'time$' cur:h -e 2026-01-04
 >=1
 
 # ** 33. An unbalanced transaction error shows a repeating-decimal sum with 8 decimal places, not 255.

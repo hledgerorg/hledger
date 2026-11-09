@@ -1073,7 +1073,7 @@ checkBalanceAssertionOneCommodityB p@Posting{paccount=assertedacct} assertedcomm
         "but the calculated balance is:  %s",
         "(difference: %s)",
         "To troubleshoot, check this account's running balance with assertions disabled, eg:",
-        "hledger reg -E --ignore-assertions '%s'%s%s -e %s"
+        "hledger reg -E --ignore-assertions '%s'%s -e %s%s"
       ])
 
       (sourcePosPretty pos)  -- position
@@ -1088,9 +1088,9 @@ checkBalanceAssertionOneCommodityB p@Posting{paccount=assertedacct} assertedcomm
         <> if debugLevel >= 2 then " (with costs: " <> T.pack (showMixedAmountWith fmt actualcommbal) <> ")" else ""
       )
       diffstr  -- their difference
-      (show $ addDays 1 $ postingDate p)  -- exclusive end date just after the assertion's date
       (T.unpack (regexEscape (paccount p)) ++ if isinclusive then "" else "$")  -- query matching the account(s) postings
       (if istotal then "" else (" cur:" ++ quoteForCommandLine (T.unpack (regexEscape (assertedcomm)))))  -- query matching the commodity(ies)
+      (show $ addDays 1 $ postingDate p)  -- exclusive end date just after the assertion's date
       lotSubHint  -- lot subaccount hint (empty for non-lot accounts)
 
       where
