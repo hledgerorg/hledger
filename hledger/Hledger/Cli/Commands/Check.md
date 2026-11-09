@@ -38,12 +38,14 @@ These important checks are performed by default, by almost all hledger commands:
   and then converting  amounts to cost.
   This ensures that each transaction's journal entry is well formed.
 
-- **assertions** - all balance assertions in the journal are passing.
-  [Balance assertions] are a strong defense against errors, catching many problems.
+- **assertions** - all balance assertions and assert directives in the journal are passing.
+  [Balance assertions] are a strong defense against errors, catching many problems;
+  [assert directives] check standing rules, like "no asset account is ever negative".
   This check is on by default, but if it gets in your way, you can disable it temporarily
   with `-I` or `--ignore-assertions`, or as a default by adding that flag to your config file.
-  If you put it in your config file, you can override that with `-s`/`--strict` or `hledger check lots`.
-  When a journal has both kinds of problem, lot errors are reported before assertion failures.
+  If you put it in your config file, you can override that with `-s`/`--strict` or `hledger check assertions`.
+  When a journal has both kinds of problem, lot errors are reported before assertion failures,
+  and balance assertion failures before assert directive failures.
 
 - **lots** - all [lot](#lots-and-capital-gains) entries are valid.
   Checks lot posting classifications, lot movements, that an acquisition
@@ -111,10 +113,9 @@ Here are some examples from [hledger/bin/](https://github.com/hledgerorg/hledger
 
 - **hledger-check-tagfiles** - all tag values containing `/` exist as file paths
 
-- **hledger-check-fancyassertions** - more complex balance assertions are passing
-
 
 [add-on command scripts]:    #add-on-commands
+[assert directives]:  #assert-directive
 [balance assertions]: #balance-assertions
 [strict mode]:        #strict-mode
 [costs]: #costs

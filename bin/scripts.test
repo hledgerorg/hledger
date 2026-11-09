@@ -10,7 +10,6 @@
 # XXX it's actually too hard to make this reliable for CI right now.
 # Maybe still useful for running locally with "make functest".
 $  stack ghc hledger-balance-as-budget.hs                  >/dev/null 2>&1 || true
-$  stack ghc hledger-check-fancyassertions.hs              >/dev/null 2>&1 || true
 $  stack ghc hledger-check-tagfiles.hs                     >/dev/null 2>&1 || true
 $  stack ghc hledger-combine-balances.hs                   >/dev/null 2>&1 || true
 $  stack ghc --package string-qq hledger-print-location.hs >/dev/null 2>&1 || true

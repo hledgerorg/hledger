@@ -1,7 +1,7 @@
 #!/usr/bin/env stack
 -- stack runghc --verbosity info --package hledger
 -- Run from inside the hledger source tree, or compile with compile.sh.
--- See hledger-check-fancyassertions.hs.
+-- See hledger-check-tagfiles.hs.
 
 -- {-# OPTIONS_GHC -Wno-missing-signatures #-}
 

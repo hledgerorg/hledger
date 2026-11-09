@@ -164,6 +164,7 @@ Click error names to see an example. The table headings mean:
 | error name                                            | std format | line | column | excerpt | flycheck |
 |-------------------------------------------------------|------------|------|--------|---------|----------|
 | [accounts](#accounts)                                 | ✓          | ✓    | ✓      | ✓✓      | ✓        |
+| [assert](#assert)                                     | ✓          | ✓    | -      | ✓       |          |
 | [assertions](#assertions)                             | ✓          | ✓    | ✓      | ✓✓      | ✓        |
 | [autobalanced](#autobalanced)                         | ✓          | ✓    | -      | ✓       | ✓        |
 | [balanced](#balanced)                                 | ✓          | ✓    | -      | ✓       | ✓        |
@@ -208,7 +209,7 @@ Click error names to see an example. The table headings mean:
 
 
 <!-- GENERATED: -->
-hledger 1.99-gba5ef82e6-20261019 error messages:
+hledger 1.99-gddf10e827-20261109 error messages:
 
 ### accounts
 ```
@@ -222,6 +223,18 @@ account "ß" has not been declared.
 Consider adding an account directive. Examples:
 
 account ß
+```
+
+
+### assert
+```
+hledger: Error: /path/to/assert.j:4:
+4 | assert none daily  type:A balance:<0
+
+This assert directive failed on 2022-01-05.
+These balances matched:
+  assets:checking  $-20
+To see the report: hledger bal -E -H -b 2022-01-05 -e 2022-01-06 type:A 'balance:<0'
 ```
 
 

@@ -336,7 +336,6 @@ commandsListSections = [
  ,("MAINTENANCE",
   [" setup                    check your hledger installation"
   ," check                    check that your journal is valid"
-  ,"+check-fancyassertions    check more powerful balance assertions"                -- hledger-check-fancyassertions
   ,"+check-tagfiles           check that files referenced in tag values exist"       -- hledger-check-tagfiles
   ," diff                     compare an account's transactions in two journals"
   ,"+edit                     edit matched transactions with $EDITOR"                -- hledger-utils

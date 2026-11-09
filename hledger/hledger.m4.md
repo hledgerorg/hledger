@@ -1315,6 +1315,9 @@ the `-I` or `--ignore-assertions` flag, which can be useful for
 troubleshooting or for reading Ledger files.
 (Note: this flag currently does not disable balance assignments, described below).
 
+To check rules which should hold at all times, such as "no asset account is ever negative",
+see [assert directives](#assert-directive).
+
 ### Assertions and ordering
 
 hledger calculates and checks an account's balance assertions in date order
@@ -1681,7 +1684,7 @@ In particular, to have account aliases affect all entries in a file tree, declar
 
 When you read several file trees (with several `-f` options), hledger reads and processes each one separately, then combines them.
 So one file tree can't change how another's entries are read:
-account and commodity aliases, decimal marks, transaction balancing, balance assertions,
+account and commodity aliases, decimal marks, transaction balancing, balance assertions and assert directives,
 auto postings, forecast transactions and lot tracking all work within each file tree.
 
 But a few declarations reach all file trees ("all files" in the table below):
@@ -1725,6 +1728,8 @@ The interactions to watch for are conflicting display styles, account types, and
 | **[`=`]**            | Generates extra postings (after matched postings), with [`--auto`](#auto-postings). (Does not see sibling files: [#1212](https://github.com/hledgerorg/hledger/issues/1212).) | file tree |
 | **[`~`]**            | Generates future transactions (after latest transaction in file tree, by default), with [`--forecast`](#--forecast). | file tree |
 | **[`~`]**            | Generates budget goals and actual/goal percentages, with [`balance --budget`](#budget-report). | all files |
+|                      | <br>**Checks data:**                                                                                                                          |                             |
+| **[`assert`]**       | Declares a [standing rule](#assert-directive), a query that must match no rows or some rows, checked like balance assertions.                  | file tree                   |
 |                      | <br>**File reading (legacy/deprecated):**                                                                                                     |                             |
 | [`apply account`]    | Prepends a common parent account to all following account names, until `end apply account`.                                                             | rest of file + subfiles     |
 | [`D`]                | Sets a default commodity for following no-symbol amounts. Also sets its parsing decimal mark (overridden by `commodity` or `decimal-mark`) and display style (overridden by `commodity`). | rest of file + subfiles |
@@ -1739,6 +1744,7 @@ The interactions to watch for are conflicting display styles, account types, and
 [`alias`]:                   #alias-directive
 [`--alias`]:                 #--alias-option
 [`apply account`]:           #apply-account-directive
+[`assert`]:                  #assert-directive
 [`comment`]:                 #comment-directive
 [`commodity`]:               #commodity-directive
 [`decimal-mark`]:            #decimal-mark-directive
@@ -2212,6 +2218,103 @@ try troubleshooting with the accounts command, eg something like:
 ```cli
 $ hledger accounts --types -1 --alias assets=bassetts
 ```
+
+## `assert` directive
+
+`assert` directives declare standing rules about your data,
+which hledger checks whenever it reads the journal, as it does [balance assertions](#balance-assertions).
+Each one is a [query](#queries) which must match nothing, or something. Some examples:
+
+```journal
+assert none daily  type:A balance:<0                        ; no asset account is ever negative (in any commodity)
+assert none monthly  liabilities:card balance:<-$5000       ; the card never owes more than $5000 at a month end
+assert none  expenses:petty amt:>+500                       ; no single petty cash expense is larger than 500 (in any currency)
+assert none  assets:oldbank date:2025-                      ; nothing posted to a closed account
+assert none monthly  expenses:dining depth:2 change:>+$500  ; no month has more than $500 of dining expenses
+assert some monthly  income:salary                          ; there's a salary transaction every month
+assert some  desc:'opening balances'                        ; the journal has an opening balances entry
+assert some  assets:checking date:thismonth                 ; this month's bank import has been done
+assert some  assets:savings balance:>=+10000                ; savings hold at least $10000 (at the end of the journal)
+```
+
+The syntax is:
+
+```
+assert (none|some)[ PERIODEXPR][  QUERY]
+```
+
+Each assert directive runs its query as a balance report would (like `hledger bal -E QUERY`),
+and checks whether the report has rows:
+
+- `none` requires the report to have no rows, and `some` requires it to have at least one.
+- With no period expression, the report covers the whole journal.
+  So `none` means no posting matches the query, and `some` means at least one does;
+  and a [`balance:`](#balance-and-change-queries) term tests the balances at the end of the journal.
+- With a [period expression](#period-expressions), the report is run for each of its periods
+  (like `hledger bal -E -b START -e END QUERY`), and the rule must hold in every period.
+  Eg with `daily`, a `balance:` term tests each day's end balances, and `change:` tests each day's changes;
+  with `monthly from 2024`, each month's from 2024 on.
+  A period expression with no report interval (eg `in 2025`) is a single period.
+  A period with no matching postings has no rows, so `none` passes there and `some` fails.
+
+So "no asset account is ever negative" is `assert none daily  type:A balance:<0`.
+Without a period expression, only the final balances would be checked.
+The finest checking interval is daily; hledger does not check after every transaction.
+
+A period expression follows `none`/`some` after one space.
+The query follows `none`/`some`, or the period expression, after two or more spaces,
+as the description does in [periodic transactions](#periodic-transactions).
+So with no period expression, there are two spaces between `none`/`some` and the query (`assert none  QUERY`).
+The query can be omitted, to match all postings: eg `assert some monthly` means every month has postings.
+Relative dates, in the period expression and in the query, are relative to today.
+The query is written as on the command line, with quotes around terms containing spaces.
+A comment can follow, after a `;`.
+
+Some details which follow from `bal`'s behaviour:
+
+- The rows are the accounts with at least one matching posting in the period
+  (and, when the query has a `balance:` term, accounts with earlier postings, whose change in the period may be zero).
+  Rows with a zero amount count (as with `bal -E`).
+- Each row's amount is the account's own change or balance, not including its subaccounts.
+  To include subaccounts, limit the depth: eg `expenses:dining depth:2` folds `expenses:dining`'s subaccounts into it.
+  Like `depth:` elsewhere, this is an absolute depth, a number of account name parts.
+  You can limit the depth of just some accounts, with `depth:REGEX=N`.
+- `depth:0` folds all matched accounts into one row. This lets you compare two accounts which normally have opposite signs.
+  Eg "savings always cover the credit card debt" is `assert none daily  acct:'^(assets:savings|liabilities:card)' depth:0 balance:<0`.
+- Costs and valuation are ignored: amounts are summed in their original commodities, as in balance assertions.
+- `change:`, `balance:` and `amt:` compare a number without a sign by absolute magnitude, and a number with a sign (or 0) as a signed amount.
+  So `balance:>=100` matches 100 or -100, `balance:>=+100` matches only 100, and `balance:<0` matches negative amounts.
+- A row with several commodities matches if any one of them does.
+  To test just one commodity, use a `cur:` term, or a commodity symbol in the comparison (eg `balance:<-$5000`, `balance:'<0 EUR'`).
+- `date:` terms set the report period, as in `bal`, combined with the period expression's span if any.
+  So `assert none monthly  assets date:2026- balance:<0` means the same as `assert none monthly from 2026  assets balance:<0`.
+  Avoid `not:date:` in rules with a `balance:` term: it does not skip that date's check, it removes that date's postings from all later balances.
+- Account names are matched after any [account aliases](#account-aliases) have been applied, as in reports.
+
+When an assert directive fails, the error shows the directive, the period which failed,
+the accounts' balances or changes which matched (up to 10), and the equivalent `bal` command, to see the full report
+(with `-H` when the query has a `balance:` term, so that it shows the balances which were tested).
+If the query has no `change:` or `balance:` terms, the rule is about which postings exist,
+so the error shows the matching postings instead, and the equivalent `reg` command.
+
+Assert directives are part of the [`assertions` check](#check),
+so like balance assertions they can be disabled with `-I`/`--ignore-assertions`,
+and re-enabled with `-s`/`--strict` or `hledger check assertions`.
+Their scope is the [file tree](#directive-scopes): an assert directive sees all entries in the main file and its included files,
+before and after it, but not entries read by other `-f` options.
+
+### Balance assertions and assert directives
+
+[Balance assertions](#balance-assertions) state facts at a point in time, usually copied from the real world, like a bank statement.
+Assert directives state rules which should hold at all times, from your own policy.
+Some balance assertion features have a counterpart in assert directive queries:
+
+| to test                                | balance assertion | assert directive query                                |
+|----------------------------------------|-------------------|-------------------------------------------------------|
+| an account's own balance               | `= AMT`           | `ACCTREGEX balance:...`                               |
+| an account's balance with subaccounts  | `=* AMT`          | `ACCTREGEX depth:N balance:...`                       |
+| one commodity's balance                | `= AMT`           | `cur:COMM balance:...`, or a symbol in `balance:`     |
+| two accounts against each other        |                   | `depth:0 balance:...` (for accounts of opposite signs)|
 
 ## `comment` directive
 
@@ -3124,7 +3227,6 @@ but be aware that hledger's reports may differ from Ledger's if you use these.
 ```journal
 apply fixed COMM AMT
 apply tag   TAG
-assert      EXPR
 bucket / A  ACCT
 capture     ACCT REGEX
 check       EXPR
@@ -3140,6 +3242,10 @@ tag         NAME
 value       EXPR
 --command-line-flags
 ```
+
+Ledger's `assert EXPR` directive is not supported:
+`assert` is hledger's [assert directive](#assert-directive), which has a different syntax,
+so a Ledger-style `assert` line is an error.
 
 See also <https://hledger.org/ledger.html> for a detailed hledger/Ledger syntax comparison.
 
@@ -8002,7 +8108,7 @@ Here are those commands and the formats currently supported:
 | activity              |     |     |      |      |     |
 | add                   |     |     |      |      |     |
 | check                 |     |     |      |      |     |
-| check-fancyassertions |     |     |      |      |     |
+
 | check-tagfiles        |     |     |      |      |     |
 | close                 |     |     |      |      |     |
 | codes                 |     |     |      |      |     |

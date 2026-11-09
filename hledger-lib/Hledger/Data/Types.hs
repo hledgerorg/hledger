@@ -630,6 +630,21 @@ nullperiodictransaction = PeriodicTransaction{
      ,ptpostings     = []
 }
 
+-- | Which rows an assert directive's query must match: none, or at least one.
+data AssertQuantifier = AssertNone | AssertSome deriving (Eq,Show,Generic)
+
+-- | An assert directive: a standing rule, a query which must match no rows or some rows
+-- of the equivalent balance report, over the whole journal or in every period.
+-- The query is kept as text, since Hledger.Query depends on this module;
+-- it is validated when parsed, and parsed again when checked.
+data AssertDirective = AssertDirective {
+   adQuantifier :: AssertQuantifier
+  ,adPeriod     :: Maybe (Interval, DateSpan)  -- ^ the period expression, if any: the rule is checked in each of its periods
+  ,adQueryText  :: Text              -- ^ the query as written
+  ,adSourceText :: Text              -- ^ the directive line as written, for error excerpts
+  ,adSourcePos  :: SourcePos
+  } deriving (Eq,Generic)  -- , Show in Journal.hs
+
 data TimeclockCode = SetBalance | SetRequiredHours | In | Out | FinalOut deriving (Eq,Ord,Generic)
 
 data TimeclockEntry = TimeclockEntry {
@@ -735,6 +750,7 @@ data Journal = Journal {
   ,jinferredmarketprices    :: [MarketPrice]                          -- ^ Market prices inferred from transactions in the journal, in parse order.
   ,jtxnmodifiers            :: [TransactionModifier]                  -- ^ Auto posting rules declared in the journal.
   ,jperiodictxns            :: [PeriodicTransaction]                  -- ^ Periodic transaction rules declared in the journal.
+  ,jasserts                 :: [AssertDirective]                      -- ^ Assert directives declared in the journal, in parse order.
   ,jtxns                    :: [Transaction]                          -- ^ Transactions recorded in the journal. The important bit.
   ,jitems                   :: [JournalItem]                          -- ^ All top-level items of the journal file(s), in parse order,
                                                                       --   including directives, comment lines and blank lines as written.
@@ -910,6 +926,8 @@ instance NFData Amount
 instance NFData AmountCost
 instance NFData AmountPrecision
 instance NFData AmountStyle
+instance NFData AssertDirective
+instance NFData AssertQuantifier
 instance NFData BalanceAssertion
 instance NFData Commodity
 instance NFData CostBasis

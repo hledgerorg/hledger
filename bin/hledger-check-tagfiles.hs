@@ -1,7 +1,24 @@
 #!/usr/bin/env stack
 -- stack runghc --verbosity info --package hledger
--- Run from inside the hledger source tree, or compile with compile.sh.
--- See hledger-check-fancyassertions.hs.
+-- Run this script from inside the hledger source tree, so that it
+-- will use the corresponding source version of hledger, which is the
+-- version it is tested with.
+--
+-- You can compile these scripts by running compile.sh in this directory.
+-- The compiled executables can be run from anywhere, so you could add
+-- this directory to your $PATH and see them in hledger's command list.
+--
+-- You could make this a standalone script that runs from anywhere and
+-- recompiles itself when changed, by replacing "runghc" above with
+-- "script --compile --resolver lts-22" (eg). However this uses the
+-- hledger version from that stackage resolver, so in this case you
+-- should check out the corresponding release-tagged version of this
+-- script for compatibility (eg: git checkout 1.18.1).
+--
+-- This setup is adapted for some current limitations of stack's
+-- ghc/runghc/script commands. Unfortunately it requires repeating
+-- package dependencies, to the extent they are required, in multiple
+-- places.
 
 {-
 hledger-check-tagfiles stack script.

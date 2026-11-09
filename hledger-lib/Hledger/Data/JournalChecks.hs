@@ -9,6 +9,7 @@ others can be called only via the check command.
 
 module Hledger.Data.JournalChecks (
   journalStrictChecks,
+  journalCheckAssertDirectives,
   journalCheckAccounts,
   journalCheckBalanceAssertions,
   journalCheckCommodities,
@@ -35,6 +36,7 @@ import Text.Printf (printf)
 import Hledger.Data.AccountName (isAccountNamePrefixOf)
 import Hledger.Data.Errors
 import Hledger.Data.Journal
+import Hledger.Data.JournalChecks.Assert
 import Hledger.Data.JournalChecks.Ordereddates
 import Hledger.Data.JournalChecks.Uniqueleafnames
 import Hledger.Data.Posting (defaultDecimalMarkColumn, isVirtual, postingDate, postingHasTag, transactionAllTags, conversionPostingTagName, costPostingTagName, imbalancePostingTagName, postingAsLines, generatedPostingTagName, generatedTransactionTagName, modifiedTransactionTagName, feesplitPostingTagName, lotsplitPostingTagName, lotParentAssertionTagName, AmountCols(..))

@@ -150,7 +150,8 @@ directive-keyword = account-directive
                   | apply-account-directive
                   | end-apply-account-directive
                   | include-directive
-                  | decimal-mark-directive ;
+                  | decimal-mark-directive
+                  | assert-directive ;
 
 account-directive = "account", whitespace-1, account-name,
                    [ line-comment ], newline,
@@ -185,6 +186,13 @@ end-apply-account-directive = "end", whitespace-1, "apply", whitespace-1, "accou
 include-directive = "include", whitespace-1, file-path, [ line-comment ], newline ;
 
 decimal-mark-directive = "decimal-mark", whitespace-1, ( "." | "," ), newline ;
+
+(* A query which must match no rows or some rows of the equivalent balance report,
+   over the whole journal or in each period of the period expression. *)
+assert-directive = "assert", whitespace-1, ( "none" | "some" ),
+                   [ " ", period-expr ],
+                   [ "  ", [ whitespace ], query-expr ],
+                   [ whitespace ], [ line-comment ], newline ;
 
 (* Market prices *)
 market-price-directive = "P", [ whitespace ], datetime,

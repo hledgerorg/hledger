@@ -5,7 +5,7 @@
 # Blank lines are normalised: one between transactions and between groups of directive/comment lines.
 # Comment lines immediately preceding a transaction stay with it.
 # A ! or @ directive prefix is dropped. apply account, alias, their end forms, and Ledger directives
-# which hledger ignores (like assert) are not reproduced; their effects are already applied.
+# which hledger ignores (like check) are not reproduced; their effects are already applied.
 <
 ; top comment
 # hash comment
@@ -26,9 +26,10 @@ P 2024-01-01 EUR $1.10
     (assets:cash)  10
 = expenses:food
     (expenses:food:auto)  *0.1
+assert some  expenses:food
 alias food = expenses:food
 apply account top
-assert foo
+check foo
 2024-01-02 * (123) Foo  ; txn comment
     ; another txn comment line
     food   $5  ; posting comment
@@ -70,6 +71,7 @@ P 2024-01-01 EUR $1.10
     (assets:cash)  10
 = expenses:food
     (expenses:food:auto)  *0.1
+assert some  expenses:food
 
 2024-01-02 * (123) Foo  ; txn comment
     ; another txn comment line
