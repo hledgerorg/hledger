@@ -437,7 +437,7 @@ getViewData = do
   -- the request's language, applied to the options too so that any
   -- report text rendered by hledger-lib matches the page
   trs <- requestTranslations
-  let opts = opts0{cliopts_ = copts{reportspec_ = rspec{_rsReportOpts = _rsReportOpts{translations_ = trs}}}}
+  let opts1 = opts0{cliopts_ = copts{reportspec_ = rspec{_rsReportOpts = _rsReportOpts{translations_ = trs}}}}
 
   -- try to read the latest journal content, keeping the old content
   -- if there's an error
@@ -470,10 +470,14 @@ getViewData = do
   -- command line's --depth does); qparam, the search text that the search
   -- box and links show, is left as it is.
   mdepth <- (mfilter (>= 0) . readMay . T.unpack =<<) <$> lookupGetParam "depth"
-  (q, qopts, mqerr) <- do
+  -- Its change:/balance: terms, if any, go to the report spec, which the reports apply them from.
+  (q, rowq, qopts, mqerr) <- do
     case parseQuery today qparam of
-      Right (q0, qopts) -> return (maybe q0 (\d -> simplifyQuery $ And [q0, Depth d]) mdepth, qopts, Nothing)
-      Left err         -> return (Any, [], Just err)
+      Right (q0, qopts) -> do
+        let (rowq, q1) = either (const (Any, q0)) id $ querySplitRowTerms q0  -- parseQuery has checked this succeeds
+        return (maybe q1 (\d -> simplifyQuery $ And [q1, Depth d]) mdepth, rowq, qopts, Nothing)
+      Left err         -> return (Any, Any, [], Just err)
+  let opts = opts1{cliopts_ = (cliopts_ opts1){reportspec_ = (reportspec_ $ cliopts_ opts1){_rsRowQuery = rowq}}}
   subs <- (/= Just "0") <$> lookupGetParam "subs"
   account <- fmap (, subs) . mfilter (not . T.null) <$> lookupGetParam "account"
   dbg1IO "q parameter" qparam

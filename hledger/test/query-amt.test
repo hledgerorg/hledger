@@ -1,0 +1,41 @@
+# * amt: queries, which match postings by amount.
+# See also query-sum.test, which uses the same argument syntax.
+<
+2026-01-05 trip
+    assets:checking
+    expenses:travel     100 EUR @ $1.10
+
+2026-01-06 trip
+    assets:checking
+    expenses:travel     $30
+
+2026-01-09 groceries
+    assets:checking
+    expenses:food       $150
+
+# ** 1. Without a commodity symbol, postings in any commodity are compared.
+$ hledger -f- reg expenses amt:'>50'
+2026-01-05 trip                 expenses:travel            100 EUR       100 EUR
+2026-01-09 groceries            expenses:food                 $150          $150
+                                                                         100 EUR
+
+# ** 2. With a commodity symbol, just the amounts in that commodity are compared.
+$ hledger -f- reg expenses amt:'>$50'
+2026-01-09 groceries            expenses:food                 $150          $150
+
+# ** 3. The symbol can also be written after the number.
+$ hledger -f- reg expenses amt:'<200 EUR'
+2026-01-05 trip                 expenses:travel            100 EUR       100 EUR
+
+# ** 4. A transaction matches if any of its postings do (here the inferred $-110).
+$ hledger -f- print amt:'>$100' desc:trip
+2026-01-05 trip
+    assets:checking
+    expenses:travel                              100 EUR @ $1.10
+
+>=
+
+# ** 5. A bad argument gives an error.
+$ hledger -f- reg amt:'>1,000'
+>2 /could not parse "amt:>1,000"/
+>=1

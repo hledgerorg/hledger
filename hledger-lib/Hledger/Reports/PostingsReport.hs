@@ -9,6 +9,7 @@ Postings report, used by the register command.
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE BangPatterns        #-}
 
 module Hledger.Reports.PostingsReport (
   PostingsReport,
@@ -25,7 +26,7 @@ module Hledger.Reports.PostingsReport (
 )
 where
 
-import Data.List (sortBy, sortOn)
+import Data.List (mapAccumL, sortBy, sortOn)
 import Data.Map.Strict qualified as M
 import Data.Maybe (isJust, isNothing, fromMaybe)
 import Data.Ord
@@ -82,6 +83,7 @@ postingsReport rspec@ReportSpec{_rsReportOpts=ropts@ReportOpts{..}} j = items
       -- Postings, or summary postings with their subperiod's end date, to be displayed.
       -- Without --empty, zero-amount postings are omitted.
       displayps :: [(Posting, Maybe Period)]
+      displayps
         | multiperiod = [(p', Just period') | (p', period') <- summariseps reportps]
         | otherwise   = [(p', Nothing) | p' <- reportps, showempty || not (mixedAmountLooksZero $ pamount p')]
         where
@@ -90,11 +92,23 @@ postingsReport rspec@ReportSpec{_rsReportOpts=ropts@ReportOpts{..}} j = items
 
       sortedps = if sortspec_ /= defsortspec then sortPostings ropts sortspec_ displayps else displayps
 
-      -- Posting report items ready for display.
+      -- Posting report items ready for display: each posting with its running total (or average),
+      -- less any whose amount or balance doesn't match the query's change:/balance: terms
+      -- (hidden rows still count in the running totals).
       items =
         dbg4 "postingsReport items" $
-        postingsReportItems postings (nullposting,Nothing) whichdate depthSpec startbal runningcalc startnum
+        postingsReportItems (filter rowMatches $ withRunningTotals postings) (nullposting,Nothing) whichdate depthSpec
         where
+          rowq = _rsRowQuery rspec
+          rowMatches (p, _, _, histbal) = matchesRowAmounts rowq (pamount p) histbal
+          -- Add each posting's running total/average after it, and (if a balance: term needs it)
+          -- its historical running balance: the account(s)' real balance, whether or not -H was used.
+          withRunningTotals = snd . mapAccumL step (startnum, startbal, precedingsum)
+            where
+              step (!n, !bal, !histbal) (p, mperiod) = ((n+1, bal', histbal'), (p, mperiod, bal', histbal'))
+                where
+                  bal'     = runningcalc n bal $ pamount p
+                  histbal' = if queryHasBalance rowq then maPlus histbal (pamount p) else nullmixedamt
           -- In historical mode we'll need a starting balance, which we
           -- may be converting to value per hledger_options.m4.md "Effect
           -- of --value on reports".
@@ -102,9 +116,8 @@ postingsReport rspec@ReportSpec{_rsReportOpts=ropts@ReportOpts{..}} j = items
           historical = balanceaccum_ == Historical
           startbal | average_  = if historical then precedingavg else nullmixedamt
                    | otherwise = if historical then precedingsum else nullmixedamt
-            where
-              precedingsum = sumPostings precedingps
-              precedingavg = divideMixedAmount (fromIntegral $ length precedingps) precedingsum
+          precedingsum = sumPostings precedingps
+          precedingavg = divideMixedAmount (fromIntegral $ length precedingps) precedingsum
 
           runningcalc = registerRunningCalculationFn ropts
           startnum = if historical then length precedingps + 1 else 1
@@ -195,15 +208,16 @@ matchedPostingsBeforeAndDuring rspec@ReportSpec{_rsReportOpts=ropts,_rsQuery=q} 
         dateq = dbg4 "matchedPostingsBeforeAndDuring dateq" $ filterQuery queryIsDateOrDate2 $ dbg4 "matchedPostingsBeforeAndDuring q" q  -- XXX confused by multiple date:/date2: ?
 
 -- | Generate postings report line items from a list of postings or (with
--- non-Nothing periods attached) summary postings.
+-- non-Nothing periods attached) summary postings, each with its running total
+-- (and its historical balance, which is not used here).
 -- Postings' account names are clipped to the given depth;
 -- summary postings' account names have been clipped already.
-postingsReportItems :: [(Posting,Maybe Period)] -> (Posting,Maybe Period) -> WhichDate -> DepthSpec -> MixedAmount -> (Int -> MixedAmount -> MixedAmount -> MixedAmount) -> Int -> [PostingsReportItem]
-postingsReportItems [] _ _ _ _ _ _ = []
-postingsReportItems ((p,mperiod):ps) (pprev,mperiodprev) wd d b runningcalcfn itemnum =
-    i:(postingsReportItems ps (p,mperiod) wd d b' runningcalcfn (itemnum+1))
+postingsReportItems :: [(Posting,Maybe Period,MixedAmount,MixedAmount)] -> (Posting,Maybe Period) -> WhichDate -> DepthSpec -> [PostingsReportItem]
+postingsReportItems [] _ _ _ = []
+postingsReportItems ((p,mperiod,b,_):ps) (pprev,mperiodprev) wd d =
+    i:(postingsReportItems ps (p,mperiod) wd d)
   where
-    i = mkpostingsReportItem showdate showdesc wd mperiod p' b'
+    i = mkpostingsReportItem showdate showdesc wd mperiod p' b
     (showdate, showdesc) | isJust mperiod = (mperiod /= mperiodprev,          False)
                          | otherwise      = (isfirstintxn || isdifferentdate, isfirstintxn)
     isfirstintxn = ptransaction p /= ptransaction pprev
@@ -212,7 +226,6 @@ postingsReportItems ((p,mperiod):ps) (pprev,mperiodprev) wd d b runningcalcfn it
     -- clipping isn't idempotent (with account-specific depths), so don't clip summary postings again
     p' | isJust mperiod = p
        | otherwise      = p{paccount= clipOrEllipsifyAccountName d $ paccount p}
-    b' = runningcalcfn itemnum b $ pamount p
 
 -- | Generate one postings report line item, containing the posting,
 -- the current running balance, and optionally the posting date and/or

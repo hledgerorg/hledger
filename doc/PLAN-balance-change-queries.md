@@ -1,7 +1,7 @@
 # PLAN: balance: and change: queries (formerly sum:)
 
 Status: planned and implemented 2026-11-08 as `sum:` (PR #2847, unreleased);
-revised 2026-11-08 to replace `sum:` with `change:` and `balance:`, not yet implemented (see the next section).
+revised 2026-11-08 to replace `sum:` with `change:` and `balance:`, implemented 2026-11-09 (see the next section).
 The sections after it describe the original `sum:` design and implementation, which the revision builds on.
 
 ## Revision: `change:` and `balance:` replace `sum:` (2026-11-08)
@@ -101,6 +101,28 @@ and so could not be a plain query. Two terms with fixed meanings remove the prob
    first), then the `amt:` commodity-symbol commit. Force-push after confirmation; update PR #2847's
    title and description (draft shown first) and post a comment explaining the revision.
 
+
+### Implementation notes (2026-11-09)
+
+- Query.hs: `Change` and `Balance` constructors; `querySplitRowTerms`, `queryIsRowTerm`, `queryHasBalance`,
+  `matchesRowAmounts q change balance`; `_rsSumQuery` became `_rsRowQuery` ("row terms" is the code's name for the pair).
+- Balance reports: the row filter moved from the finished account tree to the clipped postings
+  (`applyRowQuery`, before `calculateReportAccount`): postings of accounts whose own change or end balance
+  doesn't match are dropped, so inclusive balances, totals, percentages and tree pruning follow with no
+  special code, and the test is independent of the display mode (`-H`, `--cumulative`, `--invert`, sign
+  normalisation). `accountRowAmounts` computes each account's own change (postings within the report
+  periods) and balance (all postings, including the pre-start ones `getPostings` now fetches when the query
+  has a `balance:` term); with valuation-after-sum (`--value=end` in historical reports) they are valued at
+  the report end date. Dormant accounts matched by `balance:` stay visible via `markAccountBoring`:
+  a `balance:` term keeps empty rows like `-E`, and counts pre-start postings as postings.
+  The budget report reuses `accountRowAmounts` on its actual postings, summing them inclusively per row.
+- Registers: items get their running total and (when needed) real running balance in one pass before
+  filtering, so hidden rows count in the totals; `postingsReportItems` now receives precomputed totals.
+  aregister threads the real balance through its accumulator alongside the displayed one.
+- Tests: hledger/test/query-balance-change.test (40 tests). The seven whose output changed are the
+  intended differences: real signs (`--invert`, `is`), hidden register rows counting in running totals,
+  the error wording. Unit tests renamed and extended (`queryHasBalance`, `balance:` vs `change:`).
+- hledger-web: the query help line and its hledger.pot entry were updated (not the .po catalogs).
 
 ## Original `sum:` implementation: changes made during it
 

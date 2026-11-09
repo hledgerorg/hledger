@@ -1,0 +1,411 @@
+# * change: and balance: queries, which match report rows (or entries) by their summed amounts.
+# See also the unit tests in Hledger.Query.
+<
+2026-01-05 groceries
+    assets:checking
+    expenses:food:groceries     150
+
+2026-01-10 gift
+    assets:checking
+    expenses:gifts               50
+
+2026-01-20 books
+    assets:checking
+    expenses:books              120
+
+2026-02-05 groceries
+    assets:checking
+    expenses:food:groceries      80
+
+2026-02-06 snacks
+    assets:checking
+    expenses:food:snacks         20
+
+2026-02-08 restaurant
+    assets:checking
+    expenses:food:dining        110
+
+2026-02-10 gift
+    assets:checking
+    expenses:gifts              200
+
+2026-03-01 salary
+    income:salary             -1000
+    assets:checking
+
+# ** 1. A balance report shows the accounts whose change is greater than N (in magnitude),
+# and the total of just those.
+$ hledger -f- bal expenses change:'>100'
+                 120  expenses:books
+                 110  expenses:food:dining
+                 230  expenses:food:groceries
+                 250  expenses:gifts
+--------------------
+                 710  
+
+# ** 2. change: can be negated.
+$ hledger -f- bal expenses not:change:'>100'
+                  20  expenses:food:snacks
+--------------------
+                  20  
+
+# ** 3. A signed N gives a signed comparison.
+$ hledger -f- bal change:'<-100'
+               -1000  income:salary
+--------------------
+               -1000  
+
+# ** 4. Likewise with a + sign.
+$ hledger -f- bal change:'>+100'
+                 270  assets:checking
+                 120  expenses:books
+                 110  expenses:food:dining
+                 230  expenses:food:groceries
+                 250  expenses:gifts
+--------------------
+                 980  
+
+# ** 5. In tree mode, parent accounts are shown for their matching subaccounts,
+# with balances including just those (food excludes snacks).
+$ hledger -f- bal -t expenses change:'>100'
+                 710  expenses
+                 120    books
+                 340    food
+                 110      dining
+                 230      groceries
+                 250    gifts
+--------------------
+                 710  
+
+# ** 6. With a depth limit, the clipped accounts' whole balances are tested.
+$ hledger -f- bal -t expenses -1 change:'>500'
+                 730  expenses
+--------------------
+                 730  
+
+# ** 7. In a multi-period report, the row totals are tested; the columns and totals are of the matching rows.
+$ hledger -f- bal expenses -M change:'>100'
+Balance changes in 2026Q1:
+
+                         || Jan  Feb  Mar 
+=========================++===============
+ expenses:books          || 120    0    0 
+ expenses:food:dining    ||   0  110    0 
+ expenses:food:groceries || 150   80    0 
+ expenses:gifts          ||  50  200    0 
+-------------------------++---------------
+                         || 320  390    0 
+
+# ** 8. With -H, the end balances are tested.
+$ hledger -f- bal expenses -M -H balance:'>200'
+Ending balances (historical) in 2026Q1:
+
+                         || 2026-01-31  2026-02-28  2026-03-31 
+=========================++====================================
+ expenses:food:groceries ||        150         230         230 
+ expenses:gifts          ||         50         250         250 
+-------------------------++------------------------------------
+                         ||        200         480         480 
+
+# ** 9. Percentages are of the matching rows' total.
+$ hledger -f- bal expenses change:'>100' --percent
+              16.9 %  expenses:books
+              15.5 %  expenses:food:dining
+              32.4 %  expenses:food:groceries
+              35.2 %  expenses:gifts
+--------------------
+             100.0 %  
+
+# ** 10. Multiple change: terms must all match.
+$ hledger -f- bal expenses change:'>100' change:'<200'
+                 120  expenses:books
+                 110  expenses:food:dining
+--------------------
+                 230  
+
+# ** 11. change: can be negated in a boolean query.
+$ hledger -f- bal expenses expr:'not change:>100'
+                  20  expenses:food:snacks
+--------------------
+                  20  
+
+# ** 12. Amounts are tested with their real sign, as with amt:, not the sign they are displayed with,
+# eg after --invert
+$ hledger -f- bal income --invert change:'<-500'
+                1000  income:salary
+--------------------
+                1000  
+
+# ** 13. or the sign normalisation of incomestatement and similar reports.
+$ hledger -f- is change:'<-500'
+Income Statement 2026-01-05..2026-03-01
+
+               || 2026-01-05..2026-03-01 
+===============++========================
+ Revenues      ||                        
+---------------++------------------------
+ income:salary ||                   1000 
+---------------++------------------------
+               ||                   1000 
+===============++========================
+ Expenses      ||                        
+---------------++------------------------
+---------------++------------------------
+               ||                      0 
+===============++========================
+ Net:          ||                   1000 
+
+# ** 14. A register report with a report interval tests each period's amount.
+# Hidden rows still count in the running total.
+$ hledger -f- reg expenses -M change:'>100'
+2026-01   expenses:books                                       120           120
+          expenses:food:groceries                              150           270
+2026-02   expenses:food:dining                                 110           430
+          expenses:gifts                                       200           730
+
+# ** 15. Eg, the months with more than 100 in gifts.
+$ hledger -f- reg gifts -M change:'>100'
+2026-02   expenses:gifts                                       200           250
+
+# ** 16. Without a report interval, it tests each posting's amount.
+$ hledger -f- reg expenses change:'>100'
+2026-01-05 groceries            ex:food:groceries              150           150
+2026-01-20 books                expenses:books                 120           320
+2026-02-08 restaurant           expenses:food:dining           110           530
+2026-02-10 gift                 expenses:gifts                 200           730
+
+# ** 17. An account register tests each transaction's change to the account;
+# the running balance still includes the hidden transactions.
+$ hledger -f- areg checking change:'>100'
+Transactions in assets:checking and subaccounts:
+2026-01-05 groceries            ex:fo:groceries               -150          -150
+2026-01-20 books                ex:books                      -120          -320
+2026-02-08 restaurant           ex:fo:dining                  -110          -530
+2026-02-10 gift                 ex:gifts                      -200          -730
+2026-03-01 salary               in:salary                     1000           270
+
+# ** 18. balance: tests each account's balance at the end of the report period, including postings before it
+# (the actual balance, as with -H); without -H the report still shows the changes.
+$ hledger -f- bal expenses -b 2026-02 balance:'>200'
+                  80  expenses:food:groceries
+                 200  expenses:gifts
+--------------------
+                 280  
+
+# ** 19. With -H, the balances tested are the ones shown.
+$ hledger -f- bal expenses -b 2026-02 -H balance:'>200'
+                 230  expenses:food:groceries
+                 250  expenses:gifts
+--------------------
+                 480  
+
+# ** 20. Accounts matched by balance: are shown even if they had no postings in the report period.
+$ hledger -f- bal expenses -b 2026-03 balance:'>200'
+                   0  expenses:food:groceries
+                   0  expenses:gifts
+--------------------
+                   0  
+
+# ** 21. In a multi-period report, balance: tests the end balance.
+$ hledger -f- bal expenses -M balance:'>200'
+Balance changes in 2026Q1:
+
+                         || Jan  Feb  Mar 
+=========================++===============
+ expenses:food:groceries || 150   80    0 
+ expenses:gifts          ||  50  200    0 
+-------------------------++---------------
+                         || 200  280    0 
+
+# ** 22. change: and balance: can be combined.
+$ hledger -f- bal expenses change:'>100' balance:'<250'
+                 120  expenses:books
+                 110  expenses:food:dining
+                 230  expenses:food:groceries
+--------------------
+                 460  
+
+# ** 23. In a register, balance: tests the running total after each posting.
+$ hledger -f- reg checking balance:'<-300'
+2026-01-20 books                assets:checking               -120          -320
+2026-02-05 groceries            assets:checking                -80          -400
+2026-02-06 snacks               assets:checking                -20          -420
+2026-02-08 restaurant           assets:checking               -110          -530
+2026-02-10 gift                 assets:checking               -200          -730
+
+# ** 24. It is the actual balance, whether or not -H is used; without -H the running total shown starts from zero.
+$ hledger -f- reg checking -b 2026-02 balance:'<-300'
+2026-02-05 groceries            assets:checking                -80           -80
+2026-02-06 snacks               assets:checking                -20          -100
+2026-02-08 restaurant           assets:checking               -110          -210
+2026-02-10 gift                 assets:checking               -200          -410
+
+# ** 25. In an account register, balance: tests the account's balance after each transaction.
+$ hledger -f- areg checking balance:'<-300'
+Transactions in assets:checking and subaccounts:
+2026-01-20 books                ex:books                      -120          -320
+2026-02-05 groceries            ex:fo:groceries                -80          -400
+2026-02-06 snacks               ex:fo:snacks                   -20          -420
+2026-02-08 restaurant           ex:fo:dining                  -110          -530
+2026-02-10 gift                 ex:gifts                      -200          -730
+
+# ** 26. change: and balance: can't be used inside OR.
+$ hledger -f- bal expr:'change:>100 or gifts'
+>2 /change: and balance: can only be combined with other query terms by AND/
+>=1
+
+# ** 27. The argument must be a comparison and a number, with an optional commodity symbol.
+$ hledger -f- bal change:'>1,000'
+>2 /could not parse "change:>1,000"/
+>=1
+
+<
+~ monthly from 2026-01
+    assets:checking
+    expenses            500
+    expenses:gifts      100
+
+2026-01-05 trip
+    assets:checking
+    expenses:travel     100 EUR @ $1.10
+
+2026-01-06 trip
+    assets:checking
+    expenses:travel     $30
+
+2026-01-07 exchange
+    assets:usd          -19110.17 USD @ 0.869050 CHF
+    assets:chf           16607.69 CHF
+
+2026-01-08 gift
+    assets:checking
+    expenses:gifts      $50
+    expenses:gifts      $-50
+
+2026-01-09 groceries
+    assets:checking
+    expenses:food       $150
+    (budget:food)      $-500
+
+2026-01-10 parent
+    assets:checking
+    expenses            $40
+
+# ** 28. Without a commodity symbol, a multi-commodity amount matches if any of its parts does.
+$ hledger -f- bal expenses change:'>90'
+                $150  expenses:food
+                 $30
+             100 EUR  expenses:travel
+--------------------
+                $180
+             100 EUR  
+
+# ** 29. With a commodity symbol, just that commodity's quantity is compared.
+$ hledger -f- bal expenses change:'>50 EUR'
+                 $30
+             100 EUR  expenses:travel
+--------------------
+                 $30
+             100 EUR  
+
+# ** 30. A sum with none of the commodity doesn't match.
+$ hledger -f- bal expenses change:'<200 EUR'
+                 $30
+             100 EUR  expenses:travel
+--------------------
+                 $30
+             100 EUR  
+
+# ** 31. A parent account's own amount is tested, as in list mode.
+$ hledger -f- bal expenses change:'<$100'
+                 $40  expenses
+                 $30
+             100 EUR  expenses:travel
+--------------------
+                 $70
+             100 EUR  
+
+# ** 32. Zero rows are hidden as usual, but -E shows the ones which match.
+$ hledger -f- bal expenses -E change:0
+                   0  expenses:gifts
+--------------------
+                   0  
+
+# ** 33. In tree mode, a parent account whose own amount doesn't match is shown just for its matching subaccounts.
+$ hledger -f- bal -t expenses change:'>$100'
+                $150  expenses:food
+--------------------
+                $150  
+
+# ** 34. print tests each entry's sum of postings, at cost, including unbalanced virtual postings.
+$ hledger -f- print change:'>$100'
+2026-01-09 groceries
+    assets:checking
+    expenses:food                               $150
+    (budget:food)                              $-500
+
+>=
+
+# ** 35. An entry has no balance, so balance: tests the same thing there.
+$ hledger -f- print balance:'>$100'
+2026-01-09 groceries
+    assets:checking
+    expenses:food                               $150
+    (budget:food)                              $-500
+
+>=
+
+# ** 36. So not:change:0 finds entries with a tolerated imbalance, or with unbalanced virtual postings.
+$ hledger -f- print not:change:0
+2026-01-07 exchange
+    assets:usd                                -19110.17 USD @ 0.869050 CHF
+    assets:chf                                 16607.69 CHF
+
+2026-01-09 groceries
+    assets:checking
+    expenses:food                               $150
+    (budget:food)                              $-500
+
+>=
+
+# ** 37. Valuation doesn't affect which entries print's change: matches.
+$ hledger -f- print not:change:0 -V
+2026-01-07 exchange
+    assets:usd                                -19110.17 USD @ 0.869050 CHF
+    assets:chf                                 16607.69 CHF
+
+2026-01-09 groceries
+    assets:checking                            $-150
+    expenses:food                               $150
+    (budget:food)                              $-500
+
+>=
+
+# ** 38. With --infer-imbalance, imbalances are absorbed by generated postings, so entries' sums are zero.
+$ hledger -f- print --infer-imbalance not:change:0
+2026-01-09 groceries
+    assets:checking
+    expenses:food                               $150
+    (budget:food)                              $-500
+
+>=
+
+# ** 39. A budget report hides the rows whose actual amount doesn't match,
+$ hledger -f- bal --budget -M expenses change:'>$100'
+Budget performance in 2026-01:
+
+          ||                 Jan 
+==========++=====================
+ expenses || $220, 100 EUR [600] 
+----------++---------------------
+          || $220, 100 EUR [600] 
+
+# ** 40. leaving the totals unchanged.
+$ hledger -f- bal --budget -M expenses change:'<$100'
+Budget performance in 2026-01:
+
+                ||                       Jan 
+================++===========================
+ expenses:gifts ||             0 [0% of 100] 
+----------------++---------------------------
+                || $220, 100 EUR [      600] 

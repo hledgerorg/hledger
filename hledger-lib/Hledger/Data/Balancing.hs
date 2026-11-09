@@ -19,6 +19,7 @@ module Hledger.Data.Balancing
 , balanceSingleTransaction
 , balanceTransactionHelper
 , transactionBalanceError
+, transactionBalancingSum
 , roundedPostingTagName
 , transactionRoundCalculatedAmounts
 , postingRoundCalculatedAmounts
@@ -223,6 +224,14 @@ postingBalancingAmountWith setaside p
   | costPostingTagName `elem` map fst (ptags p) = mixedAmountStripCosts $ pamount p
   | setaside p                                  = nullmixedamt
   | otherwise                                   = mixedAmountCost $ pamount p
+
+-- | The sum of all of this transaction's postings, converted to cost as when balancing it,
+-- including any unbalanced virtual postings. For a balanced transaction this is zero
+-- (or a tolerated imbalance; see transactionCheckBalanced) plus the unbalanced virtual postings' amounts.
+-- This is the amount a sum: query tests for a transaction.
+transactionBalancingSum :: Transaction -> MixedAmount
+transactionBalancingSum t = foldMap (postingBalancingAmountWith setaside) $ tpostings t
+  where setaside = isSetAsideGainPosting t
 
 -- | Postings which would show this balanced transaction's remaining imbalance
 -- (tolerated because it's smaller than the balancing precision; see transactionCheckBalanced),
