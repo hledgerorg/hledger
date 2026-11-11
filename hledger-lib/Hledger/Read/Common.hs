@@ -524,7 +524,7 @@ journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,i
         -- then check any assert directives (on the finalised journal, so lot subaccounts are seen).
         maybe (Right j3) Left massertionerr
           >>= (if checkassertions && not (null $ jasserts j3)
-                then timedE "journalCheckAssertDirectives" (\j4 -> journalCheckAssertDirectives _ioDay j4 $> j4)
+                then timedE "journalCheckAsserts" (\j4 -> journalCheckAsserts _ioDay j4 $> j4)
                 else pure))
 
   -- The last stage's timing line appears when its result is forced; with --debug, do that now.

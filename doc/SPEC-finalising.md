@@ -110,7 +110,7 @@ journalFinalise
   28. (re-raise deferred assertion failure)  -- if step 15 recorded a balance assertion failure
                                        -- and no later stage errored, report it now
 
-  29. journalCheckAssertDirectives     -- if the journal has assert directives and assertions are being checked
+  29. journalCheckAsserts              -- if the journal has assert directives and assertions are being checked
                                        -- (as for step 15), check them on the finalised journal (so lot subaccounts exist)
 ```
 
@@ -246,7 +246,7 @@ Several steps only run with specific flags:
 | journalAddAutoPostings                 | `--auto`                                                        |
 | journalTagCostsAndEquity (2nd)         | `--infer-costs`                                                 |
 | journalInferEquityFromCosts            | `--infer-equity`                                                |
-| journalCheckAssertDirectives           | the journal has assert directives; skipped by `-I`, unless restored by `--strict` or `hledger check assertions` |
+| journalCheckAsserts                    | the journal has assert directives; skipped by `-I`, unless restored by `--strict` or `hledger check assertions` |
 | journalInferBasisFromAccountNames      | always; lenient (skips its errors) with `--ignore-lots`/`-I`, unless restored by `--strict` or `hledger check lots` |
 | journalTagGainPostings                 | always; lenient, as above                                       |
 | journalClassifyLotPostings             | default; skipped by `--ignore-lots`/`-I`; restored by `--strict` or `hledger check lots` |

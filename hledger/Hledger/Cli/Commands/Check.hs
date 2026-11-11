@@ -58,7 +58,7 @@ check copts@CliOpts{rawopts_, reportspec_} j = do
     ([], checks) -> forM_ (sort checks) $ runCheck copts' j
 
   -- Then check the assert rules, on the whole journal (all files), even with -I.
-  either error' return $ journalCheckAssertDirectives today j{jasserts=asserts}
+  either error' return $ journalCheckAsserts today j{jasserts=asserts}
 
 -- | Is this check argument an assert rule, like an assert directive (assert followed by more words) ?
 -- (A plain "assert" is a prefix of, and selects, the assertions check.)

@@ -447,7 +447,7 @@ remove it from the "Ledger directives ignored" comment/list.
 
 #### 3. Checking (new module hledger-lib/Hledger/Data/JournalChecks/Assert.hs)
 
-`journalCheckAssertDirectives :: Day -> Journal -> Either String ()`
+`journalCheckAsserts :: Day -> Journal -> Either String ()`
 
 Direct accumulation over postings (preferred over driving the balance report
 code from journal finalisation, which would add a Read -> Reports dependency

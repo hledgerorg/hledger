@@ -14,7 +14,7 @@ which would make journal reading depend on the reports code.
 {-# LANGUAGE OverloadedStrings #-}
 
 module Hledger.Data.JournalChecks.Assert (
-  journalCheckAssertDirectives
+  journalCheckAsserts
 )
 where
 
@@ -45,11 +45,11 @@ import Hledger.Query
 import Hledger.Utils (fitText)
 import Text.DocLayout (realLength)
 
--- | Check all of this journal's assert directives, in parse order,
+-- | Check the rules of all this journal's assert directives, in parse order,
 -- returning an error message for the first failure.
 -- The day is today's date, for resolving relative dates in queries.
-journalCheckAssertDirectives :: Day -> Journal -> Either String ()
-journalCheckAssertDirectives today j = mapM_ (checkAssertDirective today j sortedps jspan) $ jasserts j
+journalCheckAsserts :: Day -> Journal -> Either String ()
+journalCheckAsserts today j = mapM_ (checkAssert today j sortedps jspan) $ jasserts j
   where
     -- Calculated once, for all directives: the journal's postings in date order
     -- (stably, so same-day postings stay in parse order), and its date span.
@@ -81,19 +81,19 @@ data RunningBalance = RunningBalance !MixedAmount ![Int]
 -- The one rule for this code: with the counts, balanceMatches must give exactly what testing the
 -- whole balance would. To disable the optimisation, eg while investigating a wrong result, set
 -- this to False: balances are then re-tested in full, which is slower but simpler.
--- The code it enables is marked "matching-amount counts" in checkAssertDirective.
+-- The code it enables is marked "matching-amount counts" in checkAssert.
 assertCountingEnabled :: Bool
 assertCountingEnabled = True
 
--- | Check one assert directive, given the journal's postings in date order and its date span.
+-- | Check one assert directive's rule, given the journal's postings in date order and its date span.
 -- Each checkpoint is the balance report @bal -E -b START -e END QUERY@: its rows are the
 -- accounts (clipped to the query's depth) with postings matching the query in the period,
 -- plus, when the query has balance: terms, the accounts with earlier postings (whose change
 -- may be zero); each row has its change in the period and its balance at the period end.
 -- Checking stops at the first failing checkpoint, and only then are its rows calculated in full,
 -- for the error message.
-checkAssertDirective :: Day -> Journal -> [Posting] -> DateSpan -> AssertDirective -> Either String ()
-checkAssertDirective today j sortedps jspan ad@AssertDirective{adQuantifier=quant, adPeriod=mperiod, adQueryText=querytxt} = do
+checkAssert :: Day -> Journal -> [Posting] -> DateSpan -> AssertDirective -> Either String ()
+checkAssert today j sortedps jspan ad@AssertDirective{adQuantifier=quant, adPeriod=mperiod, adQueryText=querytxt} = do
   (rowq, otherq) <- either (Left . (errorPrefix ad <>)) Right $ querySplitRowTerms . fst =<< parseQuery today querytxt
   let
     -- As in the balance report, date: terms don't select postings; they set the report period,

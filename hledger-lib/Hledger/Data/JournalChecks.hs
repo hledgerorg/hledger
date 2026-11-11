@@ -9,7 +9,7 @@ others can be called only via the check command.
 
 module Hledger.Data.JournalChecks (
   journalStrictChecks,
-  journalCheckAssertDirectives,
+  journalCheckAsserts,
   journalCheckAccounts,
   journalCheckBalanceAssertions,
   journalCheckCommodities,
