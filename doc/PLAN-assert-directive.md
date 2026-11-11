@@ -606,8 +606,13 @@ Implemented 2026-11-08 as planned, with these differences and details:
   peak live memory is unchanged.
   2026-11-10: with one account holding 200 commodities, `balance daily` over 100k transactions took 1.7s
   (each posting re-tested the whole balance, twice); matching-amount counts brought it to 0.12s.
-  As a share of read time, measured on synthetic journals, a rule adds about 5-15%, up to about 30%
-  for a broad `balance daily` rule; most of a narrow rule's cost is regex-matching every posting's account name.
+  Most of a narrow rule's remaining cost was regex-matching every posting's account name (worse with
+  realistic names of 40+ characters), so each rule's posting query is now partially evaluated once per
+  distinct account name ("per-account queries", switchable with `assertAccountQueriesEnabled`), using
+  a shared numbering of the postings' accounts. On 100k transactions with ~50-character account names:
+  ten narrow rules went from +130% of read time to +20%; the first rule costs about 10% (mostly the
+  shared setup), each further rule from about 1% (few postings matched) to about 20% (`balance daily`
+  over many accounts); peak memory rises by about 2% (the numbered postings).
   `date:` terms are handled as in `bal`: removed from the posting query, and used as the report period
   (intersected with the period expression's span), so with `balance` they limit the checkpoints
   but earlier postings still count in the historical balances (decided 2026-11-08, for fidelity with `bal -H`;

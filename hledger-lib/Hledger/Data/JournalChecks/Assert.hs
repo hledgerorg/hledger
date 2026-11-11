@@ -18,7 +18,10 @@ module Hledger.Data.JournalChecks.Assert (
 )
 where
 
+import Control.Monad (mfilter)
 import Data.Char (isAlphaNum)
+import Data.HashMap.Strict qualified as HM
+import Data.IntMap qualified as IM
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
 #endif
@@ -49,12 +52,31 @@ import Text.DocLayout (realLength)
 -- returning an error message for the first failure.
 -- The day is today's date, for resolving relative dates in queries.
 journalCheckAsserts :: Day -> Journal -> Either String ()
-journalCheckAsserts today j = mapM_ (checkAssert today j sortedps jspan) $ jasserts j
+journalCheckAsserts today j = mapM_ (checkAssert today j acctids numberedps jspan) $ jasserts j
   where
     -- Calculated once, for all directives: the journal's postings in date order
-    -- (stably, so same-day postings stay in parse order), and its date span.
-    sortedps = sortBy (comparing postingDate) $ journalPostings j
-    jspan    = journalDateSpan False j
+    -- (stably, so same-day postings stay in parse order), each with its account number
+    -- (see assertAccountQueriesEnabled), and the journal's date span.
+    (acctids, numberedps) = numberPostingAccounts $ sortBy (comparing postingDate) $ journalPostings j
+    jspan = journalDateSpan False j
+
+-- | A posting's account names, as used by account query terms: its account,
+-- and its original account (before aliasing or pivoting) if that is different.
+type PostingAccounts = (AccountName, Maybe AccountName)
+
+postingAccounts :: Posting -> PostingAccounts
+postingAccounts p = (a, mfilter (/= a) $ paccount <$> poriginal p) where a = paccount p
+
+-- | Number the distinct account names of these postings, returning the numbering,
+-- and the postings with their numbers (in the same order).
+numberPostingAccounts :: [Posting] -> (HM.HashMap PostingAccounts Int, [(Int, Posting)])
+numberPostingAccounts ps = (ids, reverse numbered)
+  where
+    (ids, numbered) = foldl' number (HM.empty, []) ps
+    number (m, acc) p = case HM.lookup k m of
+      Just i  -> (m, (i, p) : acc)
+      Nothing -> let !i = HM.size m in (HM.insert k i m, (i, p) : acc)
+      where k = postingAccounts p
 
 -- | Where an assert directive is checked: over the whole journal
 -- (within the date: terms' span, if any), or within one period of its period expression.
@@ -85,15 +107,37 @@ data RunningBalance = RunningBalance !MixedAmount ![Int]
 assertCountingEnabled :: Bool
 assertCountingEnabled = True
 
--- | Check one assert directive's rule, given the journal's postings in date order and its date span.
+-- | Per-account queries: an optimisation for selecting each rule's postings.
+-- Each rule's query is tested against every posting in the journal, and its account terms
+-- (acct:, type:, depth:) are regular expression matches against the posting's account name,
+-- which cost much more than the rest. But postings share a few account names, so instead,
+-- for each distinct account name the query is partially evaluated (see 'postingQueryForAccount'),
+-- leaving a smaller query (usually just "match all" or "match none") to test against that
+-- account's postings. This makes selecting postings several times cheaper.
+--
+-- The one rule for this code: the per-account query must match exactly the postings
+-- the whole query would. To disable the optimisation, eg while investigating a wrong result,
+-- set this to False: each posting is then tested with the whole query.
+assertAccountQueriesEnabled :: Bool
+assertAccountQueriesEnabled = True
+
+-- A possible further optimisation, if many rules become common: each rule still scans all
+-- of the journal's postings, so with 100 rules (on a large journal, measured 2026-11-10)
+-- a bal report took about 3.5 times as long. Grouping the postings by account once, for
+-- all rules, would let each rule visit only the accounts its per-account query doesn't
+-- rule out (merging their postings by date), so that a rule about a few accounts would
+-- cost almost nothing. Rules about many accounts would cost about the same as now.
+
+-- | Check one assert directive's rule, given the journal's account numbering (see 'numberPostingAccounts'),
+-- its postings in date order with their account numbers, and its date span.
 -- Each checkpoint is the balance report @bal -E -b START -e END QUERY@: its rows are the
 -- accounts (clipped to the query's depth) with postings matching the query in the period,
 -- plus, when the query has balance: terms, the accounts with earlier postings (whose change
 -- may be zero); each row has its change in the period and its balance at the period end.
 -- Checking stops at the first failing checkpoint, and only then are its rows calculated in full,
 -- for the error message.
-checkAssert :: Day -> Journal -> [Posting] -> DateSpan -> AssertDirective -> Either String ()
-checkAssert today j sortedps jspan ad@AssertDirective{adQuantifier=quant, adPeriod=mperiod, adQueryText=querytxt} = do
+checkAssert :: Day -> Journal -> HM.HashMap PostingAccounts Int -> [(Int, Posting)] -> DateSpan -> AssertDirective -> Either String ()
+checkAssert today j acctids numberedps jspan ad@AssertDirective{adQuantifier=quant, adPeriod=mperiod, adQueryText=querytxt} = do
   (rowq, otherq) <- either (Left . (errorPrefix ad <>)) Right $ querySplitRowTerms . fst =<< parseQuery today querytxt
   let
     -- As in the balance report, date: terms don't select postings; they set the report period,
@@ -108,11 +152,17 @@ checkAssert today j sortedps jspan ad@AssertDirective{adQuantifier=quant, adPeri
     postingq  = filterQuery (not . queryIsDateOrDate2) $ filterQuery (not . queryIsDepth) otherq
     amtq      = filterQuery queryIsAmtOrCur postingq
     selectPostings = selectPostings' True
-    selectPostings' clip = filter hasAmount . mapMaybe (prepare clip) . filter (matchesPostingExtra (journalAccountType j) postingq)
+    selectPostings' clip = filter hasAmount . mapMaybe (prepare clip . snd) . filter selected
+    atype = journalAccountType j
+    selected (i, p)
+      | assertAccountQueriesEnabled = matchesPostingExtra atype (IM.findWithDefault postingq i queriesbyaccount) p
+      | otherwise                   = matchesPostingExtra atype postingq p
+    -- The posting query, partially evaluated for each account (lazily, when first needed).
+    queriesbyaccount = IM.fromList [(i, postingQueryForAccount atype a morig postingq) | ((a, morig), i) <- HM.toList acctids]
     prepare clip p = do
       p' <- if queryIsNull amtq then Just p else filterPostingAmount amtq p
       Just $ postingStripCosts $ if clip then p'{paccount = clipOrEllipsifyAccountName depthspec $ paccount p'} else p'
-    ps = selectPostings sortedps
+    ps = selectPostings numberedps
 
     hasrowterms = not $ queryIsNull rowq
     hasbalanceq = queryHasBalance rowq
@@ -192,7 +242,7 @@ checkAssert today j sortedps jspan ad@AssertDirective{adQuantifier=quant, adPeri
             bals = foldl' addPostingRunning balances upto
             upd s a = if maybe False balanceMatches (M.lookup a bals) then S.insert a s else S.delete a s
         anyrowmatches
-          | not hasrowterms = not $ M.null changes
+          | not hasrowterms = not $ null now
           | not hasbalanceq = any changeMatches changes
           | not haschangeq  = not $ S.null matching'
           | otherwise       = any (\(a, chg) -> a `S.member` matching' && changeMatches chg) (M.toList changes)
@@ -208,7 +258,7 @@ checkAssert today j sortedps jspan ad@AssertDirective{adQuantifier=quant, adPeri
           WholeJournal sp -> (spanStart sp, spanEnd sp)
           Period sp       -> (spanStart sp, spanEnd sp)
         (pre, inspan) = span (not . onOrAfter mstart) $ takeWhile (before mend) ps
-        inspan'       = filter (onOrAfter mstart) $ takeWhile (before mend) $ selectPostings' False sortedps
+        inspan'       = filter (onOrAfter mstart) $ takeWhile (before mend) $ selectPostings' False numberedps
         changes       = amountsOf inspan
         balances      = amountsOf $ pre ++ inspan
         rows | hasbalanceq = [(a, M.findWithDefault nullmixedamt a changes, bal) | (a, bal) <- M.toAscList balances]

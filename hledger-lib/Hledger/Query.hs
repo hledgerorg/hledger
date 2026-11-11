@@ -71,6 +71,7 @@ module Hledger.Query (
   matchesPayee,
   matchesPosting,
   matchesPostingExtra,
+  postingQueryForAccount,
   matchesAccount,
   matchesAccountExtra,
   matchesMixedAmount,
@@ -1153,6 +1154,43 @@ matchesPostingExtra atype (Type ts) p =
       Just $ any (t `isAccountSubtypeOf`) ts
   )
 matchesPostingExtra _ q p             = matchesPosting q p
+
+-- | Partially evaluate a posting query, for postings to this account
+-- (and with this different original account name, from before aliasing or pivoting, if any).
+-- Its account terms (acct:, type:, depth:) are decided as 'matchesPostingExtra' would decide them,
+-- becoming Any or None, and simplified away; the rest of the query is kept
+-- (including any: and all: terms, which test sibling postings, and find: terms).
+-- So for any posting p with these account names,
+-- @matchesPostingExtra atype (postingQueryForAccount atype a morig q) p == matchesPostingExtra atype q p@.
+-- This lets the account terms be tested once per account, rather than once per posting;
+-- checking assert rules uses it this way (see "Hledger.Data.JournalChecks.Assert").
+postingQueryForAccount :: (AccountName -> Maybe AccountType) -> AccountName -> Maybe AccountName -> Query -> Query
+postingQueryForAccount atype a morig = go
+  where
+    go (Not q) | isRowTerm q = Any  -- as in matchesPosting
+               | otherwise   = notQ $ go q
+    go (And qs)  = andQ $ map go qs
+    go (Or qs)   = orQ $ map go qs
+    go (Acct r)  = boolQ $ eitherAccount (regexMatchText r)
+    go (Type ts) = boolQ $ eitherAccount $ maybe False (\t -> any (t `isAccountSubtypeOf`) ts) . atype
+    go q@(Depth _)      = boolQ $ matchesAccount q a
+    go q@(DepthAcct _ _) = boolQ $ matchesAccount q a
+    go q = q
+    eitherAccount f = f a || maybe False f morig
+    boolQ b = if b then Any else None
+    notQ Any  = None
+    notQ None = Any
+    notQ q    = Not q
+    andQ qs | None `elem` qs = None
+            | otherwise = case filter (/= Any) qs of
+                []  -> Any
+                [q] -> q
+                qs' -> And qs'
+    orQ qs  | Any `elem` qs = Any
+            | otherwise = case filter (/= None) qs of
+                []  -> None
+                [q] -> q
+                qs' -> Or qs'
 
 -- | Does the match expression match this transaction ?
 -- change:/balance: terms are ignored; reports apply them to entries' amounts (see Hledger.Reports.EntriesReport).
