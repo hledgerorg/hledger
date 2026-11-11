@@ -2283,13 +2283,18 @@ assert none monthly                 expenses:dining depth:2 change:>+$300       
 Most query terms, like `desc:`, `acct:`, or `amt:`, select postings.
 [`balance:` and `change:`](#balance-and-change-queries) terms instead test the balance or change of the accounts those postings are in.
 
-### How assert rules are checked
+### How assert rules work
 
 Assert rules are checked whenever the journal is read: by every command, and by hledger-ui and hledger-web when they reload
-(unless assertions are disabled, see [below](#when-an-assert-rule-fails)).
+(unless disabled with `-I`/`--ignore-assertions`, eg while you work on a failing rule).
 This happens after the journal is fully processed (after auto postings, transaction balancing, balance assertions and lot calculation),
 so rules see generated postings and lot subaccounts.
 Rules are checked in the order they were read, and the first rule that fails stops reading, with an error.
+
+Their scope is the [file tree](#directive-scopes): an assert rule sees all entries in the main file and its included files,
+before and after it, but not entries read by other `-f` options.
+To check some extra rules without adding them to the journal,
+give them to the [check](#check) command as quoted arguments: eg `hledger check 'assert none daily  type:A balance:<0'`.
 
 Each rule is checked as if by a balance report, `hledger bal -E QUERY`, in four steps:
 
@@ -2324,6 +2329,10 @@ These steps are done at one or more checkpoints, in date order:
 So you can check "no asset account is ever negative (at end of day)" with `assert none daily  type:A balance:<0`.
 Without `daily`, only the final balances would be checked.
 
+When a rule fails, the error shows the rule, every period in which it failed,
+and up to 10 of the rows (or postings) which matched in those periods.
+Only the first failing rule is reported; others may be failing too.
+
 These assertions have a cost: each rule makes reading the journal slightly slower.
 For example, roughly speaking, 10 rules might make a `bal` report about 30% slower, and 100 rules might make it 3x slower.
 Rules matching few postings cost less, and `balance:` rules checked daily across many accounts cost more.
@@ -2348,34 +2357,6 @@ Rules matching few postings cost less, and `balance:` rules checked daily across
 - **Avoid `not:date:` in rules with a `balance:` term.** It does not skip that date's check, it removes that date's postings from all later balances.
   Use positive date limits, or several rules, instead.
 - **Account names are matched after [account aliases](#account-aliases) have been applied**, as in reports.
-
-### When an assert rule fails
-
-The error shows the rule, every period in which it failed,
-and up to 10 of the rows (or postings) which matched in those periods.
-Only the first failing rule is reported; others may be failing too.
-
-To work with the journal while an assertion is failing, disable assertions with `-I` or `--ignore-assertions`.
-Assert rules are part of the [`assertions` check](#check), like balance assertions,
-so `-s`/`--strict` or `hledger check assertions` will re-enable them.
-
-Their scope is the [file tree](#directive-scopes): an assert rule sees all entries in the main file and its included files,
-before and after it, but not entries read by other `-f` options.
-To check some extra rules without adding them to the journal,
-give them to the [check](#check) command as quoted arguments: eg `hledger check 'assert none daily  type:A balance:<0'`.
-
-### Assert rules and balance assertions
-
-[Balance assertions](#balance-assertions) state facts at a point in time, usually copied from the real world, like a bank statement.
-`assert` rules state conditions which should hold at all times, from your own policy.
-Here are some correspondences between balance assertions and assert rule queries:
-
-| to test                                | balance assertion | assert rule query                                     |
-|----------------------------------------|-------------------|-------------------------------------------------------|
-| an account's own balance               | `= AMT`           | `ACCTREGEX balance:...`                               |
-| an account's balance with subaccounts  | `=* AMT`          | `ACCTREGEX depth:N balance:...`                       |
-| one commodity's balance                | `= AMT`           | `cur:COMM balance:...`, or a symbol in `balance:`     |
-| two accounts against each other        |                   | `depth:0 balance:...` (for accounts of opposite signs)|
 
 ## `comment` directive
 
