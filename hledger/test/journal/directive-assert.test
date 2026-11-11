@@ -525,3 +525,34 @@ $ hledger -f- check
 >2 /failed for the period 2026-02: no postings matched\.
 To see the report: hledger reg -b 2026-02-01 -e 2026-03-01$/
 >= 1
+
+# ** 41. A balance in several commodities matches while any one of them does, re-tested as each changes:
+# here USD dips below zero and recovers before the checked period, then EUR dips within it.
+<
+2026-01-01
+    assets   10 USD
+    equity
+
+2026-01-01
+    assets   5 EUR
+    equity
+
+2026-01-02
+    assets  -15 USD
+    equity
+
+2026-01-03
+    assets   10 USD
+    equity
+
+2026-01-04
+    assets  -10 EUR
+    equity
+
+assert none daily from 2026-01-03  assets balance:<0
+$ hledger -f- check
+>2 /failed on 2026-01-04\.
+These balances matched:
+  assets  -5 EUR, 5 USD
+To see the report: hledger bal -E -H -b 2026-01-04 -e 2026-01-05 assets 'balance:<0'/
+>= 1

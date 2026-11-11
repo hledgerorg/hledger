@@ -9,6 +9,7 @@ replicating what @hledger bal -E QUERY@ would show, rather than by running the b
 which would make journal reading depend on the reports code.
 -}
 
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -64,6 +65,26 @@ data Checkpoint = WholeJournal DateSpan | Period DateSpan
 -- change:/balance: terms and so is about which postings exist, the matching postings.
 data Evidence = MatchedRows [(AccountName, MixedAmount, MixedAmount)] | MatchedPostings [Posting]
 
+-- | An account's running balance, and its matching-amount counts (see 'assertCountingEnabled').
+data RunningBalance = RunningBalance !MixedAmount ![Int]
+
+-- | Matching-amount counts: an optimisation for periodic rules with balance: terms.
+-- These rules re-test an account's balance in each period where it changes, and a balance: term
+-- matches a balance if any one of its single-commodity amounts does, so a balance holding many
+-- commodities (dozens, or even hundreds) is costly to re-test. Instead, each running balance
+-- keeps, for each balance: term, a count of its amounts which match; a posting changes only the
+-- amounts in its own commodities, so only those are re-tested to update the counts, and the term
+-- matches the balance when its count is above zero. This makes the cost per posting independent
+-- of how many commodities the balance holds. (The error message's rows are still calculated
+-- directly, see evidenceAt.)
+--
+-- The one rule for this code: with the counts, balanceMatches must give exactly what testing the
+-- whole balance would. To disable the optimisation, eg while investigating a wrong result, set
+-- this to False: balances are then re-tested in full, which is slower but simpler.
+-- The code it enables is marked "matching-amount counts" in checkAssertDirective.
+assertCountingEnabled :: Bool
+assertCountingEnabled = True
+
 -- | Check one assert directive, given the journal's postings in date order and its date span.
 -- Each checkpoint is the balance report @bal -E -b START -e END QUERY@: its rows are the
 -- accounts (clipped to the query's depth) with postings matching the query in the period,
@@ -95,42 +116,52 @@ checkAssertDirective today j sortedps jspan ad@AssertDirective{adQuantifier=quan
 
     hasrowterms = not $ queryIsNull rowq
     hasbalanceq = queryHasBalance rowq
+    haschangeq  = queryHasChange rowq
     passes anymatched = case quant of
       AssertNone -> not anymatched
       AssertSome -> anymatched
     before mend p    = maybe True (postingDate p <) mend
     onOrAfter mstart p = maybe True (postingDate p >=) mstart
 
-    -- Amounts by account: a period's changes, or the running balances.
+    -- Amounts by account: a period's changes, or (for the error message) the balances.
     addPosting m p = M.insertWith (flip maPlus) (paccount p) (pamount p) m
     amountsOf = foldl' addPosting M.empty
     balanceOf balances a = M.findWithDefault nullmixedamt a balances
 
-    -- Does a checkpoint have a matching row ? Given the period's changes by account, the balances
-    -- at the period end, and the "quiet matches": the accounts whose row would match if they had
-    -- no change in the period (maintained incrementally across periods, when balance: terms make
-    -- such accounts rows). Without change:/balance: terms every row matches, so it's just whether
-    -- the period has any postings.
-    anyRowMatches changes balances quiet
-      | not hasrowterms = not $ M.null changes
-      | otherwise = any (\(a, chg) -> matchesRowAmounts rowq chg $ balanceOf balances a) (M.toList changes)
-                 || any (`M.notMember` changes) (S.toList quiet)
-    -- Update the quiet matches for these accounts, whose balances have changed.
-    updateQuiet balances quiet accts
-      | not hasbalanceq = quiet
-      | otherwise = foldl' upd quiet accts
-      where upd s a = if matchesRowAmounts rowq nullmixedamt (balanceOf balances a) then S.insert a s else S.delete a s
+    -- The change: and balance: terms, as amount comparisons, each with whether it is negated.
+    -- (They are combined by AND, see querySplitRowTerms.)
+    changeterms  = [(neg, Amt o n mc) | (neg, Change o n mc)  <- signedRowTerms rowq]
+    balanceterms = [(neg, Amt o n mc) | (neg, Balance o n mc) <- signedRowTerms rowq]
+    changeMatches chg = and [neg /= matchesMixedAmount t chg | (neg, t) <- changeterms]
+    zerochangematches = changeMatches nullmixedamt
+
+    -- Running balances by account. With assertCountingEnabled, these also have the matching-amount counts.
+    addPostingRunning m p = M.insert (paccount p) (RunningBalance bal' counts') m
+      where
+        RunningBalance bal counts = M.findWithDefault (RunningBalance nullmixedamt $ map (const 0) balanceterms) (paccount p) m
+        bal'    = bal `maPlus` pamount p
+        counts' | assertCountingEnabled = updateMatchCounts bal bal' (pamount p) counts
+                | otherwise             = counts
+    -- Does this running balance match the balance: terms ?
+    balanceMatches (RunningBalance bal@(Mixed amts) counts)
+      | assertCountingEnabled && not (M.null amts) = and [neg /= (c > 0) | ((neg, _), c) <- zip balanceterms counts]
+      | otherwise = and [neg /= matchesMixedAmount t bal | (neg, t) <- balanceterms]
+
+    --- matching-amount counts (see assertCountingEnabled)
+    -- Update an account's matching-amount counts, given its balance before and after a posting, and the
+    -- posting's amount: only the amounts in the posting's commodities have changed, so only they are re-tested.
+    updateMatchCounts bal bal' (Mixed pamts) counts = forceElems $ zipWith (+) counts
+      [ sum [fromEnum (matchesIn bal' k) - fromEnum (matchesIn bal k) | k <- M.keys pamts]
+      | (_, t) <- balanceterms
+      , let matchesIn (Mixed amts) k = maybe False (matchesAmount t) $ M.lookup k amts ]
+      where forceElems xs = foldr seq xs xs
+    --- end of matching-amount counts
 
     -- The first failing checkpoint, if any.
     mfailure = case mperiod of
-      Nothing ->
-        -- One checkpoint, the whole journal within the date: span: postings before it count in the balances, postings after it not at all.
-        let (pre, inspan) = span (not . onOrAfter (spanStart datespan)) $ takeWhile (before $ spanEnd datespan) ps
-            changes  = amountsOf inspan
-            balances = amountsOf $ pre ++ inspan
-            quiet    = updateQuiet balances S.empty $ M.keys balances
-        in if passes (anyRowMatches changes balances quiet) then Nothing else Just (WholeJournal datespan)
-      Just (interval, spn) -> firstFailing M.empty S.empty ps periods
+      -- One checkpoint, the whole journal within the date: span.
+      Nothing -> WholeJournal <$> firstFailing M.empty S.empty ps [datespan]
+      Just (interval, spn) -> Period <$> firstFailing M.empty S.empty ps periods
         where
           -- The periods, as the balance report would calculate them: from the period expression's span
           -- and the date: terms' span, with open ends filled from the journal's span,
@@ -139,18 +170,33 @@ checkAssertDirective today j sortedps jspan ad@AssertDirective{adQuantifier=quan
           periods = splitSpanToDateSpans (isNothing $ spanStart requestedspan) interval $
                     requestedspan `spanValidDefaultsFrom` jspan
 
-    -- Check each period in turn, accumulating the running balances (postings before the first
-    -- period count in them) and the quiet matches, and stopping at the first failure.
+    -- Check each period in turn, stopping at the first failure. Postings before the first period
+    -- count in the balances only, and postings after the last are ignored.
+    -- With balance: terms, this maintains the running balances, and the set of accounts whose
+    -- balance matches the balance: terms, updating only the accounts posted to in each period.
+    -- Each period's rows are the accounts with postings in it, plus, with balance: terms, the
+    -- accounts with earlier postings, whose change is zero. Without change:/balance: terms every
+    -- row matches, so it's just whether the period has any postings.
     firstFailing _ _ _ [] = Nothing
-    firstFailing balances quiet remaining (sp:sps)
-      | passes (anyRowMatches changes balances' quiet') = firstFailing balances' quiet' later sps
-      | otherwise = Just (Period sp)
+    firstFailing !balances !matching remaining (sp:sps)
+      | passes anyrowmatches = firstFailing balances' matching' later sps
+      | otherwise            = Just sp
       where
         (upto, later) = span (before $ spanEnd sp) remaining
-        now           = dropWhile (not . onOrAfter (spanStart sp)) upto  -- postings before the first period count in the balances only
+        now           = dropWhile (not . onOrAfter (spanStart sp)) upto
         changes       = amountsOf now
-        balances'     = foldl' addPosting balances upto
-        quiet'        = updateQuiet balances' quiet $ map paccount upto
+        (balances', matching')
+          | hasbalanceq = (bals, foldl' upd matching $ S.fromList $ map paccount upto)
+          | otherwise   = (balances, matching)
+          where
+            bals = foldl' addPostingRunning balances upto
+            upd s a = if maybe False balanceMatches (M.lookup a bals) then S.insert a s else S.delete a s
+        anyrowmatches
+          | not hasrowterms = not $ M.null changes
+          | not hasbalanceq = any changeMatches changes
+          | not haschangeq  = not $ S.null matching'
+          | otherwise       = any (\(a, chg) -> a `S.member` matching' && changeMatches chg) (M.toList changes)
+                              || (zerochangematches && any (`M.notMember` changes) (S.toList matching'))
 
     -- The evidence for the error message, calculated again from the start at the failing checkpoint.
     evidenceAt cp
@@ -169,6 +215,12 @@ checkAssertDirective today j sortedps jspan ad@AssertDirective{adQuantifier=quan
              | otherwise   = [(a, chg, balanceOf balances a) | (a, chg) <- M.toAscList changes]
 
   maybe (Right ()) (\cp -> Left $ assertFailureMessage ad rowq cp $ evidenceAt cp) mfailure
+
+-- | The change: and balance: terms of a row query (see 'querySplitRowTerms'), each with whether it is negated.
+signedRowTerms :: Query -> [(Bool, Query)]
+signedRowTerms (And qs) = concatMap signedRowTerms qs
+signedRowTerms (Not q)  = [(not neg, t) | (neg, t) <- signedRowTerms q]
+signedRowTerms q        = [(False, q) | queryIsRowTerm q]
 
 -- | The first line(s) of an assert directive error: file position and excerpt.
 errorPrefix :: AssertDirective -> String

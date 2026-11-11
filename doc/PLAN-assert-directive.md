@@ -169,9 +169,12 @@ case, or without period flags for a whole-journal check.
   checked with `querySplitRowTerms`.
 - Checker: each checkpoint has the period's changes by account and the running balances (postings
   before the first period count in the balances only); a row matches via `matchesRowAmounts`. Rows
-  are the active accounts, plus with `balance:` terms the inactive ones, handled incrementally as a
-  set of "quiet matches" (accounts whose row would match with a zero change), so a `daily` check
-  stays proportional to the postings, not periods × accounts. Without row terms a period's rows
+  are the active accounts, plus with `balance:` terms the inactive ones, handled incrementally as the
+  set of accounts whose balance matches the `balance:` terms, updated once per period for the accounts
+  posted to, so a `daily` check stays proportional to the postings, not periods × accounts.
+  Each running balance also counts its single-commodity amounts matching each `balance:` term
+  ("matching-amount counts", switchable with `assertCountingEnabled`), so a posting re-tests only its own
+  commodities, and the cost does not grow with the number of commodities a balance holds. Without row terms a period's rows
   exist iff it has postings, as before. Evidence rows carry (account, change, balance).
 - Error wording: the noun follows the query's terms: "changes" (`change:` only), "balances"
   (`balance:` only), "accounts" with two amount columns and a "(change, balance)" hint (both),
@@ -601,6 +604,10 @@ Implemented 2026-11-08 as planned, with these differences and details:
   0.02s when its query selects few postings, up to about 0.15s when it selects all 200k postings
   (the cost of summing them, as `bal` would); `balance daily` over that journal's 100k days adds about 0.08s;
   peak live memory is unchanged.
+  2026-11-10: with one account holding 200 commodities, `balance daily` over 100k transactions took 1.7s
+  (each posting re-tested the whole balance, twice); matching-amount counts brought it to 0.12s.
+  As a share of read time, measured on synthetic journals, a rule adds about 5-15%, up to about 30%
+  for a broad `balance daily` rule; most of a narrow rule's cost is regex-matching every posting's account name.
   `date:` terms are handled as in `bal`: removed from the posting query, and used as the report period
   (intersected with the period expression's span), so with `balance` they limit the checkpoints
   but earlier postings still count in the historical balances (decided 2026-11-08, for fidelity with `bal -H`;
