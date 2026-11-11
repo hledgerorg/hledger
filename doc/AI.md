@@ -181,14 +181,14 @@ See more about this and tracking AI usage in general at [AI usage tracking](ai-u
   - <https://github.com/rust-lang/rust-forge/pull/1040> Add an LLM policy for rust-lang/rust
 
 ### Software Practitioners
-- Donald Knuth: <https://cs.stanford.edu/~knuth/papers/claude-cycles.pdf>
-- Kent Beck: <https://tidyfirst.substack.com/t/genies>,\
-  <https://www.youtube.com/watch?v=5htJ2ML7BKU> 
-- Martin Fowler: <https://martinfowler.com/fragments/2026-04-02.html>
-- <https://news.ycombinator.com/item?id=47648828> Eight years of wanting, three months of building with AI
-- Raffael Schneider: <https://raskell.io/articles/looking-back-on-2025>
-- Bryan Cantrill: <https://bcantrill.dtrace.org/2026/09/05/the-revolt-of-the-reader/> on AI-assisted writing
+- Igor Babuschkin: <https://babuschk.in/posts/2026-01-25-life-on-claude-nine.html>
 - Andy Balaam: <https://artificialworlds.net/blog/2025/12/16/why-i-dont-use-ai/>, <https://artificialworlds.net/blog/2026/09/11/feeling-sad-about-ai/>
+- Kent Beck: <https://tidyfirst.substack.com/t/genies>, <https://www.youtube.com/watch?v=5htJ2ML7BKU> 
+- Bryan Cantrill: <https://bcantrill.dtrace.org/2026/09/05/the-revolt-of-the-reader/> on AI-assisted writing
+- Martin Fowler: <https://martinfowler.com/fragments/2026-04-02.html>
+- Donald Knuth: <https://cs.stanford.edu/~knuth/papers/claude-cycles.pdf>
+- Raffael Schneider: <https://raskell.io/articles/looking-back-on-2025>
+- <https://news.ycombinator.com/item?id=47648828> Eight years of wanting, three months of building with AI
 
 ### Policies
 - [Perspectiva Kogui / An Urgent Message On Artificial Intelligence From The Kogui People](https://sonidoselva.com/perspectiva-kogui)
