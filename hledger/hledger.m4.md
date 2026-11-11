@@ -2221,97 +2221,158 @@ $ hledger accounts --types -1 --alias assets=bassetts
 
 ## `assert` directive
 
-`assert` directives declare standing rules about your data,
-which hledger checks whenever it reads the journal, as it does [balance assertions](#balance-assertions).
-Each one is a [query](#queries) which must match nothing, or something. Some examples:
-
-```journal
-assert none daily  type:A balance:<0                        ; no asset account is ever negative (in any commodity)
-assert none monthly  liabilities:card balance:<-$5000       ; the card never owes more than $5000 at a month end
-assert none  expenses:petty amt:>+500                       ; no single petty cash expense is larger than 500 (in any currency)
-assert none  assets:oldbank date:2025-                      ; nothing posted to a closed account
-assert none monthly  expenses:dining depth:2 change:>+$500  ; no month has more than $500 of dining expenses
-assert some monthly  income:salary                          ; there's a salary transaction every month
-assert some  desc:'opening balances'                        ; the journal has an opening balances entry
-assert some  assets:checking date:thismonth                 ; this month's bank import has been done
-assert some  assets:savings balance:>=+10000                ; savings hold at least $10000 (at the end of the journal)
-```
+In addition to the point-in-time [balance assertions](#balance-assertions) in transaction entries,
+you can use `assert` directives to declare more general **journal assertions**.
+These are special [queries](#queries) asserting that certain report results do or do not exist at specified times.
+Like balance assertions, hledger checks these each time it reads the journal, unless you use `--ignore-assertions` or `-I`.
+You can declare conditions or goals that you want to be upheld, and whenever hledger reads the journal,
+if any rule is broken, it will report an error. Think "guard rails for your finances".
+(Note, a rule is only as good as its query, so test your new rules.)
 
 The syntax is:
 
 ```
 assert (none|some)[ PERIODEXPR][  QUERY]
 ```
-
-Each assert directive runs its query as a balance report would (like `hledger bal -E QUERY`),
-and checks whether the report has rows:
-
-- `none` requires the report to have no rows, and `some` requires it to have at least one.
-- With no period expression, the report covers the whole journal.
-  So `none` means no posting matches the query, and `some` means at least one does;
-  and a [`balance:`](#balance-and-change-queries) term tests the balances at the end of the journal.
-- With a [period expression](#period-expressions), the report is run for each of its periods
-  (like `hledger bal -E -b START -e END QUERY`), and the rule must hold in every period.
-  Eg with `daily`, a `balance:` term tests each day's end balances, and `change:` tests each day's changes;
-  with `monthly from 2024`, each month's from 2024 on.
-  A period expression with no report interval (eg `in 2025`) is a single period.
-  A period with no matching postings has no rows, so `none` passes there and `some` fails.
-
-So "no asset account is ever negative" is `assert none daily  type:A balance:<0`.
-Without a period expression, only the final balances would be checked.
-The finest checking interval is daily; hledger does not check after every transaction.
-
-A period expression follows `none`/`some` after one space.
-The query follows `none`/`some`, or the period expression, after two or more spaces,
-as the description does in [periodic transactions](#periodic-transactions).
-So with no period expression, there are two spaces between `none`/`some` and the query (`assert none  QUERY`).
-The query can be omitted, to match all postings: eg `assert some monthly` means every month has postings.
-Relative dates, in the period expression and in the query, are relative to today.
+Ie,
+the `assert` keyword followed by `none` or `some`,
+then an optional period expression specifying when to check the assertion,
+then a two-or-more-spaces delimiter and a query specifying which postings or report rows to look for.
 The query is written as on the command line, with quotes around terms containing spaces.
-A comment can follow, after a `;`.
+A `;` comment can follow.
 
-Some details which follow from `bal`'s behaviour:
+Here are some examples. (Aligning is optional; just remember to put at least two spaces before each query.):
 
-- The rows are the accounts with at least one matching posting in the period
-  (and, when the query has a `balance:` term, accounts with earlier postings, whose change in the period may be zero).
-  Rows with a zero amount count (as with `bal -E`).
-- Each row's amount is the account's own change or balance, not including its subaccounts.
-  To include subaccounts, limit the depth: eg `expenses:dining depth:2` folds `expenses:dining`'s subaccounts into it.
-  Like `depth:` elsewhere, this is an absolute depth, a number of account name parts.
-  You can limit the depth of just some accounts, with `depth:REGEX=N`.
-- `depth:0` folds all matched accounts into one row. This lets you compare two accounts which normally have opposite signs.
+```journal
+assert none                                                                                ; no postings exist
+assert some                                                                                ; some postings exist
+
+; journal maintenance
+assert some                         desc:'opening balances'                                ; the journal has an opening balances entry
+assert none                         assets:oldbank date:2025-                              ; nothing is posted to a closed account
+assert some                         assets:checking date:-7days                            ; bank data has been imported/added recently
+
+; income
+assert some monthly to this month   income:salary                                          ; there's a salary transaction in each past month
+assert none monthly to this month   income:salary change:<2000                             ; at least this much was earned in each past month
+assert none monthly to this month   income:salary change:>-2000                            ; a more careful signed test, handling contrabalances & sign typos
+assert some monthly to this month   desc:invoice any:'receivable amt:>0'                   ; an invoice was sent in each past month
+assert some monthly to this month   desc:'payment for.*invoice'                            ; an invoice payment was received in each past month
+assert none                         assets:receivable balance:>15000                       ; unpaid invoices are less than this, currently
+
+; assets
+assert none daily                   type:A balance:<0                                      ; no asset account is ever negative (at end of day), in any commodity
+assert none daily                   assets:savings balance:<+10000                         ; savings never drop below this much
+assert some                         assets:savings balance:>=+20000                        ; savings hold at least this much, currently
+assert some monthly to this month   not:tag:clopen assets:investments depth:2 change:>300  ; at least this much was invested in each past month (ignoring closing/opening entries)
+
+; assets and liabilities
+assert some                         taxes type:AL depth:0 balance:>0                       ; estimated tax savings exceed estimated tax due, currently
+
+; liabilities
+assert some monthly to this month   liabilities:card amt:>0 any:'assets amt:<0'            ; a credit card payment was made in each past month
+assert none monthly                 liabilities:card balance:<-3000                        ; no month ends with more than this much owed on the credit card
+assert none                         liabilities:card balance:<-500                         ; current credit card balance is less than this
+
+; expenses
+assert none                         expenses:misc amt:>+10                                 ; no single misc expense is larger than this (in any currency)
+assert none monthly                 expenses:dining change:>+$300                          ; no month has more than this much $ dining expense
+assert none monthly                 expenses:dining depth:2 change:>+$300                  ; the same, but include subaccounts like expenses:dining:fine
+```
+
+Most query terms, like `desc:`, `acct:`, or `amt:`, select postings.
+
+[`balance:` and `change:`](#balance-and-change-queries) terms instead test the balance or change of the accounts those postings are in,
+as a [balance report](#balance) would.
+
+### How assert rules are checked
+
+Assert rules are checked whenever the journal is read: by every command, and by hledger-ui and hledger-web when they reload
+(unless assertions are disabled, see [below](#when-an-assert-rule-fails)).
+This happens after the journal is fully processed (after auto postings, transaction balancing, balance assertions and lot calculation),
+so rules see generated postings and lot subaccounts.
+Rules are checked in the order they were read, and the first rule that fails stops reading, with an error.
+
+Each rule is checked as if by a balance report, `hledger bal -E QUERY`, in four steps:
+
+1. **Select postings.**
+   The query's ordinary terms select and prepare postings as `bal` would:
+   costs are ignored (amounts are summed in their original commodities),
+   and `depth:` clips account names, merging subaccounts into their parent.
+   `date:` terms don't select postings; they limit the report period, like `-b`/`-e`.
+2. **Calculate report rows.**
+   The selected postings are summed by account.
+   Each row has the account's change during the period, and its balance at the end of the period (including all earlier postings, like `bal -H`).
+   The rows are the accounts with selected postings in the period,
+   plus, when the query has a `balance:` term, accounts with only earlier postings (their change is zero but their balance may not be).
+3. **Filter rows.**
+   `change:` terms test each row's change, and `balance:` terms test its end balance; a query can have both.
+   Without these terms every row matches, so the rule is simply about whether any postings were selected.
+4. **Test.**
+   `none` passes if no row matches, and `some` passes if at least one does.
+
+These steps are done at one or more checkpoints, in date order:
+
+- With no period expression, there is one checkpoint, covering the whole journal (or the `date:` terms' span).
+  So `balance:` tests the balances at the end of the journal, and `change:` tests the total change.
+- With a [period expression](#period-expressions), each of its periods is a checkpoint, and the rule must pass at every one.
+  The periods are those `bal` would show with that report interval and `-b START -e END`.
+  Eg `daily` checks each day's end balances or changes; `monthly from 2024` checks each month from 2024 on.
+- A period with no rows passes a `none` rule and fails a `some` rule.
+- Relative dates in the period expression and query are resolved from today's date,
+  so a rule like `assert some  assets:checking date:-7days` can start failing just because time passes.
+- Daily is the smallest checking interval (`assert` does not check after every transaction).
+
+So you can check "no asset account is ever negative (at end of day)" with `assert none daily  type:A balance:<0`.
+Without `daily`, only the final balances would be checked.
+
+These assertions have a cost: each rule makes reading the journal slightly slower.
+For example, roughly speaking, 10 rules might make a `bal` report about 30% slower, and 100 rules might make it 3x slower.
+Rules matching few postings cost less, and `balance:` rules checked daily across many accounts cost more.
+
+### Tips for writing assert rules
+
+- **`none` gives more useful errors.**
+  When you have a choice, prefer `none`, because when it fails it shows the offending rows, whereas a failing `some` rule can only say nothing matched.
+- **For more precise amount tests, add a sign and/or commodity.**
+  A plain number, as in `balance:>100`, ignores sign, and matches if any commodity's amount does.
+  Often that is enough, but if you want to handle contrabalances or sign typos, add a sign: `balance:>+100`.
+  And to limit the test to one commodity, add its symbol, as in `balance:<-$5000`, or add a `cur:` term.
+- **Subaccounts are not included by default.**
+  Each row's amount is the account's own exclusive change or balance (like `=` in a balance assertion).
+  To include subaccount balances, limit the depth: eg `expenses:dining depth:2` folds `expenses:dining`'s subaccounts into it.
+  (To fold just some accounts, use `depth:REGEX=N`.)
+- **`depth:0` folds all matched accounts into one row.** This lets you test two accounts of opposite sign against each other.
   Eg "savings always cover the credit card debt" is `assert none daily  acct:'^(assets:savings|liabilities:card)' depth:0 balance:<0`.
-- Costs and valuation are ignored: amounts are summed in their original commodities, as in balance assertions.
-- `change:`, `balance:` and `amt:` compare a number without a sign by absolute magnitude, and a number with a sign (or 0) as a signed amount.
-  So `balance:>=100` matches 100 or -100, `balance:>=+100` matches only 100, and `balance:<0` matches negative amounts.
-- A row with several commodities matches if any one of them does.
-  To test just one commodity, use a `cur:` term, or a commodity symbol in the comparison (eg `balance:<-$5000`, `balance:'<0 EUR'`).
-- `date:` terms set the report period, as in `bal`, combined with the period expression's span if any.
-  So `assert none monthly  assets date:2026- balance:<0` means the same as `assert none monthly from 2026  assets balance:<0`.
-  Avoid `not:date:` in rules with a `balance:` term: it does not skip that date's check, it removes that date's postings from all later balances.
-- Account names are matched after any [account aliases](#account-aliases) have been applied, as in reports.
+- **`date:` terms combine with the period expression's span.**
+  Eg `assert none monthly  assets date:2026- balance:<0` means the same as `assert none monthly from 2026  assets balance:<0`.
+  `to thismonth` is useful for "every past month" rules, excluding the current incomplete month.
+- **Avoid `not:date:` in rules with a `balance:` term.** It does not skip that date's check, it removes that date's postings from all later balances.
+  Use positive date limits, or several rules, instead.
+- **Account names are matched after [account aliases](#account-aliases) have been applied**, as in reports.
 
-When an assert directive fails, the error shows the directive, the period which failed,
-the accounts' balances or changes which matched (up to 10), and the equivalent `bal` command, to see the full report
-(with `-H` when the query has a `balance:` term, so that it shows the balances which were tested).
-If the query has no `change:` or `balance:` terms, the rule is about which postings exist,
-so the error shows the matching postings instead, and the equivalent `reg` command.
+### When an assert rule fails
 
-Assert directives are part of the [`assertions` check](#check),
-so like balance assertions they can be disabled with `-I`/`--ignore-assertions`,
-and re-enabled with `-s`/`--strict` or `hledger check assertions`.
-Their scope is the [file tree](#directive-scopes): an assert directive sees all entries in the main file and its included files,
+The error shows the rule, every period in which it failed,
+and up to 10 of the rows (or postings) which matched in those periods.
+Only the first failing rule is reported; others may be failing too.
+
+To work with the journal while an assertion is failing, disable assertions with `-I` or `--ignore-assertions`.
+Assert rules are part of the [`assertions` check](#check), like balance assertions,
+so `-s`/`--strict` or `hledger check assertions` will re-enable them.
+
+Their scope is the [file tree](#directive-scopes): an assert rule sees all entries in the main file and its included files,
 before and after it, but not entries read by other `-f` options.
 To check some extra rules without adding them to the journal,
-you can give them to the [check](#check) command, as quoted arguments: eg `hledger check 'assert none daily  type:A balance:<0'`.
+give them to the [check](#check) command as quoted arguments: eg `hledger check 'assert none daily  type:A balance:<0'`.
 
-### Balance assertions and assert directives
+### Assert rules and balance assertions
 
 [Balance assertions](#balance-assertions) state facts at a point in time, usually copied from the real world, like a bank statement.
-Assert directives state rules which should hold at all times, from your own policy.
-Some balance assertion features have a counterpart in assert directive queries:
+`assert` rules state conditions which should hold at all times, from your own policy.
+Here are some correspondences between balance assertions and assert rule queries:
 
-| to test                                | balance assertion | assert directive query                                |
+| to test                                | balance assertion | assert rule query                                     |
 |----------------------------------------|-------------------|-------------------------------------------------------|
 | an account's own balance               | `= AMT`           | `ACCTREGEX balance:...`                               |
 | an account's balance with subaccounts  | `=* AMT`          | `ACCTREGEX depth:N balance:...`                       |
