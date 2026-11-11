@@ -39,7 +39,7 @@ import Text.Megaparsec (SourcePos(..), unPos)
 
 import Hledger.Data.AccountName (clipOrEllipsifyAccountName)
 import Hledger.Data.Amount (maPlus, nullmixedamt, showMixedAmountOneLine)
-import Hledger.Data.Dates (showDate, showDateSpan, spanEnd, spanIntersect, spanStart, spanValidDefaultsFrom)
+import Hledger.Data.Dates (showDate, showDateSpan, spanContainsDate, spanEnd, spanIntersect, spanStart, spanValidDefaultsFrom)
 import Hledger.Data.DayPartition (splitSpanToDateSpans)
 import Hledger.Data.Errors (decorateExcerpt)
 import Hledger.Data.Journal (filterPostingAmount, journalAccountType, journalDateSpan, journalPostings)
@@ -153,7 +153,7 @@ assertAccountQueriesEnabled = True
 -- may be zero); each row has its change in the period and its balance at the period end.
 -- All checkpoints are checked, so that a failure can report every failing checkpoint, and what matched there.
 checkAssert :: Day -> Journal -> HM.HashMap PostingAccounts Int -> [(Int, Posting)] -> DateSpan -> AssertDirective -> Either String ()
-checkAssert today j acctids numberedps jspan ad@AssertDirective{adQuantifier=quant, adPeriod=mperiod, adQueryText=querytxt} = do
+checkAssert today j acctids numberedps jspan ad@AssertDirective{adQuantifier=quant, adPeriod=mperiod, adQueryText=querytxt, adSkips=skips} = do
   (rowq, otherq) <- either (Left . (errorPrefix ad <>)) Right $ querySplitRowTerms . fst =<< parseQuery today querytxt
   let
     -- As in the balance report, date: terms don't select postings; they set the report period,
@@ -241,9 +241,10 @@ checkAssert today j acctids numberedps jspan ad@AssertDirective{adQuantifier=qua
     -- Each period's rows are the accounts with postings in it, plus, with balance: terms, the
     -- accounts with earlier postings, whose change is zero. Without change:/balance: terms every
     -- row matches, so it's just whether the period has any postings.
+    -- Checkpoints in the periods of skip subdirectives are skipped, but their postings still count in the balances.
     checkPeriods _ _ _ _ [] = []
     checkPeriods !want !balances !matching remaining (sp:sps)
-      | passes anyrowmatches = rest want
+      | isSkipped sp || passes anyrowmatches = rest want
       | otherwise            = let !failure = Failure sp nmatched kept  -- evaluated now, not when the message reads it
                                in forceEvidence kept `seq` (failure : rest (want - evidenceSize kept))
       where
@@ -278,9 +279,21 @@ checkAssert today j acctids numberedps jspan ad@AssertDirective{adQuantifier=qua
                                           , Just (RunningBalance bal _) <- [M.lookup a balances'] ]
           | otherwise       = MatchedRows [ (a, chg, nullmixedamt) | (a, chg) <- M.toAscList changes, changeMatches chg ]
 
+    -- Is this checkpoint skipped, because a skipped date is among the dates it examines ?
+    -- A rule with balance: and no change: terms examines the period's last day (where the balance is tested);
+    -- any other rule examines the whole period.
+    isSkipped sp
+      | null skips = False
+      | hasbalanceq && not haschangeq = maybe False (\e -> any (`spanContainsDate` addDays (-1) e) skips) $ spanEnd sp
+      | otherwise = any (spansOverlap sp) skips
+    spansOverlap a b = case (spanStart i, spanEnd i) of
+      (Just s, Just e) -> s < e
+      _                -> True
+      where i = a `spanIntersect` b
+
   case checkPeriods maxMatchesShown M.empty S.empty ps checkpoints of
     []       -> Right ()
-    failures -> Left $ assertFailureMessage ad rowq (length checkpoints) failures
+    failures -> Left $ assertFailureMessage ad rowq (length $ filter (not . isSkipped) checkpoints) failures
 
 -- | The change: and balance: terms of a row query (see 'querySplitRowTerms'), each with whether it is negated.
 signedRowTerms :: Query -> [(Bool, Query)]

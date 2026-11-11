@@ -642,7 +642,8 @@ data AssertDirective = AssertDirective {
   ,adPeriod     :: Maybe (Interval, DateSpan)  -- ^ the period expression, if any: the rule is checked in each of its periods
   ,adPeriodText :: Text              -- ^ the period expression as written, or empty
   ,adQueryText  :: Text              -- ^ the query as written
-  ,adSourceText :: Text              -- ^ the directive line as written, for error excerpts
+  ,adSkips      :: [DateSpan]        -- ^ the periods of its skip subdirectives, whose checks are skipped
+  ,adSourceText :: Text              -- ^ the directive's lines as written (the assert line and any skip lines), for error excerpts
   ,adSourcePos  :: SourcePos
   } deriving (Eq,Generic)  -- , Show in Journal.hs
 

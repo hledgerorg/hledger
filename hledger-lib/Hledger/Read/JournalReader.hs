@@ -1080,8 +1080,40 @@ assertdirectivep today = do
   let queryerr = customFailure . parseErrorAtRegion queryoff queryend
   either queryerr (const $ pure ()) $ querySplitRowTerms . fst =<< parseQuery today querytxt
   void $ lift followingcommentp
+  -- Then any skip subdirectives, on indented lines.
+  skips <- many skipsubdirectivep
+  case (skips, mperiod) of
+    ((off1, off2, _, _):_, m) | maybe True ((== NoInterval) . fst . fst) m ->
+      customFailure $ parseErrorAtRegion off1 off2 $
+        "skip is only allowed when the assert directive has a period expression with a report interval (like daily or monthly)"
+    _ -> pure ()
   return AssertDirective{adQuantifier=quant, adPeriod=fst <$> mperiod, adPeriodText=maybe "" snd mperiod,
-                         adQueryText=querytxt, adSourceText=line, adSourcePos=pos}
+                         adQueryText=querytxt, adSkips=[sp | (_, _, sp, _) <- skips],
+                         adSourceText=T.intercalate "\n" $ line : [l | (_, _, _, l) <- skips], adSourcePos=pos}
+  where
+    -- A skip subdirective: an indented line @skip PERIOD@, with an optional comment,
+    -- where PERIOD is a period expression without a report interval.
+    -- Returns the PERIOD's start and end offsets, its date span, and the line as written.
+    -- Any other indented line (other than a comment line, which followingcommentp consumes) is an error.
+    skipsubdirectivep = do
+      lift $ try $ skipNonNewlineSpaces1 *> lookAhead (satisfy (not . isSpace))
+      line' <- (T.stripStart . T.takeWhile (/= '\n')) <$> getInput
+      off0 <- getOffset
+      word <- lift $ takeWhileP Nothing (not . isSpace)
+      off0' <- getOffset
+      when (word /= "skip") $ customFailure $ parseErrorAtRegion off0 off0' $
+        "an indented line after an assert directive should be a skip subdirective, like:  skip 2026-05"
+      lift skipNonNewlineSpaces1
+      off1 <- getOffset
+      periodtxt <- lift $ singlespacedtextsatisfying1p (\c -> c /= ';' && c /= '\n')
+      off2 <- getOffset
+      sp <- case parsePeriodExpr today periodtxt of
+        Right (NoInterval, sp) -> pure sp
+        Right _ -> customFailure $ parseErrorAtRegion off1 off2 "a skip period can't have a report interval"
+        Left _  -> customFailure $ parseErrorAtRegion off1 off2 "could not parse this as a period (a date, or a period expression without a report interval)"
+      lift skipNonNewlineSpaces
+      void $ lift followingcommentp
+      pure (off1, off2, sp, line')
 
 -- | Parse one assert directive given as text, such as a check command argument,
 -- naming its source in error messages with the given name.
