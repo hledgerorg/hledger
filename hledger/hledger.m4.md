@@ -2250,7 +2250,7 @@ assert some                                                                     
 ; journal maintenance
 assert some                         desc:'opening balances'                                ; the journal has an opening balances entry
 assert none                         assets:oldbank date:2025-                              ; nothing is posted to a closed account
-assert some                         assets:checking date:-7days                            ; bank data has been imported/added recently
+assert some                         assets:checking date:'-7 days..'                       ; bank data has been imported/added recently
 
 ; income
 assert some monthly to this month   income:salary                                          ; there's a salary transaction in each past month
@@ -2320,7 +2320,7 @@ These steps are done at one or more checkpoints, in date order:
   Eg `daily` checks each day's end balances or changes; `monthly from 2024` checks each month from 2024 on.
 - A period with no rows passes a `none` rule and fails a `some` rule.
 - Relative dates in the period expression and query are resolved from today's date,
-  so a rule like `assert some  assets:checking date:-7days` can start failing just because time passes.
+  so a rule like `assert some  assets:checking date:'-7 days..'` can start failing just because time passes.
 - Daily is the smallest checking interval (`assert` does not check after every transaction).
 
 So you can check "no asset account is ever negative (at end of day)" with `assert none daily  type:A balance:<0`.
