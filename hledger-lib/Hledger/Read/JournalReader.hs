@@ -1071,7 +1071,7 @@ assertdirectivep today = do
              "remainder of period expression cannot be parsed"
           <> "\nperhaps you need to terminate the period expression with a double space?"
           <> "\na double space separates the period expression from the query"
-      pure pexp
+      pure (pexp, T.strip $ getExcerptText periodExcerpt)
   -- What remains is the query, after two or more spaces (or nothing).
   lift skipNonNewlineSpaces
   queryoff <- getOffset
@@ -1080,7 +1080,8 @@ assertdirectivep today = do
   let queryerr = customFailure . parseErrorAtRegion queryoff queryend
   either queryerr (const $ pure ()) $ querySplitRowTerms . fst =<< parseQuery today querytxt
   void $ lift followingcommentp
-  return AssertDirective{adQuantifier=quant, adPeriod=mperiod, adQueryText=querytxt, adSourceText=line, adSourcePos=pos}
+  return AssertDirective{adQuantifier=quant, adPeriod=fst <$> mperiod, adPeriodText=maybe "" snd mperiod,
+                         adQueryText=querytxt, adSourceText=line, adSourcePos=pos}
 
 -- | Parse one assert directive given as text, such as a check command argument,
 -- naming its source in error messages with the given name.

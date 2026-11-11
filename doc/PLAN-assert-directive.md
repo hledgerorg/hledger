@@ -178,10 +178,14 @@ case, or without period flags for a whole-journal check.
   exist iff it has postings, as before. Evidence rows carry (account, change, balance).
 - Error wording: the noun follows the query's terms: "changes" (`change:` only), "balances"
   (`balance:` only), "accounts" with two amount columns and a "(change, balance)" hint (both),
-  "postings" (neither). Checkpoints are "on DATE" (one-day periods), "for the period P", or
-  "(checked over the whole journal)" / "(checked over the period P)" for the whole-journal check
-  with `date:` terms. The suggested command is `hledger bal -E -b START -e END QUERY` (or `reg`),
-  without `-H`, since a `balance:` term makes `bal` include the earlier postings.
+  "postings" (neither). A periodic rule's failure says "failed in N of M periods: P1, P2, ..." (up to 5 periods,
+  then "and K more"), or "on DATE" / "for the period P" when the period expression has just one period;
+  a rule with no period expression says "(checked over the whole journal)" / "(checked over the period P)"
+  with `date:` terms. Up to 10 matches are shown, from all the failing periods, rows labelled with their period.
+  The suggested command is `hledger bal -I -E [-H] -b START -e END QUERY` (or `reg -I ...`), covering the first to
+  last failing period, with `-I` so the failing rule doesn't stop it. When several periods failed, it adds
+  `-p 'PERIODEXPR'` (`-b`/`-e` override its dates but keep its interval) and leaves out the change:/balance: terms,
+  since a multi-period bal tests those against each row's total, not each period (found in testing, 2026-11-10).
 - Tests: hledger/test/journal/directive-assert.test (38 tests, including: `balance:` with no period
   = final balances; a present-state `some ... balance:>=` rule; a dormant account as a row; both terms
   in one rule; the period-word hint), hledger/test/errors/assert.*, 12 parser unit tests.
@@ -347,6 +351,7 @@ Without a period expression, say "checked over the whole journal" instead of
 naming a period. Use the excerpt helpers in hledger-lib/Hledger/Data/Errors.hs.
 Report the first failing checkpoint of the first failing directive (in file
 order), consistent with other checks reporting only the first failure.
+(Changed 2026-11-10: all failing checkpoints of the first failing directive are reported.)
 
 Parse-time errors (at the directive, with excerpt):
 - first word not `none`/`some`: say which words are allowed;
@@ -597,7 +602,8 @@ Implemented 2026-11-08 as planned, with these differences and details:
   (open ends filled from the journal span, adjusted to interval boundaries unless a start date was given).
   The set of matching rows is updated incrementally, from the rows changed at each checkpoint.
   The journal's date-sorted postings and its date span are calculated once, shared by all directives.
-  Checking stops at the first failing checkpoint; only then are its rows calculated in full, for the error message.
+  Once a rule fails, its remaining checkpoints are still checked (2026-11-10), so the error can report all of its
+  failing checkpoints; what matched at each is collected during the same pass. Checking stops at the first failing rule.
   Without `sum:` terms every row matches, so a scope is checked just for having any posting, stopping at the first
   (eg `assert some` with no period costs almost nothing).
   Measured on examples/100ktxns-1kaccts.journal (1.2s to check without directives): a directive costs about

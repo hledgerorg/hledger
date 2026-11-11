@@ -640,6 +640,7 @@ data AssertQuantifier = AssertNone | AssertSome deriving (Eq,Show,Generic)
 data AssertDirective = AssertDirective {
    adQuantifier :: AssertQuantifier
   ,adPeriod     :: Maybe (Interval, DateSpan)  -- ^ the period expression, if any: the rule is checked in each of its periods
+  ,adPeriodText :: Text              -- ^ the period expression as written, or empty
   ,adQueryText  :: Text              -- ^ the query as written
   ,adSourceText :: Text              -- ^ the directive line as written, for error excerpts
   ,adSourcePos  :: SourcePos

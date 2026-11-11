@@ -2,9 +2,9 @@ $ hledger check -f assert.j
 >2 /hledger: Error: .*assert\.j:4:
 4 \| assert none daily  type:A balance:<0
 
-This assert directive failed on 2022-01-05\.
+This assert directive failed in 1 of 5 periods: 2022-01-05\.
 These balances matched:
-  assets:checking  \$-20
-To see the report: hledger bal -E -H -b 2022-01-05 -e 2022-01-06 type:A 'balance:<0'
+  2022-01-05  assets:checking  \$-20
+To see the report: hledger bal -I -E -H -b 2022-01-05 -e 2022-01-06 type:A 'balance:<0'
 /
 >= 1

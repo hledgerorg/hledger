@@ -18,7 +18,7 @@ $ hledger -f- check
 >2 /failed \(checked over the whole journal\)\.
 These postings matched:
   2026-01-02  expenses:petty  600
-To see the report: hledger reg expenses:petty 'amt:>\+500'/
+To see the report: hledger reg -I expenses:petty 'amt:>\+500'/
 >= 1
 
 # ** 2. The keyword-less form needs only one space, and may have a comment. some means at least one posting matches.
@@ -85,10 +85,11 @@ $ hledger -f- check
 
 assert none daily  type:A balance:<0
 $ hledger -f- check
->2 /failed on 2026-02-03\.
+>2 /failed in 2 of 36 periods: 2026-02-03, 2026-02-04\.
 These balances matched:
-  assets:checking  -10
-To see the report: hledger bal -E -H -b 2026-02-03 -e 2026-02-04 type:A 'balance:<0'/
+  2026-02-03  assets:checking  -10
+  2026-02-04  assets:checking  -10
+To see the report: hledger bal -I -E -H -p daily -b 2026-02-03 -e 2026-02-05 type:A/
 >= 1
 
 # ** 7. monthly checks only at month ends, so it misses that dip.
@@ -123,7 +124,7 @@ $ hledger -f- check
 >2 /failed for the period 2026-01\.
 These balances matched:
   assets:checking  -40
-To see the report: hledger bal -E -H -b 2026-01-01 -e 2026-02-01 assets 'balance:<0'/
+To see the report: hledger bal -I -E -H -b 2026-01-01 -e 2026-02-01 assets 'balance:<0'/
 >= 1
 
 # ** 9. change: tests each period's change. A month with no postings has no rows:
@@ -140,8 +141,9 @@ To see the report: hledger bal -E -H -b 2026-01-01 -e 2026-02-01 assets 'balance
 assert none monthly  income:salary change:<-2000
 assert some monthly  income:salary
 $ hledger -f- check
->2 /failed for the period 2026-02: no postings matched\.
-To see the report: hledger reg -b 2026-02-01 -e 2026-03-01 income:salary/
+>2 /failed in 1 of 3 periods: 2026-02\.
+No postings matched in that period\.
+To see the report: hledger reg -I -b 2026-02-01 -e 2026-03-01 income:salary/
 >= 1
 
 # ** 10. A change span with no interval is a single period.
@@ -173,7 +175,7 @@ These changes matched:
 
 assert none daily  assets:euro
 $ hledger -f- check
->2 /failed on 2026-01-01\./
+>2 /failed in 2 of 2 periods: 2026-01-01, 2026-01-02\./
 >= 1
 
 # ** 12. change: and balance: test each account's own amounts; depth: folds subaccounts into their parent.
@@ -228,10 +230,10 @@ $ hledger -f- check
 
 assert none daily  acct:'^(assets:savings|liabilities)' depth:0 balance:<0
 $ hledger -f- check
->2 /failed on 2026-01-10\.
+>2 /failed in 1 of 10 periods: 2026-01-10\.
 These balances matched:
-  \.\.\.  -100
-To see the report: hledger bal -E -H -b 2026-01-10 -e 2026-01-11 'acct:\^\(assets:savings\|liabilities\)' depth:0 'balance:<0'/
+  2026-01-10  \.\.\.  -100
+To see the report: hledger bal -I -E -H -b 2026-01-10 -e 2026-01-11 'acct:\^\(assets:savings\|liabilities\)' depth:0 'balance:<0'/
 >= 1
 
 # ** 16. cur: and a commodity symbol in balance: select the amounts tested.
@@ -293,7 +295,7 @@ $ hledger -f- check
 >2 /failed for the period 2026-01\.
 These balances matched:
   assets:cash  -40
-To see the report: hledger bal -E -H -b 2026-01-01 -e 2026-02-01 assets date:2026- 'balance:<0'/
+To see the report: hledger bal -I -E -H -b 2026-01-01 -e 2026-02-01 assets date:2026- 'balance:<0'/
 >= 1
 
 # ** 20. -I disables assert directives,
@@ -359,9 +361,9 @@ $ hledger -f directive-assert/rules.j -f directive-assert/negative.j check
 
 assert none daily  assets:broker: cur:AAPL balance:<+10
 $ hledger -f- check
->2 /failed on 2026-02-01\.
+>2 /failed in 1 of 32 periods: 2026-02-01\.
 These balances matched:
-  assets:broker:\{2026-01-01, \$50\}  6 AAPL/
+  2026-02-01  assets:broker:\{2026-01-01, \$50\}  6 AAPL/
 >= 1
 
 # ** 27. At most 10 matching rows are listed.
@@ -385,7 +387,7 @@ assert none daily  assets balance:<0
 $ hledger -f- check
 >2 /  assets:a10  -1
   \.\.\.and 2 more\.
-To see them all: hledger bal -E -H -b 2026-01-01 -e 2026-01-02 assets 'balance:<0'/
+To see them all: hledger bal -I -E -H -b 2026-01-01 -e 2026-01-02 assets 'balance:<0'/
 >= 1
 
 # ** 28. The first word must be none or some (so Ledger's assert directives are not accepted).
@@ -420,7 +422,8 @@ assert some monthly  income:salary  ; a comment
 
 assert some monthly  assets:new
 $ hledger -f- check
->2 /failed for the period 2025-11: no postings matched/
+>2 /failed in 2 of 3 periods: 2025-11, 2025-12\.
+No postings matched in those periods\./
 >= 1
 
 # ** 32. An assert rule can also be given as a check argument, quoted as one argument.
@@ -482,7 +485,7 @@ $ hledger -f- check
 >2 /failed for the period 2026-02\.
 These balances matched:
   assets:cash  -5
-To see the report: hledger bal -E -H -b 2026-02-01 -e 2026-03-01 assets 'balance:<0'/
+To see the report: hledger bal -I -E -H -b 2026-02-01 -e 2026-03-01 assets 'balance:<0'/
 >= 1
 
 # ** 38. change: and balance: can be combined; the failure shows both amounts.
@@ -497,10 +500,10 @@ To see the report: hledger bal -E -H -b 2026-02-01 -e 2026-03-01 assets 'balance
 
 assert none daily  assets change:<-100 balance:<0
 $ hledger -f- check
->2 /failed on 2026-01-05\.
+>2 /failed in 1 of 5 periods: 2026-01-05\.
 These accounts matched \(change, balance\):
-  assets:cash  -150  -50
-To see the report: hledger bal -E -H -b 2026-01-05 -e 2026-01-06 assets 'change:<-100' 'balance:<0'/
+  2026-01-05  assets:cash  -150  -50
+To see the report: hledger bal -I -E -H -b 2026-01-05 -e 2026-01-06 assets 'change:<-100' 'balance:<0'/
 >= 1
 
 # ** 39. The query must follow two spaces; after one space, it is read as a period expression.
@@ -522,8 +525,9 @@ $ hledger -f- check
 
 assert some monthly
 $ hledger -f- check
->2 /failed for the period 2026-02: no postings matched\.
-To see the report: hledger reg -b 2026-02-01 -e 2026-03-01$/
+>2 /failed in 1 of 3 periods: 2026-02\.
+No postings matched in that period\.
+To see the report: hledger reg -I -b 2026-02-01 -e 2026-03-01$/
 >= 1
 
 # ** 41. A balance in several commodities matches while any one of them does, re-tested as each changes:
@@ -551,8 +555,67 @@ To see the report: hledger reg -b 2026-02-01 -e 2026-03-01$/
 
 assert none daily from 2026-01-03  assets balance:<0
 $ hledger -f- check
->2 /failed on 2026-01-04\.
+>2 /failed in 1 of 2 periods: 2026-01-04\.
 These balances matched:
-  assets  -5 EUR, 5 USD
-To see the report: hledger bal -E -H -b 2026-01-04 -e 2026-01-05 assets 'balance:<0'/
+  2026-01-04  assets  -5 EUR, 5 USD
+To see the report: hledger bal -I -E -H -b 2026-01-04 -e 2026-01-05 assets 'balance:<0'/
+>= 1
+
+# ** 42. A failure is reported for every failing period, with up to 5 of the periods in the first line,
+# and a report command covering them all.
+<
+2026-01-01
+    expenses:a   10
+    expenses:b   10
+    assets
+
+2026-01-08
+    assets      100
+    equity
+
+assert none daily  assets balance:<0
+$ hledger -f- check
+>2
+hledger: Error: -:10:
+10 | assert none daily  assets balance:<0
+
+This assert directive failed in 7 of 8 periods: 2026-01-01, 2026-01-02, 2026-01-03, 2026-01-04, 2026-01-05 and 2 more.
+These balances matched:
+  2026-01-01  assets  -20
+  2026-01-02  assets  -20
+  2026-01-03  assets  -20
+  2026-01-04  assets  -20
+  2026-01-05  assets  -20
+  2026-01-06  assets  -20
+  2026-01-07  assets  -20
+To see the report: hledger bal -I -E -H -p daily -b 2026-01-01 -e 2026-01-08 assets
+>= 1
+
+# ** 43. Up to 10 matches are shown, from all the failing periods.
+<
+2026-01-01
+    expenses:a   10
+    expenses:b   10
+    assets
+
+assert none daily from 2026-01-01 to 2026-01-09  expenses balance:>0
+$ hledger -f- check
+>2
+hledger: Error: -:6:
+6 | assert none daily from 2026-01-01 to 2026-01-09  expenses balance:>0
+
+This assert directive failed in 8 of 8 periods: 2026-01-01, 2026-01-02, 2026-01-03, 2026-01-04, 2026-01-05 and 3 more.
+These balances matched:
+  2026-01-01  expenses:a  10
+  2026-01-01  expenses:b  10
+  2026-01-02  expenses:a  10
+  2026-01-02  expenses:b  10
+  2026-01-03  expenses:a  10
+  2026-01-03  expenses:b  10
+  2026-01-04  expenses:a  10
+  2026-01-04  expenses:b  10
+  2026-01-05  expenses:a  10
+  2026-01-05  expenses:b  10
+  ...and 6 more.
+To see them all: hledger bal -I -E -H -p 'daily from 2026-01-01 to 2026-01-09' -b 2026-01-01 -e 2026-01-09 expenses
 >= 1

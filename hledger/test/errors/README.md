@@ -209,7 +209,7 @@ Click error names to see an example. The table headings mean:
 
 
 <!-- GENERATED: -->
-hledger 1.99-gddf10e827-20261109 error messages:
+hledger 1.99-gd87206dd9-20261110 error messages:
 
 ### accounts
 ```
@@ -231,10 +231,10 @@ account ß
 hledger: Error: /path/to/assert.j:4:
 4 | assert none daily  type:A balance:<0
 
-This assert directive failed on 2022-01-05.
+This assert directive failed in 1 of 5 periods: 2022-01-05.
 These balances matched:
-  assets:checking  $-20
-To see the report: hledger bal -E -H -b 2022-01-05 -e 2022-01-06 type:A 'balance:<0'
+  2022-01-05  assets:checking  $-20
+To see the report: hledger bal -I -E -H -b 2022-01-05 -e 2022-01-06 type:A 'balance:<0'
 ```
 
 

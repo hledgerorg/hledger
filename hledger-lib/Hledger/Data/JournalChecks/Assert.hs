@@ -28,6 +28,7 @@ import Data.List (foldl')
 import Data.List (sortBy, transpose)
 import Data.Map.Strict qualified as M
 import Data.Maybe (isNothing, mapMaybe)
+import Safe (headMay, lastMay)
 import Data.Ord (comparing)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -78,14 +79,30 @@ numberPostingAccounts ps = (ids, reverse numbered)
       Nothing -> let !i = HM.size m in (HM.insert k i m, (i, p) : acc)
       where k = postingAccounts p
 
--- | Where an assert directive is checked: over the whole journal
--- (within the date: terms' span, if any), or within one period of its period expression.
-data Checkpoint = WholeJournal DateSpan | Period DateSpan
-
 -- | What matched at a failing checkpoint, shown in the error message:
 -- the matching rows (account, change, balance), or, when the query has no
 -- change:/balance: terms and so is about which postings exist, the matching postings.
+-- (At a failing checkpoint of a some rule, nothing matched.)
 data Evidence = MatchedRows [(AccountName, MixedAmount, MixedAmount)] | MatchedPostings [Posting]
+
+-- | A failing checkpoint: its span, how many rows or postings matched there,
+-- and the first of them (as many as the error message may still show).
+data Failure = Failure !DateSpan !Int Evidence
+
+-- | Keep only the first n items of some evidence.
+takeEvidence :: Int -> Evidence -> Evidence
+takeEvidence n (MatchedRows rows)   = MatchedRows $ take n rows
+takeEvidence n (MatchedPostings ps) = MatchedPostings $ take n ps
+
+-- | How many items some evidence has.
+evidenceSize :: Evidence -> Int
+evidenceSize (MatchedRows rows)   = length rows
+evidenceSize (MatchedPostings ps) = length ps
+
+-- | Evaluate some evidence fully, so that it doesn't keep the checking state of its checkpoint alive.
+forceEvidence :: Evidence -> ()
+forceEvidence (MatchedPostings ps) = length ps `seq` ()
+forceEvidence (MatchedRows rows)   = foldr (\(a, chg, bal) r -> a `seq` chg `seq` bal `seq` r) () rows
 
 -- | An account's running balance, and its matching-amount counts (see 'assertCountingEnabled').
 data RunningBalance = RunningBalance !MixedAmount ![Int]
@@ -134,8 +151,7 @@ assertAccountQueriesEnabled = True
 -- accounts (clipped to the query's depth) with postings matching the query in the period,
 -- plus, when the query has balance: terms, the accounts with earlier postings (whose change
 -- may be zero); each row has its change in the period and its balance at the period end.
--- Checking stops at the first failing checkpoint, and only then are its rows calculated in full,
--- for the error message.
+-- All checkpoints are checked, so that a failure can report every failing checkpoint, and what matched there.
 checkAssert :: Day -> Journal -> HM.HashMap PostingAccounts Int -> [(Int, Posting)] -> DateSpan -> AssertDirective -> Either String ()
 checkAssert today j acctids numberedps jspan ad@AssertDirective{adQuantifier=quant, adPeriod=mperiod, adQueryText=querytxt} = do
   (rowq, otherq) <- either (Left . (errorPrefix ad <>)) Right $ querySplitRowTerms . fst =<< parseQuery today querytxt
@@ -145,24 +161,23 @@ checkAssert today j acctids numberedps jspan ad@AssertDirective{adQuantifier=qua
     datespan = queryDateSpan False otherq
 
     -- The postings selected by the other non-row query terms, prepared as the balance report would:
-    -- amounts limited to the parts matching amt:/cur: terms, costs stripped,
-    -- account names clipped to the depth: terms' depth. Still in date order. Generated lazily, so checks can stop early.
-    -- (selectPostings' False leaves account names unclipped, for showing postings in an error message.)
+    -- amounts limited to the parts matching amt:/cur: terms, and costs stripped. Still in date order,
+    -- and generated lazily. Each is paired with a copy whose account name is clipped to the depth: terms'
+    -- depth: the copies are what is checked, the originals are what an error message shows.
     depthspec = queryDepth otherq
     postingq  = filterQuery (not . queryIsDateOrDate2) $ filterQuery (not . queryIsDepth) otherq
     amtq      = filterQuery queryIsAmtOrCur postingq
-    selectPostings = selectPostings' True
-    selectPostings' clip = filter hasAmount . mapMaybe (prepare clip . snd) . filter selected
     atype = journalAccountType j
     selected (i, p)
       | assertAccountQueriesEnabled = matchesPostingExtra atype (IM.findWithDefault postingq i queriesbyaccount) p
       | otherwise                   = matchesPostingExtra atype postingq p
     -- The posting query, partially evaluated for each account (lazily, when first needed).
     queriesbyaccount = IM.fromList [(i, postingQueryForAccount atype a morig postingq) | ((a, morig), i) <- HM.toList acctids]
-    prepare clip p = do
+    prepare p = do
       p' <- if queryIsNull amtq then Just p else filterPostingAmount amtq p
-      Just $ postingStripCosts $ if clip then p'{paccount = clipOrEllipsifyAccountName depthspec $ paccount p'} else p'
-    ps = selectPostings numberedps
+      Just $ postingStripCosts p'
+    ps = [ (p, p{paccount = clipOrEllipsifyAccountName depthspec $ paccount p})
+         | p <- filter hasAmount $ mapMaybe (prepare . snd) $ filter selected numberedps ]
 
     hasrowterms = not $ queryIsNull rowq
     hasbalanceq = queryHasBalance rowq
@@ -170,13 +185,12 @@ checkAssert today j acctids numberedps jspan ad@AssertDirective{adQuantifier=qua
     passes anymatched = case quant of
       AssertNone -> not anymatched
       AssertSome -> anymatched
-    before mend p    = maybe True (postingDate p <) mend
-    onOrAfter mstart p = maybe True (postingDate p >=) mstart
+    before mend (_, p)    = maybe True (postingDate p <) mend
+    onOrAfter mstart (_, p) = maybe True (postingDate p >=) mstart
 
-    -- Amounts by account: a period's changes, or (for the error message) the balances.
+    -- A period's changes by account.
     addPosting m p = M.insertWith (flip maPlus) (paccount p) (pamount p) m
     amountsOf = foldl' addPosting M.empty
-    balanceOf balances a = M.findWithDefault nullmixedamt a balances
 
     -- The change: and balance: terms, as amount comparisons, each with whether it is negated.
     -- (They are combined by AND, see querySplitRowTerms.)
@@ -207,39 +221,42 @@ checkAssert today j acctids numberedps jspan ad@AssertDirective{adQuantifier=qua
       where forceElems xs = foldr seq xs xs
     --- end of matching-amount counts
 
-    -- The first failing checkpoint, if any.
-    mfailure = case mperiod of
-      -- One checkpoint, the whole journal within the date: span.
-      Nothing -> WholeJournal <$> firstFailing M.empty S.empty ps [datespan]
-      Just (interval, spn) -> Period <$> firstFailing M.empty S.empty ps periods
-        where
-          -- The periods, as the balance report would calculate them: from the period expression's span
-          -- and the date: terms' span, with open ends filled from the journal's span,
-          -- and adjusted to interval boundaries unless a start date was specified.
-          requestedspan = spn `spanIntersect` datespan
-          periods = splitSpanToDateSpans (isNothing $ spanStart requestedspan) interval $
-                    requestedspan `spanValidDefaultsFrom` jspan
+    -- The checkpoints: the whole journal within the date: span, or each period of the period expression.
+    checkpoints = case mperiod of
+      Nothing -> [datespan]
+      Just (interval, spn) ->
+        -- The periods, as the balance report would calculate them: from the period expression's span
+        -- and the date: terms' span, with open ends filled from the journal's span,
+        -- and adjusted to interval boundaries unless a start date was specified.
+        let requestedspan = spn `spanIntersect` datespan
+        in splitSpanToDateSpans (isNothing $ spanStart requestedspan) interval $
+           requestedspan `spanValidDefaultsFrom` jspan
 
-    -- Check each period in turn, stopping at the first failure. Postings before the first period
-    -- count in the balances only, and postings after the last are ignored.
+    -- Check each checkpoint in turn, returning the failing ones, each with the number of matches there,
+    -- and the first of them, until the error message has as many as it will show (so that a rule
+    -- failing in many periods doesn't accumulate all of their matches).
+    -- Postings before the first checkpoint count in the balances only, and postings after the last are ignored.
     -- With balance: terms, this maintains the running balances, and the set of accounts whose
     -- balance matches the balance: terms, updating only the accounts posted to in each period.
     -- Each period's rows are the accounts with postings in it, plus, with balance: terms, the
     -- accounts with earlier postings, whose change is zero. Without change:/balance: terms every
     -- row matches, so it's just whether the period has any postings.
-    firstFailing _ _ _ [] = Nothing
-    firstFailing !balances !matching remaining (sp:sps)
-      | passes anyrowmatches = firstFailing balances' matching' later sps
-      | otherwise            = Just sp
+    checkPeriods _ _ _ _ [] = []
+    checkPeriods !want !balances !matching remaining (sp:sps)
+      | passes anyrowmatches = rest want
+      | otherwise            = let !failure = Failure sp nmatched kept  -- evaluated now, not when the message reads it
+                               in forceEvidence kept `seq` (failure : rest (want - evidenceSize kept))
       where
+        rest w        = checkPeriods w balances' matching' later sps
+        kept          = takeEvidence want evidence
         (upto, later) = span (before $ spanEnd sp) remaining
         now           = dropWhile (not . onOrAfter (spanStart sp)) upto
-        changes       = amountsOf now
+        changes       = amountsOf $ map snd now
         (balances', matching')
-          | hasbalanceq = (bals, foldl' upd matching $ S.fromList $ map paccount upto)
+          | hasbalanceq = (bals, foldl' upd matching $ S.fromList $ map (paccount . snd) upto)
           | otherwise   = (balances, matching)
           where
-            bals = foldl' addPostingRunning balances upto
+            bals = foldl' addPostingRunning balances $ map snd upto
             upd s a = if maybe False balanceMatches (M.lookup a bals) then S.insert a s else S.delete a s
         anyrowmatches
           | not hasrowterms = not $ null now
@@ -247,24 +264,23 @@ checkAssert today j acctids numberedps jspan ad@AssertDirective{adQuantifier=qua
           | not haschangeq  = not $ S.null matching'
           | otherwise       = any (\(a, chg) -> a `S.member` matching' && changeMatches chg) (M.toList changes)
                               || (zerochangematches && any (`M.notMember` changes) (S.toList matching'))
+        -- What matched here, for the error message, and how many (counted without listing them).
+        nmatched
+          | not hasrowterms = length now
+          | not hasbalanceq = length $ filter changeMatches $ M.elems changes
+          | not haschangeq  = S.size matching'
+          | otherwise       = length [() | (a, chg) <- M.toList changes, a `S.member` matching', changeMatches chg]
+                              + (if zerochangematches then S.size matching' - length (filter (`S.member` matching') $ M.keys changes) else 0)
+        evidence
+          | not hasrowterms = MatchedPostings $ map fst now
+          | hasbalanceq     = MatchedRows [ (a, chg, bal) | a <- S.toAscList matching'
+                                          , let chg = M.findWithDefault nullmixedamt a changes, changeMatches chg
+                                          , Just (RunningBalance bal _) <- [M.lookup a balances'] ]
+          | otherwise       = MatchedRows [ (a, chg, nullmixedamt) | (a, chg) <- M.toAscList changes, changeMatches chg ]
 
-    -- The evidence for the error message, calculated again from the start at the failing checkpoint.
-    evidenceAt cp
-      | not hasrowterms = MatchedPostings inspan'
-      | otherwise = MatchedRows
-          [ (a, chg, bal) | (a, chg, bal) <- rows, matchesRowAmounts rowq chg bal ]
-      where
-        (mstart, mend) = case cp of
-          WholeJournal sp -> (spanStart sp, spanEnd sp)
-          Period sp       -> (spanStart sp, spanEnd sp)
-        (pre, inspan) = span (not . onOrAfter mstart) $ takeWhile (before mend) ps
-        inspan'       = filter (onOrAfter mstart) $ takeWhile (before mend) $ selectPostings' False numberedps
-        changes       = amountsOf inspan
-        balances      = amountsOf $ pre ++ inspan
-        rows | hasbalanceq = [(a, M.findWithDefault nullmixedamt a changes, bal) | (a, bal) <- M.toAscList balances]
-             | otherwise   = [(a, chg, balanceOf balances a) | (a, chg) <- M.toAscList changes]
-
-  maybe (Right ()) (\cp -> Left $ assertFailureMessage ad rowq cp $ evidenceAt cp) mfailure
+  case checkPeriods maxMatchesShown M.empty S.empty ps checkpoints of
+    []       -> Right ()
+    failures -> Left $ assertFailureMessage ad rowq (length checkpoints) failures
 
 -- | The change: and balance: terms of a row query (see 'querySplitRowTerms'), each with whether it is negated.
 signedRowTerms :: Query -> [(Bool, Query)]
@@ -277,52 +293,93 @@ errorPrefix :: AssertDirective -> String
 errorPrefix AssertDirective{adSourcePos=SourcePos f l _, adSourceText=txt} =
   printf "%s:%d:\n%s\n" f (unPos l) (decorateExcerpt (unPos l) Nothing $ txt <> "\n")
 
--- | Explain an assert directive's failure at a checkpoint: which rows (changes, balances, or both)
--- or postings matched, up to a limit, or that none did, and the equivalent report command:
--- a balance report for rows, a register for postings.
-assertFailureMessage :: AssertDirective -> Query -> Checkpoint -> Evidence -> String
-assertFailureMessage ad@AssertDirective{adQuantifier=quant, adQueryText=querytxt} rowq cp evidence =
+-- | Explain an assert directive's failure, given its row query, its number of checkpoints, and the
+-- failing checkpoints with what matched there: where it failed, which rows (changes, balances, or both)
+-- or postings matched, up to a limit, or that none did, and the equivalent report command
+-- (a balance report for rows, a register for postings), covering all the failing checkpoints.
+assertFailureMessage :: AssertDirective -> Query -> Int -> [Failure] -> String
+assertFailureMessage ad@AssertDirective{adQuantifier=quant, adPeriod=mperiod, adPeriodText=periodtxt, adQueryText=querytxt}
+                     rowq ncheckpoints failures =
   errorPrefix ad <> T.unpack (T.unlines $ explanation <> [reportline])
   where
-    maxshown = 10
-    (noun, lines', cmd) = case evidence of
-      MatchedPostings ps -> ("postings", showPostings ps, ["reg"])
-      -- With balance: terms, -H makes bal show the balances which were tested, not the period's changes.
-      MatchedRows rows   -> (rowsnoun, showRows rows, ["bal", "-E"] <> ["-H" | queryHasBalance rowq])
-    -- What the rows' tested amounts are called, and which are shown.
-    (rowsnoun, showRows) = case (queryHasChange rowq, queryHasBalance rowq) of
-      (True, False) -> ("changes",  \rows -> alignColumns [False, True]       [[a, showamt chg] | (a, chg, _) <- rows])
-      (False, _)    -> ("balances", \rows -> alignColumns [False, True]       [[a, showamt bal] | (a, _, bal) <- rows])
-      (True, True)  -> ("accounts", \rows -> alignColumns [False, True, True] [[a, showamt chg, showamt bal] | (a, chg, bal) <- rows])
+    maxperiodsshown = 5
+    hasrowterms = not $ queryIsNull rowq
+    periodic = ncheckpoints > 1
+    nfailed = length failures
+
+    -- What the matches are called, and the matches as table rows, from all failing checkpoints.
+    -- Rows get a period column when there are several checkpoints (postings have their date).
+    noun | hasrowterms = rowsnoun
+         | otherwise   = "postings"
+    (rowsnoun, amountcells) = case (queryHasChange rowq, queryHasBalance rowq) of
+      (True, False) -> ("changes",  \chg _   -> [showamt chg])
+      (False, _)    -> ("balances", \_ bal   -> [showamt bal])
+      (True, True)  -> ("accounts", \chg bal -> [showamt chg, showamt bal])
     showamt = T.pack . showMixedAmountOneLine
-    (shown, hidden) = splitAt maxshown lines'
+    tablerows = flip concatMap failures $ \(Failure sp _ ev) -> case ev of
+      MatchedRows rows   -> [(if periodic then periodLabel sp else "") : a : amountcells chg bal | (a, chg, bal) <- rows]
+      MatchedPostings ps -> [ [showDate $ postingDate p, fitText Nothing (Just 30) True True desc, paccount p, showamt $ pamount p]
+                            | p <- ps, let desc = maybe "" tdescription $ ptransaction p ]
+    matchlines = alignColumns (if hasrowterms then [False, False, True, True] else [False, False, False, True]) tablerows
+    nhidden = sum [n | Failure _ n _ <- failures] - length matchlines
+
     explanation = case quant of
       AssertNone ->
-        ("This assert directive failed " <> checkpointdesc <> ".")
-        : ("These " <> noun <> " matched" <> (if rowsnoun == "accounts" && noun == rowsnoun then " (change, balance)" else "") <> ":")
-        : map ("  " <>) shown
-        <> ["  ...and " <> T.pack (show $ length hidden) <> " more." | not $ null hidden]
-      AssertSome -> ["This assert directive failed " <> checkpointdesc <> ": no " <> noun <> " matched."]
-    reportline = (if null hidden then "To see the report: " else "To see them all: ") <> reportcmd
+        ("This assert directive failed " <> wherefailed <> ".")
+        : ("These " <> noun <> " matched" <> (if noun == "accounts" then " (change, balance)" else "") <> ":")
+        : map ("  " <>) matchlines
+        <> ["  ...and " <> T.pack (show nhidden) <> " more." | nhidden > 0]
+      AssertSome
+        | periodic  -> ["This assert directive failed " <> wherefailed <> ".",
+                        "No " <> noun <> " matched in " <> (if nfailed == 1 then "that period." else "those periods.")]
+        | otherwise -> ["This assert directive failed " <> wherefailed <> ": no " <> noun <> " matched."]
+    reportline = (if nhidden > 0 then "To see them all: " else "To see the report: ") <> reportcmd
 
-    checkpointdesc = case cp of
-      WholeJournal (DateSpan Nothing Nothing) -> "(checked over the whole journal)"
-      WholeJournal sp -> "(checked over the period " <> showDateSpan sp <> ")"
-      Period sp -> case (spanStart sp, fmap (addDays (-1)) $ spanEnd sp) of
-        (Just s, Just e) | s == e -> "on " <> showDate e
-        _                         -> "for the period " <> showDateSpan sp
+    -- Where it failed: over the whole journal (or the date: terms' span), in its one period, or in some of its periods.
+    wherefailed = case (mperiod, failures) of
+      (Nothing, [Failure (DateSpan Nothing Nothing) _ _]) -> "(checked over the whole journal)"
+      (Nothing, [Failure sp _ _])                         -> "(checked over the period " <> showDateSpan sp <> ")"
+      (_, [Failure sp _ _]) | not periodic                -> if isOneDay sp then "on " <> periodLabel sp else "for the period " <> periodLabel sp
+      _ -> "in " <> T.pack (show nfailed) <> " of " <> T.pack (show ncheckpoints) <> " periods: "
+           <> T.intercalate ", " (map failureLabel $ take maxperiodsshown failures)
+           <> (if nfailed > maxperiodsshown then " and " <> T.pack (show $ nfailed - maxperiodsshown) <> " more" else "")
 
-    reportcmd = T.unwords $ ["hledger"] <> cmd <> periodflags <> map shellQuote (filter (not . T.null) $ words'' queryprefixes querytxt)
-    periodflags = case cp of
-      WholeJournal _ -> []
-      Period sp      -> dateflag "-b" (spanStart sp) <> dateflag "-e" (spanEnd sp)
+    -- The report command, covering the failing checkpoints: from the start of the first to the end of the last.
+    -- It has -I, since reading the journal would otherwise fail on this rule again.
+    -- For a balance report covering several periods, it has the period expression's report interval
+    -- (from its text; -b and -e override its dates), and leaves out the change:/balance: terms,
+    -- since in a multi-period report those test each row's total, not each period.
+    reportcmd = T.unwords $ ["hledger"] <> cmd <> periodflags <> map shellQuote queryterms
+    -- With balance: terms, -H makes bal show the balances which were tested, not the period's changes.
+    cmd | hasrowterms = ["bal", "-I", "-E"] <> ["-H" | queryHasBalance rowq]
+        | otherwise   = ["reg", "-I"]
+    multiperiod = hasrowterms && nfailed > 1
+    periodflags = case mperiod of
+      Nothing -> []
+      Just _  -> ["-p " <> shellQuote periodtxt | multiperiod]
+                 <> dateflag "-b" (spanStart . failureSpan =<< headMay failures)
+                 <> dateflag "-e" (spanEnd . failureSpan =<< lastMay failures)
+    queryterms = filter (\t -> not (T.null t) && not (multiperiod && isRowTermText t)) $ words'' queryprefixes querytxt
+    isRowTermText t = any (`T.isPrefixOf` stripNots t) ["change:", "balance:"]
+    stripNots t = maybe t stripNots $ T.stripPrefix "not:" t
     dateflag flag = maybe [] (\d -> [flag, showDate d])
+    failureSpan (Failure sp _ _) = sp
+    failureLabel = periodLabel . failureSpan
 
--- | Render postings as aligned lines: date, description (abbreviated), account name, right-aligned amount.
-showPostings :: [Posting] -> [Text]
-showPostings ps = alignColumns [False, False, False, True]
-  [ [showDate $ postingDate p, fitText Nothing (Just 30) True True desc, paccount p, T.pack $ showMixedAmountOneLine $ pamount p]
-  | p <- ps, let desc = maybe "" tdescription $ ptransaction p ]
+-- | The most matches an assert rule's error message shows.
+maxMatchesShown :: Int
+maxMatchesShown = 10
+
+-- | How a checkpoint is shown in an error message: as a date if it's one day, otherwise as a period.
+periodLabel :: DateSpan -> Text
+periodLabel sp
+  | isOneDay sp = maybe "" showDate $ spanStart sp
+  | otherwise   = showDateSpan sp
+
+isOneDay :: DateSpan -> Bool
+isOneDay sp = case (spanStart sp, spanEnd sp) of
+  (Just s, Just e) -> addDays 1 s == e
+  _                -> False
 
 -- | Lay out a table as lines of text, with two spaces between columns,
 -- each column left- or right-aligned (if its flag is true) to its widest cell.
