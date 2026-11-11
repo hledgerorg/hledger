@@ -133,12 +133,14 @@ instance RegexContext Regexp String String where
 instance NFData Regexp where rnf = rwhnf
 
 -- Convert a Regexp string to a compiled Regex, or return an error message.
+-- (This compiles from a String; regex-tdfa can compile from Text too, since 1.3.1,
+-- but compilation is memoised, so unpacking costs little.)
 toRegex :: Text -> Either RegexError Regexp
-toRegex = memo $ \s -> mkRegexErr s (Regexp s <$> makeRegexM (T.unpack s))  -- Have to unpack here because Text instance in regex-tdfa only appears in 1.3.1
+toRegex = memo $ \s -> mkRegexErr s (Regexp s <$> makeRegexM (T.unpack s))
 
 -- Like toRegex, but make a case-insensitive Regex.
 toRegexCI :: Text -> Either RegexError Regexp
-toRegexCI = memo $ \s -> mkRegexErr s (RegexpCI s <$> makeRegexOptsM defaultCompOpt{caseSensitive=False} defaultExecOpt (T.unpack s))  -- Have to unpack here because Text instance in regex-tdfa only appears in 1.3.1
+toRegexCI = memo $ \s -> mkRegexErr s (RegexpCI s <$> makeRegexOptsM defaultCompOpt{caseSensitive=False} defaultExecOpt (T.unpack s))
 
 -- | Make a nice error message for a regexp error.
 mkRegexErr :: Text -> Maybe a -> Either RegexError a
@@ -179,8 +181,9 @@ regexMatch = matchTest
 
 -- | Tests whether a Regexp matches a Text.
 --
--- This currently unpacks the Text to a String, to work around a performance bug
--- in regex-tdfa (#9), which may or may not be relevant here.
+-- This unpacks the Text to a String, which measured about 10% faster than matching
+-- the Text directly (regex-tdfa 1.3.2.6, 2026-11). regex-tdfa's issue #9, a large slowdown
+-- with Text, was about extracting match text (as regexMatchTextGroups does), not this test.
 regexMatchText :: Regexp -> Text -> Bool
 regexMatchText r = matchTest r . T.unpack
 
