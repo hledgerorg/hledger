@@ -2281,9 +2281,7 @@ assert none monthly                 expenses:dining depth:2 change:>+$300       
 ```
 
 Most query terms, like `desc:`, `acct:`, or `amt:`, select postings.
-
-[`balance:` and `change:`](#balance-and-change-queries) terms instead test the balance or change of the accounts those postings are in,
-as a [balance report](#balance) would.
+[`balance:` and `change:`](#balance-and-change-queries) terms instead test the balance or change of the accounts those postings are in.
 
 ### How assert rules are checked
 
@@ -2296,7 +2294,7 @@ Rules are checked in the order they were read, and the first rule that fails sto
 Each rule is checked as if by a balance report, `hledger bal -E QUERY`, in four steps:
 
 1. **Select postings.**
-   The query's ordinary terms select and prepare postings as `bal` would:
+   The query's ordinary terms select and prepare postings as a [balance report](#balance) would:
    costs are ignored (amounts are summed in their original commodities),
    and `depth:` clips account names, merging subaccounts into their parent.
    `date:` terms don't select postings; they limit the report period, like `-b`/`-e`.
