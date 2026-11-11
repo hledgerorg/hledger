@@ -619,3 +619,150 @@ These balances matched:
   ...and 6 more.
 To see them all: hledger bal -I -E -H -p 'daily from 2026-01-01 to 2026-01-09' -b 2026-01-01 -e 2026-01-09 expenses
 >= 1
+
+# ** 44. skip lines skip the checks in their periods. As elsewhere, a range's end date is exclusive.
+<
+2026-01-01
+    assets:checking   100
+    equity
+
+2026-02-03
+    expenses:rent     110
+    assets:checking
+
+2026-02-05
+    assets:checking  1000
+    income:salary
+
+assert none daily  type:A balance:<0
+  skip 2026-02-03..2026-02-05  ; waiting for the salary
+$ hledger -f- check
+
+# ** 45. A failure's excerpt shows the skip lines, and the period count leaves out the skipped periods.
+<
+2026-01-01
+    assets:checking   100
+    equity
+
+2026-02-03
+    expenses:rent     110
+    assets:checking
+
+2026-02-05
+    assets:checking  1000
+    income:salary
+
+assert none daily  type:A balance:<0
+  skip 2026-02-03
+$ hledger -f- check
+>2 /13 \| assert none daily  type:A balance:<0
+   \| skip 2026-02-03
+
+This assert directive failed in 1 of 35 periods: 2026-02-04\./
+>= 1
+
+# ** 46. A rule with balance: and no change: terms is checked at each period's end, so only a skip covering that day skips it.
+<
+2026-01-01
+    assets:checking   100
+    equity
+
+2026-02-10
+    expenses:rent     110
+    assets:checking
+
+assert none monthly  type:A balance:<0
+  skip 2026-02-15
+$ hledger -f- check
+>2 /failed in 1 of 2 periods: 2026-02\./
+>= 1
+
+# ** 47. A skip covering the period's last day does skip it.
+<
+2026-01-01
+    assets:checking   100
+    equity
+
+2026-02-10
+    expenses:rent     110
+    assets:checking
+
+assert none monthly  type:A balance:<0
+  skip 2026-02-28
+$ hledger -f- check
+
+# ** 48. Any other rule examines the whole period, so a skip anywhere in it skips it.
+<
+2026-01-01
+    assets:checking   100
+    equity
+
+2026-02-10
+    expenses:rent     110
+    assets:checking
+
+assert none monthly  expenses change:>100
+  skip 2026-02-15
+$ hledger -f- check
+
+# ** 49. skip lines can be period expressions, and can have comments, and comment lines can be among them.
+<
+2026-01-01
+    assets:checking   100
+    equity
+
+2026-02-10
+    expenses:rent     110
+    assets:checking
+
+assert none daily  type:A balance:<0  ; a rule comment
+  ; a comment line
+  skip from 2026-02-10 to 2026-03-01  ; a reason
+$ hledger -f- check
+
+# ** 50. skip needs a period expression with a report interval.
+<
+assert none  assets balance:<0
+  skip 2026-02
+$ hledger -f- check
+>2 /skip is only allowed when the assert directive has a period expression with a report interval/
+>= 1
+
+# ** 51. A skip period can't have a report interval,
+<
+assert none daily  assets balance:<0
+  skip monthly in 2026
+$ hledger -f- check
+>2 /a skip period can't have a report interval/
+>= 1
+
+# ** 52. or be unparseable.
+<
+assert none daily  assets balance:<0
+  skip blah
+$ hledger -f- check
+>2 /could not parse this as a period/
+>= 1
+
+# ** 53. Other indented lines under an assert directive are errors.
+<
+assert none daily  assets balance:<0
+  note something
+$ hledger -f- check
+>2 /an indented line after an assert directive should be a skip subdirective/
+>= 1
+
+# ** 54. print --export reproduces the skip lines, with their comments.
+<
+assert none daily  assets balance:<0  ; a rule comment
+  skip 2026-02  ; a reason
+$ hledger -f- print --export
+assert none daily  assets balance:<0  ; a rule comment
+  skip 2026-02  ; a reason
+
+# ** 55. A rule given as a check argument can have skip lines, after a newline.
+<
+2026-01-01
+    assets:checking   100
+    equity
+$ hledger -f- check "$(printf 'assert none daily  assets balance:>0\n  skip 2026-01-01')"

@@ -2241,6 +2241,22 @@ then a two-or-more-spaces delimiter and a query specifying which postings or rep
 The query is written as on the command line, with quotes around terms containing spaces.
 A `;` comment can follow.
 
+A rule with a report interval can be followed by indented `skip` lines, each naming a date or period whose checks should be skipped,
+with an optional comment (useful for recording the reason).
+These skip checks, not data: postings in a skipped period still count in later balances.
+As usual, a range's end date is exclusive.
+Eg:
+
+```journal
+assert none daily  type:A balance:<0       ; no asset account is ever negative
+  skip 2026-03-04..2026-03-08              ; transfer delayed by the bank holiday
+  skip 2026-05                             ; moving house
+```
+
+A check is skipped if a date in a `skip` line is among the dates it examines.
+For a rule with a `balance:` term and no `change:` term, that is the period's last day (where its balance is tested);
+for other rules, it's any day in the period.
+
 Here are some examples. (Aligning is optional; just remember to put at least two spaces before each query.):
 
 ```journal
@@ -2355,7 +2371,7 @@ Rules matching few postings cost less, and `balance:` rules checked daily across
   Eg `assert none monthly  assets date:2026- balance:<0` means the same as `assert none monthly from 2026  assets balance:<0`.
   `to thismonth` is useful for "every past month" rules, excluding the current incomplete month.
 - **Avoid `not:date:` in rules with a `balance:` term.** It does not skip that date's check, it removes that date's postings from all later balances.
-  Use positive date limits, or several rules, instead.
+  Use `skip` lines instead.
 - **Account names are matched after [account aliases](#account-aliases) have been applied**, as in reports.
 
 ## `comment` directive

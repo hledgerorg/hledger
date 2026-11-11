@@ -3,7 +3,7 @@
 Status: designed and implemented 2026-11-08 on branch `assert-directive` (PR #2848);
 revised and reimplemented 2026-11-09 to use the `change:`/`balance:` queries instead of `balance`/`change` keywords
 (see "Revision 2" next, and its implementation notes), then given a fixed spacing rule (see "Revision 3").
-Exceptions (`except`) are designed but not implemented (see "Possible later work: exceptions").
+Exceptions (`skip`, first named `except`) were designed 2026-11-09, revised and implemented 2026-11-10 on branch `assert-except` (see "Exceptions with `skip`").
 The later sections describe the first design and its implementation.
 Replaces the bin/hledger-check-fancyassertions.hs add-on script.
 Builds on the `change:`/`balance:` queries (PR #2847, formerly `sum:`; see doc/PLAN-balance-change-queries.md),
@@ -31,47 +31,52 @@ one space after the quantifier begins a period expression, and two or more space
 - It matches periodic transactions, where the description follows the period expression after two
   or more spaces. All documented examples already used this form.
 
-## Possible later work: exceptions with `except` (designed 2026-11-09, revised 2026-11-10, not implemented)
+## Exceptions with `skip` (designed 2026-11-09, revised and implemented 2026-11-10)
 
 ```journal
 assert none daily  type:A balance:<0        ; no asset account is ever negative
-  except 2026-03-04..2026-03-07             ; transfer delayed by the bank holiday
-  except 2026-05                            ; moving house
-  except from 2026-09-30 to 2026-10-02      ; card payment taken early
+  skip 2026-03-04..2026-03-08               ; transfer delayed by the bank holiday
+  skip 2026-05                              ; moving house
+  skip from 2026-09-30 to 2026-10-02        ; card payment taken early
 ```
 
 Rules will often need exceptions, and `not:date:` in the query is wrong for balance rules:
 it removes postings, making a hole in every later balance (as in `bal -H`).
-`except` removes checks, never data: postings in a skipped period still count in later balances.
+`skip` removes checks, never data: postings in a skipped period still count in later balances.
 
-- Syntax: `except PERIOD`, as an indented subdirective line following the `assert` line,
+- Syntax: `skip PERIOD`, as an indented subdirective line following the `assert` line,
   like `alias` under an `account` directive. One period per line, any number of lines,
   each with an optional `;` comment. PERIOD is a date, partial date or `..` range, or a period
   expression without an interval (eg `from 2026-09-30 to 2026-10-02`); since it has its own line, it may contain spaces.
+  As in other period expressions, a range's end date is exclusive.
 - Why separate lines (revised 2026-11-10; the first design put `except PERIOD...` on the rule's line,
   after the period expression): exceptions accumulate over time, sometimes many, and each needs a reason.
   On their own lines, they can be added without disturbing the rule or its layout, each can carry a comment,
   and they can be full period expressions (on the rule's line, spaces would be ambiguous, so they were
   limited to single words). Only the indented form is supported, so there's one way to write it.
-- `except` is the first `assert` subdirective; others might follow (eg a note to show in the failure message).
-  An unknown subdirective, or `except` on a rule without a period expression (or with no interval), is a parse error,
-  as is an `except` period which doesn't parse.
-- A check is skipped when an excepted date is among the dates it examines:
+- Named `skip` (2026-11-10, after first being implemented as `except`): it says what happens, the rule's checks
+  in that period are skipped; `except` could suggest that data or accounts are excluded. (`suspend`/`pause` suggest
+  one continuous stretch; `ignore`/`exclude` suggest the data is ignored.)
+- `skip` is the first `assert` subdirective; others might follow (eg a note to show in the failure message).
+  An unknown subdirective, or `skip` on a rule without a period expression (or with no interval), is a parse error,
+  as is a `skip` period which doesn't parse.
+- A check is skipped when a skipped date is among the dates it examines:
   - a rule with `balance:` and no `change:` examines the period's last day (the balance is tested
     at the period's end, as `bal -H` shows it);
   - any other rule (with `change:`, both terms, or neither) examines the whole period.
 
-  So with `monthly`, `except 2026-02` always skips February; `except 2026-02-15` skips February
-  except in a balance-only rule, where it has no effect; `except 2026-02-28` always skips February.
+  So with `monthly`, `skip 2026-02` always skips February; `skip 2026-02-15` skips February
+  except in a balance-only rule, where it has no effect; `skip 2026-02-28` always skips February.
 - For a `none` rule with neither term, `not:date:` in the query is more exact, and harmless.
-- `print --export` reproduces the `except` lines with their comments.
-  A failure's error excerpt shows the rule line and its `except` lines, since they affect what was checked;
+- `print --export` reproduces the `skip` lines with their comments.
+  A failure's error excerpt shows the rule line and its `skip` lines, since they affect what was checked;
   a failure message's period count ("failed in N of M periods") counts only the periods checked.
-- Rules given to `hledger check` as arguments can't easily include indented lines; to begin with, they can't
-  have exceptions (perhaps later, via a newline inside the quoted argument).
+- Rules given to `hledger check` as arguments can have exceptions too, after a newline inside the quoted argument.
 - Rejected: skipping any period which overlaps an exception, whatever the query (simpler, but it would
-  skip a month-end balance check for an excepted mid-month date); making `balance:` ignore date terms;
-  and exceptions on the rule's own line (see above).
+  skip a month-end balance check for a skipped mid-month date); making `balance:` ignore date terms;
+  exceptions on the rule's own line (see above); and a query on a skip line, to skip only some accounts' rows
+  (considered 2026-11-10: too complicated for the benefit; to leave an account out always, `not:acct:` in the
+  rule's query works, since rows are per account).
 
 ## Revision 2 (2026-11-09): plain queries, no `balance`/`change` keywords
 
