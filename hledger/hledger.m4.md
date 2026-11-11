@@ -2296,10 +2296,10 @@ before and after it, but not entries read by other `-f` options.
 To check some extra rules without adding them to the journal,
 give them to the [check](#check) command as quoted arguments: eg `hledger check 'assert none daily  type:A balance:<0'`.
 
-Each rule is checked as if by a balance report, `hledger bal -E QUERY`, in four steps:
+Each rule is checked as if by a [balance report](#balance), `hledger bal -E QUERY`, in four steps:
 
 1. **Select postings.**
-   The query's ordinary terms select and prepare postings as a [balance report](#balance) would:
+   The query's ordinary terms select and prepare postings as `balance` would:
    costs are ignored (amounts are summed in their original commodities),
    and `depth:` clips account names, merging subaccounts into their parent.
    `date:` terms don't select postings; they limit the report period, like `-b`/`-e`.
