@@ -51,6 +51,9 @@ data InputOpts = InputOpts {
                                                 --   Set by 'importcmd'; other reads should leave it off.
     ,_dryrun            :: Bool                 -- ^ internal flag: is this a @import --dry-run@ command ?
                                                 --   If set, the CSV rules reader will never archive or remove a data file.
+    ,_forecastOnlyForDisplay :: Bool        -- ^ internal flag: are forecast transactions being generated only so they can be shown on request
+                                                --   (as hledger-ui always does), not because the user asked for them with --forecast ?
+                                                --   If so, assert rules ignore them, so they pass or fail as they do without --forecast.
     ,_ioDay             :: Day                  -- ^ today's date, for use with forecast transactions  XXX this duplicates _rsDay, and should eventually be removed when it's not needed anymore.
     ,_oldtimeclock      :: Bool                 -- ^ parse with the old timeclock pairing rules?
     ,_journaldir        :: Maybe FilePath       -- ^ The main journal file's directory. Used eg by the CSV rules reader to locate the
@@ -83,6 +86,7 @@ definputopts = InputOpts
     , _defer             = False
     , _importing         = False
     , _dryrun            = False
+    , _forecastOnlyForDisplay = False
     , _ioDay             = nulldate
     , _oldtimeclock      = False
     , _journaldir        = Nothing

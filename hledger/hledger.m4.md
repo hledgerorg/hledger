@@ -2304,7 +2304,7 @@ Most query terms, like `desc:`, `acct:`, or `amt:`, select postings.
 Assert rules are checked whenever the journal is read: by every command, and by hledger-ui and hledger-web when they reload
 (unless disabled with `-I`/`--ignore-assertions`, eg while you work on a failing rule).
 This happens after the journal is fully processed (after auto postings, transaction balancing, balance assertions and lot calculation),
-so rules see generated postings and lot subaccounts.
+so rules see generated postings and lot subaccounts, and [forecast transactions](#forecasting) when `--forecast` is used.
 Rules are checked in the order they were read, and the first rule that fails stops reading, with an error.
 
 Their scope is the [file tree](#directive-scopes): an assert rule sees all entries in the main file and its included files,

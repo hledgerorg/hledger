@@ -766,3 +766,32 @@ assert none daily  assets balance:<0  ; a rule comment
     assets:checking   100
     equity
 $ hledger -f- check "$(printf 'assert none daily  assets balance:>0\n  skip 2026-01-01')"
+
+# ** 56. Rules see forecast transactions only with --forecast.
+# (hledger-ui always generates them, but hides them from rules unless started with --forecast.)
+<
+2026-11-01
+    assets:checking   100
+    income:salary
+
+~ monthly from 2026-12
+    expenses:rent     500
+    assets:checking
+
+assert none daily  assets:checking balance:<0
+$ hledger -f- check
+
+# ** 57. With --forecast, they can make a rule fail.
+<
+2026-11-01
+    assets:checking   100
+    income:salary
+
+~ monthly from 2026-12
+    expenses:rent     500
+    assets:checking
+
+assert none daily  assets:checking balance:<0
+$ hledger -f- check --forecast
+>2 /failed in .* periods: 2026-12-01/
+>= 1

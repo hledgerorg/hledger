@@ -24,7 +24,6 @@ If not, see <https://www.gnu.org/licenses/>.
 
 module Hledger.UI.Main where
 
-import Control.Applicative ((<|>))
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (withAsync)
 #if MIN_VERSION_base(4,20,0)
@@ -103,7 +102,7 @@ hledgerUiMain = handleExit $ withGhcDebug' $ withProgName "hledger-ui.log" $ do 
   dbg1IO "args" progArgs
   dbg1IO "debugLevel" debugLevel
 
-  opts1@UIOpts{uoCliOpts=copts@CliOpts{inputopts_=iopts,rawopts_=rawopts}} <- getHledgerUIOpts
+  opts1@UIOpts{uoCliOpts=copts@CliOpts{rawopts_=rawopts}} <- getHledgerUIOpts
   -- when (debug_ $ cliopts_ opts) $ printf "%s\n" prognameandversion >> printf "opts: %s\n" (show opts)
 
   usecolor <- useColorOnStdout
@@ -114,7 +113,7 @@ hledgerUiMain = handleExit $ withGhcDebug' $ withProgName "hledger-ui.log" $ do 
   let opts = if usecolor then opts1 else opts1{uoTheme=Just "terminal"}
 
   -- always generate forecasted periodic transactions; their visibility will be toggled by the UI.
-  let copts' = copts{inputopts_=iopts{forecast_=forecast_ iopts <|> Just nulldatespan}}
+  let copts' = uiAdjustOpts opts copts
 
   -- always load the journal with full lot detail retained and amounts as recorded; the UI
   -- collapses lots and converts to cost for display (toggled by the L and B keys), so the

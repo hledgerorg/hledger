@@ -14,6 +14,7 @@ module Hledger.UI.ErrorScreen
  ,uiReload
  ,uiReloadIfFileChanged
  ,uiToggleBalanceAssertions
+ ,uiAdjustOpts
  )
 where
 
@@ -21,10 +22,12 @@ import Brick
 -- import Brick.Widgets.Border ("border")
 import Control.Exception (ErrorCall, IOException, catch)
 import Control.Monad.IO.Class (liftIO)
+import Data.Function ((&))
+import Data.Maybe (isNothing)
 import Data.Time.Calendar (Day)
 import Data.Void (Void)
 import Graphics.Vty (Event(..),Key(..),Modifier(..))
-import Lens.Micro ((^.))
+import Lens.Micro ((^.), set)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 
@@ -141,9 +144,12 @@ hledgerparseerrorpositionp = do
 
 -- Defined here so it can reference the error screen:
 
--- | Modify some input options for hledger-ui (enable --forecast).
+-- | Modify some input options for loading the journal in hledger-ui, given its startup options:
+-- always enable --forecast, so forecast transactions can be shown or hidden without reloading.
+-- If --forecast wasn't used at startup, mark the forecast as only for display, so assert rules ignore it.
 uiAdjustOpts :: UIOpts -> CliOpts -> CliOpts
-uiAdjustOpts uopts = enableForecast uopts
+uiAdjustOpts uopts copts =
+  enableForecast uopts copts & set forecastOnlyForDisplay (isNothing $ uopts ^. forecast)
 
 -- | Run a journal-loading action, converting exceptions to Left so callers can
 -- show them on the error screen instead of crashing the app. Journal reader
