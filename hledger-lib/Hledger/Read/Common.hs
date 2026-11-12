@@ -46,6 +46,7 @@ module Hledger.Read.Common (
   journalFinalise,
   journalAddForecast,
   journalAddAutoPostings,
+  journalCheckAssertsWith,
   setYear,
   getYear,
   getSourcePos',
@@ -409,7 +410,7 @@ maxExpectedForecastTxns :: Int
 maxExpectedForecastTxns = 100000
 
 journalFinalise :: InputOpts -> FilePath -> Text -> ParsedJournal -> ExceptT String IO Journal
-journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,infer_equity_,strict_,verbose_tags_,_forecastOnlyForDisplay,_ioDay} f txt pj = do
+journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,infer_equity_,strict_,verbose_tags_,_ioDay} f txt pj = do
   let
     BalancingOpts{commodity_styles_, ignore_assertions_} = balancingopts_
     -- Hack: peek at the command line to know if certain checks were requested.
@@ -423,10 +424,6 @@ journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,i
     -- With --debug, report each stage's run time and memory allocation (dbgTime forces the stage's result to measure it).
     timed  name stage = dbgTime 1 name . stage          -- a stage returning a Journal
     timedE name stage = fmap (dbgTime 1 name) . stage   -- a stage returning an Either error Journal
-    assertsJournal j
-      | _forecastOnlyForDisplay = j{jtxns = filter (not . isForecast) $ jtxns j}
-      | otherwise = j
-      where isForecast = isJust . lookup generatedTransactionTagName . ttags
 
   t <- liftIO getPOSIXTime
   -- Warn before generating an implausible number of forecast transactions
@@ -525,16 +522,25 @@ journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,i
           <&> (if infer_equity_ then timed  "journalInferEquityFromCosts" (journalInferEquityFromCosts verbose_tags_) else id)  -- maybe infer equity postings from costs; after lot processing, so lot disposals convert at cost basis
 
         -- Now report any balance assertion failure detected above,
-        -- then check any assert directives (on the finalised journal, so lot subaccounts are seen;
-        -- without forecast transactions the user didn't ask for).
+        -- then check any assert directives (on the finalised journal, so lot subaccounts are seen).
         maybe (Right j3) Left massertionerr
           >>= (if checkassertions && not (null $ jasserts j3)
-                then timedE "journalCheckAsserts" (\j4 -> journalCheckAsserts _ioDay (assertsJournal j4) $> j4)
+                then timedE "journalCheckAsserts" (\j4 -> journalCheckAssertsWith iopts j4 $> j4)
                 else pure))
 
   -- The last stage's timing line appears when its result is forced; with --debug, do that now.
   when (debugLevel > 0) $ liftIO $ void $ evaluate j
   return j
+
+-- | Check a finalised journal's assert rules, as journal loading does, with these input options:
+-- resolving relative dates with their today's date, and ignoring forecast transactions
+-- if they were generated only for display (see '_forecastOnlyForDisplay').
+-- Also used by hledger-ui to recheck the rules in memory.
+journalCheckAssertsWith :: InputOpts -> Journal -> Either String ()
+journalCheckAssertsWith InputOpts{_forecastOnlyForDisplay, _ioDay} j =
+  journalCheckAsserts _ioDay $
+    if _forecastOnlyForDisplay then j{jtxns = filter (not . isForecast) $ jtxns j} else j
+  where isForecast = isJust . lookup generatedTransactionTagName . ttags
 
 -- | Apply any auto posting rules to generate extra postings on this journal's transactions.
 -- With a true first argument, adds visible tags to generated postings and modified transactions.

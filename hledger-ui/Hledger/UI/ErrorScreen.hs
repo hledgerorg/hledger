@@ -231,23 +231,35 @@ uiCheckBalanceAssertions :: Day -> UIState -> UIState
 uiCheckBalanceAssertions _d ui@UIState{ajournal=j, aopts=UIOpts{uoCliOpts=CliOpts{inputopts_=InputOpts{pivot_=pval}}}}
   | ui^.ignore_assertions = ui        -- user disabled checks
   | not (null pval) = ui              -- post-pivot journal, assertions already checked pre-pivot
-  | otherwise =
-    case journalCheckBalanceAssertions j of
-      Right () -> ui
-      Left err ->
-        case ui of
-          UIState{aScreen=ES sst} -> ui{aScreen=ES sst{_essError=err}}
-          _                        -> pushScreen (esNew err) ui
+  | otherwise = either (uiShowError ui) (const ui) $ journalCheckBalanceAssertions j
 
--- | Toggle ignoring balance assertions (when user presses I), and if no longer ignoring, recheck them.
+-- | Recheck balance assertions and assert rules in the current journal (when the user re-enables checks),
+-- and if any fail, enter (or update) the error screen.
+-- Assert rules are checked as at load time: on the journal as loaded (with lot detail),
+-- with the same input options (ignoring forecast transactions unless --forecast was used at startup),
+-- with today's date.
+-- Should not be used with --pivot or --obfuscate, which change account names.
+uiCheckAssertions :: Day -> UIState -> UIState
+uiCheckAssertions d ui@UIState{ajournal=j, auncollapsedjournal=uj, astartupopts=uopts, aopts=UIOpts{uoCliOpts=copts}} =
+  either (uiShowError ui) (const ui) $ do
+    journalCheckBalanceAssertions j
+    journalCheckAssertsWith (inputopts_ $ uiAdjustOpts uopts copts){_ioDay=d} uj
+
+-- | Show this error on the error screen, entering it or updating it.
+uiShowError :: UIState -> String -> UIState
+uiShowError ui err = case ui of
+  UIState{aScreen=ES sst} -> ui{aScreen=ES sst{_essError=err}}
+  _                        -> pushScreen (esNew err) ui
+
+-- | Toggle ignoring balance assertions and assert rules (when user presses I), and if no longer ignoring, recheck them.
 -- Normally the recheck is done quickly on the in-memory journal.
--- But if --pivot is active, a full journal reload is done instead
--- (because we can't check balance assertions after pivoting has occurred).
--- In that case, this operation could be slower and could reveal other data changes (not just balance assertion failures).
+-- But if --pivot or --obfuscate is active, a full journal reload is done instead
+-- (because they change account names, so the checks can't be done on the in-memory journal).
+-- In that case, this operation could be slower and could reveal other data changes (not just check failures).
 uiToggleBalanceAssertions :: Day -> UIState -> EventM Name UIState ()
-uiToggleBalanceAssertions d ui@UIState{aopts=UIOpts{uoCliOpts=copts@CliOpts{inputopts_=InputOpts{pivot_=pivotval}}}} =
+uiToggleBalanceAssertions d ui@UIState{aopts=UIOpts{uoCliOpts=CliOpts{inputopts_=InputOpts{pivot_=pivotval, anon_=obfuscated}}}} =
   let ui' = toggleIgnoreBalanceAssertions ui
-  in case (ui'^.ignore_assertions, null pivotval) of
+  in case (ui'^.ignore_assertions, null pivotval && not obfuscated) of
     (True, _)      -> put' ui'                                -- ignoring enabled, no check needed
-    (False, True)  -> put' $ uiCheckBalanceAssertions d ui'   -- unpivoted journal, can check in memory
-    (False, False) -> uiReload copts d ui' >>= put'           -- pivoted journal, must reload to check it
+    (False, True)  -> put' $ uiCheckAssertions d ui'          -- account names unchanged, can check in memory
+    (False, False) -> uiReload (ui'^.cliOpts) d ui' >>= put'  -- pivoted or obfuscated journal, must reload (with checks now enabled) to check it

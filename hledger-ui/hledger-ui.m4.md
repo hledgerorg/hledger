@@ -160,9 +160,9 @@ Other terminals may need SHIFT-RIGHT and SHIFT-LEFT configured to send `\033[1;2
 `g` reloads from the data file(s) and updates the current screen and any
 previous screens. (With large files, this could cause a noticeable pause.)
 
-`I` toggles balance assertion checking.
-Disabling balance assertions temporarily can be useful for troubleshooting.
-(If hledger-ui was started with a `--pivot` option, re-enabling balance assertions with the `I` key also reloads the journal, like `g`.)
+`I` toggles checking of balance assertions and [assert rules](hledger.md#assert-directive).
+Disabling these checks temporarily can be useful for troubleshooting.
+(If hledger-ui was started with a `--pivot` or `--obfuscate` option, re-enabling them with the `I` key also reloads the journal, like `g`.)
 
 `a` runs command-line hledger's add command, and reloads the updated file.
 This allows some basic data entry.
