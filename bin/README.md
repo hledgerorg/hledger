@@ -340,6 +340,16 @@ $ hledger pijul status
 $ hledger pijul record [MSG]
 ```
 
+### git-pre-commit-hook
+
+[`git-pre-commit-hook`](https://github.com/hledgerorg/hledger/blob/main/bin/git-pre-commit-hook)
+is an example git pre-commit hook which runs `hledger check` on one or more journals,
+but only when some of their files are being committed.
+Adapt the journal names and checks, then install it in your finance repo:
+```cli
+$ cp git-pre-commit-hook ~/finance/.git/hooks/pre-commit
+```
+
 ### hledger-dc
 
 [`hledger-dc`](https://github.com/hledgerorg/hledger/blob/main/bin/hledger-dc)

@@ -1,0 +1,26 @@
+#!/bin/bash
+# git pre-commit hook: check for errors in one or more journals, only if their files are being committed
+
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+staged=$(git diff --cached --name-only | sed "s|^|$PWD/|")
+
+# Succeed if any staged file is one of the given journal's files (and if those can be identified).
+touches() {
+  local files
+  files=$(hledger -n -I -f "$1" files) || { echo "pre-commit: can't read $1" >&2; exit 1; }
+  grep -qxF -f <(echo "$files") <<<"$staged"
+}
+
+mainjournal="${LEDGER_FILE:-$HOME/.hledger.journal}"
+if touches "$mainjournal"; then
+  echo "pre-commit: checking $mainjournal..." >&2
+  hledger -f "$mainjournal" check -s ordereddates
+fi
+
+if touches all.journal; then
+  echo "pre-commit: checking all.journal..." >&2
+  hledger -f all.journal check
+fi
