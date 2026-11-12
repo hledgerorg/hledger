@@ -2350,7 +2350,6 @@ and up to 10 of the rows (or postings) which matched in those periods.
 Only the first failing rule is reported; others may be failing too.
 
 These assertions have a cost: each rule makes reading the journal slightly slower.
-For example, roughly speaking, 10 rules might make a `bal` report about 30% slower, and 100 rules might make it 3x slower.
 Rules matching few postings cost less, and `balance:` rules checked daily across many accounts cost more.
 
 ### Tips for writing assert rules
