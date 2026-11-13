@@ -27,7 +27,7 @@ import Hledger.Write.Chart.Svg (SvgOptions(..), chartSvgMarkupWith, defaultSvgOp
 import Hledger.Web.Import
 import Hledger.Web.Paging
 import Hledger.Web.Widget.Chart (chartLegend, chartWidth)
-import Hledger.Web.Param (calcParam, lookupParam, paramLinks, paramSettings)
+import Hledger.Web.Param (Param(..), accumParam, calcParam, lookupParam, paramLinks, paramSetting, paramSettings)
 import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, removeAttributes, intervalLinks, listWord, parseInterval, parseListMode, parseValue, setAmountMode, valueParams)
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
@@ -49,7 +49,7 @@ getRegisterR = do
   -- starting from before the query's start date, rather than a total of
   -- the transactions shown; a report's ending balance links here that way,
   -- so that the balance ends on the figure clicked.
-  historical <- (== Just "historical") <$> lookupGetParam "accum"
+  historical <- (== Just Historical) <$> lookupParam accumParam
   -- With a value parameter amounts are converted as a report page's
   -- figures were (see Hledger.Web.ReportPage.parseValue), so that its
   -- figures' registers end on them. One it does not know is ignored.
@@ -89,7 +89,7 @@ getRegisterR = do
       rspec = rspec0{_rsReportOpts = ropts}
       -- links staying on this register keep its modes
       valParams = valueParams (_rsReportOpts rspec0) mmode
-      accumParams = [("accum", "historical") | historical]
+      accumParams = [paramSetting accumParam Historical | historical]
       costsParams = [("costs", "1") | costsOn]
       inferParams = [("infer", "1") | inferOn]
       date2Params = [("date2", "1") | date2On]
@@ -114,7 +114,7 @@ getRegisterR = do
         acctParams ++ stickyParams ++ accumParams ++ valParams ++ costsParams ++ inferParams ++ date2Params ++ emptyParams ++ listParams ++ lotsParams ++ depthParams q
       -- Links to the journal carry the sticky state; the account, the
       -- accumulation mode and the costs toggle are this page's own.
-      journalCarry = removeAttributes ["account", "subs", "accum", "costs"] modeParams
+      journalCarry = removeAttributes ["account", "subs", paramName accumParam, "costs"] modeParams
       -- An entry's date link: the journal on that date, same modes.
       dayParams t = ("q", journalDayQuery qparam (tdate t)) : journalCarry
       -- the rows of links above the chart: the filters (status,
@@ -217,7 +217,7 @@ getRegisterR = do
         | otherwise                = trc trs "column heading" "Total"
       -- The balance column's heading switches the mode, keeping the
       -- register's other modes.
-      accumToggle = (RegisterR, qParams qparam ++ removeAttributes ["accum"] modeParams ++ [("accum", "historical") | not historical])
+      accumToggle = (RegisterR, qParams qparam ++ removeAttributes [paramName accumParam] modeParams ++ [paramSetting accumParam Historical | not historical])
       accumToggleTitle
         | historical = tr trs "Click to show the running balance from the start of this period"
         | otherwise  = tr trs "Click to show the running balance including everything before this period"
@@ -231,7 +231,7 @@ getRegisterR = do
       broughtForwardLink (secondary, start) =
         (RegisterR, [("q", T.unwords $
           ((if secondary then "date2:.." else "date:..") <> showDate start) : removeDates qparam)] ++
-          removeAttributes ["accum"] modeParams)
+          removeAttributes [paramName accumParam] modeParams)
       transactionFrag = transactionFragment j
   defaultLayout $ do
     -- TRANSLATORS: the browser tab title of this page.

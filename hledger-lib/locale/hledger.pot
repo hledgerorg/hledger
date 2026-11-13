@@ -312,8 +312,7 @@ msgstr ""
 
 #. Key term
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#. the depth limit, in the list of options in effect.
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs hledger-web/Hledger/Web/Param.hs
 msgid "Balance changes"
 msgstr ""
 
@@ -650,7 +649,7 @@ msgid "Register"
 msgstr ""
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger/Hledger/Cli/Commands/Run.hs hledger-web/Hledger/Web/ReportPage.hs hledger-web/templates/default-layout.hamlet
+#: hledger/Hledger/Cli/Commands/Run.hs hledger-web/Hledger/Web/Param.hs hledger-web/templates/default-layout.hamlet
 msgid "Show:"
 msgstr ""
 
@@ -912,30 +911,28 @@ msgid "Show a column per day"
 msgstr ""
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Show how much each balance changed in each period"
 msgstr ""
 
 #. Key term
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#. the depth limit, in the list of options in effect.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Ending balances"
 msgstr ""
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Show each balance at the end of each period, including everything before it"
 msgstr ""
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#. the depth limit, in the list of options in effect.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Cumulative totals"
 msgstr ""
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/ReportPage.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Show each balance's change since the start of the report (--cumulative)"
 msgstr ""
 
@@ -945,10 +942,6 @@ msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Could not parse the reporting interval:"
-msgstr ""
-
-#: hledger-web/Hledger/Web/ReportPage.hs
-msgid "Unknown balance accumulation mode:"
 msgstr ""
 
 #: hledger-web/Hledger/Web/ReportPage.hs

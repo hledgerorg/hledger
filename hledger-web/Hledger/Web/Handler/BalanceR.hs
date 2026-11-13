@@ -18,7 +18,7 @@ import Hledger.Utils.I18n (tr, trc, trf)
 import Hledger.Web.Import
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Paging (yearsRow)
-import Hledger.Web.Param (calcParam, paramLinks, paramSettings)
+import Hledger.Web.Param (Param(..), accumParam, calcParam, paramLinks, paramSettings)
 import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Chart (reportChart)
@@ -82,7 +82,7 @@ getBalanceR = do
             -- What links staying on this page keep: the period as given, and each
             -- report-shaping parameter that is not at its default.
             intervalParams = [("interval", w) | Just w <- [intervalPeriodExpr rpInterval]]
-            accumParams = [("accum", accumWord accum) | accum /= PerPeriod]
+            accumParams = paramSettings accumParam PerPeriod accum
             valParams = valueParams roptsOrig rpValue
             listParams  = [("list", listWord (accountlistmode_ ropts)) | accountlistmode_ ropts /= accountlistmode_ roptsOrig]
             totalParams = [("total", "1") | row_total_ ropts]
@@ -107,7 +107,7 @@ getBalanceR = do
             -- search's dates.
             registerParams =
               [("value", "none") | amountModeOf ropts == Just AsRecorded, amountModeOf roptsOrig /= Just AsRecorded] ++
-              removeAttributes ["accum", "value"] pageParams
+              removeAttributes [paramName accumParam, "value"] pageParams
             -- TRANSLATORS: the name of a depth 0 report's one row, all accounts in one.
             relink = map (map (labelAllAccounts (trc trs "accounts" "All") . addLinkParams registerParams))
             headinglink = urlrender BalanceR . headingParams rpInterval qparam params
@@ -142,7 +142,7 @@ getBalanceR = do
               entriesReport rspecOrig{_rsQuery = filterQuery (\x -> not (queryIsDateOrDate2 x || queryIsDepth x)) q} j
             yearsNav = yearsRow trs BalanceR qparam today pageParams yearsDays
             controlRows = controlsToggle trs controlsOpen (optionsSummary trs deepest pageParams) $ \render -> foldMap ($ render) $
-              [ accumulationLinks trs BalanceR (qParams ++ removeAttributes ["accum"] pageParams) PerPeriod accum
+              [ paramLinks accumParam trs BalanceR (qParams ++ pageParams) PerPeriod accum
               , intervalLinks trs BalanceR (removeAttributes ["interval"] pageParams) qparam rpInterval
               , yearsNav
               , statusLinks trs BalanceR pageParams qparam

@@ -65,7 +65,7 @@ import Web.Cookie (defaultSetCookie, setCookieName, setCookieValue)
 import Hledger.Web.Application ( makeAppWith )
 import Hledger.Utils.I18n (noTranslations)
 import Hledger.Web.Paging (pageNumbers)
-import Hledger.Web.Param (Param(..), calcParam, parseParam)
+import Hledger.Web.Param (Param(..), accumParam, calcParam, parseParam)
 import Hledger.Web.ReportPage (intervalPeriodExpr, startupUrlState)
 import Hledger.Web.WebOptions  -- ( WebOpts(..), defwebopts, prognameandversion )
 import Hledger.Web.Import hiding (get, j)
@@ -277,6 +277,7 @@ hledgerWebTest = do
   hspec $ describe "Param" $ do
     it "gives each mode its own word" $ do
       let distinctWords p = let ws = map (paramWord p) (paramModes p) in length (nub ws) == length ws
+      distinctWords accumParam `shouldBe` True
       distinctWords calcParam `shouldBe` True
     it "reads a mode's word, an empty or absent value as the default, and returns an unknown word" $ do
       parseParam calcParam (Just "gain") `shouldBe` Right (Just CalcGain)
@@ -1284,7 +1285,7 @@ hledgerWebTest = do
         setUrl BalanceR
         addGetParam "accum" "bogus"
       statusIs 200
-      bodyContains "Unknown balance accumulation mode"
+      bodyContains "The accum parameter has a value this page does not know"
       bodyNotContains "<tfoot>"
 
     yit "keeps the accumulation mode off the journal page's search form" $ do
@@ -1654,7 +1655,7 @@ hledgerWebTest = do
         addGetParam "accum" "bogus"
       statusIs 200
       bodyContains "<h2>Balance Sheet</h2>"
-      bodyContains "Unknown balance accumulation mode"
+      bodyContains "The accum parameter has a value this page does not know"
       bodyNotContains "<tfoot>"
 
     yit "serves the income statement, with changes, revenues shown positive" $ do

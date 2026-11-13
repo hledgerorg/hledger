@@ -32,14 +32,12 @@ module Hledger.Web.ReportPage (
   deepestDepth,
   parseInterval,
   depthParams,
-  accumWord,
   columnHeading,
   headingParams,
   removeAttributes,
   relinkDateHeaders,
   reportLinks,
   intervalLinks,
-  accumulationLinks,
   reportTable,
   chartReportSpec,
   splitAccountNames,
@@ -66,8 +64,8 @@ import Yesod (HtmlUrl)
 import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor (dateTerm, renderPeriodHeading)
-import Hledger.Web.Param (Param(..), calcParam, linksRowClass, paramSettings, parseParam)
-import Hledger.Web.Widget.Common (AmountMode(..), accumWord, listWord, removeDates, valueWord)
+import Hledger.Web.Param (Param(..), accumParam, calcParam, linksRowClass, paramSettings, parseParam)
+import Hledger.Web.Widget.Common (AmountMode(..), listWord, removeDates, valueWord)
 import Hledger.Query qualified as Query
 import Hledger.Write.Html (Html, formatCell, nl)
 import Hledger.Write.Spreadsheet (Cell(..), Class(..), NumLines, textFromClass)
@@ -92,7 +90,7 @@ data ReportParams = ReportParams {
 -- | A parameter the page cannot use, with what was given; or a
 -- combination of parameters that contradict each other.
 data ReportParamError
-  = BadInterval String | BadAccum Text | BadValue Text | BadParamValue Text Text
+  = BadInterval String | BadValue Text | BadParamValue Text Text
   | ValuechangeNeedsEnd | GainNotCost | ValueThenUnsupported
 
 -- | Resolve a report page's parameters: the startup report spec, the search parameter and its parsed query and options, whether
@@ -112,7 +110,7 @@ reportParams rspecOrig qparam q qopts hideEmpty params = do
   ivl <- case mfilter (not . T.null) (param "interval") of
     Nothing -> Right (interval_ roptsOrig)
     Just t  -> either (Left . BadInterval . errorBundlePretty) Right $ parseInterval t
-  rpAccum <- parseAccum (param "accum")
+  rpAccum <- readParam accumParam (param $ paramName accumParam)
   rpValue <- parseValue (param "value")
   mlist   <- parseListMode (param "list")
   total   <- parseFlag "total" (param "total")
@@ -194,7 +192,7 @@ startupUrlState rspec@ReportSpec{_rsReportOpts = ropts} = (params, rspec')
     params =
       [("interval", p)        | Just p <- [intervalPeriodExpr $ interval_ ropts]] ++
       [("depth", T.pack (show n)) | Just n <- [dsFlatDepth $ depth_ ropts]] ++
-      [("accum", accumWord a) | let a = balanceaccum_ ropts, a /= PerPeriod] ++
+      paramSettings accumParam PerPeriod (balanceaccum_ ropts) ++
       [("value", valueWord m) | Just m <- [amountModeOf ropts], m /= AsRecorded] ++
       [("list", "tree")       | accountlistmode_ ropts == ALTree] ++
       [("total", "1")         | row_total_ ropts] ++
@@ -309,36 +307,6 @@ intervalLinks trs route kept qparam current =
       ]
     link mword =
       (route, [("q", qparam) | not (T.null qparam)] ++ kept ++ [("interval", w) | Just w <- [mword]])
-
--- | Links to the same report page for each accumulation mode: balance
--- changes, ending balances, or cumulative totals. They keep the given
--- parameters; the page's own default mode needs none. The mode being
--- shown is marked.
-accumulationLinks :: Translations -> r -> [(Text, Text)] -> BalanceAccumulation -> BalanceAccumulation -> HtmlUrl r
-accumulationLinks trs route kept dflt current =
-  -- The H key toggles Ending balances, the second link (hledger.js).
-  -- TRANSLATORS: the label before a report's accumulation mode links, and the links' text and tooltips.
-  linksRowClass "accum" (tr trs "Show:")
-    [ (tr trs "Balance changes", tr trs "Show how much each balance changed in each period",
-        link PerPeriod, current == PerPeriod)
-    , (tr trs "Ending balances", tr trs "Show each balance at the end of each period, including everything before it",
-        link Historical, current == Historical)
-    , (tr trs "Cumulative totals", tr trs "Show each balance's change since the start of the report (--cumulative)",
-        link Cumulative, current == Cumulative)
-    ]
-  where link m = (route, kept ++ [("accum", accumWord m) | m /= dflt])
-
--- | The accum parameter: "historical" for ending balances, "change" for
--- balance changes, "cumulative" for totals since the report's start, or
--- none for the page's default.
-parseAccum :: Maybe Text -> Either ReportParamError (Maybe BalanceAccumulation)
-parseAccum = \case
-  Nothing           -> Right Nothing
-  Just ""           -> Right Nothing
-  Just "historical" -> Right $ Just Historical
-  Just "change"     -> Right $ Just PerPeriod
-  Just "cumulative" -> Right $ Just Cumulative
-  Just other        -> Left $ BadAccum other
 
 -- | The list parameter: show accounts as a "tree" or a "flat" list.
 parseListMode :: Maybe Text -> Either ReportParamError (Maybe AccountListMode)
@@ -465,10 +433,6 @@ paramError trs = \case
     H.div ! A.class_ "alert alert-danger" $ do
       H.toHtml $ tr trs "Could not parse the reporting interval:"
       H.pre $ H.toHtml err
-  BadAccum v ->
-    H.div ! A.class_ "alert alert-danger" $ do
-      H.toHtml $ tr trs "Unknown balance accumulation mode:"
-      H.pre $ H.toHtml v
   BadValue v ->
     H.div ! A.class_ "alert alert-danger" $ do
       H.toHtml $ tr trs "Unknown amount conversion:"
