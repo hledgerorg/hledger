@@ -3902,7 +3902,7 @@ comment month:%{substr(%date, 1, 7)}
 comment card:%{substr(%card, -4)}
 ```
 
-Function arguments can be CSV field references (`%desc`, `%3`),
+Function arguments can be CSV field references (`%summary` or `%3`),
 [hledger field names](#referencing-other-fields) (`comment`),
 match group references (`\1`),
 double-quoted text (`"misc"`),
