@@ -31,7 +31,6 @@ module Hledger.Web.Widget.Common
   , holdingsValueLinks
   , typeLinks
   , AmountMode(..)
-  , accumWord
   , listWord
   , valueWord
   , searchTerms
@@ -78,7 +77,7 @@ import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor qualified as Anchor
 import Hledger.Cli.Utils (writeFileWithBackupIfChanged)
-import Hledger.Web.Param (calcParam, linksRow, linksRowClass, paramName, paramPhrase)
+import Hledger.Web.Param (accumParam, calcParam, linksRow, linksRowClass, paramName, paramPhrase)
 import Hledger.Web.Settings (manualurl)
 import Hledger.Query qualified as Query
 
@@ -190,7 +189,7 @@ optionsSummary :: Translations -> Int -> [(Text, Text)] -> [Text]
 optionsSummary trs deepest = mapMaybe phrase . sortOn (rowOrder . fst)
   where
     rowOrder k = fromMaybe maxBound $ elemIndex k
-      ["equity", "interval", "accum", "depth", "list", "value", "infer", "empty", "lots", "closed",
+      ["equity", "interval", paramName accumParam, "depth", "list", "value", "infer", "empty", "lots", "closed",
        "total", "avg", "costs", "sort", "pct", paramName calcParam, "date2"]
     phrase = \case
       ("interval", w)     -> Just $ fromMaybe w $ lookup w
@@ -201,9 +200,7 @@ optionsSummary trs deepest = mapMaybe phrase . sortOn (rowOrder . fst)
         d <- readMay (T.unpack n) :: Maybe Int
         guard (d < deepest)
         Just $ trf trs "Depth {depth}" [("depth", n)]
-      ("accum", a)        -> lookup a
-        [ ("change", tr trs "Balance changes"), ("historical", tr trs "Ending balances")
-        , ("cumulative", tr trs "Cumulative totals") ]
+      (k, w) | k == paramName accumParam -> paramPhrase accumParam trs w
       ("value", "none")   -> Just $ tr trs "As recorded"
       ("value", "cost")   -> Just $ trc trs "amounts" "Cost"
       ("value", _)        -> Just $ trc trs "amounts" "Value"
@@ -268,13 +265,6 @@ pricesLinks trs route kept inferOn =
     [ (tr trs "Declared", tr trs "Value amounts using declared market prices (P directives) only", (route, kept), not inferOn)
     , (tr trs "Inferred too", tr trs "Infer market prices from transaction costs too (--infer-market-prices)", (route, kept ++ [("infer", "1")]), inferOn)
     ]
-
--- | The accum parameter value naming an accumulation mode.
-accumWord :: BalanceAccumulation -> Text
-accumWord = \case
-  PerPeriod  -> "change"
-  Historical -> "historical"
-  Cumulative -> "cumulative"
 
 -- | The list parameter value naming an accounts mode.
 listWord :: AccountListMode -> Text

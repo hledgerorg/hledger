@@ -60,8 +60,8 @@ import Hledger.Cli.Commands.Balancesheet (balancesheetSpec)
 import Hledger.Cli.Commands.Cashflow (cashflowSpec)
 import Hledger.Cli.Commands.Incomestatement (incomestatementSpec)
 import Hledger.Cli.CompoundBalanceCommand (CompoundBalanceCommandSpec(..))
-import Hledger.Web.Param (calcParam, lookupParam, paramName)
-import Hledger.Web.ReportPage (AmountMode(..), accumWord, amountModeOf, intervalPeriodExpr, parseListMode, parseValue, reportLinks, setAmountMode)
+import Hledger.Web.Param (Param(..), accumParam, calcParam, lookupParam)
+import Hledger.Web.ReportPage (AmountMode(..), amountModeOf, intervalPeriodExpr, parseListMode, parseValue, reportLinks, setAmountMode)
 import Hledger.Web.Settings (Extra(..), webmanualurl, widgetFile)
 import Hledger.Web.Settings.StaticFiles
 import Hledger.Web.WebOptions
@@ -235,8 +235,8 @@ instance Yesod App where
     -- The accumulation mode is kept only when it is not the default, as
     -- the pages' own links carry it.
     let keepable :: Text -> Text -> Bool
-        keepable "accum" v = v `elem` keptAccums here
-        keepable _       v = not (T.null v)
+        keepable k v | k == paramName accumParam = v `elem` keptAccums here
+                     | otherwise                = not (T.null v)
     keptParams <- fmap catMaybes . for (keptParamNames here) $ \name ->
       fmap (name,) . mfilter (keepable name) <$> lookupGetParam name
 
@@ -589,7 +589,7 @@ reportRoutes = [rmRoute i | i <- reportMenu, isJust (rmAccum i)]
 keptAccums :: Route App -> [Text]
 keptAccums route =
   case [dflt | i <- reportMenu, rmRoute i == route, Just dflt <- [rmAccum i]] of
-    [dflt]                 -> [accumWord a | a <- [PerPeriod, Historical, Cumulative], a /= dflt]
+    [dflt]                 -> [paramWord accumParam a | a <- paramModes accumParam, a /= dflt]
     _ | route == RegisterR -> ["historical"]
     _                      -> []
 
@@ -602,8 +602,8 @@ keptAccums route =
 keptParamNames :: Route App -> [Text]
 keptParamNames route
   | route == HoldingsR        = "closed" : stickyParamNames
-  | route `elem` reportRoutes = "accum" : stickyParamNames
-  | route == RegisterR        = "account" : "subs" : "accum" : "costs" : stickyParamNames
+  | route `elem` reportRoutes = paramName accumParam : stickyParamNames
+  | route == RegisterR        = "account" : "subs" : paramName accumParam : "costs" : stickyParamNames
   | route == JournalR         = stickyParamNames
   | otherwise                 = []
 

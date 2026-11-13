@@ -19,6 +19,7 @@ module Hledger.Web.Param
   , paramSettings
   , paramLinks
   , paramPhrase
+  , accumParam
   , calcParam
   ) where
 
@@ -119,6 +120,25 @@ paramLinks p trs route kept dflt current =
 -- the closed options disclosure lists it.
 paramPhrase :: Param a -> Translations -> Text -> Maybe Text
 paramPhrase p trs w = fst . paramLabel p trs <$> find ((== w) . paramWord p) (paramModes p)
+
+-- | The accum parameter: whether a report shows balance changes, ending
+-- balances, or cumulative totals; absent for the page's own default.
+-- The H key toggles Ending balances, the second link (hledger.js).
+accumParam :: Param BalanceAccumulation
+accumParam = Param
+  { paramName  = "accum"
+  , paramModes = [PerPeriod, Historical, Cumulative]
+  , paramWord  = \case
+      PerPeriod  -> "change"
+      Historical -> "historical"
+      Cumulative -> "cumulative"
+  -- TRANSLATORS: the label before a report's accumulation mode links, and the links' text and tooltips.
+  , paramRowLabel = \trs -> tr trs "Show:"
+  , paramLabel = \trs -> \case
+      PerPeriod  -> (tr trs "Balance changes", tr trs "Show how much each balance changed in each period")
+      Historical -> (tr trs "Ending balances", tr trs "Show each balance at the end of each period, including everything before it")
+      Cumulative -> (tr trs "Cumulative totals", tr trs "Show each balance's change since the start of the report (--cumulative)")
+  }
 
 -- | The calc parameter: what a report's cells calculate, as the balance
 -- commands' --valuechange, --gain, and --count flags choose.
