@@ -65,7 +65,7 @@ import Web.Cookie (defaultSetCookie, setCookieName, setCookieValue)
 import Hledger.Web.Application ( makeAppWith )
 import Hledger.Utils.I18n (noTranslations)
 import Hledger.Web.Paging (pageNumbers)
-import Hledger.Web.Param (Param(..), accumParam, calcParam, parseParam)
+import Hledger.Web.Param (Param(..), accumParam, calcParam, listParam, parseParam, sortParam)
 import Hledger.Web.ReportPage (intervalPeriodExpr, startupUrlState)
 import Hledger.Web.WebOptions  -- ( WebOpts(..), defwebopts, prognameandversion )
 import Hledger.Web.Import hiding (get, j)
@@ -279,6 +279,8 @@ hledgerWebTest = do
       let distinctWords p = let ws = map (paramWord p) (paramModes p) in length (nub ws) == length ws
       distinctWords accumParam `shouldBe` True
       distinctWords calcParam `shouldBe` True
+      distinctWords listParam `shouldBe` True
+      distinctWords sortParam `shouldBe` True
     it "reads a mode's word, an empty or absent value as the default, and returns an unknown word" $ do
       parseParam calcParam (Just "gain") `shouldBe` Right (Just CalcGain)
       parseParam calcParam (Just "") `shouldBe` Right Nothing

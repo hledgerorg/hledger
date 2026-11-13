@@ -1527,30 +1527,28 @@ msgid "Show only virtual postings, the parenthesized ones (real:0)"
 msgstr ""
 
 #. the label before a report's list/tree links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Param.hs hledger-web/templates/default-layout.hamlet
 msgid "Accounts:"
 msgstr ""
 
 #. the label before a report's list/tree links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Show accounts as a flat list (--flat)"
 msgstr ""
 
-#. the depth limit, in the list of options in effect.
 #. the label before a report's list/tree links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgctxt "accounts"
 msgid "List"
 msgstr ""
 
 #. the label before a report's list/tree links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Show accounts as a tree (--tree)"
 msgstr ""
 
-#. the depth limit, in the list of options in effect.
 #. the label before a report's list/tree links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgctxt "accounts"
 msgid "Tree"
 msgstr ""
@@ -1585,28 +1583,27 @@ msgid "Average"
 msgstr ""
 
 #. the label before a report's sort links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/Param.hs hledger-web/templates/default-layout.hamlet
 msgid "Sort:"
 msgstr ""
 
 #. the label before a report's sort links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "By account"
 msgstr ""
 
 #. the label before a report's sort links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Sort rows by account display order"
 msgstr ""
 
-#. the depth limit, in the list of options in effect.
 #. the label before a report's sort links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "By amount"
 msgstr ""
 
 #. the label before a report's sort links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/Param.hs
 msgid "Sort rows by their amounts, largest first (-S)"
 msgstr ""
 

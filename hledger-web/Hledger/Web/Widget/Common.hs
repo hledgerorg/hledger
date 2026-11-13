@@ -21,9 +21,7 @@ module Hledger.Web.Widget.Common
   , zeroBalanceLinks
   , statusLinks
   , realLinks
-  , listModeLinks
   , columnsLinks
-  , sortLinks
   , percentLinks
   , costsLinks
   , lotsLinks
@@ -31,7 +29,6 @@ module Hledger.Web.Widget.Common
   , holdingsValueLinks
   , typeLinks
   , AmountMode(..)
-  , listWord
   , valueWord
   , searchTerms
   , MovedOptions(..)
@@ -77,7 +74,7 @@ import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor qualified as Anchor
 import Hledger.Cli.Utils (writeFileWithBackupIfChanged)
-import Hledger.Web.Param (accumParam, calcParam, linksRow, linksRowClass, paramName, paramPhrase)
+import Hledger.Web.Param (accumParam, calcParam, listParam, sortParam, linksRow, linksRowClass, paramName, paramPhrase)
 import Hledger.Web.Settings (manualurl)
 import Hledger.Query qualified as Query
 
@@ -125,7 +122,7 @@ helplink topic label _ = H.a ! A.href u ! A.target "hledgerhelp" $ toHtml label
 -- prices, zero balances, and lot detail. Each such link rewrites the
 -- search itself.
 registerKeptParams :: [(Text, Text)] -> [(Text, Text)]
-registerKeptParams ps = [p | p@(k, _) <- ps, k `elem` ["depth", "value", "list", "infer", "empty", "lots"]]
+registerKeptParams ps = [p | p@(k, _) <- ps, k `elem` ["depth", "value", paramName listParam, "infer", "empty", "lots"]]
 
 -- | Render a "BalanceReport" as the sidebar: the page links (each page's
 -- route, label, and title, with the parameters their links carry), then
@@ -189,8 +186,8 @@ optionsSummary :: Translations -> Int -> [(Text, Text)] -> [Text]
 optionsSummary trs deepest = mapMaybe phrase . sortOn (rowOrder . fst)
   where
     rowOrder k = fromMaybe maxBound $ elemIndex k
-      ["equity", "interval", paramName accumParam, "depth", "list", "value", "infer", "empty", "lots", "closed",
-       "total", "avg", "costs", "sort", "pct", paramName calcParam, "date2"]
+      ["equity", "interval", paramName accumParam, "depth", paramName listParam, "value", "infer", "empty", "lots", "closed",
+       "total", "avg", "costs", paramName sortParam, "pct", paramName calcParam, "date2"]
     phrase = \case
       ("interval", w)     -> Just $ fromMaybe w $ lookup w
         [ ("yearly", tr trs "Yearly"), ("quarterly", tr trs "Quarterly"), ("monthly", tr trs "Monthly")
@@ -204,9 +201,8 @@ optionsSummary trs deepest = mapMaybe phrase . sortOn (rowOrder . fst)
       ("value", "none")   -> Just $ tr trs "As recorded"
       ("value", "cost")   -> Just $ trc trs "amounts" "Cost"
       ("value", _)        -> Just $ trc trs "amounts" "Value"
-      ("list", "tree")    -> Just $ trc trs "accounts" "Tree"
-      ("list", "flat")    -> Just $ trc trs "accounts" "List"
-      ("sort", "amount")  -> Just $ tr trs "By amount"
+      (k, w) | k == paramName listParam -> paramPhrase listParam trs w
+      (k, w) | k == paramName sortParam -> paramPhrase sortParam trs w
       ("pct", "1")        -> Just $ tr trs "Percentages"
       (k, w) | k == paramName calcParam -> paramPhrase calcParam trs w
       -- TRANSLATORS: options in effect, listed on the closed options disclosure.
@@ -265,11 +261,6 @@ pricesLinks trs route kept inferOn =
     [ (tr trs "Declared", tr trs "Value amounts using declared market prices (P directives) only", (route, kept), not inferOn)
     , (tr trs "Inferred too", tr trs "Infer market prices from transaction costs too (--infer-market-prices)", (route, kept ++ [("infer", "1")]), inferOn)
     ]
-
--- | The list parameter value naming an accounts mode.
-listWord :: AccountListMode -> Text
-listWord ALTree = "tree"
-listWord ALFlat = "flat"
 
 -- | How a page shows amounts: in the commodities they were recorded in,
 -- converted to cost (as with -B), or converted with one of the market
@@ -403,19 +394,6 @@ realLinks trs route kept qparam =
     , (tr trs "Virtual", tr trs "Show only virtual postings, the parenthesized ones (real:0)", Just "real:0")
     ]
 
--- | Links showing the report's accounts as a flat list or a tree,
--- keeping the given parameters; the mode being shown is marked, and
--- the page's default mode, the startup one, needs no parameter. The t
--- key toggles them (hledger.js).
-listModeLinks :: Translations -> r -> [(Text, Text)] -> AccountListMode -> AccountListMode -> HtmlUrl r
-listModeLinks trs route kept dflt mode =
-  -- TRANSLATORS: the label before a report's list/tree links, and the links' text and tooltips.
-  linksRowClass "accounts" (tr trs "Accounts:")
-    [ (trc trs "accounts" "List", tr trs "Show accounts as a flat list (--flat)", link ALFlat, mode == ALFlat)
-    , (trc trs "accounts" "Tree", tr trs "Show accounts as a tree (--tree)", link ALTree, mode == ALTree)
-    ]
-  where link m = (route, kept ++ [("list", listWord m) | m /= dflt])
-
 -- | Toggles adding a row-total and a row-average column to a
 -- multi-period report, as -T and -A do; the columns shown are marked.
 -- The T and A keys follow these links, by their order here (hledger.js).
@@ -427,17 +405,6 @@ columnsLinks trs route kept total avg =
         (route, kept ++ [("avg", "1") | avg] ++ [("total", "1") | not total]), total)
     , (trc trs "column" "Average", tr trs "Add a column averaging each row (-A)",
         (route, kept ++ [("total", "1") | total] ++ [("avg", "1") | not avg]), avg)
-    ]
-
--- | Links sorting the report's rows by account display order (declaration order, otherwise name)
---  or by amount, keeping the given parameters; the order being shown is marked.
--- The S key toggles By amount, the second link (hledger.js).
-sortLinks :: Translations -> r -> [(Text, Text)] -> Bool -> HtmlUrl r
-sortLinks trs route kept byAmount =
-  -- TRANSLATORS: the label before a report's sort links, and the links' text and tooltips.
-  linksRowClass "sort" (tr trs "Sort:")
-    [ (tr trs "By account", tr trs "Sort rows by account display order", (route, kept), not byAmount)
-    , (tr trs "By amount", tr trs "Sort rows by their amounts, largest first (-S)", (route, kept ++ [("sort", "amount")]), byAmount)
     ]
 
 -- | Links showing the report's numbers as amounts or as percentages of

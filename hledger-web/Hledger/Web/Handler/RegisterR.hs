@@ -27,16 +27,16 @@ import Hledger.Write.Chart.Svg (SvgOptions(..), chartSvgMarkupWith, defaultSvgOp
 import Hledger.Web.Import
 import Hledger.Web.Paging
 import Hledger.Web.Widget.Chart (chartLegend, chartWidth)
-import Hledger.Web.Param (Param(..), accumParam, calcParam, lookupParam, paramLinks, paramSetting, paramSettings)
-import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, removeAttributes, intervalLinks, listWord, parseInterval, parseListMode, parseValue, setAmountMode, valueParams)
+import Hledger.Web.Param (Param(..), accumParam, calcParam, listParam, lookupParam, paramLinks, paramSetting, paramSettings, sortParam)
+import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, removeAttributes, intervalLinks, parseInterval, parseValue, setAmountMode, valueParams)
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Widget.Common
              (accountParams, accountRegisterQuery, amountLinks, columnsLinks,
               commodityLinks, controlsHint, controlsToggle, optionsSummary, searchHeading, costsLinks, depthLinks,
-              inertControls, listModeLinks, lotsLinks, mixedAmountAsHtmlElided,
+              inertControls, lotsLinks, mixedAmountAsHtmlElided,
               mixedAmountAsHtmlWith, moreCommodities, percentLinks, pricesLinks, realLinks,
-              runningBalanceAsHtml, sortLinks, statusLinks, typeLinks,
+              runningBalanceAsHtml, statusLinks, typeLinks,
               zeroBalanceLinks, transactionFragment, removeDates, journalDayQuery)
 
 -- | The main journal/account register view, with accounts sidebar.
@@ -54,7 +54,7 @@ getRegisterR = do
   -- figures were (see Hledger.Web.ReportPage.parseValue), so that its
   -- figures' registers end on them. One it does not know is ignored.
   mmode <- either (const Nothing) id . parseValue <$> lookupGetParam "value"
-  mlist <- either (const Nothing) id . parseListMode <$> lookupGetParam "list"
+  mlist <- lookupParam listParam
   -- With costs=1 amounts keep the costs recorded with them (10 AAPL @ $95),
   -- which are stripped by default.
   costsOn <- (== Just "1") <$> lookupGetParam "costs"
@@ -63,7 +63,7 @@ getRegisterR = do
   minterval <- lookupGetParam "interval"
   totalOn <- (== Just "1") <$> lookupGetParam "total"
   avgOn   <- (== Just "1") <$> lookupGetParam "avg"
-  sortAmt <- (== Just "amount") <$> lookupGetParam "sort"
+  sortAmt <- fromMaybe False <$> lookupParam sortParam
   pctOn   <- (== Just "1") <$> lookupGetParam "pct"
   calcCur <- fromMaybe CalcChange <$> lookupParam calcParam
   urlrender <- getUrlRenderParams
@@ -96,14 +96,14 @@ getRegisterR = do
       dfltHidden = empty_ $ _rsReportOpts rspec0
       emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= dfltHidden]
       elist = fromMaybe (accountlistmode_ $ _rsReportOpts rspec0) mlist
-      listParams = [("list", listWord elist) | elist /= accountlistmode_ (_rsReportOpts rspec0)]
+      listParams = paramSettings listParam (accountlistmode_ (_rsReportOpts rspec0)) elist
       -- The report-shaping state shapes nothing here, but it is passed
       -- along and shown dimmed below, so it survives visiting a register.
       stickyParams =
         [("interval", w) | Just w <- [mfilter (not . T.null) minterval]] ++
         [("total", "1") | totalOn] ++
         [("avg", "1") | avgOn] ++
-        [("sort", "amount") | sortAmt] ++
+        paramSettings sortParam False sortAmt ++
         [("pct", "1") | pctOn] ++
         paramSettings calcParam CalcChange calcCur
       lotsParams = [("lots", "1") | lotsShown]
@@ -134,7 +134,7 @@ getRegisterR = do
       deepest = deepestDepth j
       depthRow = depthLinks trs RegisterR modeParams qparam deepest
       -- Tree mode adds the sidebar's fold carets.
-      listRow = listModeLinks trs RegisterR (qParams qparam ++ removeAttributes ["list"] modeParams) (accountlistmode_ $ _rsReportOpts rspec0) elist
+      listRow = paramLinks listParam trs RegisterR (qParams qparam ++ modeParams) (accountlistmode_ $ _rsReportOpts rspec0) elist
       amountsRow = amountLinks trs RegisterR (qParams qparam ++ removeAttributes ["value"] modeParams)
         (amountModeOf $ _rsReportOpts rspec0) (amountModeOf ropts)
       costsRow = costsLinks trs RegisterR (qParams qparam ++ removeAttributes ["costs"] modeParams) costsOn
@@ -154,7 +154,7 @@ getRegisterR = do
         intervalLinks trs RegisterR (removeAttributes ["interval"] modeParams) qparam rpInterval
       inertRows = inertControls trs $ mconcat
         [ columnsLinks trs RegisterR (qParams qparam ++ removeAttributes ["total", "avg"] modeParams) totalOn avgOn
-        , sortLinks trs RegisterR (qParams qparam ++ removeAttributes ["sort"] modeParams) sortAmt
+        , paramLinks sortParam trs RegisterR (qParams qparam ++ modeParams) False sortAmt
         , percentLinks trs RegisterR (qParams qparam ++ removeAttributes ["pct"] modeParams) pctOn
         , paramLinks calcParam trs RegisterR (qParams qparam ++ modeParams) CalcChange calcCur
         ]
