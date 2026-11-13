@@ -196,7 +196,7 @@ var keymap = [
   { keys: ['[', ']'], at: '#main-content .with-legend', run: commodityStep },
   { keys: ['/'], run: function() { fullWindowLeave(); focusSearch(); } },
   { keys: ['z'], at: '.zero-balances a:not(.current)', run: linkFollow },
-  { keys: ['t'], at: rowLink('accounts', -1),        run: linkToggle },
+  { keys: ['t'], at: rowLink('list', -1),            run: linkToggle },
   { keys: ['H'], at: rowLink('accum', 1),            run: linkToggle },
   { keys: ['L'], at: rowLink('lots', 1),             run: linkToggle },
   { keys: ['V'], at: rowLink('amounts', -1),         run: linkToggle },

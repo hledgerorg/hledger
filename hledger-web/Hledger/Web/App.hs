@@ -60,8 +60,8 @@ import Hledger.Cli.Commands.Balancesheet (balancesheetSpec)
 import Hledger.Cli.Commands.Cashflow (cashflowSpec)
 import Hledger.Cli.Commands.Incomestatement (incomestatementSpec)
 import Hledger.Cli.CompoundBalanceCommand (CompoundBalanceCommandSpec(..))
-import Hledger.Web.Param (Param(..), accumParam, calcParam, lookupParam)
-import Hledger.Web.ReportPage (AmountMode(..), amountModeOf, intervalPeriodExpr, parseListMode, parseValue, reportLinks, setAmountMode)
+import Hledger.Web.Param (Param(..), accumParam, calcParam, listParam, lookupParam, sortParam)
+import Hledger.Web.ReportPage (AmountMode(..), amountModeOf, intervalPeriodExpr, parseValue, reportLinks, setAmountMode)
 import Hledger.Web.Settings (Extra(..), webmanualurl, widgetFile)
 import Hledger.Web.Settings.StaticFiles
 import Hledger.Web.WebOptions
@@ -202,7 +202,7 @@ instance Yesod App where
     -- value parameter asks, with inferred market prices if asked.
     mvalmode <- either (const Nothing) id . parseValue <$> lookupGetParam "value"
     inferparam <- (== Just "1") <$> lookupGetParam "infer"
-    mlistmode <- either (const Nothing) id . parseListMode <$> lookupGetParam "list"
+    mlistmode <- lookupParam listParam
     let rspec = reportspec_ (cliopts_ opts)
         -- In the page's tree mode the sidebar gets fold carets (the
         -- inline script in default-layout.hamlet); its shape never changes.
@@ -611,7 +611,7 @@ keptParamNames route
 -- only the control it names. date2 has no control, being deprecated,
 -- but is preserved like the rest.
 stickyParamNames :: [Text]
-stickyParamNames = ["interval", "depth", "value", "list", "total", "avg", "sort", "pct", paramName calcParam, "infer", "date2", "empty", "lots"]
+stickyParamNames = ["interval", "depth", "value", paramName listParam, "total", "avg", paramName sortParam, "pct", paramName calcParam, "infer", "date2", "empty", "lots"]
 
 -- | Are zero-balance accounts hidden ? The empty parameter says (1
 -- shows them, 0 hides them, the direction of the command line's

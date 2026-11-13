@@ -21,6 +21,8 @@ module Hledger.Web.Param
   , paramPhrase
   , accumParam
   , calcParam
+  , listParam
+  , sortParam
   ) where
 
 import Control.Monad (unless)
@@ -161,4 +163,38 @@ calcParam = Param
       CalcGain          -> (tr trs "Unrealized gain", tr trs "Show unrealized capital gains: market value minus cost (--gain)")
       CalcPostingsCount -> (tr trs "Posting counts", tr trs "Count the postings instead of summing them (--count)")
       _                 -> ("", "")
+  }
+
+-- | The list parameter: show accounts as a flat list or a tree; absent
+-- for the page's default, the startup one. The t key toggles them
+-- (hledger.js).
+listParam :: Param AccountListMode
+listParam = Param
+  { paramName  = "list"
+  , paramModes = [ALFlat, ALTree]
+  , paramWord  = \case
+      ALFlat -> "flat"
+      ALTree -> "tree"
+  -- TRANSLATORS: the label before a report's list/tree links, and the links' text and tooltips.
+  , paramRowLabel = \trs -> tr trs "Accounts:"
+  , paramLabel = \trs -> \case
+      ALFlat -> (trc trs "accounts" "List", tr trs "Show accounts as a flat list (--flat)")
+      ALTree -> (trc trs "accounts" "Tree", tr trs "Show accounts as a tree (--tree)")
+  }
+
+-- | The sort parameter: whether rows are sorted by amount, rather than
+-- by account display order (declaration order, otherwise name).
+-- The S key toggles By amount, the second link (hledger.js).
+sortParam :: Param Bool
+sortParam = Param
+  { paramName  = "sort"
+  , paramModes = [False, True]
+  , paramWord  = \case
+      False -> "account"
+      True  -> "amount"
+  -- TRANSLATORS: the label before a report's sort links, and the links' text and tooltips.
+  , paramRowLabel = \trs -> tr trs "Sort:"
+  , paramLabel = \trs -> \case
+      False -> (tr trs "By account", tr trs "Sort rows by account display order")
+      True  -> (tr trs "By amount", tr trs "Sort rows by their amounts, largest first (-S)")
   }

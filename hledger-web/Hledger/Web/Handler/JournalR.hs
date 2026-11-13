@@ -15,13 +15,13 @@ import Hledger.Web.Import
 import Hledger.Web.Paging
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
-import Hledger.Web.Param (calcParam, lookupParam, paramLinks, paramSettings)
-import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, intervalLinks, listWord, parseInterval, parseListMode, parseValue, removeAttributes, setAmountMode, valueParams)
+import Hledger.Web.Param (calcParam, listParam, lookupParam, paramLinks, paramSettings, sortParam)
+import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, intervalLinks, parseInterval, parseValue, removeAttributes, setAmountMode, valueParams)
 import Hledger.Web.Widget.Common
             (accountParams, amountLinks, columnsLinks, commodityLinks,
              controlsHint, controlsToggle, optionsSummary, searchHeading,
-             depthLinks, inertControls, listModeLinks, lotsLinks,
-             mixedAmountAsHtml, percentLinks, pricesLinks, realLinks, sortLinks,
+             depthLinks, inertControls, lotsLinks,
+             mixedAmountAsHtml, percentLinks, pricesLinks, realLinks,
              statusLinks, typeLinks,
              transactionFragment, journalDayQuery, zeroBalanceLinks)
 
@@ -32,12 +32,12 @@ getJournalR = do
   VD{perms, j, jHasLots, lotsShown, q, opts, qparam, account, today, trs, hideEmpty, controlsOpen, commoditiesOpen} <- getViewData
   require ViewPermission
   mmode <- either (const Nothing) id . parseValue <$> lookupGetParam "value"
-  mlist <- either (const Nothing) id . parseListMode <$> lookupGetParam "list"
+  mlist <- lookupParam listParam
   inferOn <- (== Just "1") <$> lookupGetParam "infer"
   minterval <- lookupGetParam "interval"
   totalOn <- (== Just "1") <$> lookupGetParam "total"
   avgOn   <- (== Just "1") <$> lookupGetParam "avg"
-  sortAmt <- (== Just "amount") <$> lookupGetParam "sort"
+  sortAmt <- fromMaybe False <$> lookupParam sortParam
   pctOn   <- (== Just "1") <$> lookupGetParam "pct"
   calcCur <- fromMaybe CalcChange <$> lookupParam calcParam
   date2On <- (== Just "1") <$> lookupGetParam "date2"
@@ -69,7 +69,7 @@ getJournalR = do
       emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= dfltHidden]
       valParams = valueParams roptsStartup mmode
       elist = fromMaybe (accountlistmode_ roptsStartup) mlist
-      listParams = [("list", listWord elist) | elist /= accountlistmode_ roptsStartup]
+      listParams = paramSettings listParam (accountlistmode_ roptsStartup) elist
       inferParams = [("infer", "1") | inferOn]
       -- The report-shaping state shapes nothing here, but it is passed
       -- along and shown dimmed below, so the startup options' url
@@ -79,7 +79,7 @@ getJournalR = do
         [("interval", w) | Just w <- [mfilter (not . T.null) minterval]] ++
         [("total", "1") | totalOn] ++
         [("avg", "1") | avgOn] ++
-        [("sort", "amount") | sortAmt] ++
+        paramSettings sortParam False sortAmt ++
         [("pct", "1") | pctOn] ++
         paramSettings calcParam CalcChange calcCur ++
         [("date2", "1") | date2On]
@@ -105,7 +105,7 @@ getJournalR = do
       depthRow = depthLinks trs JournalR carried qparam deepest
       -- The amounts mode converts the sidebar's amounts, and tree mode
       -- adds its fold carets; the journal's entries always show as written.
-      listRow = listModeLinks trs JournalR (qps ++ removeAttributes ["list"] carried) (accountlistmode_ roptsStartup) elist
+      listRow = paramLinks listParam trs JournalR (qps ++ carried) (accountlistmode_ roptsStartup) elist
       amountsRow = amountLinks trs JournalR (qps ++ removeAttributes ["value"] carried)
         (amountModeOf roptsStartup) (amountModeOf $ maybe id setAmountMode mmode roptsStartup)
       pricesRow = pricesLinks trs JournalR (qps ++ removeAttributes ["infer"] carried) inferOn
@@ -124,7 +124,7 @@ getJournalR = do
         intervalLinks trs JournalR (removeAttributes ["interval"] carried) qparam rpInterval
       inertRows = inertControls trs $ mconcat
         [ columnsLinks trs JournalR (qps ++ removeAttributes ["total", "avg"] carried) totalOn avgOn
-        , sortLinks trs JournalR (qps ++ removeAttributes ["sort"] carried) sortAmt
+        , paramLinks sortParam trs JournalR (qps ++ carried) False sortAmt
         , percentLinks trs JournalR (qps ++ removeAttributes ["pct"] carried) pctOn
         , paramLinks calcParam trs JournalR (qps ++ carried) CalcChange calcCur
         ]

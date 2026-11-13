@@ -18,14 +18,14 @@ import Hledger.Utils.I18n (tr, trc, trf)
 import Hledger.Web.Import
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Paging (yearsRow)
-import Hledger.Web.Param (Param(..), accumParam, calcParam, paramLinks, paramSettings)
+import Hledger.Web.Param (Param(..), accumParam, calcParam, listParam, paramLinks, paramSettings, sortParam)
 import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Chart (reportChart)
 import Hledger.Web.Widget.Common
   (amountLinks, columnsLinks, commodityLinks, controlsHint, controlsToggle, optionsSummary,
-   depthLinks, listModeLinks, lotsLinks,
-   percentLinks, pricesLinks, realLinks, sortLinks,
+   depthLinks, lotsLinks,
+   percentLinks, pricesLinks, realLinks,
    statusLinks, typeLinks, zeroBalanceLinks)
 
 
@@ -84,10 +84,10 @@ getBalanceR = do
             intervalParams = [("interval", w) | Just w <- [intervalPeriodExpr rpInterval]]
             accumParams = paramSettings accumParam PerPeriod accum
             valParams = valueParams roptsOrig rpValue
-            listParams  = [("list", listWord (accountlistmode_ ropts)) | accountlistmode_ ropts /= accountlistmode_ roptsOrig]
+            listParams  = paramSettings listParam (accountlistmode_ roptsOrig) (accountlistmode_ ropts)
             totalParams = [("total", "1") | row_total_ ropts]
             avgParams   = [("avg", "1") | average_ ropts]
-            sortParams  = [("sort", "amount") | sort_amount_ ropts]
+            sortParams  = paramSettings sortParam False (sort_amount_ ropts)
             pctParams   = [("pct", "1") | percent_ ropts]
             calcParams  = paramSettings calcParam CalcChange (balancecalc_ ropts)
             inferParams = [("infer", "1") | infer_prices_ ropts, not (infer_prices_ roptsOrig)]
@@ -154,14 +154,14 @@ getBalanceR = do
                   -- TRANSLATORS: the hint below the commodity filter row.
                   (tr trs "Shift-click selects several commodities.") j ] ++
               [ depthLinks trs BalanceR pageParams qparam deepest | deepest > 1 ] ++
-              [ listModeLinks trs BalanceR (qParams ++ removeAttributes ["list"] pageParams) (accountlistmode_ roptsOrig) (accountlistmode_ ropts)
+              [ paramLinks listParam trs BalanceR (qParams ++ pageParams) (accountlistmode_ roptsOrig) (accountlistmode_ ropts)
               , amountLinks trs BalanceR (qParams ++ removeAttributes ["value"] pageParams) (amountModeOf roptsOrig) (amountModeOf ropts)
               , pricesLinks trs BalanceR (qParams ++ removeAttributes ["infer"] pageParams) (infer_prices_ ropts)
               , zeroBalanceLinks trs BalanceR (qParams ++ removeAttributes ["empty"] pageParams) (empty_ roptsOrig) hideEmpty ] ++
               [ lotsLinks trs BalanceR (qParams ++ removeAttributes ["lots"] pageParams) lotsShown | jHasLots ] ++
               [ columnsLinks trs BalanceR (qParams ++ removeAttributes ["total", "avg"] pageParams) (row_total_ ropts) (average_ ropts)
               | rpInterval /= NoInterval ] ++
-              [ sortLinks trs BalanceR (qParams ++ removeAttributes ["sort"] pageParams) (sort_amount_ ropts)
+              [ paramLinks sortParam trs BalanceR (qParams ++ pageParams) False (sort_amount_ ropts)
               , percentLinks trs BalanceR (qParams ++ removeAttributes ["pct"] pageParams) (percent_ ropts)
               , paramLinks calcParam trs BalanceR (qParams ++ pageParams) CalcChange (balancecalc_ ropts) ]
         Yesod.toWidget controlRows

@@ -20,9 +20,7 @@ module Hledger.Web.ReportPage (
   pctError,
   AmountMode(..),
   parseValue,
-  parseListMode,
   readParam,
-  listWord,
   valueWord,
   amountModeOf,
   setAmountMode,
@@ -64,8 +62,8 @@ import Yesod (HtmlUrl)
 import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor (dateTerm, renderPeriodHeading)
-import Hledger.Web.Param (Param(..), accumParam, calcParam, linksRowClass, paramSettings, parseParam)
-import Hledger.Web.Widget.Common (AmountMode(..), listWord, removeDates, valueWord)
+import Hledger.Web.Param (Param(..), accumParam, calcParam, listParam, sortParam, linksRowClass, paramSettings, parseParam)
+import Hledger.Web.Widget.Common (AmountMode(..), removeDates, valueWord)
 import Hledger.Query qualified as Query
 import Hledger.Write.Html (Html, formatCell, nl)
 import Hledger.Write.Spreadsheet (Cell(..), Class(..), NumLines, textFromClass)
@@ -112,10 +110,10 @@ reportParams rspecOrig qparam q qopts hideEmpty params = do
     Just t  -> either (Left . BadInterval . errorBundlePretty) Right $ parseInterval t
   rpAccum <- readParam accumParam (param $ paramName accumParam)
   rpValue <- parseValue (param "value")
-  mlist   <- parseListMode (param "list")
+  mlist   <- readParam listParam (param $ paramName listParam)
   total   <- parseFlag "total" (param "total")
   avg     <- parseFlag "avg" (param "avg")
-  sortAmt <- parseSort (param "sort")
+  sortAmt <- fromMaybe False <$> readParam sortParam (param $ paramName sortParam)
   pct     <- parseFlag "pct" (param "pct")
   calc    <- fromMaybe CalcChange <$> readParam calcParam (param $ paramName calcParam)
   infer <- parseFlag "infer" (param "infer")
@@ -194,10 +192,10 @@ startupUrlState rspec@ReportSpec{_rsReportOpts = ropts} = (params, rspec')
       [("depth", T.pack (show n)) | Just n <- [dsFlatDepth $ depth_ ropts]] ++
       paramSettings accumParam PerPeriod (balanceaccum_ ropts) ++
       [("value", valueWord m) | Just m <- [amountModeOf ropts], m /= AsRecorded] ++
-      [("list", "tree")       | accountlistmode_ ropts == ALTree] ++
+      paramSettings listParam ALFlat (accountlistmode_ ropts) ++
       [("total", "1")         | row_total_ ropts] ++
       [("avg", "1")           | average_ ropts] ++
-      [("sort", "amount")     | sort_amount_ ropts] ++
+      paramSettings sortParam False (sort_amount_ ropts) ++
       [("pct", "1")           | percent_ ropts] ++
       paramSettings calcParam CalcChange (balancecalc_ ropts) ++
       [("costs", "1")         | show_costs_ ropts] ++
@@ -308,15 +306,6 @@ intervalLinks trs route kept qparam current =
     link mword =
       (route, [("q", qparam) | not (T.null qparam)] ++ kept ++ [("interval", w) | Just w <- [mword]])
 
--- | The list parameter: show accounts as a "tree" or a "flat" list.
-parseListMode :: Maybe Text -> Either ReportParamError (Maybe AccountListMode)
-parseListMode = \case
-  Nothing     -> Right Nothing
-  Just ""     -> Right Nothing
-  Just "tree" -> Right $ Just ALTree
-  Just "flat" -> Right $ Just ALFlat
-  Just other  -> Left $ BadParamValue "list" other
-
 -- | A parameter that turns something on: "1", or "0" or nothing for off.
 parseFlag :: Text -> Maybe Text -> Either ReportParamError Bool
 parseFlag name = \case
@@ -325,16 +314,6 @@ parseFlag name = \case
   Just "0"   -> Right False
   Just "1"   -> Right True
   Just other -> Left $ BadParamValue name other
-
--- | The sort parameter: rows in "amount" order, or "account" order (the
--- default).
-parseSort :: Maybe Text -> Either ReportParamError Bool
-parseSort = \case
-  Nothing        -> Right False
-  Just ""        -> Right False
-  Just "account" -> Right False
-  Just "amount"  -> Right True
-  Just other     -> Left $ BadParamValue "sort" other
 
 -- | Read a multiple-choice parameter's value (see 'parseParam'),
 -- naming the parameter if the value is unknown.
