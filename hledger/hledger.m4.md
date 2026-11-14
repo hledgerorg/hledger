@@ -7369,7 +7369,7 @@ The asset posting's cost is the lot's cost basis; hledger balances the transacti
 It can be written as a cost basis annotation (`{UNITCOST}` or `{{{{TOTALCOST}}}}`)
 or as a transacted cost (`@ UNITCOST` or `@@ TOTALCOST`); in an acquisition these mean the same thing.
 (Note, `@` alone makes a lot posting only if the commodity is [declared lotful](#lotful-commodities) or the account is named like a lot subaccount;
-otherwise it is just a conversion and creates no lot. Otherwise to make it an acquisition, add at least `{}`, eg `10 ETSY {} @ $50`.)
+otherwise it is just a conversion and creates no lot. To make it an acquisition, adding just `{}` would be enough, eg `10 ETSY {} @ $50`.)
 Usually you write just one and the other is inferred; if both are written, they must agree
 (at the precision you wrote the basis with; the exact transacted cost is then used as the basis).
 (The total cost forms are useful when the unit cost is non-terminating.)
