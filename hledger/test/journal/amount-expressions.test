@@ -144,14 +144,22 @@ $ HLEDGER_FASTPATH=check hledger -f- print
 
 >=
 
-# ** 9. A number with no commodity can't be divided by an amount.
+# ** 9. A number can be divided by an amount, giving an amount in its commodity, as in Ledger (#2856).
+# Eg to invert an exchange rate. The result is rounded like other results of /.
 <
 2025-01-01
-    a    2 / $1
-    b
+    a    1 / 1.14 EUR
+    b    -0.88 EUR
+    c    9/$3
+    d    -4.5 / $1.50
 $ hledger -f- print
->2 /the right side of \/ should be a number without a commodity symbol/
->=1
+2025-01-01
+    a                                              0.88 EUR
+    b                                             -0.88 EUR
+    c                                             $3
+    d                                            $-3.00
+
+>=
 
 # ** 10. Two amounts with commodities can't be multiplied.
 <
@@ -162,7 +170,16 @@ $ hledger -f- print
 >2 /can't multiply two amounts with commodity symbols/
 >=1
 
-# ** 11. A / directly after a commodity symbol is part of the symbol. The error explains this.
+# ** 11. Or divided.
+<
+2025-01-01
+    a    $9 / $3
+    b
+$ hledger -f- print
+>2 /can't divide two amounts with commodity symbols/
+>=1
+
+# ** 12. A / directly after a commodity symbol is part of the symbol. The error explains this.
 <
 2025-01-01
     a    10 EUR/4
@@ -171,7 +188,7 @@ $ hledger -f- print
 >2 /this \/ is read as part of the commodity symbol EUR\/; to divide, write a space before it/
 >=1
 
-# ** 12. The fast path declines expressions, and the general parser agrees with it on everything else.
+# ** 13. The fast path declines expressions, and the general parser agrees with it on everything else.
 # 10 /2 is a division in a posting amount; a commodity symbol beginning with / must be quoted.
 <
 2025-01-01
@@ -192,7 +209,7 @@ $ HLEDGER_FASTPATH=check hledger -f- print
 
 >=
 
-# ** 13. A commodity symbol written after the number can be used inside parentheses.
+# ** 14. A commodity symbol written after the number can be used inside parentheses.
 # A symbol beginning with ( is printed in quotes, so that it reads back the same.
 <
 2025-01-01
@@ -207,7 +224,7 @@ $ HLEDGER_FASTPATH=check hledger -f- print
 
 >=
 
-# ** 14. Only the result is kept, so print, --export and the ledger and beancount formats show the result.
+# ** 15. Only the result is kept, so print, --export and the ledger and beancount formats show the result.
 <
 2025-01-01 receipts
     expenses:food     $10.00 + $2.50
@@ -221,7 +238,7 @@ $ hledger -f- print --export
 
 >=
 
-# ** 15. The same with -O ledger.
+# ** 16. The same with -O ledger.
 <
 2025-01-01 receipts
     expenses:food     $10.00 + $2.50
@@ -235,7 +252,7 @@ $ hledger -f- print -O ledger
 
 >=
 
-# ** 16. The same with -O beancount.
+# ** 17. The same with -O beancount.
 <
 2025-01-01 receipts
     expenses:food     $10.00 + $2.50
@@ -249,7 +266,7 @@ $ hledger -f- print -O beancount
 
 >=
 
-# ** 17. Leaving one amount blank: the other amounts are rounded to the entry's decimal places,
+# ** 18. Leaving one amount blank: the other amounts are rounded to the entry's decimal places,
 # wherever they appear in the entry, and the blank one gets the remainder.
 <
 2026-01-01
@@ -266,7 +283,7 @@ $ HLEDGER_FASTPATH=check hledger -f- print -x
 
 >=
 
-# ** 18. With no decimal places in the entry, a split is rounded to whole units.
+# ** 19. With no decimal places in the entry, a split is rounded to whole units.
 <
 2026-01-01
     assets    $-100
@@ -282,7 +299,7 @@ $ hledger -f- print -x
 
 >=
 
-# ** 19. So other amounts can add decimal places to a result. Alone, $10 * 0.15 is $2.
+# ** 20. So other amounts can add decimal places to a result. Alone, $10 * 0.15 is $2.
 # The decimal places of a plain number used with * or / don't count.
 <
 2026-01-01
@@ -305,7 +322,7 @@ $ hledger -f- print
 
 >=
 
-# ** 20. Commodity directives, and the D directive, don't affect the rounding of amounts with a commodity symbol.
+# ** 21. Commodity directives, and the D directive, don't affect the rounding of amounts with a commodity symbol.
 <
 commodity $1,000.0000
 D $1,000.00
@@ -328,7 +345,7 @@ $ hledger -f- print
 
 >=
 
-# ** 21. A result with no commodity is rounded the same way, using the entry's plain numbers.
+# ** 22. A result with no commodity is rounded the same way, using the entry's plain numbers.
 <
 2026-01-01
     a    5 / 2
@@ -348,7 +365,7 @@ $ hledger -f- print
 
 >=
 
-# ** 22. When such a result gets the default commodity, it is like any other plain number under a D directive,
+# ** 23. When such a result gets the default commodity, it is like any other plain number under a D directive,
 # whose decimal places count as written.
 <
 D $1,000.00
@@ -363,7 +380,7 @@ $ hledger -f- print
 
 >=
 
-# ** 23. Rounding is banker's rounding.
+# ** 24. Rounding is banker's rounding.
 <
 2026-01-01
     a    $0.25 / 2
@@ -377,7 +394,7 @@ $ hledger -f- print
 
 >=
 
-# ** 24. A split with more decimal places still leaves a remainder, so stays unbalanced.
+# ** 25. A split with more decimal places still leaves a remainder, so stays unbalanced.
 <
 2025-01-01
     assets    $-100
@@ -388,7 +405,7 @@ $ hledger -f- print
 >2 /The real postings' sum should be 0 but is \$-0.0001/
 >=1
 
-# ** 25. The hint is shown only when rounding changed an amount.
+# ** 26. The hint is shown only when rounding changed an amount.
 <
 2026-01-01
     a    $10.00 * 0.15
@@ -397,7 +414,7 @@ $ hledger -f- print
 >2 !/calculated with/
 >=1
 
-# ** 26. Cost amounts don't count; only the result is rounded.
+# ** 27. Cost amounts don't count; only the result is rounded.
 <
 2026-01-01
     a    10 X / 3 @ $1.2345
@@ -409,7 +426,7 @@ $ hledger -f- print
 
 >=
 
-# ** 27. Balance assertion amounts don't count either; the assertion sees the rounded amount.
+# ** 28. Balance assertion amounts don't count either; the assertion sees the rounded amount.
 <
 2026-01-01
     a    $100/3  = $33.33
@@ -419,7 +436,7 @@ $ hledger -f- print
 but the calculated balance is: +\$33/
 >=1
 
-# ** 28. Balanced virtual postings are rounded with the rest of the entry, and get the hint too.
+# ** 29. Balanced virtual postings are rounded with the rest of the entry, and get the hint too.
 <
 2026-01-01
     a      $1
@@ -432,7 +449,7 @@ $ hledger -f- print
 Note, amounts calculated with \* or \/ are rounded/
 >=1
 
-# ** 29. Each commodity is rounded to its own decimal places in the entry.
+# ** 30. Each commodity is rounded to its own decimal places in the entry.
 <
 2026-01-01
     a    $100.00 / 3
@@ -448,7 +465,7 @@ $ hledger -f- print
 
 >=
 
-# ** 30. Many decimal places, digit group marks and decimal commas work as usual.
+# ** 31. Many decimal places, digit group marks and decimal commas work as usual.
 <
 decimal-mark ,
 
@@ -468,7 +485,7 @@ $ hledger -f- print
 
 >=
 
-# ** 31. In periodic transactions and auto posting rules, a result is rounded to its own decimal places.
+# ** 32. In periodic transactions and auto posting rules, a result is rounded to its own decimal places.
 <
 ~ monthly from 2026-01 to 2026-02
     a    $100/3
@@ -494,7 +511,7 @@ $ hledger -f- print --forecast=2026-01..2026-02 --auto
 
 >=
 
-# ** 32. print output reads back the same, with or without the directives.
+# ** 33. print output reads back the same, with or without the directives.
 # ($10 * 0.15 has 4 decimal places here, like $100.0000 / 3 in the same entry.)
 <
 commodity $1,000.00
@@ -526,7 +543,7 @@ $ hledger -f- print -x | hledger -f- print -x
 
 >=
 
-# ** 33. The rounding leaves no trace: no tag is added that tags, queries, print or JSON could see.
+# ** 34. The rounding leaves no trace: no tag is added that tags, queries, print or JSON could see.
 <
 = tag:rounded
     (x)    1
@@ -541,7 +558,7 @@ $ hledger -f - print --auto tag:rounded
 $ hledger -f - print --auto -O json | grep -c '"ptags": \[\]'
 4
 
-# ** 34. Balance assignment amounts count for the precision too, as in balancing.
+# ** 35. Balance assignment amounts count for the precision too, as in balancing.
 <
 2026-01-01
     a      $10/3

@@ -2955,8 +2955,10 @@ Makes it harder for other apps to read your journal.
   `10 EUR / 4` works, `10 EUR/4` is an error.
 - `+` and `-` need amounts in the same commodity.
   You can write the commodity just once, since a plain number takes the other side's commodity: `$10 + 5` is $15.
-- `*` needs a plain number on one side, eg `$800.00 * 0.05` or `3 * $4.99`.
-  `/` needs a plain number on the right, eg `$100.00 / 3`.
+- `*` and `/` need a plain number on at least one side, eg `$800.00 * 0.05`, `3 * $4.99` or `$100.00 / 3`.
+  The result is in the other side's commodity.
+  So a plain number divided by an amount is in that amount's commodity, as in Ledger;
+  this is handy for inverting an exchange rate: `1 / 1.25 EUR` is 0.80 EUR.
 - A cost, lot annotation or balance assertion can follow an expression, and applies to its result:
   `10 EUR + 5 EUR @ $1.10` is 15 EUR, costing $1.10 each.
 - Expressions can be used only in posting amounts (in journal format, or in [CSV rules](#amount-field)),

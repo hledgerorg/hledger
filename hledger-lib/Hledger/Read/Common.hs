@@ -1356,6 +1356,7 @@ simpleamountp' mdepth kind =
 -- > $47.97 * 0.05
 -- > ($200 + $15.75) / 3
 -- > $10 + 5
+-- > 1 / 1.14 EUR
 --
 -- The operands are simple amounts (see simpleamountp), or parenthesised expressions.
 -- The operators are + - * and /. * and / are applied before + and -; otherwise, left to right.
@@ -1364,9 +1365,9 @@ simpleamountp' mdepth kind =
 --
 -- + and - combine amounts of the same commodity; a number with no commodity symbol takes the
 -- other side's commodity. The result has the larger of their precisions.
--- * takes a plain number (with no commodity symbol) on either side, and / takes one on the right.
--- Their result has the commodity and display style of the amount being multiplied or divided
--- (with two plain numbers, the left one).
+-- * and / take a plain number (with no commodity symbol) on at least one side.
+-- Their result has the commodity and display style of the other side's amount
+-- (with two plain numbers, the left one). So 1 / 1.14 EUR is 0.877.. EUR, as in Ledger.
 -- So a result's precision is the most decimal places written in the amounts it was calculated from
 -- (not counting plain numbers used with * or /).
 -- The results of * and / are exact here, and so may have more decimal places than their precision.
@@ -1472,11 +1473,13 @@ amountexprp kind = do
     multiplyAmounts reg op a b
       | op == '*' && hascommodity a && hascommodity b = exprError reg
           "can't multiply two amounts with commodity symbols; one side of * should be a plain number"
-      | op == '/' && hascommodity b = exprError reg
-          "the right side of / should be a number without a commodity symbol"
+      | op == '/' && hascommodity a && hascommodity b = exprError reg
+          "can't divide two amounts with commodity symbols; one side of / should be a plain number"
       | op == '/' && aquantity b == 0 = exprError reg "can't divide by zero"
       | op == '*' && hascommodity b = pure $ multiplyAmount (aquantity a) b
       | op == '*' = pure $ multiplyAmount (aquantity b) a
+      -- a number divided by an amount, eg 1 / 1.14 EUR (inverting a rate), is in the amount's commodity, as in Ledger
+      | hascommodity b = pure b{aquantity = aquantity a / aquantity b}
       | otherwise = pure $ divideAmount (aquantity b) a
 
 -- | Try to parse a single-commodity amount from a string
@@ -2463,8 +2466,14 @@ tests_Common = testGroup "Common" [
     ,testCase "a cost applies to the result"  $ assertParseEqOn p "1 X + 2 X @ $3" (\a -> (aquantity a, costParts <$> acost a)) (3, Just ("@", "$", 3))
     ,testCase "different commodities"         $ assertParseError p "$1 + 1 EUR" "can't add amounts with different commodities ($ and EUR)"
     ,testCase "two amounts with commodities in *" $ assertParseError p "$2 * $1" "can't multiply two amounts with commodity symbols"
-    ,testCase "a commodity on the right of /" $ assertParseError p "2 / $1" "the right side of / should be a number"
-    ,testCase "division by zero"              $ assertParseError p "$1 / 0" "can't divide by zero"
+    ,testCase "a number divided by an amount has its commodity and precision" $ do
+       eq "9 / $3" "$" 3 0
+       eq "3 / 1.50 EUR" "EUR" 2 2
+       assertParseEqOn p "1 / 1.25 EUR" (ascommodityside . astyle) R
+    ,testCase "two amounts with commodities in /" $ assertParseError p "$9 / $3" "can't divide two amounts with commodity symbols"
+    ,testCase "division by zero"              $ do
+       assertParseError p "$1 / 0" "can't divide by zero"
+       assertParseError p "1 / $0" "can't divide by zero"
     ,testCase "no space before / after a commodity symbol" $ do
        assertParseError p "10 EUR/4" "this / is read as part of the commodity symbol EUR/; to divide, write a space before it"
        assertParseError p "10 EUR/ 4" "this / is read as part of the commodity symbol EUR/"
