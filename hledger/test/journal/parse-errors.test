@@ -190,11 +190,11 @@ $ hledger -f- accounts
 >2 /account name ":a" has an empty part/
 >=1
 
-# ** 17. Also in an apply account directive.
+# ** 17. Also in an apply account directive (which allows one trailing colon).
 <
-apply account a:
+apply account a::
 $ hledger -f- accounts
->2 /account name "a:" has an empty part/
+>2 /account name "a::" has an empty part/
 >=1
 
 # ** 18. Also in timeclock entries.

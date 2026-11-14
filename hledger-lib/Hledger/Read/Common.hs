@@ -86,6 +86,7 @@ module Hledger.Read.Common (
   accountNameApplyModifiers,
   accountnamep,
   accountnamenosemicolonp,
+  parentaccountnamep,
 
   -- ** account aliases
   accountaliasp,
@@ -1019,22 +1020,29 @@ accountNameApplyModifiers als parent optals a =
 -- Note, this means account names can contain all kinds of punctuation, including ; which usually starts a following comment.
 -- Parent parsers usually remove the following comment before using this parser.
 accountnamep :: TextParser m AccountName
-accountnamep = nonemptypartsp singlespacedtext1p
+accountnamep = nonemptypartsp id singlespacedtext1p
 
 -- Like accountnamep, but stops parsing if it reaches a semicolon.
 accountnamenosemicolonp :: TextParser m AccountName
-accountnamenosemicolonp = nonemptypartsp singlespacednoncommenttext1p
+accountnamenosemicolonp = nonemptypartsp id singlespacednoncommenttext1p
 
--- | Run an account name parser, and fail with an error highlighting the name if it has an empty part.
-nonemptypartsp :: TextParser m AccountName -> TextParser m AccountName
-nonemptypartsp p = do
+-- | Parse the parent account name of an apply account directive.
+-- Like accountnamep, but one trailing account separator is allowed, and dropped (as in Ledger, #2858).
+parentaccountnamep :: TextParser m AccountName
+parentaccountnamep = nonemptypartsp (\a -> fromMaybe a $ T.stripSuffix acctsep a) singlespacedtext1p
+
+-- | Run an account name parser, and normalise its result with the given function;
+-- fail with an error highlighting the name if the result has an empty part.
+nonemptypartsp :: (AccountName -> AccountName) -> TextParser m AccountName -> TextParser m AccountName
+nonemptypartsp f p = do
   off1 <- getOffset
   a <- p
   off2 <- getOffset
-  when (accountNameHasEmptyPart a) $ customFailure $ parseErrorAtRegion off1 off2 $
+  let a' = f a
+  when (accountNameHasEmptyPart a') $ customFailure $ parseErrorAtRegion off1 off2 $
     "account name \"" ++ T.unpack a ++ "\" has an empty part.\n"
     ++ "Account names can't begin or end with " ++ sep ++ ", or contain " ++ sep ++ sep ++ "."
-  return a
+  return a'
   where sep = [acctsepchar]
 
 -- | Parse a single line of possibly empty text enclosed in double quotes.

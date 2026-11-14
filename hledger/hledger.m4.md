@@ -3171,6 +3171,8 @@ is equivalent to:
     home:cash          $-10
 ```
 
+(If the parent account name ends with a colon (`apply account home:`), it is ignored, as in Ledger.)
+
 `account` directives are also affected, and so is any `include`d content.
 
 Account names entered via hledger add or hledger-web are not affected.

@@ -18,6 +18,14 @@ a:b
 aa:b
 c
 
+# apply account's parent account may have one trailing colon, which is dropped, as in Ledger (#2858)
+<
+apply account a:
+2016/1/1
+    (b)  1
+$ hledger -f - accounts
+a:b
+
 # Y, year directives
 <
 Y 1111

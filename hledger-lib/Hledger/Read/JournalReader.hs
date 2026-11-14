@@ -830,7 +830,7 @@ applyaccountdirectivep :: JournalParser m ()
 applyaccountdirectivep = do
   keywordsp "apply account" <?> "apply account directive"
   lift skipNonNewlineSpaces1
-  parent <- lift accountnamep
+  parent <- lift parentaccountnamep
   newline
   pushParentAccount parent
 
