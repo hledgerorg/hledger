@@ -48,6 +48,19 @@ $ hledger -f - check assertions ordereddates
 >2 /Balance assertion failed/
 >=1
 
+# ** 6. forecast transactions are ignored, even from several rules or dated before ordinary transactions
+<
+2026-03-15
+  (a)      1
+
+~ monthly from 2026-01
+  (a)      1
+
+~ monthly from 2026-01
+  (b)      1
+
+$ hledger -f - check ordereddates --forecast=2026-01..2026-05
+
 # XXX not supported: With a query, only matched transactions' dates are checked.
 # <
 # 2020-01-01 a

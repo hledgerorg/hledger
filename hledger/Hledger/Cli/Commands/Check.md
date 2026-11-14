@@ -90,6 +90,7 @@ These are not wanted by everyone, but can be run using the `check` command:
   Most people will probably find this a bit too strict.
 
 - **ordereddates** - within each file, transactions must be ordered by date.
+  (Forecast transactions are not checked.)
   This is a simple and effective error catcher. It's not included in strict mode,
   but you can add it by running `hledger check -s ordereddates`.
   If enabled, this check is performed before balance assertions.

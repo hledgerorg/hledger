@@ -5,10 +5,12 @@ where
 
 import Control.Monad (forM)
 import Data.List (groupBy)
+import Data.Maybe (isJust)
 import Text.Printf (printf)
 import Data.Text qualified as T (pack, unlines)
 
 import Hledger.Data.Errors (makeTransactionErrorExcerpt)
+import Hledger.Data.Posting (generatedTransactionTagName)
 import Hledger.Data.Transaction (transactionFile)
 import Hledger.Data.Types
 import Hledger.Utils (textChomp)
@@ -18,7 +20,10 @@ journalCheckOrdereddates j = do
   let
     -- we check date ordering within each file, not across files
     -- note, relying on txns always being sorted by file here
-    txnsbyfile = groupBy (\t1 t2 -> transactionFile t1 == transactionFile t2) $ jtxns j
+    -- forecast transactions are ignored; they are generated, not written in the file,
+    -- and are appended after the others, ordered by rule rather than by date
+    txnsbyfile = groupBy (\t1 t2 -> transactionFile t1 == transactionFile t2) $ filter (not . isForecast) $ jtxns j
+    isForecast = isJust . lookup generatedTransactionTagName . ttags
     compare' a b = tdate a <= tdate b
   (const $ Right ()) =<< (forM txnsbyfile $ \ts ->
     case checkTransactions compare' ts of
