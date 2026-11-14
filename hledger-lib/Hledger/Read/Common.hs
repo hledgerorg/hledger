@@ -1373,7 +1373,7 @@ simpleamountp' mdepth kind =
 -- The results of * and / are exact here, and so may have more decimal places than their precision.
 -- They are rounded once the whole entry has been read, since the number of decimal places
 -- depends on the other amounts in the entry (see transactionRoundCalculatedAmounts in
--- Hledger.Read.JournalReader).
+-- Hledger.Read.JournalReader). In a cost, they are kept exact (see costp).
 -- Anything else (eg adding different commodities, or dividing by zero) is a parse error.
 --
 -- The operands are parsed without applying the default commodity (D), so that a number can
@@ -1536,6 +1536,7 @@ simplecommoditysymbolp = takeWhile1P Nothing (not . isNonsimpleCommodityChar)
 
 -- | Ledger-style cost notation:
 -- @ UNITAMT, @@ TOTALAMT, (@) UNITAMT, or (@@) TOTALAMT. The () are ignored.
+-- The amount can be an amount expression (see amountexprp) (#2857).
 costp :: Amount -> JournalParser m AmountCost
 costp baseAmt =
   -- dbg "costp" $
@@ -1550,7 +1551,7 @@ costp baseAmt =
   when parenthesised $ void $ char ')'
 
   lift skipNonNewlineSpaces
-  priceAmount <- simpleamountp OrdinaryAmount -- <?> "unpriced amount (specifying a price)"
+  priceAmount <- showCalculatedFully <$> amountexprp OrdinaryAmount -- <?> "unpriced amount (specifying a price)"
 
   let amtsign' = signum $ aquantity baseAmt
       amtsign  = if amtsign' == 0 then 1 else amtsign'
@@ -1558,6 +1559,14 @@ costp baseAmt =
   pure $ if totalCost
             then TotalCost priceAmount{aquantity=amtsign * aquantity priceAmount}
             else UnitCost  priceAmount
+  where
+    -- A cost calculated with * or / in an amount expression has more decimal places than were written.
+    -- Unlike a posting amount, it is kept exact (not rounded), so that eg (1 / 1.14 EUR) works as a rate.
+    -- Show it exactly, or if it's a repeating decimal, with 8 decimal places (or more if written).
+    showCalculatedFully a
+      | amountInternalPrecision a > amountDisplayPrecision a =
+          amountSetPrecisionMin (amountDisplayPrecision a) $ amountSetFullPrecisionUpTo Nothing a
+      | otherwise = a
 
 -- | A valuation function or value can be written in double parentheses after an amount.
 valuationexprp :: JournalParser m ()

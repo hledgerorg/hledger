@@ -569,3 +569,62 @@ $ hledger -f- print -x
     b                                            $-3.33 = $-3.33
 
 >=
+
+# ** 36. A cost can be an expression too (#2857). Lot annotations can follow it.
+<
+2026-11-14
+    a    1 GBP @ (1/1.14 EUR)
+    b    -0.88 EUR
+
+2026-11-14
+    a    3 X @@ $10 + $5 (note)
+    b
+$ hledger -f- print
+2026-11-14
+    a                                              1 GBP @ 0.87719298 EUR
+    b                                             -0.88 EUR
+
+2026-11-14
+    a                                              3 X {"note"} @@ $15
+    b
+
+>=
+
+# ** 37. A cost calculated with * or / is not rounded. It is shown exactly,
+# or if it's a repeating decimal, with 8 decimal places, or more if written.
+# (An inferred balancing amount with a repeating decimal shows 8, as usual.)
+<
+2026-11-14
+    a    1 GBP @ $10/1.14
+    b
+
+2026-11-14
+    a    1 GBP @ $10/4
+    b
+
+2026-11-14
+    a    1 GBP @ $1.0000000000/3
+    b
+$ hledger -f- print -x
+2026-11-14
+    a                                              1 GBP @ $8.77192982
+    b                                            $-8.77192982
+
+2026-11-14
+    a                                              1 GBP @ $2.5
+    b                                            $-2.5
+
+2026-11-14
+    a                                              1 GBP @ $0.3333333333
+    b                                            $-0.33333333
+
+>=
+
+# ** 38. Errors in a cost expression are reported like those in a posting amount.
+<
+2026-11-14
+    a    1 GBP @ $1 + 1 EUR
+    b
+$ hledger -f- print
+>2 /can't add amounts with different commodities \(\$ and EUR\)/
+>=1

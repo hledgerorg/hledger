@@ -77,6 +77,10 @@ The results of `*` and `/` are rounded when the entry has been parsed, to the en
 for that commodity (or in periodic transaction and auto posting rules, to their own precision).
 The result is given that precision, so the stored amount is exactly what print shows, and print output
 reads back as the same journal, with or without any commodity directives.
+A cost can be an expression too (#2857). Its `*` and `/` results are not rounded, since a rounded rate
+could be far off; the cost is kept exact and given enough precision to show it exactly, or 8 decimal places
+(more if written) for a repeating decimal. So for those, print output is slightly rounded, as with costs
+converted from `@@` or `{{ }}`.
 
 ### `--round`
 

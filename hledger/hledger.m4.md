@@ -2961,8 +2961,9 @@ Makes it harder for other apps to read your journal.
   this is handy for inverting an exchange rate: `1 / 1.25 EUR` is 0.80 EUR.
 - A cost, lot annotation or balance assertion can follow an expression, and applies to its result:
   `10 EUR + 5 EUR @ $1.10` is 15 EUR, costing $1.10 each.
-- Expressions can be used only in posting amounts (in journal format, or in [CSV rules](#amount-field)),
-  not in costs, balance assertions, directives, or auto posting rule multipliers (`*AMT`).
+- A [cost](#costs) can be an expression too, eg `1 GBP @ (1 / 1.14 EUR)` or `3 AAPL @@ $450 + $5`.
+- Expressions can be used only in posting amounts (in journal format, or in [CSV rules](#amount-field)) and transacted costs,
+  not in cost basis annotations, balance assertions, directives, or auto posting rule multipliers (`*AMT`).
 
 #### Amount expression rounding
 
@@ -2982,6 +2983,10 @@ So:
 - A result with no commodity gets the default commodity from a [`D` directive](#d-directive), if any, as usual.
   It is then like any other plain number after a `D` directive, whose decimal places count:
   after `D $1,000.00`, `5 / 2` is $2.50.
+
+A cost calculated with `*` or `/` is not rounded, since a rounded rate could be far off (`$10 / 1.14` would be $9).
+hledger keeps it exact, and shows it with all its decimal places, or 8 if it's a repeating decimal (more if written),
+eg `1 GBP @ $10 / 1.14` prints as `1 GBP @ $8.77192982`.
 
 The rounded amount is what hledger stores (see also [Where hledger divides](#where-hledger-divides)).
 So a split that doesn't divide evenly leaves the entry unbalanced, and the error message says that such amounts are rounded.
@@ -6031,12 +6036,13 @@ When hledger shows such a rounded amount in full, eg in `print` output, it shows
 ## Where hledger divides
 
 Non-terminating decimals can arise only where hledger divides.
-(Journal amounts are written as finite decimals, and [amount expressions](#amount-expressions) round their results.)
+(Journal amounts are written as finite decimals, and [amount expressions](#amount-expressions) round their results, except in costs.)
 Here's when that happens:
 
 | When | What is divided | Visible effect |
 |------------------------------|--------------|------------------------------------|
 | Dividing in an [amount expression](#amount-expressions) (`$100.00 / 3`) | amount / number | None: the result is rounded to the entry's decimal places for that commodity when the journal is read, so it is exactly what `print` shows. A split that doesn't divide evenly makes the transaction unbalanced, unless one amount is left blank. |
+| Dividing in a [cost](#costs) expression (`@ 1 / 1.14 EUR`) | amount / number, or number / amount | None in calculations: the cost is kept exact. `print` shows a repeating decimal with 8 decimal places (more if written), so text copied from it is slightly rounded. |
 | Converting a lot's total [cost](#costs) (`@@`) or total [cost basis](#cost-basis) (`{{ }}`) to a unit cost | total cost / quantity | None in calculations: gains use the unrounded unit cost. Lot names and `print` show it with up to 8 decimal places (more if the cost commodity's display style has more), so text copied from them is slightly rounded; see [Cost basis precision](#cost-basis-precision). |
 | Inferring market prices from costs, with [`--infer-market-prices`](#--infer-market-prices-market-prices-from-transactions) | total cost / quantity | None |
 | Using a [reverse market price](#finding-market-price) | 1 / price | None |

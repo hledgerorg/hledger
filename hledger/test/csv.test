@@ -2170,7 +2170,22 @@ $  ./csvtest.sh
 
 >=0
 
-# ** 116. The currency rule sets a default commodity: amounts which already have one keep it.
+# ** 116. A cost can be an expression too. A calculated cost is kept exact (#2857).
+<
+2026-01-15,1.14
+RULES
+fields date, rate
+account1 x
+amount1  1 GBP @ 1 / %rate EUR
+account2 y
+$  ./csvtest.sh
+2026-01-15
+    x                                              1 GBP @ 0.87719298 EUR
+    y
+
+>=0
+
+# ** 117. The currency rule sets a default commodity: amounts which already have one keep it.
 <
 2026-01-15,5,€7
 RULES
@@ -2189,7 +2204,7 @@ $  ./csvtest.sh
 
 >=0
 
-# ** 117. Amounts given the currency keep their own digit groups and decimal mark,
+# ** 118. Amounts given the currency keep their own digit groups and decimal mark,
 # in plain values and in expressions.
 <
 2026-01-15,"1,000.00",50.00
@@ -2209,7 +2224,7 @@ $  ./csvtest.sh
 
 >=0
 
-# ** 118. A currency rule's value can be an amount showing the symbol's position and spacing.
+# ** 119. A currency rule's value can be an amount showing the symbol's position and spacing.
 <
 2026-01-15,5,6
 RULES
@@ -2229,7 +2244,7 @@ $  ./csvtest.sh
 
 >=0
 
-# ** 119. Such an amount's number style is a default for the amounts' display style too.
+# ** 120. Such an amount's number style is a default for the amounts' display style too.
 <
 2026-01-15,5
 RULES
