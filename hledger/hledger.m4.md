@@ -7371,7 +7371,8 @@ or as a transacted cost (`@ UNITCOST` or `@@ TOTALCOST`); in an acquisition thes
 (Note, `@` alone makes a lot posting only if the commodity is [declared lotful](#lotful-commodities) or the account is named like a lot subaccount;
 otherwise it is just a conversion and creates no lot. To make it an acquisition, adding just `{}` would be enough, eg `10 ETSY {} @ $50`.)
 Usually you write just one and the other is inferred; if both are written, they must agree
-(at the precision you wrote the basis with; the exact transacted cost is then used as the basis).
+(at the precision you wrote the basis with; the exact transacted cost is then used as the basis;
+see also [Basis and transacted cost must agree](#basis-and-transacted-cost-must-agree)).
 (The total cost forms are useful when the unit cost is non-terminating.)
 The cost can also be inferred from a lot subaccount name, or, for a lotful commodity,
 from the transaction's other postings - so even a bare positive posting (no `{}` or `@`) can be an acquire.
@@ -7393,17 +7394,56 @@ Eg shares received as a gift, with the giver's basis carried over:
 Other cases with a basis differing from what was paid include inheritance (stepped-up basis),
 stock options and RSUs, and wash sales; see <https://en.wikipedia.org/wiki/Cost_basis>.
 Recording them this way keeps the accounting equation balanced and shows where the basis came from.
-(Writing `{}` and `@` with different amounts is not allowed: in hledger `@` means what you paid,
-and so does the basis in an acquisition; and a typo in either would silently miscalculate gains.)
 
-A note for people familiar with Ledger's or Beancount's lot tracking:
-the syntax is similar in all three apps, and so is the balancing: when a `{}` cost basis is written,
-all three balance the transaction and calculate gains with it.
-The difference is in `@`. Ledger and Beancount allow an `@` price alongside `{}` which is different;
-it does not affect balancing, it is informational for the user and records a market price
-(in Beancount, this requires the implicit_prices plugin).
-In hledger, `@` always means the transacted cost, what you actually paid, so in an acquisition it must agree with `{}`;
-to declare a different market price on that day, use a [`P` directive](#p-directive) instead.
+#### Basis and transacted cost must agree
+
+In an acquisition, if both a cost basis (`{}`) and a transacted cost (`@`) are written, they must be the same.
+(Ledger and Beancount allow them to differ; hledger reports an error.)
+This is because:
+
+- In hledger, `@` has one consistent meaning: the transacted cost, what was actually exchanged.
+  It's what transactions balance with
+  (except for lot disposals, which balance with the cost basis; see [Gains](#gains)).
+  Market prices are recorded with `P` directives, and cost basis with `{}` annotations.
+  (hledger may infer the `{}` from `@` in a lot acquisition, as `print -a` will show.)
+
+- If `@` and `{}` could differ, the difference would have no proper place.
+  If the entry balanced with `@` while gains were calculated from `{}`, the difference would be unaccounted for:
+  it would be neither gain nor income, and cost reports (eg `bse -B`) would be off by it.
+  If it balanced with `{}` instead (as in Ledger and Beancount), `@` would need a second meaning, an informational market price.
+
+- Real cases where the basis differs from what was paid (gifts, inheritance, RSUs..) don't need it.
+  They are better recorded as shown above, with the difference funded by a separate posting, recording where it came from.
+
+- It catches mistakes. Otherwise, a typo in either amount would silently miscalculate gains.
+
+So, if you have such entries (eg from Ledger or Beancount), you can rewrite them depending on what was intended:
+
+- If `@` was meant as a market price (the usual Ledger and Beancount meaning), drop it, and record the price with a [`P` directive](#p-directive).
+  Eg, this Ledger entry, which balances with the basis, and records a market price of 1.30 USD:
+
+  ```journal
+  2026-01-01 buy
+      assets:test               10.00 EUR {1.23 USD} @ 1.30 USD
+      assets:bank
+  ```
+
+  can be written for hledger like this:
+
+  ```journal
+  P 2026-01-01 EUR 1.30 USD
+
+  2026-01-01 buy
+      assets:test               10.00 EUR {1.23 USD}
+      assets:bank
+  ```
+
+- If the basis really differs from what you paid, write the same amount in both (or just one of them),
+  and record the difference with a separate posting, as in the gift example above.
+
+- If they differ only by rounding, write the basis with more decimal places, or use the total cost forms.
+
+- To load an old journal without errors (and without lot tracking), use `-I`/`--ignore-lots`.
 
 #### Capitalising fees
 
@@ -7920,7 +7960,7 @@ When it reports a lot-related error, or a report looks wrong:
 - "realised gain amount is wrong" means a written gain posting doesn't match the calculated gain;
   the error shows both amounts. Check which lots were selected (`print -a`) and the amounts.
 - "cost basis ... differs from its transacted cost" means an acquisition wrote both a `{}` basis and an `@` cost which don't agree.
-  Write just one of them. If the basis really differs from what was paid, adjust your entry (see [Acquire](#acquire)).
+  Write just one of them, or see [Basis and transacted cost must agree](#basis-and-transacted-cost-must-agree) for other fixes.
 - "no ... lots available for disposal" means a sale from an account holding none of the commodity.
   If it is a short sale, record it in a liability account (see [Short positions](#short-positions)).
   If the purchases were written with just an `@` cost (common in Ledger journals), they did not create lots;
