@@ -59,7 +59,6 @@ check 1
 define var_name=$100
 end apply fixed
 end apply tag
-end apply year
 end tag
 expr 1
 N USD

@@ -319,8 +319,10 @@ directivep iopts = (do
      aliasdirectivep
     ,endaliasesdirectivep
     ,applyaccountdirectivep
+    ,applyyeardirectivep
     ,bareenddirectivep
     ,endapplyaccountdirectivep
+    ,endapplyyeardirectivep
     ,applyfixeddirectivep
     ,applytagdirectivep
     ,bucketdirectivep
@@ -331,7 +333,6 @@ directivep iopts = (do
     ,definedirectivep
     ,endapplyfixeddirectivep
     ,endapplytagdirectivep
-    ,endapplyyeardirectivep
     ,endtagdirectivep
     ,evaldirectivep
     ,exprdirectivep
@@ -535,6 +536,7 @@ includedirectivep iopts = do
         newJournalWithParseStateFrom :: FilePath -> FilePath -> Journal -> Journal
         newJournalWithParseStateFrom filepath cfilepath j = nulljournal{
           jparsedefaultyear      = jparsedefaultyear j
+          ,jparseapplyyears       = jparseapplyyears j
           ,jparsedefaultcommodity = jparsedefaultcommodity j
           ,jparseparentaccounts   = jparseparentaccounts j
           ,jparsedecimalmark      = jparsedecimalmark j
@@ -791,14 +793,13 @@ commodityaliasesp off sym tags = do
 -- (Ledger's assert directive is not supported; hledger's assert directive is different, see assertdirectivep.)
 applyfixeddirectivep, endapplyfixeddirectivep, applytagdirectivep, endapplytagdirectivep,
   bucketdirectivep, capturedirectivep, checkdirectivep,
-  endapplyyeardirectivep, definedirectivep, exprdirectivep, valuedirectivep,
+  definedirectivep, exprdirectivep, valuedirectivep,
   evaldirectivep, pythondirectivep, commandlineflagdirectivep
   :: JournalParser m ()
 applyfixeddirectivep    = do string "apply fixed" >> lift restofline >> return ()
 endapplyfixeddirectivep = do string "end apply fixed" >> lift restofline >> return ()
 applytagdirectivep      = do string "apply tag" >> lift restofline >> return ()
 endapplytagdirectivep   = do string "end apply tag" >> lift restofline >> return ()
-endapplyyeardirectivep  = do string "end apply year" >> lift restofline >> return ()
 
 bucketdirectivep        = do string "A " <|> string "bucket " >> lift restofline >> return ()
 capturedirectivep       = do string "capture" >> lift restofline >> return ()
@@ -839,6 +840,26 @@ endapplyaccountdirectivep = do
   keywordsp "end apply account" <?> "end apply account directive"
   lift restofline
   popParentAccount
+
+-- | Set the default year until the matching end apply year, saving the current one.
+applyyeardirectivep :: JournalParser m ()
+applyyeardirectivep = do
+  keywordsp "apply year" <?> "apply year directive"
+  lift skipNonNewlineSpaces
+  y <- lift yearp
+  lift restofline
+  modify' (\j -> j{jparseapplyyears = jparsedefaultyear j : jparseapplyyears j, jparsedefaultyear = Just y})
+
+-- | Restore the default year that was in effect before the matching apply year.
+endapplyyeardirectivep :: JournalParser m ()
+endapplyyeardirectivep = do
+  off <- getOffset
+  keywordsp "end apply year" <?> "end apply year directive"
+  lift restofline
+  j <- get
+  case jparseapplyyears j of
+    []     -> customFailure $ parseErrorAt off "end apply year has no matching apply year"
+    (y:ys) -> put j{jparsedefaultyear = y, jparseapplyyears = ys}
 
 -- | Reject Ledger's bare "end" or "end apply" (which closes the innermost apply block)
 -- with a clear error, since hledger requires the kind of block to be named.
@@ -898,7 +919,7 @@ payeedirectivep = do
 
 defaultyeardirectivep :: JournalParser m ()
 defaultyeardirectivep = do
-  (string "Y" <|> string "year" <|> string "apply year") <?> "default year"
+  (string "Y" <|> string "year") <?> "default year"
   lift skipNonNewlineSpaces
   y <- lift yearp
   lift restofline

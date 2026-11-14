@@ -43,6 +43,38 @@ $ hledger -f- print
 
 >=
 
+# apply year blocks nest, and end apply year restores the year in effect before the matching apply year,
+# including one set by Y within the block.
+<
+Y 1111
+apply year 2222
+1/1
+apply year 3333
+Y 4444
+2/2
+end apply year
+3/3
+end apply year
+4/4
+$ hledger -f- print
+1111-04-04
+
+2222-01-01
+
+2222-03-03
+
+4444-02-02
+
+>=
+
+# end apply year with no matching apply year is an error.
+<
+Y 1111
+end apply year
+$ hledger -f- check
+>2 /end apply year has no matching apply year/
+>= 1
+
 # Legacy ! and @ prefixes are accepted.
 <
 !Y 1111

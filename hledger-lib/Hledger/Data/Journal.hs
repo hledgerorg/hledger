@@ -228,6 +228,7 @@ journalDbg j@Journal{..} = chomp $ unlines $
   ("Journal " ++ takeFileName (journalFilePath j)++":") :  --  ++ " {"
   map (" "<>) [
    "jparsedefaultyear: "         <> shw jparsedefaultyear
+  ,"jparseapplyyears: "          <> shw jparseapplyyears
   ,"jparsedefaultcommodity: "    <> shw jparsedefaultcommodity
   ,"jparsedecimalmark: "         <> shw jparsedecimalmark
   ,"jparseparentaccounts: "      <> shw jparseparentaccounts
@@ -289,6 +290,7 @@ journalConcat j1 j2 =
     dbgJournalAcctDeclOrder ("journalConcat: " <> f1 <> " <> " <> f2 <> ", acct decls           : ") $
     Journal {
      jparsedefaultyear          = jparsedefaultyear          j2
+    ,jparseapplyyears           = jparseapplyyears           j2
     ,jparsedefaultcommodity     = jparsedefaultcommodity     j2
     ,jparsedecimalmark          = jparsedecimalmark          j2
     ,jparseparentaccounts       = jparseparentaccounts       j2
@@ -381,6 +383,7 @@ instance Default Journal where
 nulljournal :: Journal
 nulljournal = Journal {
    jparsedefaultyear          = Nothing
+  ,jparseapplyyears           = []
   ,jparsedefaultcommodity     = Nothing
   ,jparsedecimalmark          = Nothing
   ,jparseparentaccounts       = []

@@ -1734,6 +1734,7 @@ The interactions to watch for are conflicting display styles, account types, and
 | **[`assert`]**       | Declares a [standing rule](#assert-directive), a query that must match no rows or some rows, checked like balance assertions.                  | file tree                   |
 |                      | <br>**File reading (legacy/deprecated):**                                                                                                     |                             |
 | [`apply account`]    | Prepends a common parent account to all following account names, until `end apply account`.                                                             | rest of file + subfiles     |
+| [`apply year`]       | Sets a default year for following yearless dates, until `end apply year`.                                                                               | rest of file + subfiles     |
 | [`D`]                | Sets a default commodity for following no-symbol amounts. Also sets its parsing decimal mark (overridden by `commodity` or `decimal-mark`) and display style (overridden by `commodity`). | rest of file + subfiles |
 | [`Y`]                | Sets a default year for following yearless dates.                                                                                                       | rest of file + subfiles     |
 | [other][other-directives] | These other Ledger directives are accepted but ignored.                                                                                  |                             |
@@ -1746,6 +1747,7 @@ The interactions to watch for are conflicting display styles, account types, and
 [`alias`]:                   #alias-directive
 [`--alias`]:                 #--alias-option
 [`apply account`]:           #apply-account-directive
+[`apply year`]:              #apply-year-directive
 [`assert`]:                  #assert-directive
 [`comment`]:                 #comment-directive
 [`commodity`]:               #commodity-directive
@@ -3190,10 +3192,9 @@ and less trustworthy in an audit.
 
 `Y YEAR`
 
-or (deprecated backward-compatible forms):
+or (deprecated backward-compatible form):
 
 `year YEAR`
-`apply year YEAR`
 
 The space is optional.
 This sets a default year to be used for subsequent dates which don't specify a year.  Eg:
@@ -3222,6 +3223,32 @@ makes your financial data less explicit, less portable, and less trustworthy in 
 Such dates can get separated from their corresponding Y directive,
 eg when evaluating a region of the journal in your editor.
 A missing Y directive makes reports dependent on today's date.
+
+### `apply year` directive
+
+`apply year YEAR` sets a default year like [`Y`](#y-directive),
+but only until a matching `end apply year` directive
+(or the end of the current file).
+`end apply year` restores the default year that was in effect before the matching `apply year`.
+These blocks can be nested, as in Ledger
+(which also lets a bare `end` or `end apply` close them; hledger requires `end apply year`). Eg:
+
+```journal
+Y 2009
+
+apply year 2010
+1/31   ; 2010-01-31
+  expenses  1
+  assets
+end apply year
+
+2/28   ; 2009-02-28
+  expenses  1
+  assets
+```
+
+An `end apply year` with no matching `apply year` is an error.
+(Before hledger 2, `apply year` worked like `Y`, and `end apply year` was ignored.)
 
 ### Secondary dates
 
@@ -3301,7 +3328,6 @@ check       EXPR
 define      VAR=EXPR
 end apply fixed
 end apply tag
-end apply year
 end tag
 eval / expr EXPR
 python

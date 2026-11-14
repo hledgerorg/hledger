@@ -721,7 +721,9 @@ instance Monoid FastPathStats where
 --
 data Journal = Journal {
   -- parsing-related state
-   jparsedefaultyear        :: Maybe Year                             -- ^ the current default year, specified by the most recent Y directive (or current date)
+   jparsedefaultyear        :: Maybe Year                             -- ^ the current default year, specified by the most recent Y or apply year directive (or current date)
+  ,jparseapplyyears         :: [Maybe Year]                           -- ^ the default years that were in effect before each open apply year directive, innermost first.
+                                                                      --   end apply year restores (and removes) the first one.
   ,jparsedefaultcommodity   :: Maybe (CommoditySymbol,AmountStyle)    -- ^ the current default commodity and its format, specified by the most recent D directive
   ,jparsedecimalmark        :: Maybe DecimalMark                      -- ^ the character to always parse as decimal point, if set by CsvReader's decimal-mark (or a future journal directive)
   ,jparseparentaccounts     :: [AccountName]                          -- ^ the current stack of parent account names, specified by apply account directives
