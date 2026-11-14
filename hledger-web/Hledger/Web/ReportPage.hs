@@ -21,6 +21,12 @@ module Hledger.Web.ReportPage (
   AmountMode(..),
   parseValue,
   readParam,
+  accumParam,
+  calcParam,
+  listParam,
+  sortParam,
+  optionsSummary,
+  registerKeptParams,
   valueWord,
   amountModeOf,
   setAmountMode,
@@ -42,12 +48,13 @@ module Hledger.Web.ReportPage (
 ) where
 
 import Control.Exception qualified as E
-import Control.Monad (mfilter, unless)
+import Control.Monad (guard, mfilter, unless)
 import Data.Foldable (find, for_, traverse_)
-import Data.List (mapAccumL, stripPrefix)
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.List (elemIndex, mapAccumL, sortOn, stripPrefix)
+import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 import Data.Text.Encoding qualified as TE
 import Network.HTTP.Types.URI (urlEncode)
+import Safe (readMay)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Set qualified as Set
@@ -62,7 +69,7 @@ import Yesod (HtmlUrl)
 import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor (dateTerm, renderPeriodHeading)
-import Hledger.Web.Param (Param(..), accumParam, calcParam, listParam, sortParam, linksRowClass, paramSettings, parseParam)
+import Hledger.Web.Param (Param(..), linksRowClass, paramPhrase, paramSettings, parseParam)
 import Hledger.Web.Widget.Common (AmountMode(..), removeDates, valueWord)
 import Hledger.Query qualified as Query
 import Hledger.Write.Html (Html, formatCell, nl)
@@ -319,6 +326,135 @@ parseFlag name = \case
 -- naming the parameter if the value is unknown.
 readParam :: Param a -> Maybe Text -> Either ReportParamError (Maybe a)
 readParam p = either (Left . BadParamValue (paramName p)) Right . parseParam p
+
+-- | The accum parameter: whether a report shows balance changes, ending
+-- balances, or cumulative totals; absent for the page's own default.
+-- The H key toggles Ending balances, the second link (hledger.js).
+accumParam :: Param BalanceAccumulation
+accumParam = Param
+  { paramName  = "accum"
+  , paramModes = [PerPeriod, Historical, Cumulative]
+  , paramWord  = \case
+      PerPeriod  -> "change"
+      Historical -> "historical"
+      Cumulative -> "cumulative"
+  -- TRANSLATORS: the label before a report's accumulation mode links, and the links' text and tooltips.
+  , paramRowLabel = \trs -> tr trs "Show:"
+  , paramLabel = \trs -> \case
+      PerPeriod  -> (tr trs "Balance changes", tr trs "Show how much each balance changed in each period")
+      Historical -> (tr trs "Ending balances", tr trs "Show each balance at the end of each period, including everything before it")
+      Cumulative -> (tr trs "Cumulative totals", tr trs "Show each balance's change since the start of the report (--cumulative)")
+  }
+
+-- | The calc parameter: what a report's cells calculate, as the balance
+-- commands' --valuechange, --gain, and --count flags choose.
+calcParam :: Param BalanceCalculation
+calcParam = Param
+  { paramName  = "calc"
+  , paramModes = [CalcChange, CalcValueChange, CalcGain, CalcPostingsCount]
+  , paramWord  = \case
+      CalcChange        -> "change"
+      CalcValueChange   -> "valuechange"
+      CalcGain          -> "gain"
+      CalcPostingsCount -> "count"
+      -- Not offered (not in paramModes), so never in a url.
+      _                 -> ""
+  -- TRANSLATORS: the label before a report's calculation links, and the links' text and tooltips.
+  , paramRowLabel = \trs -> tr trs "Calculate:"
+  , paramLabel = \trs -> \case
+      CalcChange        -> (trc trs "calculation" "Sums", tr trs "Show sums of postings")
+      CalcValueChange   -> (tr trs "Value change", tr trs "Show how period-end market values changed (--valuechange)")
+      CalcGain          -> (tr trs "Unrealized gain", tr trs "Show unrealized capital gains: market value minus cost (--gain)")
+      CalcPostingsCount -> (tr trs "Posting counts", tr trs "Count the postings instead of summing them (--count)")
+      _                 -> ("", "")
+  }
+
+-- | The list parameter: show accounts as a flat list or a tree; absent
+-- for the page's default, the startup one. The t key toggles them
+-- (hledger.js).
+listParam :: Param AccountListMode
+listParam = Param
+  { paramName  = "list"
+  , paramModes = [ALFlat, ALTree]
+  , paramWord  = \case
+      ALFlat -> "flat"
+      ALTree -> "tree"
+  -- TRANSLATORS: the label before a report's list/tree links, and the links' text and tooltips.
+  , paramRowLabel = \trs -> tr trs "Accounts:"
+  , paramLabel = \trs -> \case
+      ALFlat -> (trc trs "accounts" "List", tr trs "Show accounts as a flat list (--flat)")
+      ALTree -> (trc trs "accounts" "Tree", tr trs "Show accounts as a tree (--tree)")
+  }
+
+-- | The sort parameter: whether rows are sorted by amount, rather than
+-- by account display order (declaration order, otherwise name).
+-- The S key toggles By amount, the second link (hledger.js).
+sortParam :: Param Bool
+sortParam = Param
+  { paramName  = "sort"
+  , paramModes = [False, True]
+  , paramWord  = \case
+      False -> "account"
+      True  -> "amount"
+  -- TRANSLATORS: the label before a report's sort links, and the links' text and tooltips.
+  , paramRowLabel = \trs -> tr trs "Sort:"
+  , paramLabel = \trs -> \case
+      False -> (tr trs "By account", tr trs "Sort rows by account display order")
+      True  -> (tr trs "By amount", tr trs "Sort rows by their amounts, largest first (-S)")
+  }
+
+-- | Of the parameters the page links keep, those the sidebar's register
+-- links keep: the states the register reads, ie the depth limit (which
+-- clips its sidebar), the amounts mode, the accounts mode, inferred
+-- prices, zero balances, and lot detail. Each such link rewrites the
+-- search itself.
+registerKeptParams :: [(Text, Text)] -> [(Text, Text)]
+registerKeptParams ps = [p | p@(k, _) <- ps, k `elem` ["depth", "value", paramName listParam, "infer", "empty", "lots"]]
+
+-- | The report options a page's parameters set, as short phrases for the
+-- closed controls disclosure: the controls' own words where those stand
+-- alone ("Monthly", "Tree"), a phrase where a control's word would not
+-- ("Shown"). The pages' links carry only the options not at their
+-- defaults, so these are the options in effect, listed in the order of
+-- the controls' rows. The filters are not here: they are search terms,
+-- shown in the search box. A depth limit at or beyond the given
+-- deepest account's depth is not one: the Depth links show it as none.
+optionsSummary :: Translations -> Int -> [(Text, Text)] -> [Text]
+optionsSummary trs deepest = mapMaybe phrase . sortOn (rowOrder . fst)
+  where
+    rowOrder k = fromMaybe maxBound $ elemIndex k
+      ["equity", "interval", paramName accumParam, "depth", paramName listParam, "value", "infer", "empty", "lots", "closed",
+       "total", "avg", "costs", paramName sortParam, "pct", paramName calcParam, "date2"]
+    phrase = \case
+      ("interval", w)     -> Just $ fromMaybe w $ lookup w
+        [ ("yearly", tr trs "Yearly"), ("quarterly", tr trs "Quarterly"), ("monthly", tr trs "Monthly")
+        , ("weekly", tr trs "Weekly"), ("daily", tr trs "Daily") ]
+      -- TRANSLATORS: the depth limit, in the list of options in effect.
+      ("depth", n)        -> do
+        d <- readMay (T.unpack n) :: Maybe Int
+        guard (d < deepest)
+        Just $ trf trs "Depth {depth}" [("depth", n)]
+      (k, w) | k == paramName accumParam -> paramPhrase accumParam trs w
+      ("value", "none")   -> Just $ tr trs "As recorded"
+      ("value", "cost")   -> Just $ trc trs "amounts" "Cost"
+      ("value", _)        -> Just $ trc trs "amounts" "Value"
+      (k, w) | k == paramName listParam -> paramPhrase listParam trs w
+      (k, w) | k == paramName sortParam -> paramPhrase sortParam trs w
+      ("pct", "1")        -> Just $ tr trs "Percentages"
+      (k, w) | k == paramName calcParam -> paramPhrase calcParam trs w
+      -- TRANSLATORS: options in effect, listed on the closed options disclosure.
+      ("total", "1")      -> Just $ trc trs "column" "Total"
+      ("avg", "1")        -> Just $ trc trs "column" "Average"
+      ("infer", "1")      -> Just $ tr trs "Inferred prices"
+      ("empty", "0")      -> Just $ tr trs "Zero balances hidden"
+      ("empty", "1")      -> Just $ tr trs "Zero balances shown"
+      ("lots", "1")       -> Just $ tr trs "Lots shown"
+      ("costs", "1")      -> Just $ tr trs "Costs shown"
+      ("closed", "1")     -> Just $ tr trs "Closed positions shown"
+      ("closed", "0")     -> Just $ tr trs "Closed positions hidden"
+      ("date2", "1")      -> Just $ tr trs "Secondary dates"
+      ("equity", "1")     -> Just $ tr trs "Equity shown"
+      _                   -> Nothing
 
 -- | The value parameter, mirroring --value's WHEN[,COMM] syntax:
 -- "none", "cost", or a valuation "end", "then", "now", or a date, each

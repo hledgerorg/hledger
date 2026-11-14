@@ -294,7 +294,7 @@ msgid "Historical gain"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger-web/Hledger/Web/Param.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs hledger-web/Hledger/Web/ReportPage.hs
 msgid "Posting counts"
 msgstr ""
 
@@ -312,7 +312,7 @@ msgstr ""
 
 #. Key term
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger/Hledger/Cli/Commands/Balance.hs hledger-web/Hledger/Web/Param.hs
+#: hledger/Hledger/Cli/Commands/Balance.hs hledger-web/Hledger/Web/ReportPage.hs
 msgid "Balance changes"
 msgstr ""
 
@@ -649,7 +649,7 @@ msgid "Register"
 msgstr ""
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger/Hledger/Cli/Commands/Run.hs hledger-web/Hledger/Web/Param.hs hledger-web/templates/default-layout.hamlet
+#: hledger/Hledger/Cli/Commands/Run.hs hledger-web/Hledger/Web/ReportPage.hs hledger-web/templates/default-layout.hamlet
 msgid "Show:"
 msgstr ""
 
@@ -861,7 +861,7 @@ msgid "None"
 msgstr ""
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Yearly"
 msgstr ""
 
@@ -871,7 +871,7 @@ msgid "Show a column per year"
 msgstr ""
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Quarterly"
 msgstr ""
 
@@ -881,7 +881,7 @@ msgid "Show a column per quarter"
 msgstr ""
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Monthly"
 msgstr ""
 
@@ -891,7 +891,7 @@ msgid "Show a column per month"
 msgstr ""
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Weekly"
 msgstr ""
 
@@ -901,7 +901,7 @@ msgid "Show a column per week"
 msgstr ""
 
 #. the interval links above a report: each link's text, and its tooltip.
-#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Daily"
 msgstr ""
 
@@ -911,28 +911,28 @@ msgid "Show a column per day"
 msgstr ""
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Show how much each balance changed in each period"
 msgstr ""
 
 #. Key term
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Ending balances"
 msgstr ""
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Show each balance at the end of each period, including everything before it"
 msgstr ""
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Cumulative totals"
 msgstr ""
 
 #. the label before a report's accumulation mode links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Show each balance's change since the start of the report (--cumulative)"
 msgstr ""
 
@@ -1290,7 +1290,7 @@ msgid "Options"
 msgstr ""
 
 #. the depth limit, in the list of options in effect.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 #, python-brace-format
 msgid "Depth {depth}"
 msgstr ""
@@ -1353,18 +1353,18 @@ msgstr ""
 
 #. the depth limit, in the list of options in effect.
 #. the label before a report's amount conversion links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
 msgid "As recorded"
 msgstr ""
 
 #. the depth limit, in the list of options in effect.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgctxt "amounts"
 msgid "Cost"
 msgstr ""
 
 #. the depth limit, in the list of options in effect.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgctxt "amounts"
 msgid "Value"
 msgstr ""
@@ -1527,28 +1527,28 @@ msgid "Show only virtual postings, the parenthesized ones (real:0)"
 msgstr ""
 
 #. the label before a report's list/tree links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/templates/default-layout.hamlet
 msgid "Accounts:"
 msgstr ""
 
 #. the label before a report's list/tree links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Show accounts as a flat list (--flat)"
 msgstr ""
 
 #. the label before a report's list/tree links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgctxt "accounts"
 msgid "List"
 msgstr ""
 
 #. the label before a report's list/tree links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Show accounts as a tree (--tree)"
 msgstr ""
 
 #. the label before a report's list/tree links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgctxt "accounts"
 msgid "Tree"
 msgstr ""
@@ -1565,7 +1565,7 @@ msgstr ""
 
 #. options in effect, listed on the closed options disclosure.
 #. the label before a report's extra-column toggles, and the toggles' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "column"
 msgid "Total"
 msgstr ""
@@ -1577,33 +1577,33 @@ msgstr ""
 
 #. options in effect, listed on the closed options disclosure.
 #. the label before a report's extra-column toggles, and the toggles' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
 msgctxt "column"
 msgid "Average"
 msgstr ""
 
 #. the label before a report's sort links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs hledger-web/templates/default-layout.hamlet
+#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/templates/default-layout.hamlet
 msgid "Sort:"
 msgstr ""
 
 #. the label before a report's sort links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "By account"
 msgstr ""
 
 #. the label before a report's sort links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Sort rows by account display order"
 msgstr ""
 
 #. the label before a report's sort links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "By amount"
 msgstr ""
 
 #. the label before a report's sort links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Sort rows by their amounts, largest first (-S)"
 msgstr ""
 
@@ -1625,7 +1625,7 @@ msgstr ""
 
 #. the depth limit, in the list of options in effect.
 #. the label before a report's amounts/percentages links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs hledger-web/Hledger/Web/Widget/Common.hs
 msgid "Percentages"
 msgstr ""
 
@@ -1635,78 +1635,78 @@ msgid "Show each amount as a percentage of its column's total (-%)"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Calculate:"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Show sums of postings"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgctxt "calculation"
 msgid "Sums"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Value change"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Show how period-end market values changed (--valuechange)"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Unrealized gain"
 msgstr ""
 
 #. options in effect, listed on the closed options disclosure.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Inferred prices"
 msgstr ""
 
 #. options in effect, listed on the closed options disclosure.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Zero balances hidden"
 msgstr ""
 
 #. options in effect, listed on the closed options disclosure.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Zero balances shown"
 msgstr ""
 
 #. options in effect, listed on the closed options disclosure.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Lots shown"
 msgstr ""
 
 #. options in effect, listed on the closed options disclosure.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Costs shown"
 msgstr ""
 
 #. options in effect, listed on the closed options disclosure.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Closed positions shown"
 msgstr ""
 
 #. options in effect, listed on the closed options disclosure.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Closed positions hidden"
 msgstr ""
 
 #. options in effect, listed on the closed options disclosure.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Secondary dates"
 msgstr ""
 
 #. options in effect, listed on the closed options disclosure.
-#: hledger-web/Hledger/Web/Widget/Common.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Equity shown"
 msgstr ""
 
@@ -1723,12 +1723,12 @@ msgid "{title} in {dates}, filtered"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Show unrealized capital gains: market value minus cost (--gain)"
 msgstr ""
 
 #. the label before a report's calculation links, and the links' text and tooltips.
-#: hledger-web/Hledger/Web/Param.hs
+#: hledger-web/Hledger/Web/ReportPage.hs
 msgid "Count the postings instead of summing them (--count)"
 msgstr ""
 

@@ -33,12 +33,12 @@ import Hledger.Write.Spreadsheet qualified as Spr
 import Hledger.Web.Import
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Paging (yearsRow)
-import Hledger.Web.Param (Param(..), accumParam, calcParam, listParam, paramLinks, paramSettings, sortParam)
+import Hledger.Web.Param (Param(..), paramLinks, paramSettings)
 import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Chart (reportChart)
 import Hledger.Web.Widget.Common
-  (amountLinks, columnsLinks, commodityLinks, controlsToggle, optionsSummary,
+  (amountLinks, columnsLinks, commodityLinks, controlsToggle,
    depthLinks, equityLinks, helplink,
    lotsLinks, percentLinks, pricesLinks, realLinks,
    statusLinks, zeroBalanceLinks)

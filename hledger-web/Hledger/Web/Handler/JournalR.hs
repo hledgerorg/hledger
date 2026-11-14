@@ -15,11 +15,11 @@ import Hledger.Web.Import
 import Hledger.Web.Paging
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
-import Hledger.Web.Param (calcParam, listParam, lookupParam, paramLinks, paramSettings, sortParam)
-import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, intervalLinks, parseInterval, parseValue, removeAttributes, setAmountMode, valueParams)
+import Hledger.Web.Param (lookupParam, paramLinks, paramSettings)
+import Hledger.Web.ReportPage (amountModeOf, calcParam, deepestDepth, depthParams, intervalLinks, listParam, optionsSummary, parseInterval, parseValue, removeAttributes, setAmountMode, sortParam, valueParams)
 import Hledger.Web.Widget.Common
             (accountParams, amountLinks, columnsLinks, commodityLinks,
-             controlsHint, controlsToggle, optionsSummary, searchHeading,
+             controlsHint, controlsToggle, searchHeading,
              depthLinks, inertControls, lotsLinks,
              mixedAmountAsHtml, percentLinks, pricesLinks, realLinks,
              statusLinks, typeLinks,
