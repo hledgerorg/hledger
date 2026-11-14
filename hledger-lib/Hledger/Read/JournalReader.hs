@@ -1646,6 +1646,8 @@ scanSimplePosting j year lineoffset modifyacct line commentlines = do
       r2 = T.dropWhile isNonNewlineSpace r1
   -- a status mark and nothing else is an error (accountnamep needs at least one character)
   declineIf (T.null name) "malformed posting"
+  -- an empty account name part is an error, reported by accountnamep
+  declineIf (accountNameHasEmptyPart name) "account name with an empty part"
   (mamt, r3) <-
     -- no amount (a following = begins a balance assignment)
     if T.null r2 || T.isPrefixOf ";" r2 || T.isPrefixOf "=" r2
@@ -1893,12 +1895,15 @@ tmpostingrulep = fmap (uncurry TMPostingRule . first (fst . postingRoundCalculat
 postingphelper :: Bool -> Maybe Year -> JournalParser m (Posting, Bool)
 postingphelper isPostingRule mTransactionYear = do
     -- lift $ dbgparse 0 "postingp"
-    (status, account) <- try $ do
+    -- backtrack if this is not a posting line; but once an account name begins,
+    -- its errors (eg an empty part) are reported
+    status <- try $ do
       lift skipNonNewlineSpaces1
       status <- lift statusp
       lift skipNonNewlineSpaces
-      account <- modifiedaccountnamep True
-      return (status, account)
+      _ <- lookAhead $ satisfy (not . isSpace)
+      return status
+    account <- modifiedaccountnamep True
     let preal = accountNamePostingType account
     account' <- shareText $ textUnbracket account
     lift skipNonNewlineSpaces
@@ -1936,9 +1941,9 @@ tests_JournalReader = testGroup "JournalReader" [
    testGroup "accountnamep" [
      testCase "basic" $ assertParse p "a:b:c"
     ,testCase "single space is part of the account name" $ assertParseEq p "a b:c" "a b:c"
-    -- ,testCase "empty inner component" $ assertParseError p "a::c" ""  -- TODO
-    -- ,testCase "empty leading component" $ assertParseError p ":b:c" "x"
-    -- ,testCase "empty trailing component" $ assertParseError p "a:b:" "x"
+    ,testCase "empty inner component" $ assertParseError p "a::c" "has an empty part"
+    ,testCase "empty leading component" $ assertParseError p ":b:c" "has an empty part"
+    ,testCase "empty trailing component" $ assertParseError p "a:b:" "has an empty part"
     ]
 
   -- "Parse a date in YYYY/MM/DD format.

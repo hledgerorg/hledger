@@ -1,0 +1,13 @@
+$ hledger check -f csvaccountparse.csv
+>2 /hledger: Error: .*csvaccountparse\.csv:4:
+4 \| 2022-01-02,1,
+
+could not use "expenses:" as the account name for posting 1
+record: 2022-01-02,1,
+(.*
+)*hledger field assignment rules:
+  account1: +expenses:%3 +\(.*rules:4\)
+(.*
+)*account name "expenses:" has an empty part\.
+/
+>= 1

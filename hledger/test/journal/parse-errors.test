@@ -165,3 +165,50 @@ $ hledger -f- print
 $ hledger -f- print
 >2 /unexpected '\*'/
 >=1
+
+# ** 14. An account name with an empty part (a leading, trailing or repeated colon) gives a parse error.
+<
+2026-01-01
+    a::b    1
+    c
+$ hledger -f- print
+>2 /account name "a::b" has an empty part/
+>=1
+
+# ** 15. Also in a virtual posting.
+<
+2026-01-01
+    (a:)    1
+$ hledger -f- print
+>2 /account name "\(a:\)" has an empty part/
+>=1
+
+# ** 16. Also in an account directive.
+<
+account :a
+$ hledger -f- accounts
+>2 /account name ":a" has an empty part/
+>=1
+
+# ** 17. Also in an apply account directive.
+<
+apply account a:
+$ hledger -f- accounts
+>2 /account name "a:" has an empty part/
+>=1
+
+# ** 18. Also in timeclock entries.
+<
+i 2026-01-01 09:00:00 a:b
+o 2026-01-01 10:00:00 a::b
+$ hledger -f timeclock:- print
+>2 /account name "a::b" has an empty part/
+>=1
+
+# ** 19. Also in timedot entries.
+<
+2026-01-01
+a:  ..
+$ hledger -f timedot:- print
+>2 /account name "a:" has an empty part/
+>=1

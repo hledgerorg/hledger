@@ -11,6 +11,7 @@ hierarchy.
 module Hledger.Data.AccountName (
    accountLeafName
   ,accountNameComponents
+  ,accountNameHasEmptyPart
   ,accountNameDrop
   ,accountNameFromComponents
   ,accountNameLevel
@@ -160,6 +161,14 @@ accountNameType atypes a = asum (map (`M.lookup` atypes) $ a : parentAccountName
 
 accountNameComponents :: AccountName -> [Text]
 accountNameComponents = T.splitOn acctsep
+
+-- | Does this account name have an empty part, from a leading, trailing
+-- or repeated account separator, ignoring any virtual posting brackets ?
+-- Account names as written must not have these (see accountnamep).
+accountNameHasEmptyPart :: AccountName -> Bool
+accountNameHasEmptyPart a =
+  T.null a' || acctsep `T.isPrefixOf` a' || acctsep `T.isSuffixOf` a' || (acctsep <> acctsep) `T.isInfixOf` a'
+  where a' = accountNameWithoutPostingType a
 
 accountNameFromComponents :: [Text] -> AccountName
 accountNameFromComponents = T.intercalate acctsep
@@ -448,7 +457,10 @@ accountNameToAccountOnlyRegexCI a = toRegexCI' $ "^" <> escapeName a <> "$" -- P
 --isAccountRegex s = take 1 s == "^" && take 5 (reverse s) == ")$|:("
 
 tests_AccountName = testGroup "AccountName" [
-   testCase "accountNameTreeFrom" $ do
+   testCase "accountNameHasEmptyPart" $ do
+    map accountNameHasEmptyPart ["a", "a:b", "(a:b)", "[a]:b", "a::b", ":a", "a:", "(a:)", "[:a]", ":"]
+      @?= [False, False, False, False, True, True, True, True, True, True]
+  ,testCase "accountNameTreeFrom" $ do
     accountNameTreeFrom ["a"]       @?= Node "root" [Node "a" []]
     accountNameTreeFrom ["a","b"]   @?= Node "root" [Node "a" [], Node "b" []]
     accountNameTreeFrom ["a","a:b"] @?= Node "root" [Node "a" [Node "a:b" []]]
