@@ -319,6 +319,7 @@ directivep iopts = (do
      aliasdirectivep
     ,endaliasesdirectivep
     ,applyaccountdirectivep
+    ,bareenddirectivep
     ,endapplyaccountdirectivep
     ,applyfixeddirectivep
     ,applytagdirectivep
@@ -838,6 +839,16 @@ endapplyaccountdirectivep = do
   keywordsp "end apply account" <?> "end apply account directive"
   lift restofline
   popParentAccount
+
+-- | Reject Ledger's bare "end" or "end apply" (which closes the innermost apply block)
+-- with a clear error, since hledger requires the kind of block to be named.
+bareenddirectivep :: JournalParser m ()
+bareenddirectivep = do
+  off <- getOffset
+  try $ keywordp "end" >> optional (try $ spacesp >> keywordp "apply") >> lift skipNonNewlineSpaces >> lookAhead (void eol <|> eof)
+  customFailure $ parseErrorAt off $
+    "hledger needs the kind of apply block here:\n"
+    ++ "end apply account, end apply fixed, end apply tag, or end apply year"
 
 aliasdirectivep :: JournalParser m ()
 aliasdirectivep = do

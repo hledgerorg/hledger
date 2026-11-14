@@ -47,3 +47,12 @@ $ hledger -f- print
 2222-02-02
 
 >=
+
+# A bare end or end apply (Ledger's shorthand for closing the innermost apply block)
+# is not supported, and gives a clear error.
+<
+apply year 2018
+end apply
+$ hledger -f- check
+>2 /hledger needs the kind of apply block here/
+>= 1
