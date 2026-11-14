@@ -7368,6 +7368,8 @@ A positive lot posting in an asset account creates a new lot.
 The asset posting's cost is the lot's cost basis; hledger balances the transaction and calculates gains with it.
 It can be written as a cost basis annotation (`{UNITCOST}` or `{{{{TOTALCOST}}}}`)
 or as a transacted cost (`@ UNITCOST` or `@@ TOTALCOST`); in an acquisition these mean the same thing.
+(Note, `@` alone makes a lot posting only if the commodity is [declared lotful](#lotful-commodities) or the account is named like a lot subaccount;
+otherwise it is just a conversion and creates no lot. Otherwise to make it an acquisition, add at least `{}`, eg `10 ETSY {} @ $50`.)
 Usually you write just one and the other is inferred; if both are written, they must agree
 (at the precision you wrote the basis with; the exact transacted cost is then used as the basis).
 (The total cost forms are useful when the unit cost is non-terminating.)
@@ -7921,6 +7923,8 @@ When it reports a lot-related error, or a report looks wrong:
   Write just one of them. If the basis really differs from what was paid, adjust your entry (see [Acquire](#acquire)).
 - "no ... lots available for disposal" means a sale from an account holding none of the commodity.
   If it is a short sale, record it in a liability account (see [Short positions](#short-positions)).
+  If the purchases were written with just an `@` cost (common in Ledger journals), they did not create lots;
+  declare the commodity [lotful](#lotful-commodities).
 - For more detail, `--debug=5` (eg `hledger check --debug=5`) traces lot processing step by step.
   It's verbose, and mostly useful for advanced troubleshooting or bug reports.
 - To silence lot processing while fixing other problems, use `-I` or `--ignore-lots`.
