@@ -2111,7 +2111,7 @@ transactionFromCsvRecord timesarezoned mtzin tzout sourcepospair rules record =
          ,let currency = fromMaybe "" (fieldval ("currency"<> T.pack (show n)) <|> fieldval "currency")
          ,let mamount  = getAmount errpfx rules record currency p1IsVirtual n
          ,let mbalance = getBalance errpfx rules record currency n
-         ,Just (acct,isfinal) <- [getAccount rules record mamount mbalance n]  -- skips Nothings
+         ,Just (acct,isfinal) <- [getAccount errpfx rules record mamount mbalance n]  -- skips Nothings
          ,let acct' | not isfinal && acct==unknownExpenseAccount &&
                       fromMaybe False (mamount >>= isNegativeMixedAmount) = unknownIncomeAccount
                     | otherwise = acct
@@ -2449,8 +2449,9 @@ parseBalanceAssertionType = \case
 -- | Figure out the account name specified for posting N, if any.
 -- And whether it is the default unknown account (which may be
 -- improved later) or an explicitly set account (which may not).
-getAccount :: CsvRules -> CsvRecordGroup -> Maybe MixedAmount -> Maybe Amount -> Int -> Maybe (AccountName, Bool)
-getAccount rules record mamount mbalance n =
+-- The error message prefix is used if the account name is invalid.
+getAccount :: Text -> CsvRules -> CsvRecordGroup -> Maybe MixedAmount -> Maybe Amount -> Int -> Maybe (AccountName, Bool)
+getAccount errpfx rules record mamount mbalance n =
   let
     fieldval = hledgerFieldValue rules record :: HledgerFieldName -> Maybe Text
     maccount = T.strip <$> fieldval ("account"<> T.pack (show n))
@@ -2462,7 +2463,14 @@ getAccount rules record mamount mbalance n =
       -- Check it and reject if invalid.. sometimes people try
       -- to set an amount or comment along with the account name.
       case parsewith (accountnamep >> eof) a of
-        Left e  -> usageError $ errorBundlePretty e
+        Left e  -> error' . T.unpack $ errpfx <> T.unlines
+          ["could not use \"" <> a <> "\" as the account name for posting " <> T.pack (show n)
+          ,showRecordFields rules record
+          ,showRules rules record
+          ,"the parse error is:      " <> T.pack (customErrorBundlePretty e)
+          ,"you may need to change your account" <> T.pack (show n) <> " rules"
+           <> (if accountNameHasEmptyPart a then ", or add an if rule for empty fields" else "")
+          ]
         Right _ -> Just (a, True)
     -- accountN is unset
     Nothing ->

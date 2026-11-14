@@ -1015,14 +1015,27 @@ accountNameApplyModifiers als parent optals a =
 -- and are terminated by two or more whitespace characters (spaces or tabs), or end of input.
 -- Each part is at least one character long, may have single spaces inside it, and starts with a non-whitespace.
 -- (We should have required them to start with an alphanumeric, but didn't.)
+-- An empty part (from a leading, trailing or repeated separator) is an error.
 -- Note, this means account names can contain all kinds of punctuation, including ; which usually starts a following comment.
 -- Parent parsers usually remove the following comment before using this parser.
 accountnamep :: TextParser m AccountName
-accountnamep = singlespacedtext1p
+accountnamep = nonemptypartsp singlespacedtext1p
 
 -- Like accountnamep, but stops parsing if it reaches a semicolon.
 accountnamenosemicolonp :: TextParser m AccountName
-accountnamenosemicolonp = singlespacednoncommenttext1p
+accountnamenosemicolonp = nonemptypartsp singlespacednoncommenttext1p
+
+-- | Run an account name parser, and fail with an error highlighting the name if it has an empty part.
+nonemptypartsp :: TextParser m AccountName -> TextParser m AccountName
+nonemptypartsp p = do
+  off1 <- getOffset
+  a <- p
+  off2 <- getOffset
+  when (accountNameHasEmptyPart a) $ customFailure $ parseErrorAtRegion off1 off2 $
+    "account name \"" ++ T.unpack a ++ "\" has an empty part.\n"
+    ++ "Account names can't begin or end with " ++ sep ++ ", or contain " ++ sep ++ sep ++ "."
+  return a
+  where sep = [acctsepchar]
 
 -- | Parse a single line of possibly empty text enclosed in double quotes.
 doublequotedtextp :: TextParser m Text

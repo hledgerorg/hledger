@@ -1,0 +1,4 @@
+#!/usr/bin/env -S hledger check -f 
+# An account name with an empty part, from an empty field.
+2022-01-01,1,food
+2022-01-02,1,

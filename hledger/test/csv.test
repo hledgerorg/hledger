@@ -2246,6 +2246,18 @@ $  ./csvtest.sh
 
 >=0
 
+# ** 120. An account name with an empty part, eg from an empty field, is an error.
+<
+2026-01-15,5,
+RULES
+fields date, a, cat
+account1 expenses:%cat
+amount1  %a
+account2 y
+$  ./csvtest.sh
+>2 /account name "expenses:" has an empty part/
+>=1
+
 # ** .
 #<
 #$  ./csvtest.sh

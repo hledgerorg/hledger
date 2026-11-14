@@ -142,6 +142,7 @@ where
 import           Control.Monad
 import           Control.Monad.Except (ExceptT, liftEither)
 import           Control.Monad.State.Strict
+import           Data.Char (isSpace)
 import           Data.Maybe (fromMaybe)
 import           Data.Text (Text)
 import           Text.Megaparsec hiding (parse)
@@ -241,8 +242,10 @@ timeclockentryp = do
       -- Notice the try needed here to avoid a parse error if there's trailing spaces.
       -- Unlike descriptionp above, modifiedaccountnamep requires nonempty text.
       -- And when a parser in an optional fails after consuming input, optional doesn't backtrack,
-      -- it propagates the failure.
-      a <- optional (try $ lift skipNonNewlineSpaces1 >> modifiedaccountnamep False) <&> fromMaybe ""
+      -- it propagates the failure. The try covers only the spaces and the account name's first character,
+      -- so the account name's own errors (eg an empty part) are reported.
+      a <- optional (try (lift skipNonNewlineSpaces1 >> lookAhead (satisfy (\c -> not $ isSpace c || isSameLineCommentStart c)))
+                     >> modifiedaccountnamep False) <&> fromMaybe ""
       return (a, "")
     _ -> return ("", "")
   lift skipNonNewlineSpaces

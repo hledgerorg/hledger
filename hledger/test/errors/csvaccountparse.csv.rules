@@ -1,0 +1,4 @@
+skip 2
+date %1
+amount %2
+account1 expenses:%3

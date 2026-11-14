@@ -187,6 +187,7 @@ Click error names to see an example. The table headings mean:
 | [tcorderedactions](#tcorderedactions)                 | ✓          | ✓    | ✓      | ✓✓      | ✓        |
 | [tdquantity](#tdquantity)                             | ✓          | ✓    | ✓      | ✓✓      | ✓        |
 | [csvamountonenonzero](#csvamountonenonzero)           | ✓          | ✓    | -      | ✓       | ✓        |
+| [csvaccountparse](#csvaccountparse)                   | ✓          | ✓    | -      | ✓       |          |
 | [csvamountparse](#csvamountparse)                     | ✓          | ✓    | -      | ✓       | ✓        |
 | [csvbalanceparse](#csvbalanceparse)                   | ✓          | ✓    | -      | ✓       | ✓        |
 | [csvbalancetypeparse](#csvbalancetypeparse)           | ✓          | ✓    | ✓      | ✓✓      | ✓        |
@@ -209,7 +210,7 @@ Click error names to see an example. The table headings mean:
 
 
 <!-- GENERATED: -->
-hledger 1.99-gd87206dd9-20261110 error messages:
+hledger 1.99-g9ec5eaea6-20261114 error messages:
 
 ### accounts
 ```
@@ -531,6 +532,33 @@ hledger: Error: /path/to/tdquantity.timedot:4:6:
   |      ^
 unexpected 'x'
 expecting "mo", 'd', 'h', 'm', 's', 'w', 'y', end of input, or newline
+```
+
+
+### csvaccountparse
+```
+hledger: Error: /path/to/csvaccountparse.csv:4:
+4 | 2022-01-02,1,
+
+could not use "expenses:" as the account name for posting 1
+record: 2022-01-02,1,
+  %1   2022-01-02
+  %2   1
+  %3
+hledger field assignment rules:
+  account1:    expenses:%3                   (/path/to/csvaccountparse.csv.rules:4)
+  amount:      %2                            (/path/to/csvaccountparse.csv.rules:3)
+  date:        %1                            (/path/to/csvaccountparse.csv.rules:2)
+
+the parse error is:      1:1:
+  |
+1 | expenses:
+  | ^^^^^^^^^
+
+account name "expenses:" has an empty part.
+Account names can't begin or end with :, or contain ::.
+
+you may need to change your account1 rules, or add an if rule for empty fields
 ```
 
 

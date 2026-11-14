@@ -986,6 +986,8 @@ Account names are flexible.
 They may be capitalised or not; 
 they may contain letters, numbers, punctuation, symbols, or single spaces;
 they may be in any language.
+Their parts, separated by `:`, can't be empty;
+so an account name can't begin or end with `:`, or contain `::`.
 
 Typically we use the five traditional accounting categories as the starting point for account names.
 In english they are:
