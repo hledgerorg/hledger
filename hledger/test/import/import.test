@@ -51,3 +51,7 @@ clean.rules: running source command: tail -n +2
 would import 1 new transactions from clean.rules:
 
 >=
+
+# ** 8. A data generating command gets an empty stdin, not hledger's.
+$ d=$(mktemp -d); printf 'source | cat\nfields date,amount\naccount1 a\n' >$d/gen.rules; echo 2020-01-02,1 | hledger -f $d/gen.rules print 2>&1; rm -rf $d
+gen.rules: running source command: cat

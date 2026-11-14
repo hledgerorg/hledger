@@ -335,14 +335,17 @@ readRulesFileWith iopts rulesfile postprocess = do
   return j
 
 -- | For the given rules file, run the given shell command, in the rules file's directory.
+-- The command gets an empty stdin, so it can't wait for input or consume hledger's stdin,
+-- which would cause confusion and/or hangs in some situations.
 -- If the command fails, raise an error and show its error output;
 -- otherwise return its output, and show any error output as a warning.
 runCommand :: FilePath -> String -> IO Text
 runCommand rulesfile cmd = do
-  let process = (shell cmd) { cwd = Just $ takeDirectory rulesfile, std_out = CreatePipe, std_err = CreatePipe }
-  withCreateProcess process $ \_ mhout mherr phandle -> do
-    case (mhout, mherr) of
-      (Just hout, Just herr) -> do
+  let process = (shell cmd) { cwd = Just $ takeDirectory rulesfile, std_in = CreatePipe, std_out = CreatePipe, std_err = CreatePipe }
+  withCreateProcess process $ \mhin mhout mherr phandle -> do
+    case (mhin, mhout, mherr) of
+      (Just hin, Just hout, Just herr) -> do
+        hClose hin
         out <- T.hGetContents hout
         err <- hGetContents' herr
         exitCode <- waitForProcess phandle
