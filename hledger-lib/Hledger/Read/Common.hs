@@ -61,7 +61,6 @@ module Hledger.Read.Common (
   addDeclaredAccountTags,
   addDeclaredAccountType,
   pushParentAccount,
-  popParentAccount,
   getParentAccount,
   addAccountAlias,
   getAccountAliases,
@@ -154,7 +153,7 @@ import Control.Exception (evaluate)
 import Control.Exception.Safe (tryIO)
 import Control.Monad.Except (ExceptT(..), liftEither, runExceptT, withExceptT)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.State.Strict (MonadState, evalStateT, modify', get, put)
+import Control.Monad.State.Strict (MonadState, evalStateT, modify', get)
 import Control.Monad.Trans.Class (lift)
 import Data.Bifunctor (bimap, first, second)
 import Data.Char (digitToInt, isDigit, isSpace)
@@ -163,7 +162,6 @@ import Data.Either (rights)
 import Data.Function ((&))
 import Data.Functor ((<&>), ($>), void)
 import Data.List (find, genericReplicate, intercalate, sortOn, union)
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, listToMaybe)
 import Data.Map qualified as M
 import Data.Set qualified as S
@@ -704,13 +702,6 @@ addDeclaredAccountType acct atype =
 
 pushParentAccount :: AccountName -> JournalParser m ()
 pushParentAccount acct = modify' (\j -> j{jparseparentaccounts = acct : jparseparentaccounts j})
-
-popParentAccount :: JournalParser m ()
-popParentAccount = do
-  j <- get
-  case jparseparentaccounts j of
-    []       -> unexpected (Tokens ('E' :| "nd of apply account block with no beginning"))
-    (_:rest) -> put j{jparseparentaccounts=rest}
 
 getParentAccount :: JournalParser m AccountName
 getParentAccount = fmap (concatAccountNames . reverse . jparseparentaccounts) get

@@ -837,9 +837,13 @@ applyaccountdirectivep = do
 
 endapplyaccountdirectivep :: JournalParser m ()
 endapplyaccountdirectivep = do
+  off <- getOffset
   keywordsp "end apply account" <?> "end apply account directive"
   lift restofline
-  popParentAccount
+  j <- get
+  case jparseparentaccounts j of
+    []       -> customFailure $ parseErrorAt off "end apply account has no matching apply account"
+    (_:rest) -> put j{jparseparentaccounts = rest}
 
 -- | Set the default year until the matching end apply year, saving the current one.
 applyyeardirectivep :: JournalParser m ()
