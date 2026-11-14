@@ -10,12 +10,8 @@ module Hledger.Web.Widget.Common
   , balanceReportAsHtml
   , controlsHint
   , controlsToggle
-  , optionsSummary
   , searchHeading
   , inertControls
-  , linksRow
-  , linksRowClass
-  , linksRowGroups
   , pricesLinks
   , commodityLinks
   , depthLinks
@@ -24,19 +20,14 @@ module Hledger.Web.Widget.Common
   , zeroBalanceLinks
   , statusLinks
   , realLinks
-  , listModeLinks
   , columnsLinks
-  , sortLinks
   , percentLinks
-  , calcLinks
   , costsLinks
   , lotsLinks
   , closedLinks
   , holdingsValueLinks
   , typeLinks
   , AmountMode(..)
-  , accumWord
-  , listWord
   , valueWord
   , searchTerms
   , MovedOptions(..)
@@ -57,13 +48,13 @@ module Hledger.Web.Widget.Common
   ) where
 
 import Control.Applicative ((<|>))
-import Control.Monad (guard, unless, when)
+import Control.Monad (when)
 import Control.Monad.Except (ExceptT, mapExceptT)
 import Data.Char (isDigit)
 import Data.Foldable (find, for_)
-import Data.List (elemIndex, sortOn)
+import Data.List (elemIndex)
 import Data.Set qualified as Set
-import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe, mapMaybe, maybeToList)
+import Data.Maybe (isJust, isNothing, listToMaybe, mapMaybe, maybeToList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time.Calendar (Day)
@@ -82,6 +73,7 @@ import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor qualified as Anchor
 import Hledger.Cli.Utils (writeFileWithBackupIfChanged)
+import Hledger.Web.Param (linksRow, linksRowClass)
 import Hledger.Web.Settings (manualurl)
 import Hledger.Query qualified as Query
 
@@ -123,20 +115,14 @@ helplink :: Text -> Text -> HtmlUrl r
 helplink topic label _ = H.a ! A.href u ! A.target "hledgerhelp" $ toHtml label
   where u = textValue $ manualurl <> if T.null topic then "" else T.cons '#' topic
 
--- | Of the parameters the page links keep, those the sidebar's register
--- links keep: the states the register reads, ie the depth limit (which
--- clips its sidebar), the amounts mode, the accounts mode, inferred
--- prices, zero balances, and lot detail. Each such link rewrites the
--- search itself.
-registerKeptParams :: [(Text, Text)] -> [(Text, Text)]
-registerKeptParams ps = [p | p@(k, _) <- ps, k `elem` ["depth", "value", "list", "infer", "empty", "lots"]]
-
 -- | Render a "BalanceReport" as the sidebar: the page links (each page's
 -- route, label, and title, with the parameters their links carry), then
--- the accounts, linking to their registers. The current page's row is marked.
+-- the accounts, linking to their registers with the given parameters
+-- (see 'Hledger.Web.ReportPage.registerKeptParams'). The current page's
+-- row is marked.
 balanceReportAsHtml ::
-  Eq r => r -> r -> [(r, Text, Text)] -> [(Text, Text)] -> Bool -> Text -> Text -> Translations -> Journal -> Text -> Maybe (AccountName, Bool) -> BalanceReport -> HtmlUrl r
-balanceReportAsHtml registerR here reports reportParams hideEmpty totlabel tottitle trs j qparam maccount (items, total) =
+  Eq r => r -> r -> [(r, Text, Text)] -> [(Text, Text)] -> [(Text, Text)] -> Bool -> Text -> Text -> Translations -> Journal -> Text -> Maybe (AccountName, Bool) -> BalanceReport -> HtmlUrl r
+balanceReportAsHtml registerR here reports reportParams kept hideEmpty totlabel tottitle trs j qparam maccount (items, total) =
   $(hamletFile "templates/balance-report.hamlet")
   where
     l = ledgerFromJournal Any j
@@ -154,39 +140,12 @@ balanceReportAsHtml registerR here reports reportParams hideEmpty totlabel totti
       -- displays such balances as zero.
       where isInteresting a = not (all (mixedAmountLooksZero . mixedAmountStripCosts . bdexcludingsubs) . pdperiods $ adata a) || any isInteresting (asubs a)
     matchesAcctSelector acct = maybe False ((`matchesAccount` acct) . accountRegisterQuery) maccount
-    kept = registerKeptParams reportParams
     qps = [("q", qparam) | not (T.null qparam)]
     acctlink acct = (registerR, qps ++ accountParams True acct ++ kept)
     acctonlylink acct = (registerR, qps ++ accountParams False acct ++ kept)
     -- The register of everything, for the sidebar's search; the search
     -- form's clear button is the way out of a search.
     totallink = (registerR, qps ++ kept)
-
--- | A row of links above a report: a label, then each link's label,
--- title, target, and whether it is the one being shown.
--- Each label and title is a whole phrase, not a word slotted into a
--- sentence: an adjective that fits one language's sentence does not fit
--- another's, so a translation cannot be assembled from parts.
-linksRow :: Text -> [(Text, Text, (r, [(Text, Text)]), Bool)] -> HtmlUrl r
-linksRow = linksRowClass ""
-
--- | 'linksRow' with an extra class on the row: a hook for hledger.js's
--- keyboard shortcuts.
-linksRowClass :: Text -> Text -> [(Text, Text, (r, [(Text, Text)]), Bool)] -> HtmlUrl r
-linksRowClass cls rowlabel items = linksRowGroups cls rowlabel [items]
-
--- | 'linksRowClass' with the links in groups, shown a little apart.
-linksRowGroups :: Text -> Text -> [[(Text, Text, (r, [(Text, Text)]), Bool)]] -> HtmlUrl r
-linksRowGroups cls rowlabel groups renderUrl =
-    H.p ! A.class_ (H.toValue $ T.unwords $ "report-links" : [cls | not (T.null cls)]) $ do
-      unless (T.null rowlabel) $ H.span ! A.class_ "row-label" $ H.toHtml rowlabel
-      for_ (zip [0 :: Int ..] groups) $ \(g, items) ->
-        for_ (zip [0 :: Int ..] items) $ \(i, (label, title, link, current)) ->
-          let classes = ["current" | current] ++ ["group-start" | g > 0, i == 0]
-          in H.a !? (not (null classes), A.class_ (H.toValue $ T.unwords classes))
-                 ! A.href (H.toValue $ uncurry renderUrl link)
-                 ! A.title (H.toValue title) $
-               H.toHtml label
 
 -- | A page's rows of report controls behind a disclosure, closed by
 -- default so the page stays uncluttered. Opening it is remembered per
@@ -206,56 +165,6 @@ controlsToggle trs open summary rows =
       <span .options-summary>#{T.intercalate " · " summary}
   ^{rows}
 |]
-
--- | The report options a page's parameters set, as short phrases for the
--- closed controls disclosure: the controls' own words where those stand
--- alone ("Monthly", "Tree"), a phrase where a control's word would not
--- ("Shown"). The pages' links carry only the options not at their
--- defaults, so these are the options in effect, listed in the order of
--- the controls' rows. The filters are not here: they are search terms,
--- shown in the search box. A depth limit at or beyond the given
--- deepest account's depth is not one: the Depth links show it as none.
-optionsSummary :: Translations -> Int -> [(Text, Text)] -> [Text]
-optionsSummary trs deepest = mapMaybe phrase . sortOn (rowOrder . fst)
-  where
-    rowOrder k = fromMaybe maxBound $ elemIndex k
-      ["equity", "interval", "accum", "depth", "list", "value", "infer", "empty", "lots", "closed",
-       "total", "avg", "costs", "sort", "pct", "calc", "date2"]
-    phrase = \case
-      ("interval", w)     -> Just $ fromMaybe w $ lookup w
-        [ ("yearly", tr trs "Yearly"), ("quarterly", tr trs "Quarterly"), ("monthly", tr trs "Monthly")
-        , ("weekly", tr trs "Weekly"), ("daily", tr trs "Daily") ]
-      -- TRANSLATORS: the depth limit, in the list of options in effect.
-      ("depth", n)        -> do
-        d <- readMay (T.unpack n) :: Maybe Int
-        guard (d < deepest)
-        Just $ trf trs "Depth {depth}" [("depth", n)]
-      ("accum", a)        -> lookup a
-        [ ("change", tr trs "Balance changes"), ("historical", tr trs "Ending balances")
-        , ("cumulative", tr trs "Cumulative totals") ]
-      ("value", "none")   -> Just $ tr trs "As recorded"
-      ("value", "cost")   -> Just $ trc trs "amounts" "Cost"
-      ("value", _)        -> Just $ trc trs "amounts" "Value"
-      ("list", "tree")    -> Just $ trc trs "accounts" "Tree"
-      ("list", "flat")    -> Just $ trc trs "accounts" "List"
-      ("sort", "amount")  -> Just $ tr trs "By amount"
-      ("pct", "1")        -> Just $ tr trs "Percentages"
-      ("calc", c)         -> lookup c
-        [ ("valuechange", tr trs "Value change"), ("gain", tr trs "Unrealized gain")
-        , ("count", tr trs "Posting counts") ]
-      -- TRANSLATORS: options in effect, listed on the closed options disclosure.
-      ("total", "1")      -> Just $ trc trs "column" "Total"
-      ("avg", "1")        -> Just $ trc trs "column" "Average"
-      ("infer", "1")      -> Just $ tr trs "Inferred prices"
-      ("empty", "0")      -> Just $ tr trs "Zero balances hidden"
-      ("empty", "1")      -> Just $ tr trs "Zero balances shown"
-      ("lots", "1")       -> Just $ tr trs "Lots shown"
-      ("costs", "1")      -> Just $ tr trs "Costs shown"
-      ("closed", "1")     -> Just $ tr trs "Closed positions shown"
-      ("closed", "0")     -> Just $ tr trs "Closed positions hidden"
-      ("date2", "1")      -> Just $ tr trs "Secondary dates"
-      ("equity", "1")     -> Just $ tr trs "Equity shown"
-      _                   -> Nothing
 
 -- | A journal or register page's heading: the given title, then the
 -- search's dates, if it has any, shown as the balance pages show theirs
@@ -299,18 +208,6 @@ pricesLinks trs route kept inferOn =
     [ (tr trs "Declared", tr trs "Value amounts using declared market prices (P directives) only", (route, kept), not inferOn)
     , (tr trs "Inferred too", tr trs "Infer market prices from transaction costs too (--infer-market-prices)", (route, kept ++ [("infer", "1")]), inferOn)
     ]
-
--- | The accum parameter value naming an accumulation mode.
-accumWord :: BalanceAccumulation -> Text
-accumWord = \case
-  PerPeriod  -> "change"
-  Historical -> "historical"
-  Cumulative -> "cumulative"
-
--- | The list parameter value naming an accounts mode.
-listWord :: AccountListMode -> Text
-listWord ALTree = "tree"
-listWord ALFlat = "flat"
 
 -- | How a page shows amounts: in the commodities they were recorded in,
 -- converted to cost (as with -B), or converted with one of the market
@@ -444,19 +341,6 @@ realLinks trs route kept qparam =
     , (tr trs "Virtual", tr trs "Show only virtual postings, the parenthesized ones (real:0)", Just "real:0")
     ]
 
--- | Links showing the report's accounts as a flat list or a tree,
--- keeping the given parameters; the mode being shown is marked, and
--- the page's default mode, the startup one, needs no parameter. The t
--- key toggles them (hledger.js).
-listModeLinks :: Translations -> r -> [(Text, Text)] -> AccountListMode -> AccountListMode -> HtmlUrl r
-listModeLinks trs route kept dflt mode =
-  -- TRANSLATORS: the label before a report's list/tree links, and the links' text and tooltips.
-  linksRowClass "accounts" (tr trs "Accounts:")
-    [ (trc trs "accounts" "List", tr trs "Show accounts as a flat list (--flat)", link ALFlat, mode == ALFlat)
-    , (trc trs "accounts" "Tree", tr trs "Show accounts as a tree (--tree)", link ALTree, mode == ALTree)
-    ]
-  where link m = (route, kept ++ [("list", listWord m) | m /= dflt])
-
 -- | Toggles adding a row-total and a row-average column to a
 -- multi-period report, as -T and -A do; the columns shown are marked.
 -- The T and A keys follow these links, by their order here (hledger.js).
@@ -470,17 +354,6 @@ columnsLinks trs route kept total avg =
         (route, kept ++ [("total", "1") | total] ++ [("avg", "1") | not avg]), avg)
     ]
 
--- | Links sorting the report's rows by account display order (declaration order, otherwise name)
---  or by amount, keeping the given parameters; the order being shown is marked.
--- The S key toggles By amount, the second link (hledger.js).
-sortLinks :: Translations -> r -> [(Text, Text)] -> Bool -> HtmlUrl r
-sortLinks trs route kept byAmount =
-  -- TRANSLATORS: the label before a report's sort links, and the links' text and tooltips.
-  linksRowClass "sort" (tr trs "Sort:")
-    [ (tr trs "By account", tr trs "Sort rows by account display order", (route, kept), not byAmount)
-    , (tr trs "By amount", tr trs "Sort rows by their amounts, largest first (-S)", (route, kept ++ [("sort", "amount")]), byAmount)
-    ]
-
 -- | Links showing the report's numbers as amounts or as percentages of
 -- their column's total, keeping the given parameters.
 percentLinks :: Translations -> r -> [(Text, Text)] -> Bool -> HtmlUrl r
@@ -490,19 +363,6 @@ percentLinks trs route kept pct =
     [ (trc trs "numbers" "Amounts", tr trs "Show the amounts", (route, kept), not pct)
     , (tr trs "Percentages", tr trs "Show each amount as a percentage of its column's total (-%)", (route, kept ++ [("pct", "1")]), pct)
     ]
-
--- | Links choosing what the report's cells calculate, as the balance
--- commands' --valuechange, --gain, and --count flags do.
-calcLinks :: Translations -> r -> [(Text, Text)] -> BalanceCalculation -> HtmlUrl r
-calcLinks trs route kept calc =
-  -- TRANSLATORS: the label before a report's calculation links, and the links' text and tooltips.
-  linksRow (tr trs "Calculate:")
-    [ (trc trs "calculation" "Sums", tr trs "Show sums of postings", (route, kept), calc == CalcChange)
-    , (tr trs "Value change", tr trs "Show how period-end market values changed (--valuechange)", link "valuechange", calc == CalcValueChange)
-    , (tr trs "Unrealized gain", tr trs "Show unrealized capital gains: market value minus cost (--gain)", link "gain", calc == CalcGain)
-    , (tr trs "Posting counts", tr trs "Count the postings instead of summing them (--count)", link "count", calc == CalcPostingsCount)
-    ]
-  where link w = (route, kept ++ [("calc", w)])
 
 -- | Links showing or hiding the costs recorded with a register's
 -- amounts (10 AAPL @ $95), keeping the given parameters.

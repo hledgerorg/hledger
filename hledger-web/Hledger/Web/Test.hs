@@ -44,6 +44,7 @@ import Data.Aeson (encode)
 import Data.ByteString qualified as BS
 import Data.String (fromString)
 import Data.Function ((&))
+import Data.List (nub)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Text.IO qualified as TIO
@@ -64,10 +65,11 @@ import Web.Cookie (defaultSetCookie, setCookieName, setCookieValue)
 import Hledger.Web.Application ( makeAppWith )
 import Hledger.Utils.I18n (noTranslations)
 import Hledger.Web.Paging (pageNumbers)
-import Hledger.Web.ReportPage (intervalPeriodExpr, startupUrlState)
+import Hledger.Web.Param (Param(..), parseParam)
+import Hledger.Web.ReportPage (accumParam, calcParam, intervalPeriodExpr, listParam, optionsSummary, sortParam, startupUrlState)
 import Hledger.Web.WebOptions  -- ( WebOpts(..), defwebopts, prognameandversion )
 import Hledger.Web.Import hiding (get, j)
-import Hledger.Web.Widget.Common (MovedOptions(..), normalisedSearch, optionsSummary, splitPeriodExpr, transactionFragment)
+import Hledger.Web.Widget.Common (MovedOptions(..), normalisedSearch, splitPeriodExpr, transactionFragment)
 import Hledger.Cli hiding (prognameandversion)
 
 
@@ -270,6 +272,20 @@ hledgerWebTest = do
       splitPeriodExpr refday "every 2 weeks from 2025-01-01" `shouldBe` Just (Weeks 2, "from 2025-01-01")
       splitPeriodExpr refday "2025" `shouldBe` Nothing
       splitPeriodExpr refday "monthly bogus" `shouldBe` Nothing
+
+  -- The multiple-choice parameters, whose parsers are made from their words.
+  hspec $ describe "Param" $ do
+    it "gives each mode its own word" $ do
+      let distinctWords p = let ws = map (paramWord p) (paramModes p) in length (nub ws) == length ws
+      distinctWords accumParam `shouldBe` True
+      distinctWords calcParam `shouldBe` True
+      distinctWords listParam `shouldBe` True
+      distinctWords sortParam `shouldBe` True
+    it "reads a mode's word, an empty or absent value as the default, and returns an unknown word" $ do
+      parseParam calcParam (Just "gain") `shouldBe` Right (Just CalcGain)
+      parseParam calcParam (Just "") `shouldBe` Right Nothing
+      parseParam calcParam Nothing `shouldBe` Right Nothing
+      parseParam calcParam (Just "budget") `shouldBe` Left "budget"
 
   -- The options in effect, listed on the closed Options disclosure.
   hspec $ describe "optionsSummary" $ do
@@ -1271,7 +1287,7 @@ hledgerWebTest = do
         setUrl BalanceR
         addGetParam "accum" "bogus"
       statusIs 200
-      bodyContains "Unknown balance accumulation mode"
+      bodyContains "The accum parameter has a value this page does not know"
       bodyNotContains "<tfoot>"
 
     yit "keeps the accumulation mode off the journal page's search form" $ do
@@ -1641,7 +1657,7 @@ hledgerWebTest = do
         addGetParam "accum" "bogus"
       statusIs 200
       bodyContains "<h2>Balance Sheet</h2>"
-      bodyContains "Unknown balance accumulation mode"
+      bodyContains "The accum parameter has a value this page does not know"
       bodyNotContains "<tfoot>"
 
     yit "serves the income statement, with changes, revenues shown positive" $ do

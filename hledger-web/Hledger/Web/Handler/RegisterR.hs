@@ -27,15 +27,16 @@ import Hledger.Write.Chart.Svg (SvgOptions(..), chartSvgMarkupWith, defaultSvgOp
 import Hledger.Web.Import
 import Hledger.Web.Paging
 import Hledger.Web.Widget.Chart (chartLegend, chartWidth)
-import Hledger.Web.ReportPage (amountModeOf, deepestDepth, depthParams, removeAttributes, intervalLinks, listWord, parseCalc, parseInterval, parseListMode, parseValue, setAmountMode, valueParams)
+import Hledger.Web.Param (Param(..), lookupParam, paramLinks, paramSetting, paramSettings)
+import Hledger.Web.ReportPage (accumParam, amountModeOf, calcParam, deepestDepth, depthParams, intervalLinks, listParam, optionsSummary, parseInterval, parseValue, removeAttributes, setAmountMode, sortParam, valueParams)
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Widget.Common
-             (accountParams, accountRegisterQuery, amountLinks, calcLinks, columnsLinks,
-              commodityLinks, controlsHint, controlsToggle, optionsSummary, searchHeading, costsLinks, depthLinks,
-              inertControls, listModeLinks, lotsLinks, mixedAmountAsHtmlElided,
+             (accountParams, accountRegisterQuery, amountLinks, columnsLinks,
+              commodityLinks, controlsHint, controlsToggle, searchHeading, costsLinks, depthLinks,
+              inertControls, lotsLinks, mixedAmountAsHtmlElided,
               mixedAmountAsHtmlWith, moreCommodities, percentLinks, pricesLinks, realLinks,
-              runningBalanceAsHtml, sortLinks, statusLinks, typeLinks,
+              runningBalanceAsHtml, statusLinks, typeLinks,
               zeroBalanceLinks, transactionFragment, removeDates, journalDayQuery)
 
 -- | The main journal/account register view, with accounts sidebar.
@@ -48,12 +49,12 @@ getRegisterR = do
   -- starting from before the query's start date, rather than a total of
   -- the transactions shown; a report's ending balance links here that way,
   -- so that the balance ends on the figure clicked.
-  historical <- (== Just "historical") <$> lookupGetParam "accum"
+  historical <- (== Just Historical) <$> lookupParam accumParam
   -- With a value parameter amounts are converted as a report page's
   -- figures were (see Hledger.Web.ReportPage.parseValue), so that its
   -- figures' registers end on them. One it does not know is ignored.
   mmode <- either (const Nothing) id . parseValue <$> lookupGetParam "value"
-  mlist <- either (const Nothing) id . parseListMode <$> lookupGetParam "list"
+  mlist <- lookupParam listParam
   -- With costs=1 amounts keep the costs recorded with them (10 AAPL @ $95),
   -- which are stripped by default.
   costsOn <- (== Just "1") <$> lookupGetParam "costs"
@@ -62,9 +63,9 @@ getRegisterR = do
   minterval <- lookupGetParam "interval"
   totalOn <- (== Just "1") <$> lookupGetParam "total"
   avgOn   <- (== Just "1") <$> lookupGetParam "avg"
-  sortAmt <- (== Just "amount") <$> lookupGetParam "sort"
+  sortAmt <- fromMaybe False <$> lookupParam sortParam
   pctOn   <- (== Just "1") <$> lookupGetParam "pct"
-  mcalc   <- lookupGetParam "calc"
+  calcCur <- fromMaybe CalcChange <$> lookupParam calcParam
   urlrender <- getUrlRenderParams
   pagereq <- pageRequest
   -- How wide to draw the chart: as wide as the page's main column.
@@ -88,23 +89,23 @@ getRegisterR = do
       rspec = rspec0{_rsReportOpts = ropts}
       -- links staying on this register keep its modes
       valParams = valueParams (_rsReportOpts rspec0) mmode
-      accumParams = [("accum", "historical") | historical]
+      accumParams = [paramSetting accumParam Historical | historical]
       costsParams = [("costs", "1") | costsOn]
       inferParams = [("infer", "1") | inferOn]
       date2Params = [("date2", "1") | date2On]
       dfltHidden = empty_ $ _rsReportOpts rspec0
       emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= dfltHidden]
       elist = fromMaybe (accountlistmode_ $ _rsReportOpts rspec0) mlist
-      listParams = [("list", listWord elist) | elist /= accountlistmode_ (_rsReportOpts rspec0)]
+      listParams = paramSettings listParam (accountlistmode_ (_rsReportOpts rspec0)) elist
       -- The report-shaping state shapes nothing here, but it is passed
       -- along and shown dimmed below, so it survives visiting a register.
       stickyParams =
         [("interval", w) | Just w <- [mfilter (not . T.null) minterval]] ++
         [("total", "1") | totalOn] ++
         [("avg", "1") | avgOn] ++
-        [("sort", "amount") | sortAmt] ++
+        paramSettings sortParam False sortAmt ++
         [("pct", "1") | pctOn] ++
-        [("calc", c) | Just c <- [mcalc], not (T.null c)]
+        paramSettings calcParam CalcChange calcCur
       lotsParams = [("lots", "1") | lotsShown]
       -- The account this register is for, which its own links keep.
       acctParams = maybe [] (\(a, subs) -> accountParams subs a) account
@@ -113,7 +114,7 @@ getRegisterR = do
         acctParams ++ stickyParams ++ accumParams ++ valParams ++ costsParams ++ inferParams ++ date2Params ++ emptyParams ++ listParams ++ lotsParams ++ depthParams q
       -- Links to the journal carry the sticky state; the account, the
       -- accumulation mode and the costs toggle are this page's own.
-      journalCarry = removeAttributes ["account", "subs", "accum", "costs"] modeParams
+      journalCarry = removeAttributes ["account", "subs", paramName accumParam, "costs"] modeParams
       -- An entry's date link: the journal on that date, same modes.
       dayParams t = ("q", journalDayQuery qparam (tdate t)) : journalCarry
       -- the rows of links above the chart: the filters (status,
@@ -133,7 +134,7 @@ getRegisterR = do
       deepest = deepestDepth j
       depthRow = depthLinks trs RegisterR modeParams qparam deepest
       -- Tree mode adds the sidebar's fold carets.
-      listRow = listModeLinks trs RegisterR (qParams qparam ++ removeAttributes ["list"] modeParams) (accountlistmode_ $ _rsReportOpts rspec0) elist
+      listRow = paramLinks listParam trs RegisterR (qParams qparam ++ modeParams) (accountlistmode_ $ _rsReportOpts rspec0) elist
       amountsRow = amountLinks trs RegisterR (qParams qparam ++ removeAttributes ["value"] modeParams)
         (amountModeOf $ _rsReportOpts rspec0) (amountModeOf ropts)
       costsRow = costsLinks trs RegisterR (qParams qparam ++ removeAttributes ["costs"] modeParams) costsOn
@@ -147,16 +148,15 @@ getRegisterR = do
       -- The report-shaping controls, operative on the report pages,
       -- shown dimmed with the url's state marked.
       rpInterval = maybe NoInterval (either (const NoInterval) id . parseInterval) minterval
-      calcCur = either (const CalcChange) id $ parseCalc mcalc
       -- The years row; its links rewrite the search's date narrowing themselves.
       yearsNav = yearsRow trs RegisterR qparam today modeParams years
       intervalRow = inertControls trs $
         intervalLinks trs RegisterR (removeAttributes ["interval"] modeParams) qparam rpInterval
       inertRows = inertControls trs $ mconcat
         [ columnsLinks trs RegisterR (qParams qparam ++ removeAttributes ["total", "avg"] modeParams) totalOn avgOn
-        , sortLinks trs RegisterR (qParams qparam ++ removeAttributes ["sort"] modeParams) sortAmt
+        , paramLinks sortParam trs RegisterR (qParams qparam ++ modeParams) False sortAmt
         , percentLinks trs RegisterR (qParams qparam ++ removeAttributes ["pct"] modeParams) pctOn
-        , calcLinks trs RegisterR (qParams qparam ++ removeAttributes ["calc"] modeParams) calcCur
+        , paramLinks calcParam trs RegisterR (qParams qparam ++ modeParams) CalcChange calcCur
         ]
       -- All of them behind the controls disclosure, closed by default,
       -- in the same order as on the report pages.
@@ -217,7 +217,7 @@ getRegisterR = do
         | otherwise                = trc trs "column heading" "Total"
       -- The balance column's heading switches the mode, keeping the
       -- register's other modes.
-      accumToggle = (RegisterR, qParams qparam ++ removeAttributes ["accum"] modeParams ++ [("accum", "historical") | not historical])
+      accumToggle = (RegisterR, qParams qparam ++ removeAttributes [paramName accumParam] modeParams ++ [paramSetting accumParam Historical | not historical])
       accumToggleTitle
         | historical = tr trs "Click to show the running balance from the start of this period"
         | otherwise  = tr trs "Click to show the running balance including everything before this period"
@@ -231,7 +231,7 @@ getRegisterR = do
       broughtForwardLink (secondary, start) =
         (RegisterR, [("q", T.unwords $
           ((if secondary then "date2:.." else "date:..") <> showDate start) : removeDates qparam)] ++
-          removeAttributes ["accum"] modeParams)
+          removeAttributes [paramName accumParam] modeParams)
       transactionFrag = transactionFragment j
   defaultLayout $ do
     -- TRANSLATORS: the browser tab title of this page.

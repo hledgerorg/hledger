@@ -60,7 +60,8 @@ import Hledger.Cli.Commands.Balancesheet (balancesheetSpec)
 import Hledger.Cli.Commands.Cashflow (cashflowSpec)
 import Hledger.Cli.Commands.Incomestatement (incomestatementSpec)
 import Hledger.Cli.CompoundBalanceCommand (CompoundBalanceCommandSpec(..))
-import Hledger.Web.ReportPage (AmountMode(..), accumWord, amountModeOf, intervalPeriodExpr, parseCalc, parseListMode, parseValue, reportLinks, setAmountMode)
+import Hledger.Web.Param (Param(..), lookupParam)
+import Hledger.Web.ReportPage (AmountMode(..), accumParam, amountModeOf, calcParam, intervalPeriodExpr, listParam, parseValue, registerKeptParams, reportLinks, setAmountMode, sortParam)
 import Hledger.Web.Settings (Extra(..), webmanualurl, widgetFile)
 import Hledger.Web.Settings.StaticFiles
 import Hledger.Web.WebOptions
@@ -201,7 +202,7 @@ instance Yesod App where
     -- value parameter asks, with inferred market prices if asked.
     mvalmode <- either (const Nothing) id . parseValue <$> lookupGetParam "value"
     inferparam <- (== Just "1") <$> lookupGetParam "infer"
-    mlistmode <- either (const Nothing) id . parseListMode <$> lookupGetParam "list"
+    mlistmode <- lookupParam listParam
     let rspec = reportspec_ (cliopts_ opts)
         -- In the page's tree mode the sidebar gets fold carets (the
         -- inline script in default-layout.hamlet); its shape never changes.
@@ -234,8 +235,8 @@ instance Yesod App where
     -- The accumulation mode is kept only when it is not the default, as
     -- the pages' own links carry it.
     let keepable :: Text -> Text -> Bool
-        keepable "accum" v = v `elem` keptAccums here
-        keepable _       v = not (T.null v)
+        keepable k v | k == paramName accumParam = v `elem` keptAccums here
+                     | otherwise                = not (T.null v)
     keptParams <- fmap catMaybes . for (keptParamNames here) $ \name ->
       fmap (name,) . mfilter (keepable name) <$> lookupGetParam name
 
@@ -284,7 +285,7 @@ instance Yesod App where
             (tr trs "Net flows:",
              tr trs "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities.")
         accounts =
-          balanceReportAsHtml RegisterR here sidebarReports sidebarParams hideEmptyAccts totlabel tottitle trs j qparam account $
+          balanceReportAsHtml RegisterR here sidebarReports sidebarParams (registerKeptParams sidebarParams) hideEmptyAccts totlabel tottitle trs j qparam account $
           styleAmounts (journalCommodityStylesWith HardRounding j) $
           balanceReport rspec' j
 
@@ -453,7 +454,7 @@ getViewData = do
   -- parameters, see startupUrlState).
   lotsShown <- (== Just "1") <$> lookupGetParam "lots"
   mvalue <- either (const Nothing) id . parseValue <$> lookupGetParam "value"
-  gain <- either (const False) (== CalcGain) . parseCalc <$> lookupGetParam "calc"
+  gain <- (== Just CalcGain) <$> lookupParam calcParam
   let jHasLots = jsHasLots js
       jfull = jsFull js
       atCost = conversionop_ (maybe id setAmountMode mvalue _rsReportOpts) == Just ToCost
@@ -588,7 +589,7 @@ reportRoutes = [rmRoute i | i <- reportMenu, isJust (rmAccum i)]
 keptAccums :: Route App -> [Text]
 keptAccums route =
   case [dflt | i <- reportMenu, rmRoute i == route, Just dflt <- [rmAccum i]] of
-    [dflt]                 -> [accumWord a | a <- [PerPeriod, Historical, Cumulative], a /= dflt]
+    [dflt]                 -> [paramWord accumParam a | a <- paramModes accumParam, a /= dflt]
     _ | route == RegisterR -> ["historical"]
     _                      -> []
 
@@ -601,8 +602,8 @@ keptAccums route =
 keptParamNames :: Route App -> [Text]
 keptParamNames route
   | route == HoldingsR        = "closed" : stickyParamNames
-  | route `elem` reportRoutes = "accum" : stickyParamNames
-  | route == RegisterR        = "account" : "subs" : "accum" : "costs" : stickyParamNames
+  | route `elem` reportRoutes = paramName accumParam : stickyParamNames
+  | route == RegisterR        = "account" : "subs" : paramName accumParam : "costs" : stickyParamNames
   | route == JournalR         = stickyParamNames
   | otherwise                 = []
 
@@ -610,7 +611,7 @@ keptParamNames route
 -- only the control it names. date2 has no control, being deprecated,
 -- but is preserved like the rest.
 stickyParamNames :: [Text]
-stickyParamNames = ["interval", "depth", "value", "list", "total", "avg", "sort", "pct", "calc", "infer", "date2", "empty", "lots"]
+stickyParamNames = ["interval", "depth", "value", paramName listParam, "total", "avg", paramName sortParam, "pct", paramName calcParam, "infer", "date2", "empty", "lots"]
 
 -- | Are zero-balance accounts hidden ? The empty parameter says (1
 -- shows them, 0 hides them, the direction of the command line's

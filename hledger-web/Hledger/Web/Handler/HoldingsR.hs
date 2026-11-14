@@ -21,14 +21,15 @@ import Hledger.Web.Import
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Handler.BalanceR (reportTitle)
 import Hledger.Web.Paging (yearsRow)
+import Hledger.Web.Param (Param(..), paramLinks, paramSettings)
 import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Chart (reportChart)
 import Hledger.Web.Widget.Common
-  (accountParams, closedLinks, commodityLinks, controlsToggle, optionsSummary,
-   depthLinks, holdingsValueLinks, listModeLinks,
+  (accountParams, closedLinks, commodityLinks, controlsToggle,
+   depthLinks, holdingsValueLinks,
    lotsLinks, pricesLinks, realLinks, searchTerms,
-   sortLinks, statusLinks, zeroBalanceLinks)
+   statusLinks, zeroBalanceLinks)
 
 -- | The holdings view: investment holdings and their performance at the
 -- report end date, as the holdings command shows them. In tree mode the
@@ -94,8 +95,8 @@ getHoldingsR = do
             -- this page does not use but passes along.
             intervalParams = [("interval", w) | Just w <- [intervalPeriodExpr rpInterval]]
             valParams   = valueParams roptsOrig rpValue
-            listParams  = [("list", listWord (accountlistmode_ ropts)) | accountlistmode_ ropts /= accountlistmode_ roptsOrig]
-            sortParams  = [("sort", "amount") | sort_amount_ ropts]
+            listParams  = paramSettings listParam (accountlistmode_ roptsOrig) (accountlistmode_ ropts)
+            sortParams  = paramSettings sortParam False (sort_amount_ ropts)
             inferParams = [("infer", "1") | infer_prices_ ropts, not (infer_prices_ roptsOrig)]
             closedParams = [("closed", if closedShown then "1" else "0") | closedShown /= empty_ roptsOrig]
             emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= empty_ roptsOrig]
@@ -107,7 +108,7 @@ getHoldingsR = do
             qParams = [("q", qparam) | not (T.null qparam)]
             -- An account cell links to the account's register, keeping
             -- the states that page reads.
-            registerKept = removeAttributes ["interval", "sort", "closed"] pageParams
+            registerKept = removeAttributes ["interval", paramName sortParam, "closed"] pageParams
             acctlink acct = urlrender RegisterR $
               qParams ++ accountParams True acct ++ registerKept
             -- A position's cell links to that register filtered to the
@@ -285,13 +286,13 @@ getHoldingsR = do
                   -- TRANSLATORS: the hint below the commodity filter row.
                   (tr trs "Shift-click selects several commodities.") jfull ] ++
               [ depthLinks trs HoldingsR pageParams qparam deepest | deepest > 1 ] ++
-              [ listModeLinks trs HoldingsR (qParams ++ removeAttributes ["list"] pageParams) (accountlistmode_ roptsOrig) (accountlistmode_ ropts)
+              [ paramLinks listParam trs HoldingsR (qParams ++ pageParams) (accountlistmode_ roptsOrig) (accountlistmode_ ropts)
               , holdingsValueLinks trs HoldingsR (qParams ++ removeAttributes ["value"] pageParams) (isJust $ value_ ropts)
               , pricesLinks trs HoldingsR (qParams ++ removeAttributes ["infer"] pageParams) (infer_prices_ ropts)
               , zeroBalanceLinks trs HoldingsR (qParams ++ removeAttributes ["empty"] pageParams) (empty_ roptsOrig) hideEmpty
               , lotsLinks trs HoldingsR (qParams ++ removeAttributes ["lots"] pageParams) lotsShown
               , closedLinks trs HoldingsR (qParams ++ removeAttributes ["closed"] pageParams) (not $ empty_ roptsOrig) (not closedShown)
-              , sortLinks trs HoldingsR (qParams ++ removeAttributes ["sort"] pageParams) (sort_amount_ ropts) ]
+              , paramLinks sortParam trs HoldingsR (qParams ++ pageParams) False (sort_amount_ ropts) ]
         Yesod.toWidget controlRows
         Yesod.toWidget $ H.h2 $ H.toHtml $ withFilter title
         -- the chart, as holdings --chart draws it: a bar per holding, or per lot
