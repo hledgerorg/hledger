@@ -60,8 +60,8 @@ import Hledger.Cli.Commands.Balancesheet (balancesheetSpec)
 import Hledger.Cli.Commands.Cashflow (cashflowSpec)
 import Hledger.Cli.Commands.Incomestatement (incomestatementSpec)
 import Hledger.Cli.CompoundBalanceCommand (CompoundBalanceCommandSpec(..))
-import Hledger.Web.Param (Param(..), accumParam, calcParam, listParam, lookupParam, sortParam)
-import Hledger.Web.ReportPage (AmountMode(..), amountModeOf, intervalPeriodExpr, parseValue, reportLinks, setAmountMode)
+import Hledger.Web.Param (Param(..), lookupParam)
+import Hledger.Web.ReportPage (AmountMode(..), accumParam, amountModeOf, calcParam, intervalPeriodExpr, listParam, parseValue, registerKeptParams, reportLinks, setAmountMode, sortParam)
 import Hledger.Web.Settings (Extra(..), webmanualurl, widgetFile)
 import Hledger.Web.Settings.StaticFiles
 import Hledger.Web.WebOptions
@@ -285,7 +285,7 @@ instance Yesod App where
             (tr trs "Net flows:",
              tr trs "The sum of every account: open positions in each commodity, and the cash that paid for them. Zero when nothing crosses commodities.")
         accounts =
-          balanceReportAsHtml RegisterR here sidebarReports sidebarParams hideEmptyAccts totlabel tottitle trs j qparam account $
+          balanceReportAsHtml RegisterR here sidebarReports sidebarParams (registerKeptParams sidebarParams) hideEmptyAccts totlabel tottitle trs j qparam account $
           styleAmounts (journalCommodityStylesWith HardRounding j) $
           balanceReport rspec' j
 

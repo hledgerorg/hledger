@@ -1,8 +1,9 @@
 {-|
-The report pages' rows of links, and their multiple-choice URL
-parameters, such as calc: each one's name, modes, URL words, and labels,
-written once, from which its parser, its row of links, the parameters
-that carry it, and its name in the options summary are made.
+The report pages' rows of links, and the generic part of their
+multiple-choice URL parameters: a parameter's name, modes, URL words,
+and labels, written once (the parameters themselves are in
+"Hledger.Web.ReportPage"), from which its parser, its row of links, the
+parameters that carry it, and its name in the options summary are made.
 -}
 
 {-# LANGUAGE LambdaCase        #-}
@@ -19,10 +20,6 @@ module Hledger.Web.Param
   , paramSettings
   , paramLinks
   , paramPhrase
-  , accumParam
-  , calcParam
-  , listParam
-  , sortParam
   ) where
 
 import Control.Monad (unless)
@@ -34,8 +31,7 @@ import Text.Blaze.Html5 qualified as H
 import Text.Blaze.Html5.Attributes qualified as A
 import Yesod (HtmlUrl, MonadHandler, lookupGetParam)
 
-import Hledger
-import Hledger.Utils.I18n (Translations, tr, trc)
+import Hledger.Utils.I18n (Translations)
 
 -- | A row of links above a report: a label, then each link's label,
 -- title, target, and whether it is the one being shown.
@@ -122,79 +118,3 @@ paramLinks p trs route kept dflt current =
 -- the closed options disclosure lists it.
 paramPhrase :: Param a -> Translations -> Text -> Maybe Text
 paramPhrase p trs w = fst . paramLabel p trs <$> find ((== w) . paramWord p) (paramModes p)
-
--- | The accum parameter: whether a report shows balance changes, ending
--- balances, or cumulative totals; absent for the page's own default.
--- The H key toggles Ending balances, the second link (hledger.js).
-accumParam :: Param BalanceAccumulation
-accumParam = Param
-  { paramName  = "accum"
-  , paramModes = [PerPeriod, Historical, Cumulative]
-  , paramWord  = \case
-      PerPeriod  -> "change"
-      Historical -> "historical"
-      Cumulative -> "cumulative"
-  -- TRANSLATORS: the label before a report's accumulation mode links, and the links' text and tooltips.
-  , paramRowLabel = \trs -> tr trs "Show:"
-  , paramLabel = \trs -> \case
-      PerPeriod  -> (tr trs "Balance changes", tr trs "Show how much each balance changed in each period")
-      Historical -> (tr trs "Ending balances", tr trs "Show each balance at the end of each period, including everything before it")
-      Cumulative -> (tr trs "Cumulative totals", tr trs "Show each balance's change since the start of the report (--cumulative)")
-  }
-
--- | The calc parameter: what a report's cells calculate, as the balance
--- commands' --valuechange, --gain, and --count flags choose.
-calcParam :: Param BalanceCalculation
-calcParam = Param
-  { paramName  = "calc"
-  , paramModes = [CalcChange, CalcValueChange, CalcGain, CalcPostingsCount]
-  , paramWord  = \case
-      CalcChange        -> "change"
-      CalcValueChange   -> "valuechange"
-      CalcGain          -> "gain"
-      CalcPostingsCount -> "count"
-      -- Not offered (not in paramModes), so never in a url.
-      _                 -> ""
-  -- TRANSLATORS: the label before a report's calculation links, and the links' text and tooltips.
-  , paramRowLabel = \trs -> tr trs "Calculate:"
-  , paramLabel = \trs -> \case
-      CalcChange        -> (trc trs "calculation" "Sums", tr trs "Show sums of postings")
-      CalcValueChange   -> (tr trs "Value change", tr trs "Show how period-end market values changed (--valuechange)")
-      CalcGain          -> (tr trs "Unrealized gain", tr trs "Show unrealized capital gains: market value minus cost (--gain)")
-      CalcPostingsCount -> (tr trs "Posting counts", tr trs "Count the postings instead of summing them (--count)")
-      _                 -> ("", "")
-  }
-
--- | The list parameter: show accounts as a flat list or a tree; absent
--- for the page's default, the startup one. The t key toggles them
--- (hledger.js).
-listParam :: Param AccountListMode
-listParam = Param
-  { paramName  = "list"
-  , paramModes = [ALFlat, ALTree]
-  , paramWord  = \case
-      ALFlat -> "flat"
-      ALTree -> "tree"
-  -- TRANSLATORS: the label before a report's list/tree links, and the links' text and tooltips.
-  , paramRowLabel = \trs -> tr trs "Accounts:"
-  , paramLabel = \trs -> \case
-      ALFlat -> (trc trs "accounts" "List", tr trs "Show accounts as a flat list (--flat)")
-      ALTree -> (trc trs "accounts" "Tree", tr trs "Show accounts as a tree (--tree)")
-  }
-
--- | The sort parameter: whether rows are sorted by amount, rather than
--- by account display order (declaration order, otherwise name).
--- The S key toggles By amount, the second link (hledger.js).
-sortParam :: Param Bool
-sortParam = Param
-  { paramName  = "sort"
-  , paramModes = [False, True]
-  , paramWord  = \case
-      False -> "account"
-      True  -> "amount"
-  -- TRANSLATORS: the label before a report's sort links, and the links' text and tooltips.
-  , paramRowLabel = \trs -> tr trs "Sort:"
-  , paramLabel = \trs -> \case
-      False -> (tr trs "By account", tr trs "Sort rows by account display order")
-      True  -> (tr trs "By amount", tr trs "Sort rows by their amounts, largest first (-S)")
-  }

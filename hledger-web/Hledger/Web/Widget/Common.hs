@@ -10,7 +10,6 @@ module Hledger.Web.Widget.Common
   , balanceReportAsHtml
   , controlsHint
   , controlsToggle
-  , optionsSummary
   , searchHeading
   , inertControls
   , pricesLinks
@@ -49,13 +48,13 @@ module Hledger.Web.Widget.Common
   ) where
 
 import Control.Applicative ((<|>))
-import Control.Monad (guard, when)
+import Control.Monad (when)
 import Control.Monad.Except (ExceptT, mapExceptT)
 import Data.Char (isDigit)
 import Data.Foldable (find, for_)
-import Data.List (elemIndex, sortOn)
+import Data.List (elemIndex)
 import Data.Set qualified as Set
-import Data.Maybe (fromMaybe, isJust, isNothing, listToMaybe, mapMaybe, maybeToList)
+import Data.Maybe (isJust, isNothing, listToMaybe, mapMaybe, maybeToList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time.Calendar (Day)
@@ -74,7 +73,7 @@ import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor qualified as Anchor
 import Hledger.Cli.Utils (writeFileWithBackupIfChanged)
-import Hledger.Web.Param (accumParam, calcParam, listParam, sortParam, linksRow, linksRowClass, paramName, paramPhrase)
+import Hledger.Web.Param (linksRow, linksRowClass)
 import Hledger.Web.Settings (manualurl)
 import Hledger.Query qualified as Query
 
@@ -116,20 +115,14 @@ helplink :: Text -> Text -> HtmlUrl r
 helplink topic label _ = H.a ! A.href u ! A.target "hledgerhelp" $ toHtml label
   where u = textValue $ manualurl <> if T.null topic then "" else T.cons '#' topic
 
--- | Of the parameters the page links keep, those the sidebar's register
--- links keep: the states the register reads, ie the depth limit (which
--- clips its sidebar), the amounts mode, the accounts mode, inferred
--- prices, zero balances, and lot detail. Each such link rewrites the
--- search itself.
-registerKeptParams :: [(Text, Text)] -> [(Text, Text)]
-registerKeptParams ps = [p | p@(k, _) <- ps, k `elem` ["depth", "value", paramName listParam, "infer", "empty", "lots"]]
-
 -- | Render a "BalanceReport" as the sidebar: the page links (each page's
 -- route, label, and title, with the parameters their links carry), then
--- the accounts, linking to their registers. The current page's row is marked.
+-- the accounts, linking to their registers with the given parameters
+-- (see 'Hledger.Web.ReportPage.registerKeptParams'). The current page's
+-- row is marked.
 balanceReportAsHtml ::
-  Eq r => r -> r -> [(r, Text, Text)] -> [(Text, Text)] -> Bool -> Text -> Text -> Translations -> Journal -> Text -> Maybe (AccountName, Bool) -> BalanceReport -> HtmlUrl r
-balanceReportAsHtml registerR here reports reportParams hideEmpty totlabel tottitle trs j qparam maccount (items, total) =
+  Eq r => r -> r -> [(r, Text, Text)] -> [(Text, Text)] -> [(Text, Text)] -> Bool -> Text -> Text -> Translations -> Journal -> Text -> Maybe (AccountName, Bool) -> BalanceReport -> HtmlUrl r
+balanceReportAsHtml registerR here reports reportParams kept hideEmpty totlabel tottitle trs j qparam maccount (items, total) =
   $(hamletFile "templates/balance-report.hamlet")
   where
     l = ledgerFromJournal Any j
@@ -147,7 +140,6 @@ balanceReportAsHtml registerR here reports reportParams hideEmpty totlabel totti
       -- displays such balances as zero.
       where isInteresting a = not (all (mixedAmountLooksZero . mixedAmountStripCosts . bdexcludingsubs) . pdperiods $ adata a) || any isInteresting (asubs a)
     matchesAcctSelector acct = maybe False ((`matchesAccount` acct) . accountRegisterQuery) maccount
-    kept = registerKeptParams reportParams
     qps = [("q", qparam) | not (T.null qparam)]
     acctlink acct = (registerR, qps ++ accountParams True acct ++ kept)
     acctonlylink acct = (registerR, qps ++ accountParams False acct ++ kept)
@@ -173,51 +165,6 @@ controlsToggle trs open summary rows =
       <span .options-summary>#{T.intercalate " · " summary}
   ^{rows}
 |]
-
--- | The report options a page's parameters set, as short phrases for the
--- closed controls disclosure: the controls' own words where those stand
--- alone ("Monthly", "Tree"), a phrase where a control's word would not
--- ("Shown"). The pages' links carry only the options not at their
--- defaults, so these are the options in effect, listed in the order of
--- the controls' rows. The filters are not here: they are search terms,
--- shown in the search box. A depth limit at or beyond the given
--- deepest account's depth is not one: the Depth links show it as none.
-optionsSummary :: Translations -> Int -> [(Text, Text)] -> [Text]
-optionsSummary trs deepest = mapMaybe phrase . sortOn (rowOrder . fst)
-  where
-    rowOrder k = fromMaybe maxBound $ elemIndex k
-      ["equity", "interval", paramName accumParam, "depth", paramName listParam, "value", "infer", "empty", "lots", "closed",
-       "total", "avg", "costs", paramName sortParam, "pct", paramName calcParam, "date2"]
-    phrase = \case
-      ("interval", w)     -> Just $ fromMaybe w $ lookup w
-        [ ("yearly", tr trs "Yearly"), ("quarterly", tr trs "Quarterly"), ("monthly", tr trs "Monthly")
-        , ("weekly", tr trs "Weekly"), ("daily", tr trs "Daily") ]
-      -- TRANSLATORS: the depth limit, in the list of options in effect.
-      ("depth", n)        -> do
-        d <- readMay (T.unpack n) :: Maybe Int
-        guard (d < deepest)
-        Just $ trf trs "Depth {depth}" [("depth", n)]
-      (k, w) | k == paramName accumParam -> paramPhrase accumParam trs w
-      ("value", "none")   -> Just $ tr trs "As recorded"
-      ("value", "cost")   -> Just $ trc trs "amounts" "Cost"
-      ("value", _)        -> Just $ trc trs "amounts" "Value"
-      (k, w) | k == paramName listParam -> paramPhrase listParam trs w
-      (k, w) | k == paramName sortParam -> paramPhrase sortParam trs w
-      ("pct", "1")        -> Just $ tr trs "Percentages"
-      (k, w) | k == paramName calcParam -> paramPhrase calcParam trs w
-      -- TRANSLATORS: options in effect, listed on the closed options disclosure.
-      ("total", "1")      -> Just $ trc trs "column" "Total"
-      ("avg", "1")        -> Just $ trc trs "column" "Average"
-      ("infer", "1")      -> Just $ tr trs "Inferred prices"
-      ("empty", "0")      -> Just $ tr trs "Zero balances hidden"
-      ("empty", "1")      -> Just $ tr trs "Zero balances shown"
-      ("lots", "1")       -> Just $ tr trs "Lots shown"
-      ("costs", "1")      -> Just $ tr trs "Costs shown"
-      ("closed", "1")     -> Just $ tr trs "Closed positions shown"
-      ("closed", "0")     -> Just $ tr trs "Closed positions hidden"
-      ("date2", "1")      -> Just $ tr trs "Secondary dates"
-      ("equity", "1")     -> Just $ tr trs "Equity shown"
-      _                   -> Nothing
 
 -- | A journal or register page's heading: the given title, then the
 -- search's dates, if it has any, shown as the balance pages show theirs

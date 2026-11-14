@@ -21,12 +21,12 @@ import Hledger.Web.Import
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Handler.BalanceR (reportTitle)
 import Hledger.Web.Paging (yearsRow)
-import Hledger.Web.Param (Param(..), listParam, paramLinks, paramSettings, sortParam)
+import Hledger.Web.Param (Param(..), paramLinks, paramSettings)
 import Hledger.Web.ReportPage
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.Chart (reportChart)
 import Hledger.Web.Widget.Common
-  (accountParams, closedLinks, commodityLinks, controlsToggle, optionsSummary,
+  (accountParams, closedLinks, commodityLinks, controlsToggle,
    depthLinks, holdingsValueLinks,
    lotsLinks, pricesLinks, realLinks, searchTerms,
    statusLinks, zeroBalanceLinks)
