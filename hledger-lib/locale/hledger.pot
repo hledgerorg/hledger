@@ -564,6 +564,7 @@ msgid "Value"
 msgstr ""
 
 #. the holdings table's cost column heading, translated where it is displayed.
+#. the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "Avg cost"
 msgstr ""
@@ -815,6 +816,18 @@ msgstr ""
 msgid "Holdings at period ends, {dates}"
 msgstr ""
 
+#. the title of the holdings report with a report interval and --change; {dates} is a date range like 2026-01-31..2026-06-30.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+#, python-brace-format
+msgid "Holdings at period ends, {dates}, gains in each period"
+msgstr ""
+
+#. the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
+#: hledger/Hledger/Cli/Commands/Holdings.hs
+#, python-brace-format
+msgid "Holdings at period ends, {dates}, gains since {start}"
+msgstr ""
+
 #. ---- Entries for hledger-web. ----
 #. the report links above each report page and in the sidebar: each link's text, and its tooltip.
 #: hledger-web/Hledger/Web/App.hs
@@ -1036,7 +1049,7 @@ msgstr ""
 msgid "Holdings on {date}, gains in {period}"
 msgstr ""
 
-#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#. the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Date"
@@ -1047,23 +1060,25 @@ msgstr ""
 msgid "Age"
 msgstr ""
 
+#. the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Units"
 msgstr ""
 
+#. the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Unit price"
 msgstr ""
 
-#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#. the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Total cost"
 msgstr ""
 
-#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#. the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "Total value"
@@ -1074,31 +1089,31 @@ msgstr ""
 msgid "Weight"
 msgstr ""
 
-#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#. the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "UGain"
 msgstr ""
 
-#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#. the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "UGain%"
 msgstr ""
 
-#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#. the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "RGain"
 msgstr ""
 
-#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#. the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
 #. the holdings table's column headings. The cost heading is "Unit cost", "Avg cost", or "Unit/Avg cost".
 #: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 msgid "XIRR"
 msgstr ""
 
-#. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#. the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
 #. the holdings report's title; {date} is the report date, {period} the report period (eg 2026-11, or 2026-11-01..2026-11-14) if it has a start date.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "(no holdings)"

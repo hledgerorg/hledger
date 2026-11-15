@@ -19,6 +19,13 @@ Flags:
   -S --sort-amount          sort by value (or cost) instead of account name,
                             largest first
   -N --no-total             omit the final total row
+     --change               show gains during the report period, or with a
+                            report interval, during each period (default with a
+                            start date and no interval)
+     --cumulative           with a report interval, show gains from the
+                            report start date to each period's end
+  -H --historical           show gains since acquisition, ignoring the report
+                            start date (default with a report interval)
      --round=TYPE           how much rounding or padding should be done when
                             displaying amounts ?
                             none - show original decimal digits
@@ -174,13 +181,23 @@ If a market price is missing at the start or the end, the gains depending on it 
 With `-E`, holdings fully disposed during the period are shown too.
 
 A report start date before your first acquisition gives the same gains as no start date.
-(With a report interval, a start date just limits the periods shown; see below.)
+`-H/--historical` shows the gains since acquisition despite a start date.
+(With a report interval, gains are since acquisition unless you ask otherwise; see below.)
 
 ### Holdings over time
 
 With a [report interval](#report-intervals) (eg `-M`, `-Q`, `-Y`), holdings shows how your holdings changed:
 their totals at the end of each period, each computed as on that date
-(eg valued at its market prices, with realised gains and XIRR up to then).
+(eg valued at its market prices).
+When the holdings are all of one commodity (eg with a `cur:` query), their Units, Avg cost and Unit price are shown too.
+
+The gain columns' period is selected as in other periodic reports ([accumulation mode](#accumulation-mode)):
+
+- `-H/--historical` (the default): gains since acquisition, up to each period's end
+- `--change`: gains during each period, as in a single-date report of that period ([above](#gains-during-a-period));
+  these add up: the periods' UGain and RGain sum to those of the whole report period
+- `--cumulative`: gains from the report start date up to each period's end.
+
 With no end date, the periods continue up to today, even after your last transaction (since values change with market prices),
 and the current period's row shows today's holdings, like the report without an interval.
 List/tree mode and `--lots` make no difference to these totals, and are ignored.
@@ -190,11 +207,11 @@ With `-O csv`, `tsv` or `json`, there is one record per period end.
 $ hledger holdings -M -e 2026-04-01
 Holdings at period ends, 2026-01-31..2026-03-31
 
-            || Total cost  Total value  UGain  UGain%  RGain     XIRR 
-============++========================================================
- 2026-01-31 ||       $100         $120    $20   20.0%          820.5% 
- 2026-02-28 ||        $60          $90    $30   50.0%    $20  1566.4% 
- 2026-03-31 ||        $60          $54    $-6  -10.0%    $20   108.0% 
+            ||  Units  Avg cost  Unit price  Total cost  Total value  UGain  UGain%  RGain     XIRR 
+============++======================================================================================
+ 2026-01-31 || 10 AAA       $10         $12        $100         $120    $20   20.0%          820.5% 
+ 2026-02-28 ||  6 AAA       $10         $15         $60          $90    $30   50.0%    $20  1566.4% 
+ 2026-03-31 ||  6 AAA       $10          $9         $60          $54    $-6  -10.0%    $20   108.0% 
 ```
 
 ### Holdings charts

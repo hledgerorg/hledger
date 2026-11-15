@@ -1069,28 +1069,28 @@ P 2026-03-31 AAA $9
 $ hledger -f- holdings -M -e 2026-04-01
 Holdings at period ends, 2026-01-31..2026-03-31
 
-            || Total cost  Total value  UGain  UGain%  RGain     XIRR 
-============++========================================================
- 2026-01-31 ||       $100         $120    $20   20.0%          820.5% 
- 2026-02-28 ||        $60          $90    $30   50.0%    $20  1566.4% 
- 2026-03-31 ||        $60          $54    $-6  -10.0%    $20   108.0% 
+            ||  Units  Avg cost  Unit price  Total cost  Total value  UGain  UGain%  RGain     XIRR 
+============++======================================================================================
+ 2026-01-31 || 10 AAA       $10         $12        $100         $120    $20   20.0%          820.5% 
+ 2026-02-28 ||  6 AAA       $10         $15         $60          $90    $30   50.0%    $20  1566.4% 
+ 2026-03-31 ||  6 AAA       $10          $9         $60          $54    $-6  -10.0%    $20   108.0% 
 
 # ** 59. List/tree mode and --lots make no difference to those totals, and are ignored.
 $ hledger -f- holdings -M -e 2026-04-01 --tree --lots
 Holdings at period ends, 2026-01-31..2026-03-31
 
-            || Total cost  Total value  UGain  UGain%  RGain     XIRR 
-============++========================================================
- 2026-01-31 ||       $100         $120    $20   20.0%          820.5% 
- 2026-02-28 ||        $60          $90    $30   50.0%    $20  1566.4% 
- 2026-03-31 ||        $60          $54    $-6  -10.0%    $20   108.0% 
+            ||  Units  Avg cost  Unit price  Total cost  Total value  UGain  UGain%  RGain     XIRR 
+============++======================================================================================
+ 2026-01-31 || 10 AAA       $10         $12        $100         $120    $20   20.0%          820.5% 
+ 2026-02-28 ||  6 AAA       $10         $15         $60          $90    $30   50.0%    $20  1566.4% 
+ 2026-03-31 ||  6 AAA       $10          $9         $60          $54    $-6  -10.0%    $20   108.0% 
 
 # ** 60. CSV output has a record per period end.
 $ hledger -f- holdings -M -e 2026-04-01 -O csv
-"date","totalcost","totalvalue","ugain","ugainpct","rgain","xirr"
-"2026-01-31","$100","$120","$20","20.0","","820.5"
-"2026-02-28","$60","$90","$30","50.0","$20","1566.4"
-"2026-03-31","$60","$54","$-6","-10.0","$20","108.0"
+"date","units","avgcost","unitprice","totalcost","totalvalue","ugain","ugainpct","rgain","xirr"
+"2026-01-31","10","$10","$12","$100","$120","$20","20.0","","820.5"
+"2026-02-28","6","$10","$15","$60","$90","$30","50.0","$20","1566.4"
+"2026-03-31","6","$10","$9","$60","$54","$-6","-10.0","$20","108.0"
 
 # ** 61. A holding which has lost all of its value has an XIRR of -100%.
 <
@@ -1392,10 +1392,10 @@ Holdings on 2026-02-28, gains in 2026-02
 $ hledger -f - holdings -b 2026-01-01 -e 2026-03-01 -M
 Holdings at period ends, 2026-01-31..2026-02-28
 
-            || Total cost  Total value  UGain  UGain%  RGain     XIRR 
-============++========================================================
- 2026-01-31 ||       $200         $220    $20   10.0%          219.1% 
- 2026-02-28 ||       $175         $270    $95   54.3%     $5  1169.8% 
+            || Units  Avg cost  Unit price  Total cost  Total value  UGain  UGain%  RGain     XIRR 
+============++=====================================================================================
+ 2026-01-31 ||                                    $200         $220    $20   10.0%          219.1% 
+ 2026-02-28 ||  15 A    $11.67         $18        $175         $270    $95   54.3%     $5  1169.8% 
 >= 0
 
 # ** 81. A start date after the last posting, with no end date, still shows the holdings.
@@ -1413,8 +1413,48 @@ Holdings on 2026-03-06, gains in 2026-02-23..2026-03-06
 $ hledger -f - holdings --today 2026-05-20 -Q
 Holdings at period ends, 2026-03-31..2026-05-20
 
+            || Units  Avg cost  Unit price  Total cost  Total value  UGain  UGain%  RGain    XIRR 
+============++====================================================================================
+ 2026-03-31 ||  15 A    $11.67         $18        $175         $270    $95   54.3%     $5  459.9% 
+ 2026-05-20 ||  15 A    $11.67         $18        $175         $270    $95   54.3%     $5  211.9% 
+>= 0
+
+# ** 83. With a report interval, --change shows each period's gains (which add up: $20 + $75 = the $95 of test 80).
+$ hledger -f - holdings -M -e 2026-03-01 --change
+Holdings at period ends, 2026-01-31..2026-02-28, gains in each period
+
+            || Units  Avg cost  Unit price  Total cost  Total value  UGain  UGain%  RGain     XIRR 
+============++=====================================================================================
+ 2026-01-31 ||                                    $200         $220    $20   10.0%          219.1% 
+ 2026-02-28 ||  15 A    $11.67         $18        $175         $270    $75   38.5%     $5  5362.1% 
+>= 0
+
+# ** 84. --cumulative shows the gains since the report start date, at each period end.
+$ hledger -f - holdings -M -b 2026-02-01 -e 2026-04-01 --cumulative
+Holdings at period ends, 2026-02-28..2026-03-31, gains since 2026-02-01
+
+            || Units  Avg cost  Unit price  Total cost  Total value  UGain  UGain%  RGain     XIRR 
+============++=====================================================================================
+ 2026-02-28 ||  15 A    $11.67         $18        $175         $270    $75   38.5%     $5  5362.1% 
+ 2026-03-31 ||  15 A    $11.67         $18        $175         $270    $75   38.5%     $5   657.4% 
+>= 0
+
+# ** 85. In the single-date report, --historical/-H shows gains since acquisition, ignoring the start date.
+$ hledger -f - holdings -b 2026-02-01 -e 2026-03-01 -H
+Holdings on 2026-02-28
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain     XIRR 
+============++========================================================================================================
+ assets:inv ||             15 A    $11.67         $18        $175         $270  100.0%    $95   54.3%         3949.9% 
+------------++--------------------------------------------------------------------------------------------------------
+            ||             15 A    $11.67                    $175         $270  100.0%    $95   54.3%     $5  1169.8% 
+>= 0
+
+# ** 86. The Units, Avg cost and Unit price columns are omitted when no period has a single commodity.
+$ hledger -f - holdings -M -e 2026-02-01
+Holdings at period ends, 2026-01-31..2026-01-31
+
             || Total cost  Total value  UGain  UGain%  RGain    XIRR 
 ============++=======================================================
- 2026-03-31 ||       $175         $270    $95   54.3%     $5  459.9% 
- 2026-05-20 ||       $175         $270    $95   54.3%     $5  211.9% 
+ 2026-01-31 ||       $200         $220    $20   10.0%         219.1% 
 >= 0

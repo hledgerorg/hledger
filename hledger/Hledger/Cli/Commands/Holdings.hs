@@ -81,6 +81,9 @@ holdingsmode = hledgerCommandMode
    ,flagReq  ["drop"] (\s opts -> Right $ setopt "drop" s opts) "N" "omit N leading account name parts; in tree mode, remove the first N levels"
    ,flagNone ["sort-amount","S"] (setboolopt "sort-amount") "sort by value (or cost) instead of account name, largest first"
    ,flagNone ["no-total","N"] (setboolopt "no-total") "omit the final total row"
+   ,flagNone ["change"] (setboolopt "change") "show gains during the report period, or with a report interval, during each period (default with a start date and no interval)"
+   ,flagNone ["cumulative"] (setboolopt "cumulative") "with a report interval, show gains from the report start date to each period's end"
+   ,flagNone ["historical","H"] (setboolopt "historical") "show gains since acquisition, ignoring the report start date (default with a report interval)"
    ,flagReq ["round"] (\s opts -> Right $ setopt "round" s opts) "TYPE" $
      intercalate "\n"
      ["how much rounding or padding should be done when displaying amounts ?"
@@ -151,6 +154,9 @@ holdingCsv h =
 periodTotalsCsv :: Day -> (M.Map CommoditySymbol AmountStyle, HoldingsTotals) -> [T.Text]
 periodTotalsCsv d (_, tot) =
   [showDate d
+  ,maybe "" (T.pack . showAmountWith machineFmt{displayCommodity=False}) (htUnits tot)
+  ,maybe "" showamt (htAvgCost tot)
+  ,maybe "" showamt (htPrice tot)
   ,showamts (htCost tot)
   ,maybe "" showamts (htValue tot)
   ,maybe "" showamts (htUgain tot)
@@ -159,6 +165,7 @@ periodTotalsCsv d (_, tot) =
   ,maybe "" (T.pack . printf "%.1f") (htXirr tot)
   ]
   where
+    showamt a = showamts [a]
     showamts [] = ""
     showamts as = T.pack $ showMixedAmountWith machineFmt $ mixed as
 
@@ -166,6 +173,9 @@ periodTotalsCsv d (_, tot) =
 periodTotalsJson :: Day -> (M.Map CommoditySymbol AmountStyle, HoldingsTotals) -> Value
 periodTotalsJson d (_, tot) = object
   ["date"       .= d
+  ,"units"      .= (aquantity <$> htUnits tot)
+  ,"avgcost"    .= (showamts . (:[]) <$> htAvgCost tot)
+  ,"unitprice"  .= (showamts . (:[]) <$> htPrice tot)
   ,"totalcost"  .= showamts (htCost tot)
   ,"totalvalue" .= (showamts <$> htValue tot)
   ,"ugain"      .= (showamts <$> htUgain tot)
@@ -237,6 +247,7 @@ data HoldingsReportOpts = HoldingsReportOpts {
 data HoldingsTotals = HoldingsTotals {
    htUnits    :: Maybe Amount    -- ^ total units held, when all in one commodity
   ,htAvgCost  :: Maybe Amount    -- ^ their average unit cost, when also in one cost commodity
+  ,htPrice    :: Maybe Amount    -- ^ their unit market price, when they are in one commodity with one price (shown with a report interval)
   ,htCost     :: [Amount]        -- ^ total cost basis, per cost commodity
   ,htValue    :: Maybe [Amount]  -- ^ total market value, per value commodity
   ,htWeight   :: Maybe Quantity  -- ^ percent of the portfolio's value, unrounded
@@ -1192,6 +1203,7 @@ flatHoldingsReportAt mkeeplot HoldingsReportOpts{hroLots=showlots, hroRounding=r
           ([u], [c]) -> Just $ avgcost u c
           _          -> Nothing
       , htCost     = amounts $ mixed totcosts
+      , htPrice    = singlePrice $ concatMap (lotsUnder . prrFullName) toprows
       , htValue    = mportfoliovalue
       , htWeight   = weightPct $ pricedValue $ concatMap (lotsUnder . prrFullName) toprows
       , htUgain    = mtotgains
@@ -1224,6 +1236,7 @@ flatHoldingsReportAt mkeeplot HoldingsReportOpts{hroLots=showlots, hroRounding=r
           ([u], [c]) -> Just $ avgcost u c
           _          -> Nothing
       , htCost     = sumAmounts costs
+      , htPrice    = singlePrice $ lotsUnder acct
       , htValue    = msubvalue
       , htWeight   = weightPct $ pricedValue $ lotsUnder acct
       , htUgain    = mgains
@@ -1243,6 +1256,14 @@ flatHoldingsReportAt mkeeplot HoldingsReportOpts{hroLots=showlots, hroRounding=r
           Just [v] -> Just $ acommodity v
           _        -> Nothing
         mgains = msubvalue >>= \subvalue -> gainAmounts subvalue costs
+
+    -- The unit market price of some lots, when they are all of one commodity
+    -- and have the same price.
+    singlePrice :: [(Amount, Maybe CostBasis)] -> Maybe Amount
+    singlePrice lots = do
+      [_] <- Just $ nubSort $ map (acommodity . fst) lots
+      ([p], _) <- lotsValuation lots
+      Just p
 
     -- An average cost: total cost / total units, shown like other amounts
     -- in the cost commodity's display precision - but with at least 2
@@ -1298,7 +1319,20 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
 
     rpt = holdingsReport
       HoldingsReportOpts{hroLots = boolopt "lots" rawopts, hroRounding = rounding}
-      rspec j
+      (if maccum == Just Historical then rspecWithDates Nothing Nothing else rspec) j
+
+    -- --change, --cumulative or --historical/-H, if specified: which period the
+    -- gain columns cover. In the single-date report, a start date gives the gains
+    -- during the report period (--change, or the same, --cumulative), unless
+    -- --historical asks for the gains since acquisition. With a report interval,
+    -- the default is --historical.
+    maccum = balanceAccumulationOverride rawopts
+    paccum = fromMaybe Historical maccum
+
+    -- The report spec with these start and end dates in place of the query's dates
+    -- (Nothing for its end date keeps the query's end date).
+    rspecWithDates mb me = rspec{_rsQuery = And [filterQuery (not . queryIsDateOrDate2) $ _rsQuery rspec
+                                               , Date $ DateSpan mb (me <|> (Exact <$> queryEndDate False (_rsQuery rspec)))]}
     rowlines = hrRows rpt
     reportdate = hrDate rpt
 
@@ -1307,8 +1341,18 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     periodic = interval_ ropts /= NoInterval
     periodrpts :: [(DateSpan, HoldingsReport)]
     periodrpts =
-      [ (spn, holdingsReport HoldingsReportOpts{hroLots = False, hroRounding = rounding} (rspecEndingAt e) j)
-      | spn@(DateSpan _ (Just e)) <- periodspans ]
+      [ (spn, holdingsReport HoldingsReportOpts{hroLots = False, hroRounding = rounding} (rspecFor mb e) j)
+      | spn@(DateSpan mb (Just e)) <- periodspans ]
+    -- each period's report: as of its end, with gains since acquisition, or
+    -- during the period, or since the first period's start
+    rspecFor mb e = (rspecWithDates mstart (Just e)){_rsReportOpts = ropts{accountlistmode_ = ALFlat}}
+      where mstart = case paccum of
+              Historical -> Nothing
+              PerPeriod  -> mb
+              Cumulative -> mfirststart
+    mfirststart = case periodspans of
+      DateSpan mb _ : _ -> mb
+      []                -> Nothing
     -- The periods: as usual (with no end date, ending with the journal's last
     -- postings), but since values change with market prices, with no end date
     -- they always extend to today, and the period containing today ends today,
@@ -1327,17 +1371,29 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
           | fromEFDay e > tomorrow && maybe True ((< tomorrow) . fromEFDay) mb = DateSpan mb (Just $ Exact tomorrow)
           | otherwise = spn
         clip spn = spn
-    rspecEndingAt e = rspec{ _rsQuery = And [filterQuery (not . queryIsDateOrDate2) (_rsQuery rspec), Date $ DateSpan Nothing (Just e)]
-                           , _rsReportOpts = ropts{accountlistmode_ = ALFlat} }
     ptotals = [(hrDate r, (hrStyles r, hrTotals r)) | (_, r) <- periodrpts]
     -- TRANSLATORS: the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
-    ptitle = effectiveTitle ropts $ case map fst ptotals of
-      [] -> tr "Holdings at period ends"
-      ds -> trf "Holdings at period ends, {dates}" [("dates", showDate (minimum ds) <> ".." <> showDate (maximum ds))]
-    pcolheadings = [tr "Total cost", tr "Total value", tr "UGain", tr "UGain%", tr "RGain", tr "XIRR"]
-    -- a period's cells: those of the totals row's cells which make sense over time
-    -- (Units and Avg cost are shown only for a single commodity, and Weight is always 100%)
-    periodcells (styles, tot) = [ps | (i, ps) <- zip [0 :: Int ..] (totalsCellParts styles tot), i `elem` [5, 6, 8, 9, 10, 11]]
+    ptitle = effectiveTitle ropts $ case (map fst ptotals, paccum) of
+      ([], _) -> tr "Holdings at period ends"
+      (ds, Historical) -> trf "Holdings at period ends, {dates}" [("dates", showdates ds)]
+      -- TRANSLATORS: the title of the holdings report with a report interval and --change; {dates} is a date range like 2026-01-31..2026-06-30.
+      (ds, PerPeriod)  -> trf "Holdings at period ends, {dates}, gains in each period" [("dates", showdates ds)]
+      -- TRANSLATORS: the title of the holdings report with a report interval and --cumulative; {dates} is a date range like 2026-01-31..2026-06-30, {start} the report start date.
+      (ds, Cumulative) -> trf "Holdings at period ends, {dates}, gains since {start}" [("dates", showdates ds), ("start", maybe "" (showDate . fromEFDay) mfirststart)]
+      where showdates ds = showDate (minimum ds) <> ".." <> showDate (maximum ds)
+    -- The Units, Avg cost and Unit price columns are shown only when some period has a single commodity
+    -- (they are blank otherwise); Weight is always 100%, and Date and Age don't apply.
+    showunits = any (isJust . htUnits . snd . snd) ptotals
+    pcolheadings = [h | (h, shown) <- zip allpcolheadings pcolshown, shown]
+    allpcolheadings = [tr "Units", tr "Avg cost", tr "Unit price", tr "Total cost", tr "Total value", tr "UGain", tr "UGain%", tr "RGain", tr "XIRR"]
+    pcolshown = replicate 3 showunits ++ replicate 6 True
+    -- a period's cells: those of the totals row's cells which make sense over time, and its unit price
+    periodcells (styles, tot) = [ps | (ps, shown) <- zip (take 2 cells ++ [price] ++ drop 2 cells) pcolshown, shown]
+      where
+        cells = [ps | (i, ps) <- zip [0 :: Int ..] (totalsCellParts styles tot), i `elem` [2, 3, 5, 6, 8, 9, 10, 11]]
+        price = maybe [] ((:[]) . T.pack . showAmountWith noCostFmt) (htPrice tot)
+    -- for the html and fods tables: whether each shown column is an amount, and its class
+    pcolinfo = [ci | (ci, shown) <- zip [(True,"units"),(True,"unitcost"),(True,"unitprice"),(True,"totalcost"),(True,"totalvalue"),(True,"ugain"),(False,"ugainpct"),(True,"rgain"),(False,"xirr")] pcolshown, shown]
     ptxtoutput =
       (case ptitle of
          "" -> ""
@@ -1350,16 +1406,15 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
         (Group NoLine $ map Header pcolheadings)
         [map (T.intercalate ", ") $ periodcells st | (_, st) <- ptotals]
     pcsvoutput :: CSV
-    pcsvoutput = ["date","totalcost","totalvalue","ugain","ugainpct","rgain","xirr"] : map (uncurry periodTotalsCsv) ptotals
+    pcsvoutput = ["date","units","avgcost","unitprice","totalcost","totalvalue","ugain","ugainpct","rgain","xirr"] : map (uncurry periodTotalsCsv) ptotals
     -- spreadsheet-shaped tables for the html and fods output, like the text table
     pspreadsheetWith :: forall content. (T.Text -> content) -> (Bool -> [T.Text] -> content) -> [[Ods.Cell Ods.NumLines content]]
     pspreadsheetWith plain parts =
-      addHeaderBorders [plain <$> (headerCell t){Ods.cellClass = Ods.Class cls} | (t, cls) <- zip (tr "Date" : pcolheadings) pcolclasses]
+      addHeaderBorders [plain <$> (headerCell t){Ods.cellClass = Ods.Class cls} | (t, cls) <- zip (tr "Date" : pcolheadings) ("date" : map snd pcolinfo)]
       : [ (Ods.defaultCell (plain $ showDate d)){Ods.cellType = Ods.TypeString, Ods.cellClass = Ods.Class "date"}
           : [ (Ods.defaultCell (parts isamount ps)){Ods.cellType = Ods.TypeMixedAmount, Ods.cellClass = Ods.Class cls}
-            | (isamount, ps, cls) <- zip3 [True, True, True, False, True, False] (periodcells st) (drop 1 pcolclasses) ]
+            | ((isamount, cls), ps) <- zip pcolinfo (periodcells st) ]
         | (d, st) <- ptotals ]
-      where pcolclasses = ["date","totalcost","totalvalue","ugain","ugainpct","rgain","xirr"]
     phtmltable = pspreadsheetWith toHtml htmlParts
     pfodstable = pspreadsheetWith id (\_ -> T.intercalate ", " . filter (not . T.null))
 

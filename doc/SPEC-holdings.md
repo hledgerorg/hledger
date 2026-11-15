@@ -207,6 +207,15 @@ period itself. With `change:`/`balance:` terms, the lots of the lines shown
 at the end are the ones counted at S (`hrKeepLot`).
 With a report interval, each period end's report has no start date, so the
 per-period totals keep showing gains since acquisition.
+Accumulation flags select the gain columns' period. In the single-date
+report: `--change` (or `--cumulative`, the same there) is the default with
+a start date; `-H/--historical` ignores the start date (gains since
+acquisition). With a report interval, each period end's report gets:
+`-H` (default) no start date; `--change` the period's start date;
+`--cumulative` the first period's start date. The periodic table also has
+Units, Avg cost and Unit price columns (from the totals, `htPrice` for the
+price), shown only when some period has a single commodity.
+
 With a report interval and no end date, the periods extend to today
 (not just to the last posting, as in other reports), and the period
 containing today ends today, so its row equals the single-date report.
