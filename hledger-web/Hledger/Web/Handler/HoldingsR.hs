@@ -83,7 +83,7 @@ getHoldingsR = do
             -- lots shown), or account sections in tree mode (see
             -- holdingsTreeLines).
             rpt = holdingsReport
-                    HoldingsReportOpts{hroLots = lotsShown, hroRounding = HardRounding}
+                    HoldingsReportOpts{hroLots = lotsShown, hroRounding = HardRounding, hroPriceOracle = Nothing}
                     rspec jfull
             title = reportTitle ropts $
               -- TRANSLATORS: the holdings page's heading; {date} is the report date, {period} the report period (eg 2026-11, or 2026-11-01..2026-11-14) if it has a start date.

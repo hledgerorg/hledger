@@ -230,6 +230,9 @@ showPercentWith styles p =
 data HoldingsReportOpts = HoldingsReportOpts {
    hroLots     :: Bool      -- ^ show each lot (one row per lot subaccount) rather than aggregating them per account, like --lots
   ,hroRounding :: Rounding  -- ^ how much rounding or padding to apply to displayed amounts, like --round
+  ,hroPriceOracle :: Maybe PriceOracle
+     -- ^ the journal's price oracle, if already made (for the report options' --infer-market-prices),
+     --   so that several reports can share it and its cache; otherwise the report makes one
   }
 
 -- | The grand totals of a holdings report, summed over its topmost
@@ -411,9 +414,13 @@ holdingsBarsChart ReportOpts{translations_} styles title xaxis parts =
 -- (see maybePrepareLotDetail); this report aggregates lots itself.
 -- A --value=then valuation strategy is not supported; callers reject it.
 holdingsReport :: HoldingsReportOpts -> ReportSpec -> Journal -> HoldingsReport
-holdingsReport hro rspec@ReportSpec{_rsReportOpts=ropts'} j'
+holdingsReport hro0 rspec@ReportSpec{_rsReportOpts=ropts'} j'
   | accountlistmode_ ropts' == ALTree = treeHoldingsReport hro rspec j'
   | otherwise                         = flatHoldingsReport hro rspec j'
+  where
+    -- one price oracle for all the flat reports this needs (making one, and
+    -- filling its cache, is costly with many prices)
+    hro = hro0{hroPriceOracle = hroPriceOracle hro0 <|> Just (journalPriceOracle (infer_prices_ ropts') j')}
 
 -- | The tree-mode holdings report: the flat report, with its display
 -- lines grouped into account sections. With hroLots, a second flat
@@ -617,7 +624,7 @@ holdingsXirr reportdate flows finalv = do
 -- If a lot filter is given, just those lots are counted, and the query's
 -- change:/balance: terms are not consulted.
 flatHoldingsReportAt :: Maybe ((AccountName, CommoditySymbol) -> Bool) -> HoldingsReportOpts -> ReportSpec -> Journal -> HoldingsReport
-flatHoldingsReportAt mkeeplot HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
+flatHoldingsReportAt mkeeplot HoldingsReportOpts{hroLots=showlots, hroRounding=rounding, hroPriceOracle=mpriceoracle}
                rspec@ReportSpec{_rsQuery=q, _rsReportOpts=ropts} j =
   HoldingsReport
     { hrDate            = reportdate
@@ -791,7 +798,7 @@ flatHoldingsReportAt mkeeplot HoldingsReportOpts{hroLots=showlots, hroRounding=r
     -- precision by default; hroRounding can choose another rounding strategy.
     styles = journalCommodityStylesWith rounding j
 
-    priceoracle = journalPriceOracle (infer_prices_ ropts) j
+    priceoracle = fromMaybe (journalPriceOracle (infer_prices_ ropts) j) mpriceoracle
 
     -- The valuation strategy requested with -V/-X/--value, if any.
     -- It selects the valuation date and/or the valuation commodity;
@@ -1323,7 +1330,7 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     trf = I18n.trf (translations_ ropts)
 
     rpt = holdingsReport
-      HoldingsReportOpts{hroLots = boolopt "lots" rawopts, hroRounding = rounding}
+      HoldingsReportOpts{hroLots = boolopt "lots" rawopts, hroRounding = rounding, hroPriceOracle = Just priceoracle}
       (if maccum == Just Historical then rspecWithDates Nothing Nothing else rspec) j
 
     -- --change, --cumulative or --historical/-H, if specified: which period the
@@ -1332,6 +1339,9 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     -- --historical asks for the gains since acquisition. With a report interval,
     -- the default is --historical.
     maccum = balanceAccumulationOverride rawopts
+
+    -- one price oracle for all the reports (eg one per period)
+    priceoracle = journalPriceOracle (infer_prices_ ropts) j
     paccum = fromMaybe Historical maccum
 
     -- The report spec with these start and end dates in place of the query's dates
@@ -1346,7 +1356,7 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     periodic = interval_ ropts /= NoInterval
     periodrpts :: [(DateSpan, HoldingsReport)]
     periodrpts =
-      [ (spn, holdingsReport HoldingsReportOpts{hroLots = False, hroRounding = rounding} (rspecFor mb e) j)
+      [ (spn, holdingsReport HoldingsReportOpts{hroLots = False, hroRounding = rounding, hroPriceOracle = Just priceoracle} (rspecFor mb e) j)
       | spn@(DateSpan mb (Just e)) <- periodspans ]
     -- each period's report: as of its end, with gains since acquisition, or
     -- during the period, or since the first period's start
