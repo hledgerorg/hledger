@@ -126,6 +126,18 @@ and so could not be a plain query. Two terms with fixed meanings remove the prob
 - Fix (2026-11-14): `matchesRowAmounts` strips costs first, so a commodity's amounts at different `@` costs
   (kept apart in a MixedAmount) are compared as one total. Before, `bal balance:<0` matched an account holding
   1 X bought at one cost and partly sold at another (parts 10 X and -9 X); holdings showed this too.
+- holdings (2026-11-14): `balance:` and `change:` test each line (row account + commodity), not each account.
+  A line has two balances, its units and their market value (none if any lot is unpriced), and two changes,
+  its change in units during the report period and that change valued at the valuation date (as `bal -V change:`
+  does). A term with no symbol tests the units; with a symbol, whichever amount is in that commodity.
+  Implemented in holdings itself (`lineMatches`; the internal units report gets no row terms): the lots,
+  realised gains and cashflows of non-matching lines are dropped (`matchingLots`), so totals (including
+  RGain and XIRR, otherwise over all matched lots, #2769) and tree headings follow; row ownership uses all lots.
+  Weight stays relative to all the holdings (`mwholevalue`), hidden lines included, so screening shows each
+  line's real share and the total Weight shows the shown lines' share (unlike `bal -%`, which recalculates).
+  Earlier versions, rejected: testing each account's units (in a multi-commodity account it showed lines of any
+  value, and `balance:'>$1000'` matched nothing); value with no symbol (less like `bal`); an error for `change:`
+  with valuation.
 
 ## Original `sum:` implementation: changes made during it
 

@@ -1151,3 +1151,110 @@ Holdings on 2025-06-01
 ---------------++-----------------------------------------------------------------------------------------------------------
                ||                   10 F       $10                    $100          $50  100.0%   $-50  -50.0%              
 >= 0
+
+# ** 64. balance: and change: test each line (one commodity in one account). With no commodity symbol, its units,
+<
+commodity A  ; lots:
+commodity C  ; lots:
+P 2026-01-01 A $100
+
+2026-01-01 buy
+    assets:x        1 A {$50}
+    assets:x:a     20 A {$50}
+    assets:x:c      5 C {$10}
+    assets:cash
+
+2026-01-20 buy more
+    assets:x:a      5 A {$60}
+    assets:cash
+
+$ hledger -f - holdings -e 2026-02-01 balance:'>10'
+Holdings on 2026-01-31
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
+============++==========================================================================================================
+ assets:x:a ||             25 A       $52        $100       $1300        $2500          $1200   92.3%         866109.3% 
+------------++----------------------------------------------------------------------------------------------------------
+            ||             25 A       $52                   $1300        $2500          $1200   92.3%         866109.3% 
+>= 0
+
+# ** 65. or with the line's commodity symbol.
+$ hledger -f - holdings -e 2026-02-01 balance:'>10 A'
+Holdings on 2026-01-31
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
+============++==========================================================================================================
+ assets:x:a ||             25 A       $52        $100       $1300        $2500          $1200   92.3%         866109.3% 
+------------++----------------------------------------------------------------------------------------------------------
+            ||             25 A       $52                   $1300        $2500          $1200   92.3%         866109.3% 
+>= 0
+
+# ** 66. With the value's commodity symbol, its Total value. An unpriced line (C) has none. Totals follow the lines shown.
+# Weight stays relative to all the holdings, so there is none here, C being unpriced.
+$ hledger -f - holdings -e 2026-02-01 balance:'>$150'
+Holdings on 2026-01-31
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
+============++==========================================================================================================
+ assets:x:a ||             25 A       $52        $100       $1300        $2500          $1200   92.3%         866109.3% 
+------------++----------------------------------------------------------------------------------------------------------
+            ||             25 A       $52                   $1300        $2500          $1200   92.3%         866109.3% 
+>= 0
+
+# ** 67. Negated: lines without such a value, including unpriced ones.
+$ hledger -f - holdings -e 2026-02-01 not:balance:'>$150'
+Holdings on 2026-01-31
+
+            ||       Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
+============++================================================================================================================
+ assets:x   || 2026-01-01  30d    1 A       $50        $100         $50         $100            $50  100.0%         462323.8% 
+ assets:x:c || 2026-01-01  30d    5 C       $10                     $50                                                       
+------------++----------------------------------------------------------------------------------------------------------------
+            ||                                                     $100                                                       
+>= 0
+
+# ** 68. change: tests the line's change in units during the report period,
+$ hledger -f - holdings -e 2026-02-01 -b 2026-01-15 change:'>0'
+Holdings on 2026-01-31
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
+============++==========================================================================================================
+ assets:x:a ||             25 A       $52        $100       $1300        $2500          $1200   92.3%         866109.3% 
+------------++----------------------------------------------------------------------------------------------------------
+            ||             25 A       $52                   $1300        $2500          $1200   92.3%         866109.3% 
+>= 0
+
+# ** 69. or that change's value (5 A at $100).
+$ hledger -f - holdings -e 2026-02-01 -b 2026-01-15 change:'>$400' change:'<$600'
+Holdings on 2026-01-31
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
+============++==========================================================================================================
+ assets:x:a ||             25 A       $52        $100       $1300        $2500          $1200   92.3%         866109.3% 
+------------++----------------------------------------------------------------------------------------------------------
+            ||             25 A       $52                   $1300        $2500          $1200   92.3%         866109.3% 
+>= 0
+
+# ** 70. Tree mode's account headings follow the lines shown too.
+$ hledger -f - holdings -e 2026-02-01 --tree balance:'>$50'
+Holdings on 2026-01-31
+
+          ||       Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
+==========++================================================================================================================
+ assets:x ||                   26 A    $51.92                   $1350        $2600          $1250   92.6%         842720.4% 
+   A      || 2026-01-01  30d    1 A       $50        $100         $50         $100            $50  100.0%         462323.8% 
+   a      ||                   25 A       $52        $100       $1300        $2500          $1200   92.3%         866109.3% 
+----------++----------------------------------------------------------------------------------------------------------------
+          ||                   26 A    $51.92                   $1350        $2600          $1250   92.6%         842720.4% 
+>= 0
+
+# ** 71. Weight stays relative to all the holdings selected by the rest of the query, including lines hidden by these terms.
+$ hledger -f - holdings -e 2026-02-01 not:assets:x:c balance:'>10'
+Holdings on 2026-01-31
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
+============++==========================================================================================================
+ assets:x:a ||             25 A       $52        $100       $1300        $2500   96.2%  $1200   92.3%         866109.3% 
+------------++----------------------------------------------------------------------------------------------------------
+            ||             25 A       $52                   $1300        $2500   96.2%  $1200   92.3%         866109.3% 
+>= 0

@@ -5656,6 +5656,13 @@ What is tested depends on the kind of item being matched:
   plus the amount of any unbalanced virtual postings.
   (To find large transactions, use `amt:` instead, eg `print amt:'>1000'`.)
 
+- In `holdings`, each line (one commodity in one account) has two amounts, its units and its market value.
+  `balance:` tests the units, or with a commodity symbol, whichever of them is in that commodity
+  (so `balance:'>$1000'` tests the value).
+  `change:` likewise tests the change in units during the report period, or its value.
+  Unlike in other reports, `-V`/`-X` don't change which amount is tested; to test the value, write its commodity symbol.
+  The totals cover just the lines shown, but Weight is still relative to all the holdings.
+
 - Other commands ignore these terms.
 
 In registers, hidden rows still count in the running total or balance, which is the account's real one.

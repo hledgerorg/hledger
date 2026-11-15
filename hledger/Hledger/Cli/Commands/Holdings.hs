@@ -509,7 +509,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     -- each posting's transacted cost if any (so, proceeds when disposing),
     -- otherwise its cost basis value. Negative = money invested.
     flowmap :: M.Map (AccountName, CommoditySymbol) [(Day, Amount)]
-    flowmap = M.fromListWith (++)
+    flowmap = matchingLots $ M.fromListWith (++)
       [ (k, [(d, negate flowamt)])
       | (k, (d, a)) <- lotpostings
       , Just flowamt <- [case acost a of
@@ -527,7 +527,8 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     -- they are derived from can have more precision (eg from inferred
     -- per-unit costs).
     rgainmap :: M.Map (AccountName, CommoditySymbol) Amount
-    rgainmap = M.map (styleAmounts styles) $ M.fromListWith (+)
+    rgainmap = matchingLots allrgainmap
+    allrgainmap = M.map (styleAmounts styles) $ M.fromListWith (+)
       [ ((paccount p, acommodity a), basis - transacted)
       | p <- journalPostings j
       , isDisposePosting p
@@ -590,6 +591,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     ownRgainIx   = ownIx rgainmap
     underFlowIx  = underIx flowmap
     underRgainIx = underIx rgainmap
+    allUnderRgainIx = underIx allrgainmap
 
     -- Narrow an indexed group to one held commodity, if specified.
     inComm :: Maybe CommoditySymbol -> [(CommoditySymbol, v)] -> [v]
@@ -737,11 +739,19 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
       Just [v] -> Just $ acommodity v
       _        -> Nothing
 
-    -- A value's percentage of the portfolio's total value, when both are
-    -- single amounts in the same commodity.
+    -- The total value of all the holdings, including any lines hidden by
+    -- change: or balance: terms, when all are priced. Weight is relative to
+    -- this, so those terms hide lines without changing the others' weights.
+    mwholevalue :: Maybe [Amount]
+    mwholevalue
+      | queryIsNull rowq = mportfoliovalue
+      | otherwise = snd <$> lotsValuation [l | ((sub, _), l) <- M.toList alllotbases, isJust $ ownerOf sub]
+
+    -- A value's percentage of the whole portfolio's value (mwholevalue),
+    -- when both are single amounts in the same commodity.
     weightPct :: [Amount] -> Maybe Quantity
     weightPct val = do
-      tot <- mportfoliovalue
+      tot <- mwholevalue
       [t] <- Just tot
       [v] <- Just val
       guard $ acommodity v == acommodity t && aquantity t /= 0
@@ -792,16 +802,67 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     -- here; when the name has no cost part (AVERAGE lots' names omit it,
     -- staying stable across re-averaging), the pool's current average
     -- cost is filled in instead.
-    lotbases :: M.Map (AccountName, CommoditySymbol) (Amount, Maybe CostBasis)
-    lotbases = M.mapWithKey mklot $ M.filter (not . amountLooksZero) lotmap
+    alllotbases :: M.Map (AccountName, CommoditySymbol) (Amount, Maybe CostBasis)
+    alllotbases = M.mapWithKey mklot $ M.filter (not . amountLooksZero) lotmap
+    mklot (sub, _) a = (a, addPoolAvg sub a <$> lotBasis sub)
       where
-        mklot (sub, _) a = (a, addPoolAvg sub a <$> lotBasis sub)
-        addPoolAvg sub a cb@CostBasis{cbCost=Nothing} =
-          cb{cbCost = M.lookup (lotBaseAccount sub, acommodity a) poolavgmap}
+        addPoolAvg sub' a' cb@CostBasis{cbCost=Nothing} =
+          cb{cbCost = M.lookup (lotBaseAccount sub', acommodity a') poolavgmap}
         addPoolAvg _ _ cb = cb
+
+    lotbases = matchingLots alllotbases
 
     underLotIx = underIx lotbases
     ownLotIx   = ownIx lotbases
+    allUnderLotIx = underIx alllotbases
+    allOwnLotIx   = ownIx alllotbases
+
+    -- The query's change: and balance: terms. In this report they test each
+    -- displayed line: one commodity in one row account (see lineMatches).
+    -- The lots, realised gains and cashflows of the other lines are left out
+    -- (by matchingLots), so that the totals and tree mode's headings follow
+    -- the lines shown (but Weight stays relative to all the holdings; see
+    -- mwholevalue). Row ownership is decided from all lots.
+    rowq = _rsRowQuery rspec
+
+    matchingLots :: M.Map (AccountName, CommoditySymbol) v -> M.Map (AccountName, CommoditySymbol) v
+    matchingLots
+      | queryIsNull rowq = id
+      | otherwise = M.filterWithKey (\(sub, c) _ -> maybe False (\o -> (o, c) `S.member` matchinglines) $ ownerOf sub)
+    matchinglines = S.fromList
+      [(o, c) | (o, c) <- nubSort [(o, c) | (sub, c) <- M.keys lotmap, Just o <- [ownerOf sub]], lineMatches o c]
+
+    -- Each lot subaccount's change in units during the report period (all of
+    -- its units, if the report has no start date), with its cost basis; the
+    -- unchanged ones are left out.
+    lotchanges :: M.Map (AccountName, CommoditySymbol) (Amount, Maybe CostBasis)
+    lotchanges = M.mapWithKey mklot $ M.filter (not . amountLooksZero) $ M.fromListWith (+)
+      [(k, amountStripCost a) | (k, (d, a)) <- lotpostings, maybe True (d >=) mstart]
+      where mstart = queryStartDate False q
+    ownLotChangeIx = ownIx lotchanges
+
+    -- Does a row account's line for this commodity match the change: and
+    -- balance: terms ? A line has two balances, its units and their market
+    -- value (if all are priced), and likewise two changes: its change in
+    -- units during the report period, and that valued (at the valuation
+    -- date, as in the balance reports). A term with no commodity symbol tests
+    -- the units; one with a symbol tests whichever of the two amounts is in
+    -- that commodity, so eg balance:'>$1000' tests the value, and doesn't
+    -- match an unpriced line.
+    lineMatches :: AccountName -> CommoditySymbol -> Bool
+    lineMatches acct c = go rowq
+      where
+        (balunits, balvalue) = unitsAndValue allOwnLotIx
+        (chgunits, chgvalue) = unitsAndValue ownLotChangeIx
+        unitsAndValue ix = (mixed $ map fst lots, maybe nullmixedamt (mixed . snd) $ lotsValuation lots)
+          where lots = [l | (c', l) <- M.findWithDefault [] acct ix, c' == c]
+        go (And qs) = all go qs
+        go (Not t)  = not $ go t
+        go (Change  ord n mc) = Amt ord n mc `matchesMixedAmount` pick mc chgunits chgvalue
+        go (Balance ord n mc) = Amt ord n mc `matchesMixedAmount` pick mc balunits balvalue
+        go _ = True
+        pick Nothing units _     = units
+        pick _       units val = maPlus units val
 
     -- The lots held at or under the given account, excluding empty ones.
     lotsUnder :: AccountName -> [(Amount, Maybe CostBasis)]
@@ -817,9 +878,11 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     -- Non-holding accounts are filtered out.
     -- Cost conversion and valuation (-B/-V/--value) are disabled:
     -- holdings does its own valuation, and units should stay units.
+    -- Nor does it apply the change:/balance: terms; they are tested here (see rowq).
     mbr = multiBalanceReport rspec' j'
       where
-        rspec' = rspec{_rsReportOpts=ropts{balanceaccum_=Historical, interval_=NoInterval
+        rspec' = rspec{_rsRowQuery = Any
+                      ,_rsReportOpts=ropts{balanceaccum_=Historical, interval_=NoInterval
                                           ,conversionop_=Just NoConversionOp, value_=Nothing
                                           ,sort_amount_=False}}  -- -S sorts by value/cost below, not by units
         j' = if showlots then j else journalCollapseLotDetail j
@@ -828,8 +891,8 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     -- accounts/lots, normally hidden).
     candidates = filter isholdingrow $ prRows mbr
       where
-        isholdingrow r = not (null (lotsUnder acct))
-                      || (empty_ ropts && hasRgainsUnder acct)
+        isholdingrow r = not (null (M.findWithDefault [] acct allUnderLotIx))
+                      || (empty_ ropts && any (not . amountLooksZero . snd) (M.findWithDefault [] acct allUnderRgainIx))
           where acct = prrFullName r
     candaccts = map prrFullName candidates
 
@@ -841,16 +904,15 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     rows = filter keeprow candidates
       where
         keeprow r = not (null (lotsOf acct))
-                 || (empty_ ropts && hasRgainsOf acct)
+                 || (empty_ ropts && not (null $ rgainOnlyCommodities acct))
           where acct = prrFullName r
 
-    -- Are there nonzero realised gains at or under this account ?
-    hasRgainsUnder :: AccountName -> Bool
-    hasRgainsUnder acct = any (not . amountLooksZero) $ rgainsUnder acct Nothing
-
-    -- Are there nonzero realised gains in this row account's own scope ?
-    hasRgainsOf :: AccountName -> Bool
-    hasRgainsOf acct = any (not . amountLooksZero) $ rgainsOf acct Nothing
+    -- The commodities with nonzero realised gains in this row account's own
+    -- scope but no units held there (eg fully sold off).
+    rgainOnlyCommodities :: AccountName -> [CommoditySymbol]
+    rgainOnlyCommodities acct =
+      nubSort [ c | (c, g) <- M.findWithDefault [] acct ownRgainIx, not $ amountLooksZero g
+                  , c `notElem` map fst (M.findWithDefault [] acct allOwnLotIx) ]
 
     -- The topmost displayed rows: those not contained in another displayed
     -- row. Totals are computed from these, to avoid double counting.
@@ -934,12 +996,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
         heldamts = rowUnitAmounts r
         rgainonlyamts
           | not $ empty_ ropts = []
-          | otherwise =
-              [ nullamt{acommodity=c}
-              | c <- nubSort [ c2 | (c2, g) <- M.findWithDefault [] acct ownRgainIx
-                                  , not $ amountLooksZero g ]
-              , c `notElem` map acommodity heldamts
-              ]
+          | otherwise = [nullamt{acommodity=c} | c <- rgainOnlyCommodities acct]
         rec qa = Holding
           { hAccount   = acct
           , hCommodity = c

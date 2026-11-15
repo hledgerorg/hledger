@@ -106,6 +106,19 @@ Amounts are displayed with their commodity's display precision.
 The percent columns (Weight, UGain%, XIRR) are shown with the display style configured for the `%` commodity (eg by `-c '0.00 %'`).
 
 Query arguments and report flags like `--depth`, `-S/--sort-amount`, `--title` etc. work as usual.
+[`balance:` and `change:`](#balance-and-change-queries) query terms test each line (one commodity in one account).
+A line has two amounts, its units and its Total value, and the term's commodity symbol selects which is tested:
+
+- `holdings balance:'>100'` - holdings of more than 100 units (with no symbol, units are tested)
+- `holdings balance:'>100 AAPL'` - holdings of more than 100 AAPL
+- `holdings balance:'>$1000'` - holdings worth more than $1000. Lines with no market price have no value, and don't match.
+
+`change:` tests the line's change in units during the report period (so it needs a start date, eg `-b`),
+or with the value's commodity symbol, the value of that change at the valuation date.
+Unlike in other reports, `-V`/`-X` don't change which amount is tested; to test the value, write its commodity symbol.
+The totals and tree mode's account headings then cover just the lines shown.
+But Weight is still each line's share of all the holdings, including the hidden ones
+(so the total Weight shows what share the lines shown make up).
 
 With `-t/--tree`, holdings are grouped into account sections:
 an account with subaccounts or several commodities becomes a heading row,

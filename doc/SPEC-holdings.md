@@ -95,6 +95,7 @@ Notes:
   keep age as a number of days.
 - Weight is each row's value as a percentage of the portfolio's total
   value; blank unless all displayed holdings are priced in one commodity.
+  Lines hidden by `balance:` or `change:` terms still count in the portfolio's total value here.
 - RGain sums each dispose posting's cost basis minus its transacted cost
   (for a sale, the proceeds minus the basis of the units sold; for a short
   cover, the short-sale basis minus the buying cost), for the row's
