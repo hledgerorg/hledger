@@ -1198,7 +1198,10 @@ flatHoldingsReportAt mkeeplot HoldingsReportOpts{hroLots=showlots, hroRounding=r
             mdate = case dates of
               [Just dt] -> Just dt
               _         -> Nothing
-            ccosts = [rowCostValuer r $ multiplyAmount (aquantity a) cb | (a, mcb) <- clots, Just cb <- [cbCost =<< mcb]]
+            ccosts
+              -- a line with no units held (shown for its realised gain) costs zero, in the gain's commodity
+              | null clots = [g{aquantity = 0} | g <- take 1 $ rgainsOf acct (Just c)]
+              | otherwise  = [rowCostValuer r $ multiplyAmount (aquantity a) cb | (a, mcb) <- clots, Just cb <- [cbCost =<< mcb]]
             mucost = case (clots, ccosts) of
               ([(_, mcb)], _) -> rowCostValuer r <$> (cbCost =<< mcb)
               (_, _:_) | [totcost] <- amounts (mixed ccosts)
@@ -1501,7 +1504,7 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
       , [T.pack $ showAmountWith noCostFmt{displayZeroCommodity=True} (hUnits h)]
       , [maybe "" showamt (hUnitCost h)]
       , map showamt $ hPrice h
-      , map showamt $ hCost h
+      , map showamtz $ hCost h
       , map showamtz $ hValue h
       , [maybe "" showpct (hWeight h)]
       , map showamtz $ hUgain h
