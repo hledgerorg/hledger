@@ -144,7 +144,7 @@ import Hledger.Data.AccountType (LotDirection(..), accountTypeLotDirection, isAs
 import Hledger.Data.Amount (AmountFormat(..), mixed, maPlus, mixedAmountStripCosts, amountRoundedQuantity, amountSetPrecisionMin, amountSetQuantity, amountsRaw, divideAmountAndUpdatePrecision, isNegativeAmount, maNegate, maSum, mapMixedAmount, mixedAmount, mixedAmountCost, mixedAmountIsZero, mixedAmountLooksZero, multiplyQuantities, nullmixedamt, noCostFmt, oneLineNoCostFmt, showAmountWith, showAmountsDistinctly, showMixedAmountOneLine, showMixedAmountsDistinctly)
 import Hledger.Data.Errors (makeAccountTagErrorExcerpt, makeCommodityTagErrorExcerpt, makePostingErrorExcerptByIndex, makeTransactionErrorExcerpt, transactionFindPostingIndex)
 import Hledger.Data.Journal (journalAccountLotsTags, journalAccountType, journalAccountUsesNoLots, journalBaseGainAccount, journalCommodityLotsMethod, journalCommodityStylesWith, journalCommodityUsesLots, journalInheritedAccountTags, journalLotfulCommodities, journalMapPostings, journalMapTransactions, journalPostings, journalTieTransactions, parseReductionMethod)
-import Hledger.Data.Posting (costPostingTagName, generatedPostingTagName, hasAmount, isReal, isVirtual, lotParentAssertionTagName, lotsplitPostingTagName, nullposting, originalPosting, postingAddHiddenAndMaybeVisibleTag, postingDate, postingHasTag, postingStripCosts, feesplitPostingTagName)
+import Hledger.Data.Posting (costPostingTagName, generatedPostingTagName, hasAmount, isReal, isVirtual, lotParentAssertionTagName, lotsplitPostingTagName, nullposting, originalPosting, postingAddHiddenAndMaybeVisibleTag, postingRemoveHiddenAndVisibleTag, postingDate, postingHasTag, postingStripCosts, feesplitPostingTagName)
 import Hledger.Data.Transaction (transactionCommodityStyles, txnTieKnot)
 import Hledger.Data.Types
 import Hledger.Utils (dbg5, dbg5With)
@@ -1657,8 +1657,9 @@ journalCollapseLotDetail j
 
     -- Merge consecutive lotsplit-tagged postings that share the same original
     -- (poriginal) into one. The survivor's pamount is taken from its
-    -- 'poriginal' (the user's full original amount); the lotsplit tag is
-    -- removed so the rest of the pipeline sees a normal single posting.
+    -- 'poriginal' (the user's full original amount); the lotsplit tag (and
+    -- its visible copy, if --verbose-tags added one) is removed, so the rest
+    -- of the pipeline sees a normal single posting.
     -- Sharing 'poriginal' identifies siblings from the same per-lot split,
     -- distinguishing them from unrelated lotsplit postings (eg the from- and
     -- to-side runs of a same-account transfer).
@@ -1684,7 +1685,7 @@ journalCollapseLotDetail j
                   -- still picks the same lots first (#2843).
                   merged = maSum (map pamount (p:run))
                   cbs = [cb | a <- concatMap (amountsRaw . pamount) (p:run), Just cb <- [acostbasis a]]
-                  survivor = (untagLotsplit p){pamount = if null run || null cbs then merged else mapMixedAmount commonBasis merged}
+                  survivor = (postingRemoveHiddenAndVisibleTag (lotsplitPostingTagName, "") p){pamount = if null run || null cbs then merged else mapMixedAmount commonBasis merged}
                   commonBasis a = a{acostbasis = Just CostBasis
                     { cbDate  = agreed cbDate
                     , cbLabel = agreed cbLabel
@@ -1695,7 +1696,6 @@ journalCollapseLotDetail j
                     _ -> Nothing
               in survivor : go rest
           | otherwise = p : go ps
-        untagLotsplit p = p{ptags = filter ((/= lotsplitPostingTagName) . fst) (ptags p)}
 
 -- Posting type predicates
 

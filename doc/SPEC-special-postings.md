@@ -78,5 +78,5 @@ In pass 2 (entries with balance assignments) their amounts are also added to the
 | _imbalance-posting   | transactionMaybeAddImbalancePostings (--infer-imbalance)              | Posting to the imbalance account showing a transaction's tolerated imbalance |
 | _generated-posting   | journalInferEquityFromCosts / journalAddOrCheckGainPostings / transactionAutoSplitFeeOutflows / preserveParentAssertion / transactionMaybeAddImbalancePostings | Machine-generated posting                              |
 | _feesplit-posting    | transactionAutoSplitFeeOutflows                                       | Fee fragment split off a lot transfer's sending posting; hidden by print unless --lots or priced |
-| _lotsplit-posting    | processDisposePosting / processTransferGroup                          | Extra fragment of a posting split across several lots; merged back unless --lots |
+| _lotsplit-posting    | processDisposePosting / processTransferGroup                          | Fragment of a posting split across several lots; without --lots the fragments are merged back and untagged |
 | _lot-parent-assertion | preserveParentAssertion                                              | Zero-amount posting on the parent account, carrying a balance assertion moved from a posting split into lot subaccounts |

@@ -1627,7 +1627,7 @@ They are explained elsewhere, but here's a quick reference:
                            and which have an equivalent cost posting in the transaction
  ptype                  -- appears on lot postings, with their type (acquire, dispose, etc.)
  feesplit-posting       -- appears on fee parts split off a lot transfer posting
- lotsplit-posting       -- appears on extra parts of a posting split across several lots
+ lotsplit-posting       -- appears on the parts of a posting split across several lots (with --lots)
  lot-parent-assertion   -- appears on postings carrying a balance assertion moved
                            from a posting that was split across several lots
 ```

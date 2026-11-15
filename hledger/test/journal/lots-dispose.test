@@ -1640,3 +1640,23 @@ $ hledger -f- print -x desc:sell
 $ hledger -f- print -O json desc:sell | grep -E '"cbDate"|"cbLabel"'
               "cbDate": "2026-01-01",
               "cbLabel": null
+
+# ** 81. Without --lots, the merged posting has no lotsplit-posting tag,
+# visible or hidden, so --verbose-tags does not show one (because that 
+# suggests that other commands could match it with tag:lotsplit, which
+# does not work).
+$ hledger -f- print --verbose-tags desc:sell
+2026-03-01 sell
+    assets:stocks                                -31 AAPL {2026-01-01, $50} @ $70  ; ptype: dispose
+    assets:cash
+    revenues:gain                              $-620  ; ptype: gain, generated-posting:
+
+>=
+
+# ** 82.
+$ hledger -f- reg tag:lotsplit
+
+# ** 83. With --lots, the per-lot fragments have the tag.
+$ hledger -f- reg --lots tag:lotsplit
+2026-03-01 sell                 ..1-01, "0001", $50}      -20 AAPL      -20 AAPL
+                                ..1-01, "0002", $50}      -11 AAPL      -31 AAPL

@@ -43,6 +43,7 @@ module Hledger.Data.Posting (
   postingStyleAmounts,
   postingAddTags,
   postingAddHiddenAndMaybeVisibleTag,
+  postingRemoveHiddenAndVisibleTag,
   -- * date operations
   postingDate,
   postingDate2,
@@ -815,6 +816,23 @@ postingAddHiddenAndMaybeVisibleTag prepend verbosetags ht p@Posting{pcomment=c, 
     addFn = if prepend then commentPrependTag else commentAddTag
     vt@(vname,_) = toVisibleTag ht
     hadtag = any ((== (T.toLower vname)) . T.toLower . fst) ptags  -- XXX should regex-quote vname
+
+-- | Remove the given hidden tag from a posting, and the equivalent visible tag
+-- if 'postingAddHiddenAndMaybeVisibleTag' added one: from the posting's tags,
+-- and from its comment, where it appears as @NAME: VALUE@, comma-separated from
+-- any other content.
+postingRemoveHiddenAndVisibleTag :: HiddenTag -> Posting -> Posting
+postingRemoveHiddenAndVisibleTag (hname,_) p@Posting{pcomment, ptags} =
+  p{ptags = filter ((`notElem` [hname, vname]) . fst) ptags, pcomment = maybe pcomment removeFromComment $ lookup vname ptags}
+  where
+    vname = toVisibleTagName hname
+    removeFromComment v
+      | c' /= pcomment = c'
+      | otherwise      = T.intercalate "\n" $ map (dropCommaPrefix . T.replace t "") $ T.lines pcomment
+      where
+        t  = vname <> ": " <> v
+        c' = T.replace (", " <> t) "" pcomment
+        dropCommaPrefix l = fromMaybe l $ T.stripPrefix ", " l
 
 -- | Apply a specified valuation to this posting's amount, using the
 -- provided price oracle, commodity styles, and reference dates.
