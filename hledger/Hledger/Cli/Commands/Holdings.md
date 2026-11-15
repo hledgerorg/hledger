@@ -81,7 +81,9 @@ The columns show:
 - the unit market price on the report date (Unit price)
 - the total cost basis (Total cost)
 - the total market value (Total value)
-- the percentage of the portfolio's total value (Weight)
+- the percentage of the portfolio's total value (Weight).
+  A holding with no market price has no Weight and isn't counted in that total, so the others' weights are a little overstated.
+  No weights are shown if the holdings are valued in more than one commodity.
 - the unrealised gain and gain percent (UGain, UGain%)
 - the realised gain from disposals so far (RGain)
 - and the annualised rate of return, as of the report end date (XIRR, calculated from the holding's dated cashflows and current value, like roi's IRR; it includes realised gains).

@@ -94,7 +94,10 @@ Notes:
   capital gains indicator could be added later.) The csv/json outputs
   keep age as a number of days.
 - Weight is each row's value as a percentage of the portfolio's total
-  value; blank unless all displayed holdings are priced in one commodity.
+  value. That total counts the priced holdings only: an unpriced holding
+  has a blank Weight and doesn't blank the others' (the totals row then
+  shows the priced lines' Weight, though no Total value). All weights are
+  blank if the priced holdings are valued in more than one commodity.
   Lines hidden by `balance:` or `change:` terms still count in the portfolio's total value here.
 - RGain sums each dispose posting's cost basis minus its transacted cost
   (for a sale, the proceeds minus the basis of the units sold; for a short

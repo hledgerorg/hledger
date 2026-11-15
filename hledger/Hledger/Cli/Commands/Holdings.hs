@@ -739,20 +739,23 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
       Just [v] -> Just $ acommodity v
       _        -> Nothing
 
-    -- The total value of all the holdings, including any lines hidden by
-    -- change: or balance: terms, when all are priced. Weight is relative to
-    -- this, so those terms hide lines without changing the others' weights.
-    mwholevalue :: Maybe [Amount]
-    mwholevalue
-      | queryIsNull rowq = mportfoliovalue
-      | otherwise = snd <$> lotsValuation [l | ((sub, _), l) <- M.toList alllotbases, isJust $ ownerOf sub]
+    -- The total value of those lots which have a market price, per value
+    -- commodity.
+    pricedValue :: [(Amount, Maybe CostBasis)] -> [Amount]
+    pricedValue lots = sumAmounts [v | Just (_, v) <- map lotValuation lots]
 
-    -- A value's percentage of the whole portfolio's value (mwholevalue),
+    -- The total value of all the priced holdings, including any lines
+    -- hidden by change: or balance: terms. Weight is relative to this, so
+    -- those terms hide lines without changing the others' weights, and
+    -- unpriced holdings (which get no Weight) don't prevent the others'.
+    wholevalue :: [Amount]
+    wholevalue = pricedValue [l | ((sub, _), l) <- M.toList alllotbases, isJust $ ownerOf sub]
+
+    -- A value's percentage of the priced portfolio's value (wholevalue),
     -- when both are single amounts in the same commodity.
     weightPct :: [Amount] -> Maybe Quantity
     weightPct val = do
-      tot <- mwholevalue
-      [t] <- Just tot
+      [t] <- Just wholevalue
       [v] <- Just val
       guard $ acommodity v == acommodity t && aquantity t /= 0
       Just $ 100 * aquantity v / aquantity t
@@ -822,7 +825,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     -- The lots, realised gains and cashflows of the other lines are left out
     -- (by matchingLots), so that the totals and tree mode's headings follow
     -- the lines shown (but Weight stays relative to all the holdings; see
-    -- mwholevalue). Row ownership is decided from all lots.
+    -- wholevalue). Row ownership is decided from all lots.
     rowq = _rsRowQuery rspec
 
     matchingLots :: M.Map (AccountName, CommoditySymbol) v -> M.Map (AccountName, CommoditySymbol) v
@@ -1048,7 +1051,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
           _          -> Nothing
       , htCost     = amounts $ mixed totcosts
       , htValue    = mportfoliovalue
-      , htWeight   = weightPct =<< mportfoliovalue
+      , htWeight   = weightPct $ pricedValue $ concatMap (lotsUnder . prrFullName) toprows
       , htUgain    = mtotgains
       , htUgainPct = gainPct (fromMaybe [] mtotgains) totcosts
       , htRgain    = case map (costValuerTo mportvaluecomm) $ M.elems rgainmap of
@@ -1079,7 +1082,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
           _          -> Nothing
       , htCost     = sumAmounts costs
       , htValue    = msubvalue
-      , htWeight   = weightPct =<< msubvalue
+      , htWeight   = weightPct $ pricedValue $ lotsUnder acct
       , htUgain    = mgains
       , htUgainPct = gainPct (fromMaybe [] mgains) costs
       , htRgain    = sumAmounts $ map (costValuerTo msubvaluecomm) $ rgainsUnder acct Nothing

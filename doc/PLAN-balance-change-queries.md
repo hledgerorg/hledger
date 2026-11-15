@@ -133,7 +133,7 @@ and so could not be a plain query. Two terms with fixed meanings remove the prob
   Implemented in holdings itself (`lineMatches`; the internal units report gets no row terms): the lots,
   realised gains and cashflows of non-matching lines are dropped (`matchingLots`), so totals (including
   RGain and XIRR, otherwise over all matched lots, #2769) and tree headings follow; row ownership uses all lots.
-  Weight stays relative to all the holdings (`mwholevalue`), hidden lines included, so screening shows each
+  Weight stays relative to all the holdings (`wholevalue`, the priced ones), hidden lines included, so screening shows each
   line's real share and the total Weight shows the shown lines' share (unlike `bal -%`, which recalculates).
   Earlier versions, rejected: testing each account's units (in a multi-commodity account it showed lines of any
   value, and `balance:'>$1000'` matched nothing); value with no symbol (less like `bal`); an error for `change:`
