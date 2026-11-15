@@ -135,6 +135,9 @@ and so could not be a plain query. Two terms with fixed meanings remove the prob
   RGain and XIRR, otherwise over all matched lots, #2769) and tree headings follow; row ownership uses all lots.
   Weight stays relative to all the holdings (`wholevalue`, the priced ones), hidden lines included, so screening shows each
   line's real share and the total Weight shows the shown lines' share (unlike `bal -%`, which recalculates).
+  With `-B`, a term with a symbol tests cost (Total cost as displayed, or the cost of the change) instead of value,
+  as `-B` does in other reports; it changes nothing else in holdings (it used to corrupt the report, fixed).
+  Considered and not done: a `cost:` term (holdings-only), or no way to test cost.
   Earlier versions, rejected: testing each account's units (in a multi-commodity account it showed lines of any
   value, and `balance:'>$1000'` matched nothing); value with no symbol (less like `bal`); an error for `change:`
   with valuation.

@@ -101,7 +101,7 @@ are valued in the default or given valuation commodity instead, and the
 cost columns are also converted to it (at the valuation date, so percent
 gain is unaffected). Cashflows are not converted, however, so the XIRR
 column is left blank for holdings whose cashflows are in a different commodity.
-`--value=then` is not supported, and `-B/--cost` has no effect.
+`--value=then` is not supported, and `-B/--cost` doesn't change the report (but see `balance:` below).
 
 Amounts are displayed with their commodity's display precision.
 `--round` can select another rounding strategy.
@@ -114,10 +114,12 @@ A line has two amounts, its units and its Total value, and the term's commodity 
 - `holdings balance:'>100'` - holdings of more than 100 units (with no symbol, units are tested)
 - `holdings balance:'>100 AAPL'` - holdings of more than 100 AAPL
 - `holdings balance:'>$1000'` - holdings worth more than $1000. Lines with no market price have no value, and don't match.
+- `holdings -B balance:'>$1000'` - holdings which cost more than $1000 (with `-B`, Total cost is tested instead of Total value)
 
 `change:` tests the line's change in units during the report period (so it needs a start date, eg `-b`),
 or with the value's commodity symbol, the value of that change at the valuation date.
 Unlike in other reports, `-V`/`-X` don't change which amount is tested; to test the value, write its commodity symbol.
+But as in other reports, `-B` tests cost: the line's Total cost, or the cost of its change, instead of their value.
 The totals and tree mode's account headings then cover just the lines shown.
 But Weight is still each line's share of all the holdings, including the hidden ones
 (so the total Weight shows what share the lines shown make up).

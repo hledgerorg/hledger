@@ -173,7 +173,9 @@ Notes:
   flow date), so XIRR is blank for holdings whose cashflows are in a
   different commodity than their value.
 - `--value=then` is not supported (holdings is a snapshot report).
-- `-B/--cost` has no effect; units always stay units.
+- `-B/--cost` doesn't change the report; units always stay units. Its only
+  effect: `balance:`/`change:` terms with a commodity symbol test cost (as
+  displayed in Total cost) instead of market value.
 
 ## Layout examples
 

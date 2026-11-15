@@ -1262,7 +1262,7 @@ Holdings on 2026-01-31
             ||                                                    $1400               100.0%                                  
 >= 0
 
-# ** 72. -B/--cost has no effect: units stay units (they were shown converted to cost).
+# ** 72. -B/--cost doesn't change the report: units stay units (they were shown converted to cost).
 $ hledger -f - holdings -e 2026-02-01 -B
 Holdings on 2026-01-31
 
@@ -1273,4 +1273,27 @@ Holdings on 2026-01-31
  assets:x:c || 2026-01-01  30d    5 C       $10                     $50                                                       
 ------------++----------------------------------------------------------------------------------------------------------------
             ||                                                    $1400               100.0%                                  
+>= 0
+
+# ** 73. But with -B, balance: with the cost's commodity symbol tests Total cost instead of Total value (so an unpriced line can match),
+$ hledger -f - holdings -e 2026-02-01 -B balance:'<$60'
+Holdings on 2026-01-31
+
+            ||       Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
+============++================================================================================================================
+ assets:x   || 2026-01-01  30d    1 A       $50        $100         $50         $100    3.8%    $50  100.0%         462323.8% 
+ assets:x:c || 2026-01-01  30d    5 C       $10                     $50                                                       
+------------++----------------------------------------------------------------------------------------------------------------
+            ||                                                     $100                 3.8%                                  
+>= 0
+
+# ** 74. and change: tests the cost of the change in units (5 A at $60).
+$ hledger -f - holdings -e 2026-02-01 -b 2026-01-15 -B change:'$300'
+Holdings on 2026-01-31
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
+============++==========================================================================================================
+ assets:x:a ||             25 A       $52        $100       $1300        $2500   96.2%  $1200   92.3%         866109.3% 
+------------++----------------------------------------------------------------------------------------------------------
+            ||             25 A       $52                   $1300        $2500   96.2%  $1200   92.3%         866109.3% 
 >= 0

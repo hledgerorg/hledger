@@ -851,14 +851,24 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     -- date, as in the balance reports). A term with no commodity symbol tests
     -- the units; one with a symbol tests whichever of the two amounts is in
     -- that commodity, so eg balance:'>$1000' tests the value, and doesn't
-    -- match an unpriced line.
+    -- match an unpriced line. With -B/--cost, the cost is tested instead of
+    -- the value, as displayed in Total cost (the known costs; and with
+    -- -V/-X, converted like the row's costs).
     lineMatches :: AccountName -> CommoditySymbol -> Bool
     lineMatches acct c = go rowq
       where
         (balunits, balvalue) = unitsAndValue allOwnLotIx
         (chgunits, chgvalue) = unitsAndValue ownLotChangeIx
-        unitsAndValue ix = (mixed $ map fst lots, maybe nullmixedamt (mixed . snd) $ lotsValuation lots)
-          where lots = [l | (c', l) <- M.findWithDefault [] acct ix, c' == c]
+        unitsAndValue ix = (mixed $ map fst lots, if atcost then cost else mktvalue)
+          where
+            lots = [l | (c', l) <- M.findWithDefault [] acct ix, c' == c]
+            mktvalue = maybe nullmixedamt (mixed . snd) $ lotsValuation lots
+            cost = mixed [costvaluer $ multiplyAmount (aquantity a) cb | (a, mcb) <- lots, Just cb <- [cbCost =<< mcb]]
+        atcost = conversionop_ ropts == Just ToCost
+        -- like rowCostValuer, but from all lots, since this decides which are kept
+        costvaluer = costValuerTo $ case lotsValuation $ map snd $ M.findWithDefault [] acct allUnderLotIx of
+          Just (_, [v]) -> Just $ acommodity v
+          _             -> Nothing
         go (And qs) = all go qs
         go (Not t)  = not $ go t
         go (Change  ord n mc) = Amt ord n mc `matchesMixedAmount` pick mc chgunits chgvalue

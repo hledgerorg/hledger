@@ -5661,6 +5661,7 @@ What is tested depends on the kind of item being matched:
   (so `balance:'>$1000'` tests the value).
   `change:` likewise tests the change in units during the report period, or its value.
   Unlike in other reports, `-V`/`-X` don't change which amount is tested; to test the value, write its commodity symbol.
+  With `-B`, the cost is tested instead of the value (eg `holdings -B balance:'>$1000'`).
   The totals cover just the lines shown, but Weight is still relative to all the holdings.
 
 - Other commands ignore these terms.
