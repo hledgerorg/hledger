@@ -207,6 +207,10 @@ period itself. With `change:`/`balance:` terms, the lots of the lines shown
 at the end are the ones counted at S (`hrKeepLot`).
 With a report interval, each period end's report has no start date, so the
 per-period totals keep showing gains since acquisition.
+With a report interval and no end date, the periods extend to today
+(not just to the last posting, as in other reports), and the period
+containing today ends today, so its row equals the single-date report.
+Later periods, from future-dated postings, are kept.
 - `-B/--cost` doesn't change the report; units always stay units. Its only
   effect: `balance:`/`change:` terms with a commodity symbol test cost (as
   displayed in Total cost) instead of market value.

@@ -181,6 +181,8 @@ A report start date before your first acquisition gives the same gains as no sta
 With a [report interval](#report-intervals) (eg `-M`, `-Q`, `-Y`), holdings shows how your holdings changed:
 their totals at the end of each period, each computed as on that date
 (eg valued at its market prices, with realised gains and XIRR up to then).
+With no end date, the periods continue up to today, even after your last transaction (since values change with market prices),
+and the current period's row shows today's holdings, like the report without an interval.
 List/tree mode and `--lots` make no difference to these totals, and are ignored.
 With `-O csv`, `tsv` or `json`, there is one record per period end.
 

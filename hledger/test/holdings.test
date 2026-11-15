@@ -1408,3 +1408,13 @@ Holdings on 2026-03-06, gains in 2026-02-23..2026-03-06
 ------------++---------------------------------------------------------------------------------------------------------
             ||             15 A    $11.67                    $175         $270  100.0%    $45   20.0%         25608.6% 
 >= 0
+
+# ** 82. With a report interval and no end date, the periods continue up to today, after the last transaction, and the current one ends today.
+$ hledger -f - holdings --today 2026-05-20 -Q
+Holdings at period ends, 2026-03-31..2026-05-20
+
+            || Total cost  Total value  UGain  UGain%  RGain    XIRR 
+============++=======================================================
+ 2026-03-31 ||       $175         $270    $95   54.3%     $5  459.9% 
+ 2026-05-20 ||       $175         $270    $95   54.3%     $5  211.9% 
+>= 0

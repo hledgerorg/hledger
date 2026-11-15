@@ -1308,7 +1308,25 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     periodrpts :: [(DateSpan, HoldingsReport)]
     periodrpts =
       [ (spn, holdingsReport HoldingsReportOpts{hroLots = False, hroRounding = rounding} (rspecEndingAt e) j)
-      | spn@(DateSpan _ (Just e)) <- maybeDayPartitionToDateSpans $ snd $ reportSpanBothDates j rspec ]
+      | spn@(DateSpan _ (Just e)) <- periodspans ]
+    -- The periods: as usual (with no end date, ending with the journal's last
+    -- postings), but since values change with market prices, with no end date
+    -- they always extend to today, and the period containing today ends today,
+    -- like the single-date report. (Periods after it, from future-dated
+    -- postings, are kept.)
+    periodspans
+      | isJust (queryEndDate False $ _rsQuery rspec) = defspans
+      | reachestoday defspans = map clip defspans
+      | otherwise = map clip $ spansOf rspec{_rsQuery = And [_rsQuery rspec, Date $ DateSpan Nothing (Just $ Exact tomorrow)]}
+      where
+        spansOf = maybeDayPartitionToDateSpans . snd . reportSpanBothDates j
+        defspans = spansOf rspec
+        tomorrow = addDays 1 $ _rsDay rspec
+        reachestoday = any (\(DateSpan _ me) -> maybe False ((>= tomorrow) . fromEFDay) me)
+        clip spn@(DateSpan mb (Just e))
+          | fromEFDay e > tomorrow && maybe True ((< tomorrow) . fromEFDay) mb = DateSpan mb (Just $ Exact tomorrow)
+          | otherwise = spn
+        clip spn = spn
     rspecEndingAt e = rspec{ _rsQuery = And [filterQuery (not . queryIsDateOrDate2) (_rsQuery rspec), Date $ DateSpan Nothing (Just e)]
                            , _rsReportOpts = ropts{accountlistmode_ = ALFlat} }
     ptotals = [(hrDate r, (hrStyles r, hrTotals r)) | (_, r) <- periodrpts]
