@@ -182,3 +182,20 @@ P 2024-01-01 A 0.1 B  ; location: -:1
 P 2024-02-01 B A20  ; location: -:3
 P 2024-02-01 A 0.05 B  ; location: -:3
 
+
+# ** 14. A find: query matches prices by date, commodity symbol or price amount.
+<
+P 2026-01-01 EUR $1.10
+P 2026-02-01 EUR $1.20
+P 2026-02-01 GBP $1.30
+
+$ hledger -f- prices ::2026-02 ::gbp
+P 2026-02-01 GBP $1.30
+
+# ** 15. The price amount is searched as displayed.
+<
+P 2026-01-01 EUR $1.10
+P 2026-02-01 EUR $1.20
+
+$ hledger -f- prices '::\$1.1'
+P 2026-01-01 EUR $1.10

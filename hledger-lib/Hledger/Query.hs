@@ -108,7 +108,7 @@ import Hledger.Utils hiding (words')
 import Hledger.Data.Types
 import Hledger.Data.AccountName
 import Hledger.Data.AccountType
-import Hledger.Data.Amount (amountsRaw, isNonsimpleCommodityChar, mixedAmount, mixedAmountStripCosts, nullamt, nullmixedamt, showMixedAmountOneLine, usd)
+import Hledger.Data.Amount (amountsRaw, isNonsimpleCommodityChar, mixedAmount, mixedAmountStripCosts, nullamt, nullmixedamt, showAmountWithZeroCommodity, showMixedAmountOneLine, usd)
 import Hledger.Data.Dates
 import Hledger.Data.Posting
 import Hledger.Data.Transaction
@@ -1316,7 +1316,16 @@ matchesPriceDirective (AllPostings qs) p = all1 (`matchesPriceDirective` p) qs
 matchesPriceDirective q@(Amt{}) p        = matchesAmount q (pdamount p)
 matchesPriceDirective q@(Cur _) p        = matchesCommodity q (pdcommodity p)
 matchesPriceDirective (Date spn) p       = spanContainsDate spn (pddate p)
+matchesPriceDirective (Find r mspan) p   = findMatchesPriceDirective r mspan p
 matchesPriceDirective _ _                = True
+
+-- | Does a find: query match this price directive ? It does if its regexp matches
+-- the directive's commodity symbol or price amount (as displayed),
+-- or if its date span, if any, contains the directive's date.
+findMatchesPriceDirective :: Regexp -> Maybe DateSpan -> PriceDirective -> Bool
+findMatchesPriceDirective r mspan PriceDirective{pddate, pdcommodity, pdamount} =
+  maybe False (`spanContainsDate` pddate) mspan
+  || any (regexMatchText r) [pdcommodity, T.pack $ showAmountWithZeroCommodity pdamount]
 
 
 -- tests

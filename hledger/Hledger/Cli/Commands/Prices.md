@@ -33,7 +33,7 @@ see [Finding market price](hledger.md#finding-market-price).
 Price amounts are always displayed with their full precision,
 except for reverse prices which are limited to 8 decimal digits.
 
-Prices can be filtered by a date:, cur: or amt: query.
+Prices can be filtered by a date:, cur:, amt: or find: query.
 
 Generally if you run this command with --infer-market-prices --show-reverse --show-aliases,
 it will show the same prices used internally to calculate value reports.
@@ -74,4 +74,4 @@ Summary mode is a quick way to spot gaps in your price data, and pairs
 naturally with [getprices](#getprices). Only prices declared with P directives
 are counted; prices inferred with `--show-reverse` or `--infer-market-prices` are ignored.
 
-Queries (`cur:`, `date:`, `amt:`) can be used to narrow the prices that are summarised.
+Queries (`cur:`, `date:`, `amt:`, `find:`) can be used to narrow the prices that are summarised.
