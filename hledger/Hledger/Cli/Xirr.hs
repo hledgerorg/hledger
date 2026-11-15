@@ -54,4 +54,8 @@ xirr referenceDay cf0 = case cf of
   where
     cf = filter ((/= 0) . snd) cf0
     -- the cash flows' net value on the reference day, at this rate (1 + the annual rate of return)
-    npv rate = sum [ realToFrac q * rate ** (fromIntegral (diffDays referenceDay t) / 365.25) | (t, q) <- cf ]
+    npv rate = sum [ q * rate ** years | (years, q) <- cfyears ]
+    -- each cash flow's time before the reference day in years, and amount, converted once
+    -- (the search evaluates npv many times, and converting Decimals is slow)
+    cfyears :: [(Double, Double)]
+    cfyears = [ (fromIntegral (diffDays referenceDay t) / 365.25, realToFrac q) | (t, q) <- cf ]
