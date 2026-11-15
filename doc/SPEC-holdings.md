@@ -116,7 +116,12 @@ Notes:
 - XIRR solves for the annualised rate of return implied by the holding's
   dated cashflows (acquisitions at transacted or basis cost, disposals at
   proceeds) plus its current value, like roi's IRR (using ridders,
-  rate**(days/365.25)); it thus includes realised gains. Blank when
+  rate**(days/365.25)); it thus includes realised gains. A cashflow with
+  no transacted cost (a transfer between accounts, an opening balance) is
+  dated on the lot's acquisition date (no earlier than the report start
+  date), not the posting's, so a receiving account measures from
+  acquisition like its UGain and Age; a transfer's two flows still cancel
+  in the totals. Blank when
   unpriced, when cashflow commodities differ from the value commodity
   (eg under -X), or when unsolvable.
   The final cashflow is the displayed Total value, treated as received at the

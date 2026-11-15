@@ -674,14 +674,24 @@ flatHoldingsReportAt mkeeplot HoldingsReportOpts{hroLots=showlots, hroRounding=r
     -- Each lot subaccount's cashflows in the cost commodity, for XIRR:
     -- each posting's transacted cost if any (so, proceeds when disposing),
     -- otherwise its cost basis value. Negative = money invested.
+    -- A posting with no transacted cost (eg a transfer between accounts, or
+    -- an opening balance) is dated on its lot's acquisition date, not its own
+    -- date, so that an account receiving lots measures from when they were
+    -- acquired, like its UGain and Age (and the totals row, in which a
+    -- transfer's two postings cancel). With a start date, no earlier than
+    -- that, since gains are measured from then.
     flowmap :: M.Map (AccountName, CommoditySymbol) [(Day, Amount)]
     flowmap = matchingLots $ M.fromListWith (++)
-      [ (k, [(d, negate flowamt)])
+      [ (k, [(fd, negate flowamt)])
       | (k, (d, a)) <- lotpostings
       , inperiod d
-      , Just flowamt <- [case acost a of
-          Just _  -> Just $ amountCost a
-          Nothing -> multiplyAmount (aquantity a) <$> (cbCost =<< acostbasis a)]
+      , Just (fd, flowamt) <- [case acost a of
+          Just _  -> Just (d, amountCost a)
+          Nothing -> do
+            cb <- acostbasis a
+            c <- cbCost cb
+            let acqdate = maybe d (\acq -> maybe acq (max acq) mstart) $ cbDate cb
+            Just (acqdate, multiplyAmount (aquantity a) c)]
       ]
 
     -- Each lot subaccount's realised gains, in the cost commodity: for each

@@ -94,6 +94,7 @@ The columns show:
 - the unrealised gain and gain percent (UGain, UGain%)
 - the realised gain from disposals so far (RGain)
 - and the annualised rate of return, as of the report end date (XIRR, calculated from the holding's dated cashflows and current value, like roi's IRR; it includes realised gains).
+  Lots received without a transacted cost (eg transferred from another account) count as invested at their cost basis on their acquisition date.
 
 Fully disposed commodities and accounts are not shown, unless you add `-E/--empty`.
 (But the totals row's RGain and XIRR always include them.)

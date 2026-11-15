@@ -1474,3 +1474,27 @@ $ hledger -f - holdings -e 2026-03-01 -b 2026-01-15 --chart -O csv
 "$","Unrealised gain","item","bar","assets:inv X","50"
 "$","Value","total","marker","assets:inv X","150"
 >= 0
+
+# ** 88. Lots transferred in count as invested on their acquisition date, not the transfer date,
+# so the receiving account's XIRR measures from acquisition, like its UGain and Age, and agrees with the totals.
+<
+commodity BTC  ; lots:
+P 2026-11-01 BTC $70000
+
+2026-06-29 buy at an exchange
+    assets:exchange      0.0164022 BTC @ $60967.43
+    assets:cash
+
+2026-10-01 transfer to a wallet
+    assets:exchange     -0.0164022 BTC
+    assets:wallet        0.0164022 BTC
+
+$ hledger -f - holdings -e 2026-11-02
+Holdings on 2026-11-01
+
+               ||       Date   Age          Units   Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain   XIRR 
+===============++======================================================================================================================
+ assets:wallet || 2026-06-29  125d  0.0164022 BTC     $60967      $70000       $1000        $1148  100.0%   $148   14.8%         49.7% 
+---------------++----------------------------------------------------------------------------------------------------------------------
+               ||                   0.0164022 BTC  $60967.43                   $1000        $1148  100.0%   $148   14.8%         49.7% 
+>= 0
