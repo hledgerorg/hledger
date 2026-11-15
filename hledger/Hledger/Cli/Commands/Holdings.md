@@ -143,6 +143,39 @@ With `-O json`, a JSON array of holding objects is produced.
 In both, the cost and value fields are named
 `unitcost`, `unitprice`, `totalcost` and `totalvalue`.
 
+### Gains during a period
+
+Normally the gain columns show each holding's gains since it was acquired.
+With a report start date (eg `-b`, `-p`, or `date:`), they show the gains during the report period instead,
+and the report title says so (eg "gains in 2026-11"):
+
+```cli
+$ hledger holdings -p today           # today's gains
+$ hledger holdings -p thisyear        # this year's gains so far
+$ hledger holdings -b 2026-10-01      # gains since a date (until today)
+$ hledger holdings -p 2026-q3         # gains in a past period (the report shows holdings at its end)
+```
+
+The units, cost, price, value and Weight columns are unchanged; they show holdings as of the report end date. But:
+
+- UGain is the change in unrealised gain during the period:
+  the unrealised gain at the end, minus that on the day before the start date.
+  (Note that selling realises gains: UGain decreases and RGain increases.)
+- UGain% is that as a percentage of the holding's value on the day before the start date, plus the net cost added since.
+- RGain is the realised gain from disposals during the period.
+- XIRR is the annualised rate of return for the period, counting the value on the day before the start date as invested then.
+  For a short period this can be a very large number (or blank, when too large to calculate); UGain% shows the period's un-annualised gain.
+
+The start date is the first day of the period, so gains are measured from the previous day's closing prices:
+`-p today` shows today's gains (today's market prices compared with the latest ones before today),
+and `-b yesterday` shows yesterday's and today's.
+This way consecutive periods' gains add up, and a month's gains start from the previous month's last prices, as in a broker's statement.
+If a market price is missing at the start or the end, the gains depending on it are left blank.
+With `-E`, holdings fully disposed during the period are shown too.
+
+A report start date before your first acquisition gives the same gains as no start date.
+(With a report interval, a start date just limits the periods shown; see below.)
+
 ### Holdings over time
 
 With a [report interval](#report-intervals) (eg `-M`, `-Q`, `-Y`), holdings shows how your holdings changed:

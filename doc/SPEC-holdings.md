@@ -173,6 +173,40 @@ Notes:
   flow date), so XIRR is blank for holdings whose cashflows are in a
   different commodity than their value.
 - `--value=then` is not supported (holdings is a snapshot report).
+
+## Period gains
+
+With a report start date (and no report interval), the gain columns cover
+the report period instead of each holding's life; the position columns
+(units, costs, price, value, Weight) are unchanged, and the title becomes
+"Holdings on DATE, gains in PERIOD" (the report period, START to DATE, shown like other reports' periods). With S = the day before the start date:
+
+- UGain = UGain at the end date - UGain at S.
+- UGain% = that / (value at S + total cost at the end - total cost at S).
+  With nothing held at S this is the usual UGain / cost.
+- RGain = realised gains from disposals dated within the period.
+- XIRR = the XIRR of: the value at S as an investment dated S, the
+  period's cashflows, and the value at the end date.
+- A figure is blank if a value it needs is unknown (no market price at S
+  or at the end) or amounts are in several commodities.
+- The same applies to lots (`--lots`), tree mode's account headings, and
+  the totals row.
+- The baseline is S, not the start date: the start date's own price
+  change and postings belong to the period, as in other reports. So
+  consecutive periods' gains add up, `-p today` shows today's gains, and
+  `-b yesterday` shows two days' gains. (Measuring from the start date's
+  prices instead was tried, 2026-11-14: `-b yesterday` then read naturally
+  as "since yesterday's prices", but `-p today` showed nothing and each
+  calendar period dropped its first day's price change.)
+
+Implementation: `flatHoldingsReport` computes the report as of the end date
+and, for the same lots, as of S (`flatHoldingsReportAt`), and
+`holdingsPeriodGains` combines them, matching holdings by account and
+commodity. The inner report limits realised gains and cashflows to the
+period itself. With `change:`/`balance:` terms, the lots of the lines shown
+at the end are the ones counted at S (`hrKeepLot`).
+With a report interval, each period end's report has no start date, so the
+per-period totals keep showing gains since acquisition.
 - `-B/--cost` doesn't change the report; units always stay units. Its only
   effect: `balance:`/`change:` terms with a commodity symbol test cost (as
   displayed in Total cost) instead of market value.

@@ -1213,26 +1213,27 @@ Holdings on 2026-01-31
             ||                                                     $100                 3.8%                                  
 >= 0
 
-# ** 68. change: tests the line's change in units during the report period,
+# ** 68. change: tests the line's change in units during the report period
+# (a start date also makes the gain columns cover that period; see test 75),
 $ hledger -f - holdings -e 2026-02-01 -b 2026-01-15 change:'>0'
-Holdings on 2026-01-31
+Holdings on 2026-01-31, gains in 2026-01-15..2026-01-31
 
-            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
-============++==========================================================================================================
- assets:x:a ||             25 A       $52        $100       $1300        $2500   96.2%  $1200   92.3%         866109.3% 
-------------++----------------------------------------------------------------------------------------------------------
-            ||             25 A       $52                   $1300        $2500   96.2%  $1200   92.3%         866109.3% 
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain    XIRR 
+============++=======================================================================================================
+ assets:x:a ||             25 A       $52        $100       $1300        $2500   96.2%   $200    8.7%         553.2% 
+------------++-------------------------------------------------------------------------------------------------------
+            ||             25 A       $52                   $1300        $2500   96.2%   $200    8.7%         553.2% 
 >= 0
 
 # ** 69. or that change's value (5 A at $100).
 $ hledger -f - holdings -e 2026-02-01 -b 2026-01-15 change:'>$400' change:'<$600'
-Holdings on 2026-01-31
+Holdings on 2026-01-31, gains in 2026-01-15..2026-01-31
 
-            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
-============++==========================================================================================================
- assets:x:a ||             25 A       $52        $100       $1300        $2500   96.2%  $1200   92.3%         866109.3% 
-------------++----------------------------------------------------------------------------------------------------------
-            ||             25 A       $52                   $1300        $2500   96.2%  $1200   92.3%         866109.3% 
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain    XIRR 
+============++=======================================================================================================
+ assets:x:a ||             25 A       $52        $100       $1300        $2500   96.2%   $200    8.7%         553.2% 
+------------++-------------------------------------------------------------------------------------------------------
+            ||             25 A       $52                   $1300        $2500   96.2%   $200    8.7%         553.2% 
 >= 0
 
 # ** 70. Tree mode's account headings follow the lines shown too.
@@ -1289,11 +1290,121 @@ Holdings on 2026-01-31
 
 # ** 74. and change: tests the cost of the change in units (5 A at $60).
 $ hledger -f - holdings -e 2026-02-01 -b 2026-01-15 -B change:'$300'
-Holdings on 2026-01-31
+Holdings on 2026-01-31, gains in 2026-01-15..2026-01-31
 
-            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain       XIRR 
-============++==========================================================================================================
- assets:x:a ||             25 A       $52        $100       $1300        $2500   96.2%  $1200   92.3%         866109.3% 
-------------++----------------------------------------------------------------------------------------------------------
-            ||             25 A       $52                   $1300        $2500   96.2%  $1200   92.3%         866109.3% 
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain    XIRR 
+============++=======================================================================================================
+ assets:x:a ||             25 A       $52        $100       $1300        $2500   96.2%   $200    8.7%         553.2% 
+------------++-------------------------------------------------------------------------------------------------------
+            ||             25 A       $52                   $1300        $2500   96.2%   $200    8.7%         553.2% 
+>= 0
+
+# ** 75. With a report start date, the gain columns cover the period since then:
+# UGain is the change in unrealised gain ($95 now - $20 at the start), UGain% is that relative to
+# the value at the start plus the net cost added since ($120 + $75), RGain is that realised in the period,
+# and XIRR is the period's annualised return, counting the value at the start as invested then.
+# Units, costs and values are still those at the end date. With -E, a holding sold off in the period is shown.
+<
+commodity A  ; lots:
+commodity B  ; lots:
+P 2026-01-01 A $10
+P 2026-01-31 A $12
+P 2026-02-10 A $15
+P 2026-02-28 A $18
+P 2026-01-01 B $5
+P 2026-02-28 B $4
+
+2026-01-01 buy
+    assets:cash
+    assets:inv        10 A {$10}
+    assets:inv        20 B {$5}
+
+2026-02-10 buy more A, sell half of B at a loss
+    assets:inv         5 A {$15}
+    assets:inv       -10 B {$5} @ $4.5
+    assets:cash
+    revenues:gains
+
+2026-02-20 sell the rest of B at a gain
+    assets:inv       -10 B {$5} @ $6
+    assets:cash
+    revenues:gains
+$ hledger -f - holdings -b 2026-02-01 -e 2026-03-01 -E
+Holdings on 2026-02-28, gains in 2026-02
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain      XIRR 
+============++=========================================================================================================
+ assets:inv ||             15 A    $11.67         $18        $175         $270  100.0%    $75   38.5%         13185.5% 
+ assets:inv ||              0 B                    $4                       $0    0.0%     $0             $5    211.7% 
+------------++---------------------------------------------------------------------------------------------------------
+            ||             15 A    $11.67                    $175         $270  100.0%    $75   38.5%     $5   5362.1% 
+>= 0
+
+# ** 76. Without a start date, the same holdings' gains since they were acquired.
+$ hledger -f - holdings -e 2026-03-01 -E
+Holdings on 2026-02-28
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain     XIRR 
+============++========================================================================================================
+ assets:inv ||             15 A    $11.67         $18        $175         $270  100.0%    $95   54.3%         3949.9% 
+ assets:inv ||              0 B                    $4                       $0    0.0%                    $5    47.7% 
+------------++--------------------------------------------------------------------------------------------------------
+            ||             15 A    $11.67                    $175         $270  100.0%    $95   54.3%     $5  1169.8% 
+>= 0
+
+# ** 77. A start date before anything was held gives the same.
+$ hledger -f - holdings -b 2025-01-01 -e 2026-03-01 -E
+Holdings on 2026-02-28, gains in 2025-01-01..2026-02-28
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain     XIRR 
+============++========================================================================================================
+ assets:inv ||             15 A    $11.67         $18        $175         $270  100.0%    $95   54.3%         3949.9% 
+ assets:inv ||              0 B                    $4                       $0    0.0%                    $5    47.7% 
+------------++--------------------------------------------------------------------------------------------------------
+            ||             15 A    $11.67                    $175         $270  100.0%    $95   54.3%     $5  1169.8% 
+>= 0
+
+# ** 78. A one-day period (-p DATE) shows that day's gains, relative to the previous day's prices.
+$ hledger -f - holdings -p 2026-02-28
+Holdings on 2026-02-28, gains in 2026-02-28
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain  XIRR 
+============++=====================================================================================================
+ assets:inv ||             15 A    $11.67         $18        $175         $270  100.0%    $45   20.0%              
+------------++-----------------------------------------------------------------------------------------------------
+            ||             15 A    $11.67                    $175         $270  100.0%    $45   20.0%              
+>= 0
+
+# ** 79. Period gains in tree mode with lots: each lot shows them too.
+$ hledger -f - holdings -b 2026-02-01 -e 2026-03-01 --tree --lots
+Holdings on 2026-02-28, gains in 2026-02
+
+                     ||       Date  Age  Units  Unit cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain      XIRR 
+=====================++================================================================================================================
+ assets:inv          ||                   15 A     $11.67         $18        $175         $270  100.0%    $75   38.5%         13185.5% 
+   {2026-01-01, $10} || 2026-01-01  58d   10 A        $10         $18        $100         $180   66.7%    $60   50.0%         19717.4% 
+   {2026-02-10, $15} || 2026-02-10  18d    5 A        $15         $18         $75          $90   33.3%    $15   20.0%          3943.1% 
+---------------------++----------------------------------------------------------------------------------------------------------------
+                     ||                   15 A     $11.67                    $175         $270  100.0%    $75   38.5%     $5   5362.1% 
+>= 0
+
+# ** 80. A report interval shows totals at each period end, with gains since acquisition as before.
+$ hledger -f - holdings -b 2026-01-01 -e 2026-03-01 -M
+Holdings at period ends, 2026-01-31..2026-02-28
+
+            || Total cost  Total value  UGain  UGain%  RGain     XIRR 
+============++========================================================
+ 2026-01-31 ||       $200         $220    $20   10.0%          219.1% 
+ 2026-02-28 ||       $175         $270    $95   54.3%     $5  1169.8% 
+>= 0
+
+# ** 81. A start date after the last posting, with no end date, still shows the holdings.
+$ hledger -f - holdings --today 2026-03-06 -b lastweek
+Holdings on 2026-03-06, gains in 2026-02-23..2026-03-06
+
+            || Date  Age  Units  Avg cost  Unit price  Total cost  Total value  Weight  UGain  UGain%  RGain      XIRR 
+============++=========================================================================================================
+ assets:inv ||             15 A    $11.67         $18        $175         $270  100.0%    $45   20.0%         25608.6% 
+------------++---------------------------------------------------------------------------------------------------------
+            ||             15 A    $11.67                    $175         $270  100.0%    $45   20.0%         25608.6% 
 >= 0

@@ -86,8 +86,10 @@ getHoldingsR = do
                     HoldingsReportOpts{hroLots = lotsShown, hroRounding = HardRounding}
                     rspec jfull
             title = reportTitle ropts $
-              -- TRANSLATORS: the holdings page's heading; {date} is the report date.
-              trf trs "Holdings on {date}" [("date", showDate (hrDate rpt))]
+              -- TRANSLATORS: the holdings page's heading; {date} is the report date, {period} the report period (eg 2026-11, or 2026-11-01..2026-11-14) if it has a start date.
+              case hrGainsPeriod rpt of
+                Nothing  -> trf trs "Holdings on {date}" [("date", showDate (hrDate rpt))]
+                Just spn -> trf trs "Holdings on {date}, gains in {period}" [("date", showDate (hrDate rpt)), ("period", showDateSpan spn)]
 
             -- What links staying on this page keep: each report-shaping
             -- parameter that is not at its default, the interval too, which

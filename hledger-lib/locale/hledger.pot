@@ -1022,10 +1022,18 @@ msgid "holdings - hledger-web"
 msgstr ""
 
 #. ---- Entries for the hledger command line (some, like month names, also shown by hledger-ui and hledger-web). ----
-#. the holdings page's heading; {date} is the report date.
+#. the holdings report's title; {date} is the report date, {period} the report period (eg 2026-11, or 2026-11-01..2026-11-14) if it has a start date.
+#. the holdings page's heading; {date} is the report date, {period} the report period (eg 2026-11, or 2026-11-01..2026-11-14) if it has a start date.
 #: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
 #, python-brace-format
 msgid "Holdings on {date}"
+msgstr ""
+
+#. the holdings report's title; {date} is the report date, {period} the report period (eg 2026-11, or 2026-11-01..2026-11-14) if it has a start date.
+#. the holdings page's heading; {date} is the report date, {period} the report period (eg 2026-11, or 2026-11-01..2026-11-14) if it has a start date.
+#: hledger/Hledger/Cli/Commands/Holdings.hs hledger-web/Hledger/Web/Handler/HoldingsR.hs
+#, python-brace-format
+msgid "Holdings on {date}, gains in {period}"
 msgstr ""
 
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
@@ -1091,6 +1099,7 @@ msgid "XIRR"
 msgstr ""
 
 #. the title of the holdings report with a report interval; {dates} is a date range like 2026-01-31..2026-06-30.
+#. the holdings report's title; {date} is the report date, {period} the report period (eg 2026-11, or 2026-11-01..2026-11-14) if it has a start date.
 #: hledger/Hledger/Cli/Commands/Holdings.hs
 msgid "(no holdings)"
 msgstr ""

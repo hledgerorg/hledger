@@ -119,6 +119,7 @@ data Holding = Holding {
   ,hUgainPct  :: Maybe Quantity   -- ^ unrealised gain percent, unrounded
   ,hRgain     :: [Amount]         -- ^ realised gain, from disposals so far
   ,hXirr      :: Maybe Double     -- ^ annualised internal rate of return percent
+  ,hFlows     :: [(Day, Amount)]  -- ^ its dated cashflows (negative = money invested), which XIRR is calculated from; not displayed
   }
 
 -- Machine-readable fields for the csv/tsv output: full account name, age
@@ -243,6 +244,7 @@ data HoldingsTotals = HoldingsTotals {
   ,htUgainPct :: Maybe Quantity  -- ^ total unrealised gain percent, unrounded
   ,htRgain    :: [Amount]        -- ^ total realised gain, per cost commodity
   ,htXirr     :: Maybe Double    -- ^ the portfolio's annualised internal rate of return percent
+  ,htFlows    :: [(Day, Amount)] -- ^ the dated cashflows (negative = money invested) which XIRR is calculated from; not displayed
   }
 
 -- | One display line of the holdings report.
@@ -286,6 +288,14 @@ data HoldingsReport = HoldingsReport {
      -- ^ the journal's display styles with hroRounding applied, plus a
      --   style for the "%" commodity, for showing the percent columns
      --   (see showPercentWith)
+  ,hrGainsPeriod     :: Maybe DateSpan
+     -- ^ when the report has a start date: the report period, from it to
+     --   the report date (inclusive), which the gain columns (UGain, UGain%,
+     --   RGain, XIRR) then cover instead of each holding's whole life
+     --   (see holdingsPeriodGains)
+  ,hrKeepLot         :: (AccountName, CommoditySymbol) -> Bool
+     -- ^ which lots (lot subaccount, commodity) this report counts: all,
+     --   or with change:/balance: terms, those of the lines shown
   }
 
 -- | Chart a holdings report: a bar for each holding (a commodity in an account, or a lot), in each of its commodities' panels
@@ -463,9 +473,135 @@ holdingsTreeLines dropn noelide prpt mlrpt =
       | lh <- M.findWithDefault [] (acct, hCommodity h) lotsByPos ]
 
 -- | The flat (list-mode) holdings report; also the building block of
--- the tree-mode report.
+-- the tree-mode report. When the query has a start date, the gain
+-- columns cover the report period (see holdingsPeriodGains); this needs
+-- a second report, of the same lots as of the day before the start date.
 flatHoldingsReport :: HoldingsReportOpts -> ReportSpec -> Journal -> HoldingsReport
-flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
+flatHoldingsReport hro rspec@ReportSpec{_rsQuery=q, _rsReportOpts=ropts} j =
+  case queryStartDate False q of
+    Nothing    -> endrpt
+    Just start -> holdingsPeriodGains start startrpt endrpt
+      where
+        startrpt = flatHoldingsReportAt (Just $ hrKeepLot endrpt) hro startrspec j
+        -- empty_, so that holdings sold off before the start date are seen too
+        startrspec = rspec{ _rsQuery = And [filterQuery (not . queryIsDateOrDate2) q, Date $ DateSpan Nothing (Just $ Exact start)]
+                          , _rsRowQuery = Any
+                          , _rsReportOpts = ropts{empty_ = True} }
+  where
+    endrpt = flatHoldingsReportAt Nothing hro rspec j
+
+-- | Make a holdings report's gain columns cover the period since this
+-- start date, given the report of the same lots as of the day before it:
+--
+-- - UGain is the change in unrealised gain during the period
+--
+-- - UGain% is that as a percentage of the value at the start plus the
+--   net cost added since (so with nothing held at the start, it is the
+--   usual gain relative to cost)
+--
+-- - XIRR is the annualised rate of return over the period, counting the
+--   value at the start as money invested then.
+--
+-- (RGain and the cashflows are already limited to the period, by
+-- flatHoldingsReportAt.) These are left blank when a value needed is not
+-- known (no market price) or the amounts are in several commodities.
+holdingsPeriodGains :: Day -> HoldingsReport -> HoldingsReport -> HoldingsReport
+holdingsPeriodGains start startrpt rpt = rpt
+  { hrLines         = map periodLine $ hrLines rpt
+  , hrRows          = [(r, periodHolding h) | (r, h) <- hrRows rpt]
+  , hrTotals        = periodTotals (hrTotals startrpt) (hrTotals rpt)
+  , hrAccountTotals = \a -> periodTotals (hrAccountTotals startrpt a) (hrAccountTotals rpt a)
+  , hrGainsPeriod   = Just $ DateSpan (Just $ Exact start) (Just $ Exact $ addDays 1 $ hrDate rpt)
+  }
+  where
+    periodLine l@HoldingsHeading{}  = l{hlTotals = periodTotals (hrAccountTotals startrpt $ hlAccount l) (hlTotals l)}
+    periodLine l@HoldingsPosition{} = l{hlHolding = periodHolding $ hlHolding l}
+
+    startholdings = M.fromList [((hAccount h, hCommodity h), h) | (_, h) <- hrRows startrpt]
+
+    periodHolding h = h{hUgain = fromMaybe [] mugain, hUgainPct = mpct, hXirr = mxirr}
+      where
+        (mugain, mpct, mxirr) = periodFigures mstartvalue mstartugain (maybe [] hCost mstarth) mendvalue mendugain (hCost h) (hFlows h)
+        mstarth = M.lookup (hAccount h, hCommodity h) startholdings
+        (mstartvalue, mstartugain) = maybe (Just [], Just []) valueAndUgain mstarth
+        (mendvalue, mendugain) = valueAndUgain h
+        -- a holding's value and unrealised gain, if known; nothing held is worth nothing
+        valueAndUgain h'
+          | amountLooksZero (hUnits h') = (Just [], Just [])
+          | otherwise = (nonEmpty $ hValue h', nonEmpty $ hUgain h')
+        nonEmpty as = if null as then Nothing else Just as
+
+    periodTotals st t = t{htUgain = mugain, htUgainPct = mpct, htXirr = mxirr}
+      where
+        (mugain, mpct, mxirr) = periodFigures (htValue st) (totalUgain st) (htCost st) (htValue t) (totalUgain t) (htCost t) (htFlows t)
+        totalUgain t'
+          | htValue t' == Just [] && all amountLooksZero (htCost t') = Just []  -- nothing held
+          | otherwise = htUgain t'
+
+    -- From the value and unrealised gain (when known) and the cost, at the
+    -- start and at the end, and the period's cashflows: the period's UGain,
+    -- UGain% and XIRR.
+    periodFigures :: Maybe [Amount] -> Maybe [Amount] -> [Amount] -> Maybe [Amount] -> Maybe [Amount] -> [Amount] -> [(Day, Amount)]
+                  -> (Maybe [Amount], Maybe Quantity, Maybe Double)
+    periodFigures mv0 mu0 cost0 mv1 mu1 cost1 flows = (mugain, mpct, mxirr)
+      where
+        mugain = do
+          u0 <- mu0
+          u1 <- mu1
+          Just $ case u1 ++ map negate u0 of
+            [] -> []
+            as -> amounts $ mixed as
+        mpct = do
+          [g] <- mugain
+          v0 <- mv0
+          let costs = filter (not . amountLooksZero) $ cost0 ++ cost1
+              total = sum . map aquantity
+          guard $ all ((== acommodity g) . acommodity) $ v0 ++ costs
+          let base = total v0 + total cost1 - total cost0
+          guard $ base /= 0
+          Just $ 100 * aquantity g / abs base
+        mxirr = do
+          v0 <- mv0
+          opening <- case filter (not . amountLooksZero) v0 of
+            []  -> Just []
+            [v] -> Just [(addDays (-1) start, negate v)]
+            _   -> Nothing
+          let flows' = opening ++ flows
+          -- the value at the end; nothing held is worth zero of the cashflows' commodity
+          v1 <- case (mv1, flows') of
+            (Just [v], _)          -> Just v
+            (Just [], (_, a):_)    -> Just a{aquantity = 0}
+            _                      -> Nothing
+          holdingsXirr (hrDate rpt) flows' v1
+
+-- | The annualised internal rate of return, as a percentage, implied by
+-- dated cashflows (negative = money invested) plus a final value amount
+-- at the report date, when they are all in one commodity. Calculated
+-- like roi's IRR (see xirr for the special cases, eg -100% when nothing
+-- is left of the money invested). Nothing if it has no solution (eg an
+-- infinite rate) or can not be solved.
+-- Not for a short position, whose flows are a long position's with the
+-- signs reversed: the rate solving those is the same, so it would report
+-- a winning short as a loss. A short is recognised by a negative final
+-- value (units owed), or when closed, by money received rather than
+-- invested in the earliest flow.
+holdingsXirr :: Day -> [(Day, Amount)] -> Amount -> Maybe Double
+holdingsXirr reportdate flows finalv = do
+  guard $ not $ null flows
+  guard $ all ((== acommodity finalv) . acommodity . snd) flows
+  let earliest = aquantity $ snd $ minimumBy (comparing fst) flows
+      isshort = aquantity finalv < 0 || (aquantity finalv == 0 && earliest > 0)
+  guard $ not isshort
+  either (const Nothing) Just $ xirr reportdate $ (reportdate, aquantity finalv) : [(d, aquantity a) | (d, a) <- flows]
+
+-- | The flat holdings report with its gain columns covering each
+-- holding's whole life up to the report end date - except RGain and the
+-- cashflows (and so XIRR), which are limited to the report period when
+-- the query has a start date (flatHoldingsReport then finishes the job).
+-- If a lot filter is given, just those lots are counted, and the query's
+-- change:/balance: terms are not consulted.
+flatHoldingsReportAt :: Maybe ((AccountName, CommoditySymbol) -> Bool) -> HoldingsReportOpts -> ReportSpec -> Journal -> HoldingsReport
+flatHoldingsReportAt mkeeplot HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
                rspec@ReportSpec{_rsQuery=q, _rsReportOpts=ropts} j =
   HoldingsReport
     { hrDate            = reportdate
@@ -475,12 +611,19 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     , hrAccountTotals   = accountTotals
     , hrUnitCostHeading = unitcostheading
     , hrStyles          = pctstyles
+    , hrGainsPeriod     = Nothing
+    , hrKeepLot         = keeplot
     }
   where
     -- The date this report shows holdings at: the day before the (exclusive)
     -- report end date if specified, otherwise today.
     mend = queryEndDate False q
     reportdate = maybe (_rsDay rspec) (addDays (-1)) mend
+
+    -- The report start date, if any. Realised gains and cashflows are
+    -- limited to the period from then on.
+    mstart = queryStartDate False q
+    inperiod d = maybe True (d >=) mstart
 
     -- The query used to select lot subaccount postings: the report query
     -- without its date terms (holdings are cumulative to the end date,
@@ -512,6 +655,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     flowmap = matchingLots $ M.fromListWith (++)
       [ (k, [(d, negate flowamt)])
       | (k, (d, a)) <- lotpostings
+      , inperiod d
       , Just flowamt <- [case acost a of
           Just _  -> Just $ amountCost a
           Nothing -> multiplyAmount (aquantity a) <$> (cbCost =<< acostbasis a)]
@@ -534,6 +678,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
       , isDisposePosting p
       , isJust $ lotSubaccountName $ paccount p
       , endq `matchesPosting` p
+      , inperiod $ postingDate p
       , a <- amountsRaw $ pamount p
       , isJust $ acost a
       , isJust $ cbCost =<< acostbasis a
@@ -706,28 +851,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
           Just [v] -> Just $ acommodity v
           _        -> Nothing
 
-    -- The annualised internal rate of return implied by dated cashflows
-    -- (negative = money invested) up to the report date, as a percentage,
-    -- calculated like roi's IRR (see xirr for the special cases, eg -100%
-    -- when nothing is left of the money invested). Nothing if it has no
-    -- solution (eg an infinite rate) or can not be solved.
-    xirrPct :: [(Day, Quantity)] -> Maybe Double
-    xirrPct = either (const Nothing) Just . xirr reportdate
-
-    -- XIRR from cashflows plus a final value amount at the report date,
-    -- when they are all in one commodity. Not for a short position, whose
-    -- flows are a long position's with the signs reversed: the rate solving
-    -- those is the same, so it would report a winning short as a loss. A
-    -- short is recognised by a negative final value (units owed), or when
-    -- closed, by money received rather than invested in the earliest flow.
-    xirrOf :: [(Day, Amount)] -> Amount -> Maybe Double
-    xirrOf flows finalv = do
-      guard $ not $ null flows
-      guard $ all ((== acommodity finalv) . acommodity . snd) flows
-      let earliest = aquantity $ snd $ minimumBy (comparing fst) flows
-          isshort = aquantity finalv < 0 || (aquantity finalv == 0 && earliest > 0)
-      guard $ not isshort
-      xirrPct $ (reportdate, aquantity finalv) : [(d, aquantity a) | (d, a) <- flows]
+    xirrOf = holdingsXirr reportdate
 
     -- The total value of the displayed holdings, per value commodity,
     -- when all are priced; and its commodity, when it has just one.
@@ -830,8 +954,13 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
 
     matchingLots :: M.Map (AccountName, CommoditySymbol) v -> M.Map (AccountName, CommoditySymbol) v
     matchingLots
-      | queryIsNull rowq = id
-      | otherwise = M.filterWithKey (\(sub, c) _ -> maybe False (\o -> (o, c) `S.member` matchinglines) $ ownerOf sub)
+      | isJust mkeeplot || not (queryIsNull rowq) = M.filterWithKey (\k _ -> keeplot k)
+      | otherwise = id
+    keeplot :: (AccountName, CommoditySymbol) -> Bool
+    keeplot = case mkeeplot of
+      Just keep -> keep
+      Nothing | queryIsNull rowq -> const True
+              | otherwise        -> \(sub, c) -> maybe False (\o -> (o, c) `S.member` matchinglines) $ ownerOf sub
     matchinglines = S.fromList
       [(o, c) | (o, c) <- nubSort [(o, c) | (sub, c) <- M.keys lotmap, Just o <- [ownerOf sub]], lineMatches o c]
 
@@ -840,8 +969,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     -- unchanged ones are left out.
     lotchanges :: M.Map (AccountName, CommoditySymbol) (Amount, Maybe CostBasis)
     lotchanges = M.mapWithKey mklot $ M.filter (not . amountLooksZero) $ M.fromListWith (+)
-      [(k, amountStripCost a) | (k, (d, a)) <- lotpostings, maybe True (d >=) mstart]
-      where mstart = queryStartDate False q
+      [(k, amountStripCost a) | (k, (d, a)) <- lotpostings, inperiod d]
     ownLotChangeIx = ownIx lotchanges
 
     -- Does a row account's line for this commodity match the change: and
@@ -892,9 +1020,12 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
     -- Cost conversion and valuation (-B/-V/--value) are disabled:
     -- holdings does its own valuation, and units should stay units.
     -- Nor does it apply the change:/balance: terms; they are tested here (see rowq).
+    -- Its query has no start date, since holdings are cumulative (a start date
+    -- after the last posting would otherwise leave an empty report span).
     mbr = multiBalanceReport rspec' j'
       where
         rspec' = rspec{_rsRowQuery = Any
+                      ,_rsQuery = And [filterQuery (not . queryIsDateOrDate2) q, Date $ DateSpan Nothing (Exact <$> mend)]
                       ,_rsReportOpts=ropts{balanceaccum_=Historical, interval_=NoInterval
                                           ,conversionop_=Just NoConversionOp, value_=Nothing
                                           ,sort_amount_=False}}  -- -S sorts by value/cost below, not by units
@@ -1025,6 +1156,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
           , hUgainPct  = gainPct gains ccosts
           , hRgain     = sumAmounts $ map (rowCostValuer r) $ rgainsOf acct (Just c)
           , hXirr      = mxirr
+          , hFlows     = flowsOf acct (Just c)
           }
           where
             c = acommodity qa
@@ -1071,6 +1203,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
           totvalue <- mportfoliovalue
           [tv] <- Just totvalue
           xirrOf (concat $ M.elems flowmap) tv
+      , htFlows    = concat $ M.elems flowmap
       }
       where
         totunits = filter (not . amountLooksZero) $ sumAmounts $
@@ -1099,6 +1232,7 @@ flatHoldingsReport HoldingsReportOpts{hroLots=showlots, hroRounding=rounding}
       , htXirr     = do
           [v] <- msubvalue
           xirrOf (flowsUnder acct) v
+      , htFlows    = flowsUnder acct
       }
       where
         units = filter (not . amountLooksZero) $ sumAmounts $ map fst $ lotsUnder acct
@@ -1212,7 +1346,10 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     pfodstable = pspreadsheetWith id (\_ -> T.intercalate ", " . filter (not . T.null))
 
     -- The default title can be customised or suppressed with --title.
-    title = effectiveTitle ropts (trf "Holdings on {date}" [("date", showDate reportdate)])
+    -- TRANSLATORS: the holdings report's title; {date} is the report date, {period} the report period (eg 2026-11, or 2026-11-01..2026-11-14) if it has a start date.
+    title = effectiveTitle ropts $ case hrGainsPeriod rpt of
+      Nothing  -> trf "Holdings on {date}" [("date", showDate reportdate)]
+      Just spn -> trf "Holdings on {date}, gains in {period}" [("date", showDate reportdate), ("period", showDateSpan spn)]
     txtoutput =
       (case title of
          "" -> ""
