@@ -184,13 +184,16 @@ journalTransform opts =
 -- collapsing it so reports show the user's original form. Collapsing is skipped
 -- when --lots is set, or when --ignore-lots/-I is set (in which case leaf-@{...}@
 -- accounts are treated as ordinary account names).
+-- The holdings command gets the journal unchanged: it aggregates lots itself,
+-- and needs their units unconverted even with -B.
 maybePrepareLotDetail :: CliOpts -> Journal -> Journal
-maybePrepareLotDetail opts = journalPrepareLotDetail (_rsReportOpts $ reportspec_ opts) keeplots
+maybePrepareLotDetail opts
+  | command_ opts == "holdings" = id
+  | otherwise = journalPrepareLotDetail (_rsReportOpts $ reportspec_ opts) keeplots
   where
     rawopts = rawopts_ opts
     keeplots = boolopt "lots" rawopts
             || boolopt "ignore-lots" rawopts
-            || command_ opts == "holdings"  -- holdings always needs lot detail; it aggregates lots itself
 
 -- | Prepare a journal's lot detail for reports with these options: convert lot
 -- postings to their cost basis where -B or --gain needs it, then, unless
