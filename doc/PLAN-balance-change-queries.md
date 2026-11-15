@@ -123,6 +123,9 @@ and so could not be a plain query. Two terms with fixed meanings remove the prob
   intended differences: real signs (`--invert`, `is`), hidden register rows counting in running totals,
   the error wording. Unit tests renamed and extended (`queryHasBalance`, `balance:` vs `change:`).
 - hledger-web: the query help line and its hledger.pot entry were updated (not the .po catalogs).
+- Fix (2026-11-14): `matchesRowAmounts` strips costs first, so a commodity's amounts at different `@` costs
+  (kept apart in a MixedAmount) are compared as one total. Before, `bal balance:<0` matched an account holding
+  1 X bought at one cost and partly sold at another (parts 10 X and -9 X); holdings showed this too.
 
 ## Original `sum:` implementation: changes made during it
 

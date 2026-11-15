@@ -108,7 +108,7 @@ import Hledger.Utils hiding (words')
 import Hledger.Data.Types
 import Hledger.Data.AccountName
 import Hledger.Data.AccountType
-import Hledger.Data.Amount (amountsRaw, isNonsimpleCommodityChar, mixedAmount, nullamt, nullmixedamt, showMixedAmountOneLine, usd)
+import Hledger.Data.Amount (amountsRaw, isNonsimpleCommodityChar, mixedAmount, mixedAmountStripCosts, nullamt, nullmixedamt, showMixedAmountOneLine, usd)
 import Hledger.Data.Dates
 import Hledger.Data.Posting
 import Hledger.Data.Transaction
@@ -1024,14 +1024,15 @@ compareAmount ord q Amount{aquantity=aq} = case ord of Lt      -> aq <  q
 
 -- | Do the change: and balance: terms of this query match a report row (or an entry)
 -- with this change and this balance ? Each term matches like an amt: term does
--- (see 'matchesMixedAmount'): if any of the amount's (single-commodity) parts, or with
--- a commodity symbol, any of its parts in that commodity, passes the comparison.
+-- (see 'matchesMixedAmount'): if any commodity's total amount, or with a commodity symbol,
+-- that commodity's total, passes the comparison. Costs are ignored, so amounts in one
+-- commodity at different costs are combined (they are kept apart in a MixedAmount).
 -- Other kinds of query term are ignored.
 matchesRowAmounts :: Query -> MixedAmount -> MixedAmount -> Bool
 matchesRowAmounts (Not q) chg bal | isRowTerm q = not $ matchesRowAmounts q chg bal
 matchesRowAmounts (And qs) chg bal = all (\q -> matchesRowAmounts q chg bal) qs
-matchesRowAmounts (Change ord n mc) chg _ = Amt ord n mc `matchesMixedAmount` chg
-matchesRowAmounts (Balance ord n mc) _ bal = Amt ord n mc `matchesMixedAmount` bal
+matchesRowAmounts (Change ord n mc) chg _ = Amt ord n mc `matchesMixedAmount` mixedAmountStripCosts chg
+matchesRowAmounts (Balance ord n mc) _ bal = Amt ord n mc `matchesMixedAmount` mixedAmountStripCosts bal
 matchesRowAmounts _ _ _ = True
 
 -- | Does the query match this mixed amount ? It does if it matches any of the

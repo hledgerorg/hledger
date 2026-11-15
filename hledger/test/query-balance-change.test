@@ -409,3 +409,23 @@ Budget performance in 2026-01:
  expenses:gifts ||             0 [0% of 100] 
 ----------------++---------------------------
                 || $220, 100 EUR [      600] 
+
+<
+2026-01-01 buy
+    assets:a     10 X @ $1
+    assets:cash
+
+2026-01-02 sell
+    assets:a     -9 X @ $2
+    assets:cash
+
+# ** 41. Amounts at different costs are combined before comparing:
+# assets:a's balance is 1 X, not 10 X and -9 X.
+$ hledger -f- bal -N assets:a balance:'<0'
+
+# ** 42.
+$ hledger -f- bal -N assets:a balance:'>5'
+
+# ** 43.
+$ hledger -f- bal -N assets:a balance:1
+                 1 X  assets:a
