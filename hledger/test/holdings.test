@@ -1458,3 +1458,19 @@ Holdings at period ends, 2026-01-31..2026-01-31
 ============++=======================================================
  2026-01-31 ||       $200         $220    $20   10.0%         219.1% 
 >= 0
+
+# ** 87. A chart shows cost and value as of the report date, also when the period's gains are unknown (no price at the start).
+<
+commodity X  ; lots:
+P 2026-02-01 X $15
+
+2026-01-01 buy
+    assets:cash
+    assets:inv        10 X {$10}
+
+$ hledger -f - holdings -e 2026-03-01 -b 2026-01-15 --chart -O csv
+"commodity","series","role","mark","x","value"
+"$","Cost","item","bar","assets:inv X","100"
+"$","Unrealised gain","item","bar","assets:inv X","50"
+"$","Value","total","marker","assets:inv X","150"
+>= 0

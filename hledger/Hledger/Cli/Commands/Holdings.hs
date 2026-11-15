@@ -338,9 +338,14 @@ holdingsReportsAsChart ropts title rpts =
 -- and its cost basis, if it has no market price.
 holdingBarParts :: Holding -> ([Amount], [Amount], [Amount])
 holdingBarParts h
-  | null (hValue h)       = ([], [], hCost h)
-  | not (null $ hUgain h) = (hValue h, hCost h, [])
-  | otherwise             = (hValue h, hValue h, [])
+  | null (hValue h) = ([], [], hCost h)
+  | comparable      = (hValue h, hCost h, [])
+  | otherwise       = (hValue h, hValue h, [])
+  where
+    -- the value and cost are in the same commodities (as for UGain, which can't be
+    -- checked instead, since with a start date it can be blank for another reason)
+    comparable = not (null $ hCost h) && commodities (hValue h) == commodities (hCost h)
+    commodities = nubSort . map acommodity
 
 -- | A chart of holdings: a bar at each x position, in each commodity's panel, from the market value, cost basis
 -- and cost basis without a market price, of one or more holdings there (see 'holdingBarParts').
