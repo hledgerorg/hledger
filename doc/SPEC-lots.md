@@ -827,9 +827,14 @@ transacted cost, so a disposal converts to what the units cost and cost
 reports balance; `--value=transacted` (`ToTransactedCost`) converts at
 transacted cost only. Since collapsing lot detail (when `--lots` is off)
 merges a multi-lot disposal's fragments into one amount with a partial or
-unspecified basis, the -B conversion is applied before collapsing, in
-`journalTransform` (`maybeConvertToCostBasis`); the later per-report
-conversion is then a no-op for those amounts.
+unspecified basis, those fragments (lotsplit-tagged postings) are
+converted to cost basis before collapsing, in `journalPrepareLotDetail`;
+the later per-report conversion is then a no-op for them. Other amounts
+are converted per report, after query matching, so `cur:`/`amt:` still
+match the original amounts (the collapsed fragments being the exception).
+(Converting the whole journal early, 533fa507b..2026-11, made `cur:`/`amt:`
+with -B match converted amounts in every command; and commands which sum
+amounts before converting them, like roi, must convert each posting first.)
 
 When the balancer infers a conversion cost between two commodities, and
 exactly one of them has classified lot postings — or, failing that, is

@@ -104,8 +104,11 @@ roi opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOpts=ro
     isPnl p      = not (isInvestment p) && matchesPosting pnlQuery p
 
     -- The investment's holdings at the end of each day which changes them, accumulated once.
+    -- With -B, each posting is converted to cost before summing, since summing can merge
+    -- amounts with different cost bases (eg lots), losing them.
     holdingsByDay = M.fromAscList . drop 1 . scanl (\(_, acc) (d, a) -> (d, acc `maPlus` a)) (nulldate, nullmixedamt) . M.toAscList $
-      M.fromListWith maPlus [ (postingDay p, pamount p) | t <- trans, p <- realPostings t, isInvestment p ]
+      M.fromListWith maPlus [ (postingDay p, maybe id (mixedAmountToCost styles) conversionop_ $ pamount p)
+                            | t <- trans, p <- realPostings t, isInvestment p ]
     -- the investment's holdings at the end of this day
     holdingsAt d = maybe nullmixedamt snd $ M.lookupLE d holdingsByDay
 

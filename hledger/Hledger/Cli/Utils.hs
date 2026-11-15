@@ -201,19 +201,25 @@ maybePrepareLotDetail opts
 -- hledger, hledger-ui, and hledger-web all display lots this way, so that
 -- they report the same amounts.
 journalPrepareLotDetail :: ReportOpts -> Bool -> Journal -> Journal
-journalPrepareLotDetail ropts keeplots =
-    (if keeplots then id else journalCollapseLotDetail)
-  . setCostsToBasisForGain
-  . convertToCostBasis
+journalPrepareLotDetail ropts keeplots
+  | keeplots  = setCostsToBasisForGain
+  | otherwise = journalCollapseLotDetail . setCostsToBasisForGain . convertFragmentsToCostBasis
   where
-    -- With -B/--value=cost, convert amounts to cost basis now, before lot
-    -- detail is collapsed: collapsing merges a multi-lot disposal's per-lot
-    -- fragments (which may have different bases) into one amount with an
+    -- With -B/--value=cost, when lot detail will be collapsed, convert the
+    -- per-lot fragments of split postings (eg a disposal from several lots)
+    -- to their cost basis now: collapsing merges them into one amount with an
     -- unspecified basis, after which the basis values would be lost. The later
     -- per-report cost conversion is then a no-op for these amounts.
-    convertToCostBasis
-      | conversionop_ ropts == Just ToCost = journalToCost ToCost
+    -- Other amounts are left for that per-report conversion, which comes after
+    -- query matching, so that cur: and amt: still match their original
+    -- commodity and quantity (as they do with -V/-X).
+    convertFragmentsToCostBasis
+      | conversionop_ ropts == Just ToCost = \j -> j{jtxns = map convertTxn $ jtxns j}
       | otherwise = id
+    convertTxn t
+      | any isfragment (tpostings t) = t{tpostings = mapMaybe (\p -> if isfragment p then postingToCost ToCost p else Just p) $ tpostings t}
+      | otherwise = t
+    isfragment = postingHasTag lotsplitPostingTagName
     -- With --gain, replace lot postings' transacted costs with their cost basis
     -- now, before lot detail is collapsed, for the same reason: the gain
     -- calculation subtracts cost from summed account balances, and summing

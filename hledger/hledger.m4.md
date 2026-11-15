@@ -5890,6 +5890,8 @@ queries see only the new account names. Eg with `alias checking = assets:bank:ch
 When amounts are converted to other commodities in [cost](#cost-reporting) or [value](#value-reporting) reports,
 `cur:` and `amt:` match the old commodity symbol and the old amount quantity, not the new ones.
 `change:` and `balance:` match the converted amounts, except in `print` (see [balance: and change: queries](#balance-and-change-queries)).
+(With `-B` and no `--lots`, a sale from several [lots](#lots-and-capital-gains) may be left out by `cur:` or `amt:`,
+since it is matched as converted to cost; add `--lots` to match it as written.)
 
 # Depth
 

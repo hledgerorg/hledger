@@ -39,3 +39,43 @@ $ hledger -f- print amt:'>$100' desc:trip
 $ hledger -f- reg amt:'>1,000'
 >2 /could not parse "amt:>1,000"/
 >=1
+
+# ** 6. With -B, cur: and amt: still match the original commodity and quantity, as with -V/-X.
+<
+commodity BBB ; lots:
+account revenues:gains ; type: G
+
+2026-01-01 buy
+    assets:inv       10 AAA @ $5
+    assets:cash
+
+2026-01-01 buy
+    assets:broker    10 BBB @ $10
+    assets:cash
+
+2026-01-02 buy
+    assets:broker    10 BBB @ $20
+    assets:cash
+
+2026-02-01 sell from both lots
+    assets:broker   -15 BBB @ $30
+    assets:cash
+    revenues:gains
+
+$ hledger -f- reg assets:inv cur:AAA amt:10 -B
+2026-01-01 buy                  assets:inv                     $50           $50
+
+# ** 7. Likewise for lot postings, converted to their cost basis.
+$ hledger -f- reg assets:broker cur:BBB amt:10 -B
+2026-01-01 buy                  assets:broker                 $100          $100
+2026-01-02 buy                  assets:broker                 $200          $300
+
+# ** 8. Except that a sale from several lots, when lot detail is collapsed (without --lots),
+# is matched as converted to cost (here $-200, not -15 BBB).
+$ hledger -f- reg assets:broker cur:BBB -B
+2026-01-01 buy                  assets:broker                 $100          $100
+2026-01-02 buy                  assets:broker                 $200          $300
+
+# ** 9. With --lots it is matched as written.
+$ hledger -f- reg assets:broker cur:BBB amt:-5 -B --lots
+2026-02-01 sell from both lots  ..:{2026-01-02, $20}         $-100         $-100
