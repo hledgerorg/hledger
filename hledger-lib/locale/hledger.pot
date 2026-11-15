@@ -2263,10 +2263,6 @@ msgid "add a transaction"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet
-msgid "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"
-msgstr ""
-
-#: hledger-web/templates/default-layout.hamlet
 msgid "match transaction descriptions"
 msgstr ""
 
@@ -2296,6 +2292,10 @@ msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet
 msgid "match postings' realness/virtualness"
+msgstr ""
+
+#: hledger-web/templates/default-layout.hamlet
+msgid "match any field (account, amount, comment, tag, description, code), or a date if REGEX is also a period expression"
 msgstr ""
 
 #: hledger-web/templates/default-layout.hamlet

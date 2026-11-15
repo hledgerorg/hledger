@@ -151,19 +151,15 @@ $ hledger -f - balance -M ::2024 -O csv
 "expenses:food","0","0","$30"
 "Total:","0","0","0"
 
-# ** 18. Only visible text is searched. Tags inherited from account declarations
-# are queryable with tag:, but not with find:.
-$ hledger -f - print tag:bankname=chase
+# ** 18. It matches tags inherited from account declarations, though print doesn't show them.
+$ hledger -f - print ::chase
 2024-01-15 * (101) Amazon | books  ; ttag: tvalue
     expenses:books                               $20  ; ptag: pvalue
     assets:checking
 
 >=
 
-# ** 19.
-$ hledger -f - print ::chase
-
-# ** 20. An empty find: or :: argument matches anything.
+# ** 19. An empty find: or :: argument matches anything.
 <
 2024-01-01 a
     expenses:food   $1
@@ -172,3 +168,19 @@ $ hledger -f - print ::chase
 $ hledger -f - reg ::
 2024-01-01 a                    expenses:food                   $1            $1
                                 assets:cash                    $-1             0
+
+# ** 20. It matches hidden tags, such as the ptype tag on lot postings.
+<
+commodity AAPL  ; lots:
+
+2026-01-01 buy
+    assets:broker   10 AAPL @ $100
+    assets:cash
+
+2026-02-01 sell
+    assets:broker   -5 AAPL @ $120
+    assets:cash      $600
+    revenue:gains
+
+$ hledger -f - reg ::dispose
+2026-02-01 sell                 assets:broker              -5 AAPL       -5 AAPL

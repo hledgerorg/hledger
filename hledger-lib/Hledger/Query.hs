@@ -143,7 +143,7 @@ data Query =
   | Balance OrdPlus Quantity (Maybe CommoditySymbol)
                               -- ^ like Amt, but matching a report row by its balance: the sum of its postings up to the end of its period.
                               --   Not tested against postings; reports apply it after aggregating (see 'querySplitRowTerms').
-  | Find Regexp (Maybe DateSpan) -- ^ match if any visible text field (account, amount, comment, description, code) is infix-matched by this regexp, or if the date is within this span (present when the pattern also parses as a period expression)
+  | Find Regexp (Maybe DateSpan) -- ^ match if any text field (account, amount, comment, tag name or value, description, code) is infix-matched by this regexp, or if the date is within this span (present when the pattern also parses as a period expression)
   -- compound queries (expr:)
   | Not Query                 -- ^ negate this match
   | And [Query]               -- ^ match if all of these match
@@ -1272,19 +1272,23 @@ findMatchesTransaction r mspan t =
 
 -- | The text fields of a posting which a find: query searches:
 -- the account name (and the original account name, if the posting has been transformed),
--- the comment, and the amount as displayed on one line.
--- These are the posting's visible texts; tags are searched only as part of the comment,
--- so hidden tags and tags inherited from account declarations are not matched.
+-- the comment, the names and values of all its tags (including hidden ones,
+-- and those inherited from account declarations), and the amount as displayed on one line.
 -- The amount is last, since rendering it costs the most.
 postingFindTexts :: Posting -> [Text]
 postingFindTexts p =
   paccount p : maybe [] (pure . paccount) (poriginal p)
-  ++ [pcomment p, T.pack $ showMixedAmountOneLine $ pamount p]
+  ++ pcomment p : tagTexts (ptags p)
+  ++ [T.pack $ showMixedAmountOneLine $ pamount p]
 
 -- | The text fields of a transaction (not including its postings) which a find: query searches:
--- the description, code and comment.
+-- the description, code, comment, and the names and values of all its tags.
 transactionFindTexts :: Transaction -> [Text]
-transactionFindTexts t = [tdescription t, tcode t, tcomment t]
+transactionFindTexts t = tdescription t : tcode t : tcomment t : tagTexts (ttags t)
+
+-- | The names and values of these tags, as separate texts.
+tagTexts :: [Tag] -> [Text]
+tagTexts = concatMap (\(n,v) -> [n,v])
 
 -- | Do this name regex and optional value regex match the name and value of any of these tags ?
 patternsMatchTags :: Regexp -> Maybe Regexp -> [Tag] -> Bool

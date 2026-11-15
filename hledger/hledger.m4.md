@@ -5720,12 +5720,16 @@ See [Depth](#depth) for detailed rules.
 
 ### find: query
 **`find:REGEX`**, or **`::REGEX`**\
-Match if any visible text field contains this case insensitive regular expression:
+Match if any text field contains this case insensitive regular expression:
 the account name, the amount (as it would be displayed), the comment,
-and the transaction's description, code and comment.
-In other words, the text you would see in `print` output.
-Tags are searched as part of the comment text, so
-hidden tags and tags inherited from account declarations are not matched (use `tag:` for those).
+the transaction's description, code and comment,
+or the name or value of any tag.
+Tags include [hidden tags](#tag-names) and tags inherited from
+[account](#account-tags) and [commodity](#commodity-tags) declarations,
+so a match may come from a tag not shown in `print` output.
+Eg `::dispose` finds lot disposals, which have a hidden `ptype: dispose` tag.
+To see why something matched, `print --verbose-tags` shows the hidden tags;
+for inherited tags, check the account or commodity directive.
 Or, if REGEX is also a valid [period expression](#period-expressions),
 match if the date is within that period.
 So `::amazon` finds "amazon" anywhere, and `::2024` finds "2024" in any field or a date in 2024.

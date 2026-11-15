@@ -298,7 +298,7 @@ $if elem ViewPermission perms
           <li> <code>cur:REGEX</code> - _{HMsg "match currencies/commodities. Must match the whole symbol/name. To match dollar sign, write"} <code>\$</code>
           <li> <code>tag:NAME</code>, <code>tag:NAME=REGEX</code> - _{HMsg "match tags, or tag and value"}
           <li> <code>real:BOOL</code> - _{HMsg "match postings' realness/virtualness"}
-          <li> <code>find:REGEX</code> _{HMsg "or"} <code>::REGEX</code> - _{HMsg "match any visible field (account, amount, comment, description, code), or a date if REGEX is also a period expression"}
+          <li> <code>find:REGEX</code> _{HMsg "or"} <code>::REGEX</code> - _{HMsg "match any field (account, amount, comment, tag, description, code), or a date if REGEX is also a period expression"}
           <li> <code>not:QTERM</code> - _{HMsg "prepend not: to negate a search term"}
           <li> <code>expr:'QEXPR'</code> - _{HMsg "match with a boolean query (and, or, not, ())"}
           <li>  <code>any:'QEXPR'</code> - _{HMsg "match transactions where any posting matches"}
