@@ -13,8 +13,15 @@ packages:
 extra-deps:
 # megaparsec 9.8.3 parses about 10% faster than earlier versions (megaparsec#612)
 - megaparsec-9.8.3
+- yesod-core-1.7.0.0
+# #2410 haskeline 0.8.4.0+ is needed for correct ANSI display on Windows.
+- haskeline-0.8.4.1
+# https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html
+- aeson-2.3.2.0
+- text-iso8601-0.2.0.0
 # for hledger's openBrowserOn (Windows launch through the Win32 API)
 - open-browser-0.5.1.0
+allow-newer: true
 
 nix:
   pure: false

@@ -19,13 +19,16 @@ extra-deps:
 - haskeline-0.8.4.1
 - vty-windows-0.2.0.1
 # for hledger-web and https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html
-- aeson-2.2.5.1
-- text-iso8601-0.1.1.2
+- aeson-2.3.2.0
+- aeson-pretty-0.8.11
+- text-iso8601-0.2.0.0
 - character-ps-0.1
 - hashable-1.4.6.0
+- yesod-core-1.7.0.0
 # for hledger's openBrowserOn (Windows launch through the Win32 API)
 - open-browser-0.5.1.0
 - attoparsec-aeson-2.2.2.0
+allow-newer: true
 
 nix:
   pure: false

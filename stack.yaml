@@ -13,3 +13,14 @@ resolver: nightly-2026-09-01
 extra-deps:
 # megaparsec 9.8.3 parses about 10% faster than earlier versions (megaparsec#612)
 - megaparsec-9.8.3
+- yesod-core-1.7.0.0
+# https://haskell.github.io/security-advisories/advisory/HSEC-2026-0007.html
+# aeson 2.3+ is needed to avoid a memory exhaustion bug/hledger-web vulnerability.
+# Not yet in stackage, allow-newer needed.
+- aeson-2.3.2.0
+- text-iso8601-0.2.0.0
+# #2410 haskeline 0.8.4.0+ is needed for correct ANSI display on Windows.
+# Must pin explicitly because allow-newer: true relaxes lower bounds,
+- haskeline-0.8.4.1
+
+allow-newer: true
