@@ -2524,7 +2524,7 @@ a unit cost on such an amount is replaced by the exact total cost (`10 min @ $1`
 and [balance assertions](#balance-assertions) add up the alias amounts before converting them
 (so three `10 min` amounts satisfy a `= 0.5 hrs` assertion).
 
-#### Commodity aliases or market prices ?
+#### Commodity units and market prices
 
 Both let you convert between symbols. When should you use one or the other ?
 
