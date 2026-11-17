@@ -2506,10 +2506,9 @@ commodity $1.00     ; alias: 0.001 K, alias: 0.000001 M
 
 You can report in any of these units, eg with `-X min` or `-X M` (valuation, described later).
 
-Note, these units keep the symbol placement they were written with,
-but inherit the canonical commodity's number format and display/transaction-balancing precisions
-(or a higher precision when needed to show them accurately).
-If they need their own display style, eg more decimals to make small quantities visible, give them a `commodity` directive too:
+Note, these units keep the symbol placement they were declared with,
+but inherit the canonical commodity's number format and display/transaction-balancing precisions.
+If you want them to have a different display style, eg more decimals to make small quantities visible, give them a `commodity` directive too:
 
 ```journal
 commodity $1.00      ; alias: 0.001 K, alias: 0.000001 M
