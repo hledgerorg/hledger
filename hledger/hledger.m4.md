@@ -2485,7 +2485,7 @@ commodity USD 1.00    ; alias: $, alias: US$, alias: "us dollars"
 When hledger reads the journal, amounts written with an alias are converted to the commodity.
 So they combine with it in reports, and a transaction can balance across them.
 This is useful eg if your bank data, manual entries and downloaded market prices use different symbols for the same currency.
-Declare symbol you want to see in reports as the canonical commodity symbol, and the others as aliases.
+Declare the symbol you want to see in reports as the canonical commodity symbol, and the others as aliases.
 
 Commodity aliases and [`P` market prices](#p-directive) both allow converting between commodity symbols.
 When should you use one or the other ?
