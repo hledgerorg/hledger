@@ -2473,80 +2473,80 @@ Note, these tags will be queryable but won't be shown in `print` output, even wi
 
 ### Commodity aliases
 
-An `alias:` tag on a commodity directive declares an alias (an alternate symbol) for the commodity.
-You can add more `alias:` tags to declare more aliases.
-Symbols containing spaces or other special characters should be enclosed in double quotes.
-Here USD has three aliases:
+An `alias:` tag on a commodity directive declares another symbol/name for that commodity.
+You can add several (quoting any that contain spaces or other special characters, [as usual](#commodity)):
 
 ```journal
 commodity USD 1.00    ; alias: $, alias: US$, alias: "us dollars"
 ```
 
-When hledger reads the journal, amounts written with an alias are converted to the commodity.
+When hledger reads the journal, amounts written with an alias are converted to the canonical commodity.
 So they combine with it in reports, and a transaction can balance across them.
-This is useful eg if your bank data, manual entries and downloaded market prices use different symbols for the same currency.
-Declare the symbol you want to see in reports as the canonical commodity symbol, and the others as aliases.
+This helps when, eg, your bank data, manual entries and downloaded market prices use different symbols for the same currency.
+Declare the symbol you want reports to show, and the others as its aliases.
 
-Commodity aliases and [`P` market prices](#p-directive) both allow converting between commodity symbols.
-When should you use one or the other ?
+Some details:
 
-- Use an alias when two symbols are the same thing in different names or units (like `$` and `USD`, or `megabytes` and `kilobytes`);
-  amounts written with an alias are converted automatically to the commodity's canonical symbol.
-- Use a P directive when they are different things with an exchange rate, even a fixed rate (like AI tokens and kWh);
-  amounts with these commodities are converted only on request, by [valuation](#value-reporting).
+- `print` shows amounts as they were written; `print -x` shows them converted to the canonical commodity.
+- [`cur:`](#cur-query) queries match the canonical symbol, not the aliases (with the above declaration, `$5` would be matched by `cur:USD`, and not by `cur:'\$'`).
+- An alias can't have aliases of its own, and the same alias can't be declared on two different commodities.
 
-`print` still shows the amounts as they were written; `print -x` shows them converted, in the commodity's display style.
-In queries, [`cur:`](#cur-query) matches amounts written with an alias as the commodity, not the alias.
-Aliases are accepted by `hledger check commodities`.
+#### Commodity units
 
-An alias can also have a quantity, for a unit of a different size.
-This is the number of alias units equal to one unit of the commodity.
-Amounts written with the alias are divided by it, and their unit costs and market prices are multiplied by it.
-The converted amounts get the commodity's display precision (or more, if needed to show an exactly converted amount fully),
-which is also how they count in [transaction balancing](#how-balancing-is-checked).
-Eg, here a kilobuck is 1000 dollars and an hour is 60 minutes:
+A commodity alias can also specify a quantity.
+Amounts written with the alias are divided by this quantity (and their unit costs and market prices are multiplied by it).
+This is useful for expressing differently-sized units of a commodity. Eg:
 
 ```journal
-commodity USD 1.00    ; alias: 0.001 kilobucks
-commodity h 1.00      ; alias: 60 min
+commodity 1.00 hrs  ; alias: 60 min
+commodity $1.00     ; alias: 0.001 K, alias: 0.000001 M
 ```
 
-The quantity is used exactly as written.
-If converting to the commodity needs a repeating decimal (like 1/60 hours per minute),
-each converted amount is rounded at the 255th decimal place (see [Amount arithmetic](#amount-arithmetic)),
-far beyond the displayed decimal places. hledger keeps this from affecting costs and balance assertions:
-an amount's unit cost is replaced by its total cost, which stays exact (`10 min @ $1` becomes `0.1666... h @@ $10`),
-and [balance assertions](#balance-assertions) add up the amounts written in the alias before converting them
-(so eg three `10 min` amounts satisfy a `= 0.5 h` assertion).
-If your journal uses decimal commas, remember that a comma ends a tag's value; 
-you can write a fractional quantity with an exponent instead, eg `alias: 1E-3 kilobucks`.
+(Avoid decimal commas here, which would end the tag's value; use `.`, or exponential notation, `alias: 1E-6 M`.)
 
-You can also show amounts in an alias, with `-X`, eg `-X min` or `-X kilobucks`.
-An alias is displayed with its commodity's number format (precision, decimal mark and digit groups),
-and with its symbol placed as in the amounts written with it (or as its commodity's, if there are none).
-To give an alias a different display style, add a `commodity` directive for it too:
+You can report in any of these units, eg with `-X min` or `-X M` (valuation, described later).
+
+Note, these units keep the symbol placement they were written with,
+but inherit the canonical commodity's number format and display/transaction-balancing precisions
+(or a higher precision when needed to show them accurately).
+If they need their own display style, eg more decimals to make small quantities visible, give them a `commodity` directive too:
 
 ```journal
-commodity USD 1.00    ; alias: 0.001 kilobucks
-commodity 1.000 kilobucks
+commodity $1.00      ; alias: 0.001 K, alias: 0.000001 M
+commodity 1.000 K
+commodity 1.000000 M
 ```
 
-An alias can't have aliases of its own,
-and if the same alias is declared on two different commodities, hledger reports an error.
+When the conversion gives a repeating decimal (like 1/60 hour per minute),
+it is stored internally at maximum precision (255 decimals, see [Amount arithmetic](#amount-arithmetic)).
+To keep costs and balance assertions exact,
+a unit cost on such an amount is replaced by the exact total cost (`10 min @ $1` becomes `0.1666... hrs @@ $10`),
+and [balance assertions](#balance-assertions) add up the alias amounts before converting them
+(so three `10 min` amounts satisfy a `= 0.5 hrs` assertion).
 
-To use the same commodity aliases with several journals, put the `commodity` directives
-in a file which they [`include`](#include-directive).
-(Aliases convert only the amounts in their own [file tree](#directive-scopes),
-so a file added with an extra `-f` option won't convert the other files' amounts.
-Its aliases can still be used for [valuation](#finding-market-price), eg with `-X`.)
+#### Commodity aliases or market prices ?
+
+Both let you convert between symbols. When should you use one or the other ?
+
+Use a commodity alias when the symbols mean the same thing in different names or units (`$` and `USD`, `min` and `hrs`).
+The conversion happens always and automatically.
+
+Use a [`P` directive](#p-directive) when they are different things with an exchange rate, even a fixed one.
+The conversion happens only when you ask for it.
+
+#### Commodity alias scope
+
+Commodity aliases automatically convert only the amounts in their own [file tree](#directive-scopes).
+To use the same aliases in several journals, put the `commodity` directives in a file which they all [`include`](#include-directive)
+(or which includes all of them).
+
+But they can still convert other file trees' amounts (eg from an extra `-f` file) on demand, with `-V` or `-X`.
 
 ### Commodity error checking
 
 In [strict mode] (`-s`/`--strict`) (or when you run `hledger check commodities`),
-hledger will report an error if an undeclared commodity symbol is used.
-(With one exception: zero amounts are always allowed to have no commodity symbol.)
-It works like [account error checking](#account-error-checking) (described above).
-
+hledger will report an error if an undeclared commodity symbol is used (aliases count as declared).
+There's one exception: zero amounts are always allowed to have no commodity symbol.
 
 ## `decimal-mark` directive
 
