@@ -285,6 +285,9 @@ account ai   ; type:Expense
 2026-10-29 sm | PR #2830 review
     (ai)                                          16 kt
 
+2026-10-01  ; TODO: date these summary entries nearer month end, and add a description
+    (ai)                                        5689 kt
+
 2026-11-01 sm | site: index, faq, ledger update
     (ai)                                           5 kt
 
