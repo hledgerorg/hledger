@@ -2524,7 +2524,7 @@ a unit cost on such an amount is replaced by the exact total cost (`10 min @ $1`
 and [balance assertions](#balance-assertions) add up the alias amounts before converting them
 (so three `10 min` amounts satisfy a `= 0.5 hrs` assertion).
 
-#### Commodity units and market prices
+#### Commodity aliases or market prices?
 
 Both let you convert between symbols. When should you use one or the other ?
 
@@ -2536,11 +2536,14 @@ The conversion happens only when you ask for it.
 
 #### Commodity alias scope
 
-Commodity aliases automatically convert only the amounts in their own [file tree](#directive-scopes).
-To use the same aliases in several journals, put the `commodity` directives in a file which they all [`include`](#include-directive)
-(or which includes all of them).
+Commodity aliases (with or without a quantity) work in two ways, with different scopes:
 
-But they can still convert other file trees' amounts (eg from an extra `-f` file) on demand, with `-V` or `-X`.
+- When hledger reads the journal, they convert the amounts written with them, in their own [file tree](#directive-scopes) only
+  (before or after the directive). A file read with another `-f` option is a separate file tree, so its amounts are not converted.
+  To share aliases between journals, put the `commodity` directives in a file which they all [`include`](#include-directive) (or which includes them all).
+- With `-X`, they also act as fixed exchange rates in all file trees, as a last resort when market prices can't do the conversion
+  (see [Finding market price](#finding-market-price)).
+  Eg `-X USD` can convert `$` amounts in another file tree that didn't declare that alias.
 
 ### Commodity error checking
 
