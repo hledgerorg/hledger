@@ -51,6 +51,10 @@ data InputOpts = InputOpts {
                                                 --   Set by 'importcmd'; other reads should leave it off.
     ,_dryrun            :: Bool                 -- ^ internal flag: is this a @import --dry-run@ command ?
                                                 --   If set, the CSV rules reader will never archive or remove a data file.
+    ,_scanfiles         :: Bool                 -- ^ internal flag: are we just finding the files read (for the files command) ?
+                                                --   If set, files are parsed only to find the files they include or use:
+                                                --   data is not converted or finalised (balanced, checked), source commands are not run,
+                                                --   and an included file which is missing (or a glob matching nothing) is recorded, not an error.
     ,_forecastOnlyForDisplay :: Bool        -- ^ internal flag: are forecast transactions being generated only so they can be shown on request
                                                 --   (as hledger-ui always does), not because the user asked for them with --forecast ?
                                                 --   If so, assert rules ignore them, so they pass or fail as they do without --forecast.
@@ -86,6 +90,7 @@ definputopts = InputOpts
     , _defer             = False
     , _importing         = False
     , _dryrun            = False
+    , _scanfiles         = False
     , _forecastOnlyForDisplay = False
     , _ioDay             = nulldate
     , _oldtimeclock      = False

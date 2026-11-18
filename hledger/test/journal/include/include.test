@@ -372,18 +372,75 @@ c.csv.rules
   b.csv.rules
   b.csv
 
-# ** 38. files -O json shows each file's path, depth and parent, for use by other tools.
+# ** 38. files -O json shows each file's path, depth, parent, and whether it exists, for use by other tools.
 # A regex selects just the matching files.
 $ hledger -f c.csv.rules files -O json 'b\.csv' | sed -E 's|/.*/include/||'
 [
   {
     "depth": 1,
+    "exists": true,
     "parent": "c.csv.rules",
     "path": "b.csv.rules"
   },
   {
     "depth": 1,
+    "exists": true,
     "parent": "c.csv.rules",
     "path": "b.csv"
+  }
+]
+
+# ** 39. files does not process the data, so unbalanced entries or failing assertions don't stop it.
+<
+include b.csv
+2016-01-01 unbalanced
+    a      1
+    b      2
+
+2016-01-02 failing assertion
+    a      0 = 99
+    b
+$ hledger -f - files | sed 's|.*/||'
+-
+b.csv
+b.csv.rules
+
+# ** 40. files does not run source commands.
+<
+include gen.rules
+$ hledger -f - files | sed 's|.*/||'
+-
+gen.rules
+>2 !/RAN/
+
+# ** 41. files omits missing included files (or globs matching nothing) from its text output,
+# with a warning for each.
+<
+include b.csv
+include nosuchfile.j
+include nosuchdir/*.j
+$ hledger -f - files 2>&1 | sed -E 's|/.*/include/||'
+Warning: file not found: nosuchfile.j
+Warning: file not found: nosuchdir/*.j
+-
+b.csv
+b.csv.rules
+
+# ** 42. files -O json includes them, with exists false.
+<
+include nosuchfile.j
+$ hledger -f - files -O json | sed -E 's|/.*/include/||'
+[
+  {
+    "depth": 0,
+    "exists": true,
+    "parent": null,
+    "path": "-"
+  },
+  {
+    "depth": 1,
+    "exists": false,
+    "parent": "-",
+    "path": "nosuchfile.j"
   }
 ]

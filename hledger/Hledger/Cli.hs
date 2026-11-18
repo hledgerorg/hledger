@@ -482,7 +482,10 @@ main = handleExit $ withGhcDebug' $ do
           let mconfinfo = (\f -> (f, cliconfrawopts)) <$> mconffile
           in Hledger.Cli.Commands.Run.repl findBuiltinCommand addons cmdaliases shellaliasesallowed mconfinfo (Just addonCommandNames) opts
 
-        -- 6.4.5. all other builtin commands - read the journal and if successful run the command with it
+        -- 6.4.5. "files" reads the journal just to find the files read, tolerating missing or failing ones
+        | cmdname == "files" -> withJournal opts{inputopts_=(inputopts_ opts){_scanfiles=True}} $ cmdaction opts
+
+        -- 6.4.6. all other builtin commands - read the journal and if successful run the command with it
         | otherwise -> withJournal opts $ cmdaction opts
 
     -- 6.5. external addon command found - run it,

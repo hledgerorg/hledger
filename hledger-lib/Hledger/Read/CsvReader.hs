@@ -53,8 +53,8 @@ reader sep = Reader
   -- and the data is not finalised here; the including journal's finalisation handles that.
   -- (So if finalisation then fails on a CSV-generated entry, the "converted from this record"
   -- context is not shown, but the error still cites the CSV file and line.)
-  ,rParser     = \_ -> includeFileParser $ \f ->
-                   fst <$> readCsvWith sep Nothing f (\enc -> openFile f ReadMode >>= hGetContentsPortably enc)
+  ,rParser     = \iopts -> includeFileParser $ \f ->
+                   fst <$> readCsvWith sep (_scanfiles iopts) Nothing f (\enc -> openFile f ReadMode >>= hGetContentsPortably enc)
   }
 
 -- | Parse and post-process a "Journal" from a CSV(/SSV/TSV/*SV) data file, or give an error.
@@ -63,7 +63,7 @@ reader sep = Reader
 -- This does not check balance assertions.
 parse :: SepFormat -> InputOpts -> FilePath -> Handle -> ExceptT String IO Journal
 parse sep iopts f h = do
-  (j1, adderrorcontext) <- readCsvWith sep (mrules_file_ iopts) f (`hGetContentsPortably` h)
+  (j1, adderrorcontext) <- readCsvWith sep (_scanfiles iopts) (mrules_file_ iopts) f (`hGetContentsPortably` h)
   -- apply any command line account aliases. Can fail with a bad replacement pattern.
   j2 <- liftEither $ journalApplyAliases (aliasesFromOpts iopts) j1
   -- if finalisation fails, show also the CSV record which generated the failing entry
@@ -73,13 +73,14 @@ parse sep iopts f h = do
 -- | Read the rules file for a CSV data file (the one specified, or the one named after the data file),
 -- read the data with the given action (which is told the rules' encoding, if any),
 -- and convert it to an unfinalised journal (see 'readParsedJournalFromCsv').
-readCsvWith :: SepFormat -> Maybe FilePath -> FilePath -> (Maybe DynEncoding -> IO Text)
+-- If the first argument is true (we are just finding the files read), the data is not read.
+readCsvWith :: SepFormat -> Bool -> Maybe FilePath -> FilePath -> (Maybe DynEncoding -> IO Text)
             -> ExceptT String IO (ParsedJournal, String -> String)
-readCsvWith sep mrulesfile f readdata = do
+readCsvWith sep scanning mrulesfile f readdata = do
   let rulesfile = getRulesFile f mrulesfile
   (rules, rulesfiles) <- readRules rulesfile
   mencoding <- rulesEncoding rulesfile rules
-  csvtext <- lift $ readdata mencoding
+  csvtext <- if scanning then return "" else lift $ readdata mencoding
   readParsedJournalFromCsv rulesfile rules (f, rulesfiles) f csvtext (Just sep)
 
 --- ** tests

@@ -278,7 +278,10 @@ readRulesFileWith iopts rulesfile postprocess = do
   let
     -- Show a source command on stderr, saying which rules file it's from.
     logCommand c = hPutStrLn stderr $ takeFileName rulesfile <> ": running source command: " <> c
-  cleandata <- dbg1With (\t -> "read "++(show $ length $ T.lines t)++" lines") <$> case (mpat, mexistingdatafile, mcmd) of
+  cleandata <- dbg1With (\t -> "read "++(show $ length $ T.lines t)++" lines") <$>
+    -- when just finding the files read, don't read the data or run any command
+    if _scanfiles iopts then return "" else
+    case (mpat, mexistingdatafile, mcmd) of
 
     -- file pattern, but no file found
     (Just _, Nothing, _) -> -- trace "file pattern, but no file found" $

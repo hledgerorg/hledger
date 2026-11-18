@@ -1,0 +1,4 @@
+# A rules file whose source command reports that it ran.
+source | echo RAN >&2; echo 2016-01-01,gen,1
+fields date,description,amount
+account1 assets:gen

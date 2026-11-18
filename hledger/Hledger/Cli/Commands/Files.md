@@ -6,8 +6,13 @@ each CSV file is followed by its rules file and any rules files that includes,
 and each rules file is followed by any rules files it includes and the data file it read (if any).
 With a REGEX argument, only file names matching the regular expression (case sensitive) are shown.
 
-This lists only the files actually read: eg if a rules file's `source` pattern matches several files, only the one it read is shown.
-And to find the files, hledger reads the journal as usual, so any `source` commands will be run.
+To find the files, hledger reads them only as far as needed, without processing their data.
+So this command works even when the journal has errors, such as unbalanced entries or failing balance assertions
+(but not syntax errors), and it does not run `source` commands.
+If an included file does not exist (or an include's glob pattern matches no files),
+it is omitted from the list, with a warning; this is not an error.
+(This helps tools which generate included files, and need to find them before they exist.)
+If a rules file's `source` pattern matches several files, only the one it would read is shown.
 
 With `-t/--tree`, the files are shown as a tree: each included file is indented below the file that includes it,
 and shown with its path relative to that file's directory (for a file included by name, the path as written in the include directive).
@@ -31,7 +36,8 @@ With `-O json`, the files are listed as JSON, for use by other tools.
 Each file is an object with these fields:
 `path` (the file's path, or `-` for standard input),
 `depth` (0 for a main file, 1 for a file it includes or uses, and so on),
-and `parent` (the path of the file that included or used this one, or null for a main file).
+`parent` (the path of the file that included or used this one, or null for a main file),
+and `exists` (false for a missing included file, or an include's glob pattern which matched nothing).
 `--tree` does not affect JSON output, and a REGEX argument selects just the matching files.
 
 Examples:
@@ -63,11 +69,13 @@ $ hledger -f main.journal files -O json checking
 [
   {
     "depth": 1,
+    "exists": true,
     "parent": "/home/user/finance/main.journal",
     "path": "/home/user/finance/checking.rules"
   },
   {
     "depth": 2,
+    "exists": true,
     "parent": "/home/user/finance/checking.rules",
     "path": "/home/user/finance/data/checking.csv"
   }

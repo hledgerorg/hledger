@@ -390,7 +390,13 @@ includedirectivep iopts = do
         Just fmt -> map ((show fmt++":")++) paths
 
   -- Parse each one, as if inlined here.
-  forM_ prefixedpaths $ parseIncludedFile iopts eoff
+  -- Or when just finding the files read, record a missing one and carry on.
+  forM_ prefixedpaths $ \p -> do
+    let f = snd $ splitReaderPrefix p
+    missing <- liftIO $ not <$> doesFileExist f
+    if _scanfiles iopts && missing
+    then modify' $ \pj -> pj{jfiles = JournalFile f T.empty (length $ jparseincludefilestack pj) : jfiles pj}
+    else parseIncludedFile iopts eoff p
 
   where
 
@@ -476,13 +482,15 @@ includedirectivep iopts = do
           | otherwise -> return f
 
       -- Throw an error if no files were matched.
-      when (null files2) $ customFailure $ parseErrorAt off $ "No files were matched by: " ++ path
+      -- Or when just finding the files read, return the path or pattern itself, to be recorded as missing.
+      let unmatched = [if isAbsolute finalpath then finalpath else cwd </> finalpath]
+      when (null files2 && not (_scanfiles iopts)) $ customFailure $ parseErrorAt off $ "No files were matched by: " ++ path
 
       -- If the current file got included, ignore it (last, to avoid triggering the error above).
       let
         files3 =
           dbg6 (parentf <> " include: matched files (excluding current file)") $
-          filter (not.(`elem` cparentf)) files2
+          if null files2 then unmatched else filter (not.(`elem` cparentf)) files2
 
       return files3
 

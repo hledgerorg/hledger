@@ -382,12 +382,12 @@ readPossibleJournalFiles iopts pfs = case pfs of
 -- and is done only if strict checks pass.
 --
 readJournalFiles :: InputOpts -> [PrefixedFilePath] -> ExceptT String IO Journal
-readJournalFiles iopts@InputOpts{strict_, new_, new_save_} prefixedfiles = do
+readJournalFiles iopts@InputOpts{strict_, new_, new_save_, _scanfiles} prefixedfiles = do
   let iopts' = iopts{_defer=True}
   (j, latestdatesforfiles) <-
     dbg6Msg ("readJournalFiles: "++show prefixedfiles) $
     readJournalFilesAndLatestDates iopts' prefixedfiles
-  when strict_ $ liftEither $ journalStrictChecks j
+  when (strict_ && not _scanfiles) $ liftEither $ journalStrictChecks j
   when (new_ && new_save_) $ liftIO $ saveLatestDatesForFiles latestdatesforfiles
   return j
 

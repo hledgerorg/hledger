@@ -409,6 +409,9 @@ maxExpectedForecastTxns :: Int
 maxExpectedForecastTxns = 100000
 
 journalFinalise :: InputOpts -> FilePath -> Text -> ParsedJournal -> ExceptT String IO Journal
+journalFinalise InputOpts{_scanfiles=True} f txt pj =
+  -- just finding the files read: record the main file's info, put lists in parse order, and stop
+  return $ pj & journalAddFile (JournalFile f txt 0) & journalReverse
 journalFinalise iopts@InputOpts{auto_,balancingopts_,ignore_lots_,infer_costs_,infer_equity_,strict_,verbose_tags_,_ioDay} f txt pj = do
   let
     BalancingOpts{commodity_styles_, ignore_assertions_} = balancingopts_
