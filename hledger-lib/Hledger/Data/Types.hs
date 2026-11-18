@@ -761,10 +761,12 @@ data Journal = Journal {
                                                                       --   Used to reproduce the journal (print --export).
   ,jfiles                   :: [JournalFile]                          -- ^ the main and any included journal files. The main file is first,
                                                                       --   followed by any included files in the order encountered.
-  ,jauxfiles                :: [FilePath]                             -- ^ paths of other files which affected this journal's data,
-                                                                      --   but are not journal data files (currently: CSV rules files,
-                                                                      --   and any rules files they include). Watched for changes,
-                                                                      --   like jfiles, when reloading.
+  ,jauxfiles                :: [(FilePath, [FilePath])]               -- ^ for each data file (in jfiles) whose reading involved other files,
+                                                                      --   its path and the paths of those other files: for a CSV file,
+                                                                      --   its rules file and any rules files that includes; for a rules file,
+                                                                      --   any rules files it includes, and the data file it read, if any.
+                                                                      --   Shown by the files command, and watched for changes, like jfiles,
+                                                                      --   when reloading.
   ,jlastreadtime            :: POSIXTime                              -- ^ when this journal was last read from its file(s)
   -- NOTE: after adding new fields, eg involving account names, consider updating
   -- the Anon instance in Hleger.Cli.Anon

@@ -156,6 +156,7 @@ import Control.Applicative ((<|>))
 import Control.Monad.Except (ExceptT(..))
 import Control.Monad.State.Strict (StateT)
 import Data.Char (toUpper, isDigit)
+import Data.Containers.ListUtils (nubOrd)
 import Data.Decimal (normalizeDecimal)
 import Data.Default (Default(..))
 import Data.Foldable (toList)
@@ -427,8 +428,10 @@ journalFilePaths = map jfpath . jfiles
 -- | All the files this journal's data was read from: its data files
 -- (journalFilePaths) and any auxiliary files such as CSV rules files (jauxfiles).
 -- These are the files to watch for changes when reloading.
+-- Each file is listed once, even if it was read more than once
+-- (eg a file included twice, or a rules file used by several CSV files).
 journalAllFilePaths :: Journal -> [FilePath]
-journalAllFilePaths j = journalFilePaths j <> jauxfiles j
+journalAllFilePaths j = nubOrd $ journalFilePaths j <> concatMap snd (jauxfiles j)
 
 mainfile :: Journal -> JournalFile
 mainfile = headDef (JournalFile "(unknown)" "" 0) . jfiles
