@@ -64,7 +64,8 @@ packages*.svg
 #![a-z0-9]/
 
 [a-z0-9][a-z0-9]
-#![a-z0-9][a-z0-9]/
+# don't ignore two letter dirs (eg doc/ai)
+![a-z0-9][a-z0-9]/
 
 /[a-z0-9].*
 #![a-z0-9].*/
