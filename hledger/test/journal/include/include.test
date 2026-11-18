@@ -220,14 +220,18 @@ $ hledger -f - print
 
 >=
 
-# ** 24. files lists the included CSV/rules files (but not the rules files used by a CSV file).
+# ** 24. files lists the included CSV/rules files, each followed by the files used to read it:
+# a CSV file's rules file, a rules file's included rules files and the data file it read.
 <
 include b.csv
 include c.csv.rules
 $ hledger -f - files | sed 's|.*/||'
 -
 b.csv
+b.csv.rules
 c.csv.rules
+b.csv.rules
+b.csv
 
 # ** 25. A file type prefix works with include, as usual.
 <
@@ -355,3 +359,15 @@ main.j
 $ hledger -f tree/main.j files -t b.j | sed -E 's|/.*/include/tree/||'
 main.j
   sub/b.j
+
+# ** 36. files lists a main CSV file's rules file too.
+$ hledger -f b.csv files | sed 's|.*/||'
+b.csv
+b.csv.rules
+
+# ** 37. files --tree shows the files used to read a rules file below it,
+# with their paths relative to its directory.
+$ hledger -f c.csv.rules files --tree | sed -E 's|/.*/include/||'
+c.csv.rules
+  b.csv.rules
+  b.csv

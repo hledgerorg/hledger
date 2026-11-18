@@ -1,6 +1,7 @@
 {-|
 
-The @files@ command lists included files.
+The @files@ command lists the files read: the main and included data files,
+and any rules or data files used to read them.
 
 -}
 
@@ -12,6 +13,7 @@ module Hledger.Cli.Commands.Files (
 ) where
 
 import Data.List (mapAccumL, tails)
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Safe (headMay)
 import System.Console.CmdArgs.Explicit (flagNone)
@@ -39,15 +41,24 @@ files opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j = do
   regex <- mapM (either fail pure . toRegex . T.pack) $ headMay args
   let
     matches = maybe (const True) regexMatch regex
+    jfs = withAuxFiles j
     fs
       | tree_ $ _rsReportOpts rspec =
           -- show each file whose subtree has a match, keeping the include hierarchy visible
           [ replicate (2 * jfdepth jf) ' ' ++ shortpath
-          | (jf,shortpath):rest <- tails $ withShortPaths $ jfiles j
+          | (jf,shortpath):rest <- tails $ withShortPaths jfs
           , any (matches . jfpath) $ jf : map fst (takeWhile ((> jfdepth jf) . jfdepth . fst) rest)
           ]
-      | otherwise = filter matches $ journalFilePaths j
+      | otherwise = filter matches $ map jfpath jfs
   writeOutputWithTitle opts $ T.unlines $ map T.pack fs
+
+-- | The journal's files, each followed by any auxiliary files used to read it
+-- (eg a CSV file's rules file, or a rules file's included rules files and data file),
+-- as pseudo-files one include level deeper (with no text).
+withAuxFiles :: Journal -> [JournalFile]
+withAuxFiles j =
+  concat [ jf : [JournalFile a T.empty (jfdepth jf + 1) | a <- fromMaybe [] $ lookup (jfpath jf) (jauxfiles j)]
+         | jf <- jfiles j ]
 
 -- | Pair each journal file with its path relative to the directory of the file including it, if any.
 -- For a file included by a literal path, this is the path as written in the include directive.

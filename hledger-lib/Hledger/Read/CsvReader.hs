@@ -80,7 +80,7 @@ readCsvWith sep mrulesfile f readdata = do
   (rules, rulesfiles) <- readRules rulesfile
   mencoding <- rulesEncoding rulesfile rules
   csvtext <- lift $ readdata mencoding
-  readParsedJournalFromCsv rulesfile rules rulesfiles f csvtext (Just sep)
+  readParsedJournalFromCsv rulesfile rules (f, rulesfiles) f csvtext (Just sep)
 
 --- ** tests
 

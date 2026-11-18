@@ -81,7 +81,7 @@ import Data.Time ( Day, TimeZone, UTCTime, LocalTime, ZonedTime(ZonedTime),
 import Safe (atMay, headDef, headMay, lastDef, lastMay, readDef, readMay)
 import System.Directory (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, getHomeDirectory, getModificationTime, listDirectory, removeFile)
 import System.Exit      (ExitCode(..))
-import System.FilePath (isAbsolute, splitDirectories, stripExtension, takeBaseName, takeDirectory, takeExtension, takeFileName, (<.>), (</>))
+import System.FilePath (isAbsolute, normalise, splitDirectories, stripExtension, takeBaseName, takeDirectory, takeExtension, takeFileName, (<.>), (</>))
 import System.IO       (Handle, hClose, hPutStrLn, stderr, hGetContents')
 import System.Process  (CreateProcess(..), StdStream(CreatePipe), shell, waitForProcess, withCreateProcess)
 import Data.Foldable (asum, toList)
@@ -310,8 +310,8 @@ readRulesFileWith iopts rulesfile postprocess = do
 
   j <- do
     -- Note the other files this journal's data came from - the included rules files,
-    -- and the data file if any - so that changes to them can be detected when reloading.
-    let auxfiles = rulesfiles <> maybe [] pure mexistingdatafile
+    -- and the data file if any - for the files command, and to detect changes when reloading.
+    let auxfiles = (rulesfile, filter (/= rulesfile) rulesfiles <> maybe [] (pure . normalise) mexistingdatafile)
     (j1, adderrorcontext) <- readParsedJournalFromCsv rulesfile rules auxfiles (fromMaybe "(cmd)" mdatafile) cleandata Nothing
     postprocess adderrorcontext j1
 
@@ -1710,14 +1710,14 @@ _CSV_READING__________________________________________ = undefined
 
 -- | Like 'readJournalFromCsv', but returns an unfinalised journal ready for 'journalFinalise':
 -- its lists are reversed, as that expects (readJournalFromCsv produces them in normal order,
--- unlike JournalReader's parser; XXX inefficient), and the given auxiliary files
--- (the rules files, and a data file if any) are noted in jauxfiles,
--- so that changes to them can be detected when reloading.
-readParsedJournalFromCsv :: FilePath -> CsvRules -> [FilePath] -> FilePath -> Text -> Maybe SepFormat
+-- unlike JournalReader's parser; XXX inefficient), and the given data file and its auxiliary files
+-- (rules files, and for a rules file, the data file it read, if any) are noted in jauxfiles,
+-- so that the files command can show them and changes to them can be detected when reloading.
+readParsedJournalFromCsv :: FilePath -> CsvRules -> (FilePath, [FilePath]) -> FilePath -> Text -> Maybe SepFormat
                          -> ExceptT String IO (ParsedJournal, String -> String)
 readParsedJournalFromCsv rulesfile rules auxfiles csvfile csvtext sep = do
   (j, adderrorcontext) <- readJournalFromCsv rulesfile rules csvfile csvtext sep
-  return ((journalReverse j){jauxfiles = auxfiles}, adderrorcontext)
+  return ((journalReverse j){jauxfiles = [auxfiles]}, adderrorcontext)
 
 -- | Read a Journal from the given CSV data (and filename, used for error
 -- messages), or return an error. Proceed as follows:
