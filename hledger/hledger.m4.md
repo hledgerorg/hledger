@@ -351,7 +351,7 @@ Eg:
 ```conf
 [alias]
 p     = print
-p1    = print --oneline
+p1    = transactions
 rev10 = balance type:R -2 -X$ -p 'every 10 years from 2000'
 ```
 
