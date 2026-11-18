@@ -5,6 +5,7 @@ and any rules or data files used to read them.
 
 -}
 
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Hledger.Cli.Commands.Files (
@@ -12,6 +13,7 @@ module Hledger.Cli.Commands.Files (
  ,files
 ) where
 
+import Data.Aeson (ToJSON(..), object, (.=))
 import Data.List (mapAccumL, tails)
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
@@ -21,7 +23,7 @@ import System.FilePath (makeRelative, takeDirectory)
 
 import Hledger
 import Hledger.Cli.CliOptions
-import Hledger.Cli.Utils (writeOutputWithTitle)
+import Hledger.Cli.Utils (unsupportedOutputFormatError, writeOutputLazyText, writeOutputWithTitle)
 
 
 -- | Command line options for this command.
@@ -29,10 +31,27 @@ filesmode = hledgerCommandMode
   $(embedFileRelative "Hledger/Cli/Commands/Files.txt")
   [flagNone ["flat","l"] (setboolopt "flat") "list/tree mode: show files as a flat list (default)"
   ,flagNone ["tree","t"] (setboolopt "tree") "list/tree mode: show files as a tree, indenting included files below the file that includes them"
+  ,outputFormatFlag ["txt","json"]
+  ,outputFileFlag
   ]
   cligeneralflagsgroups2
   hiddenflags
   ([], Just $ argsFlag "[REGEX]")
+
+-- | One entry in the list of files read.
+data FileEntry = FileEntry {
+   fePath      :: FilePath        -- ^ the file's path
+  ,feShortPath :: FilePath        -- ^ its path relative to its parent's directory, if it has a parent
+  ,feDepth     :: Int             -- ^ its depth in the tree of files: 0 for a main file
+  ,feParent    :: Maybe FilePath  -- ^ the file which included it, or which it was used to read
+  }
+
+instance ToJSON FileEntry where
+  toJSON e = object
+    [ "path"   .= fePath e
+    , "depth"  .= feDepth e
+    , "parent" .= feParent e
+    ]
 
 -- | The files command.
 files :: CliOpts -> Journal -> IO ()
@@ -40,33 +59,36 @@ files opts@CliOpts{rawopts_=rawopts, reportspec_=rspec} j = do
   let args = listofstringopt "args" rawopts
   regex <- mapM (either fail pure . toRegex . T.pack) $ headMay args
   let
-    matches = maybe (const True) regexMatch regex
-    jfs = withAuxFiles j
-    fs
-      | tree_ $ _rsReportOpts rspec =
-          -- show each file whose subtree has a match, keeping the include hierarchy visible
-          [ replicate (2 * jfdepth jf) ' ' ++ shortpath
-          | (jf,shortpath):rest <- tails $ withShortPaths jfs
-          , any (matches . jfpath) $ jf : map fst (takeWhile ((> jfdepth jf) . jfdepth . fst) rest)
-          ]
-      | otherwise = filter matches $ map jfpath jfs
-  writeOutputWithTitle opts $ T.unlines $ map T.pack fs
-
--- | The journal's files, each followed by any auxiliary files used to read it
--- (eg a CSV file's rules file, or a rules file's included rules files and data file),
--- as pseudo-files one include level deeper (with no text).
-withAuxFiles :: Journal -> [JournalFile]
-withAuxFiles j =
-  concat [ jf : [JournalFile a T.empty (jfdepth jf + 1) | a <- fromMaybe [] $ lookup (jfpath jf) (jauxfiles j)]
-         | jf <- jfiles j ]
-
--- | Pair each journal file with its path relative to the directory of the file including it, if any.
--- For a file included by a literal path, this is the path as written in the include directive.
-withShortPaths :: [JournalFile] -> [(JournalFile, FilePath)]
-withShortPaths = snd . mapAccumL shorten []
+    matches = maybe (const True) regexMatch regex . fePath
+    es = fileEntries j
+    matched = filter matches es
+  case outputFormatFromOpts opts of
+    "json" -> writeOutputLazyText opts $ toJsonText matched
+    "txt"
+      | tree_ $ _rsReportOpts rspec ->
+          -- show each file whose subtree has a match, keeping the tree visible
+          writeLines [ replicate (2 * feDepth e) ' ' ++ feShortPath e
+                     | e:rest <- tails es
+                     , any matches $ e : takeWhile ((> feDepth e) . feDepth) rest
+                     ]
+      | otherwise -> writeLines $ map fePath matched
+    fmt -> exitWithErrorMessage $ unsupportedOutputFormatError fmt
   where
-    -- the accumulator is the chain of including files' paths, most recent first
-    shorten includers jf = (f : parents, (jf, maybe f (\p -> makeRelative (takeDirectory p) f) $ headMay parents))
+    writeLines = writeOutputWithTitle opts . T.unlines . map T.pack
+
+-- | The journal's files in the order they were read, each followed by any auxiliary files
+-- used to read it (eg a CSV file's rules file, or a rules file's included rules files and data file),
+-- which appear one level deeper in the tree.
+fileEntries :: Journal -> [FileEntry]
+fileEntries j = snd $ mapAccumL entry [] filesanddepths
+  where
+    filesanddepths = concat
+      [ (jfpath jf, jfdepth jf) : [(a, jfdepth jf + 1) | a <- fromMaybe [] $ lookup (jfpath jf) (jauxfiles j)]
+      | jf <- jfiles j ]
+    -- the accumulator is the chain of parent files' paths, most recent first
+    entry parents0 (f, d) = (f : parents, FileEntry f shortpath d mparent)
       where
-        f = jfpath jf
-        parents = drop (length includers - jfdepth jf) includers
+        parents = drop (length parents0 - d) parents0
+        mparent = headMay parents
+        -- For a file included by a literal path, this is the path as written in the include directive.
+        shortpath = maybe f (\p -> makeRelative (takeDirectory p) f) mparent

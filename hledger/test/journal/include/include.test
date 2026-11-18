@@ -371,3 +371,19 @@ $ hledger -f c.csv.rules files --tree | sed -E 's|/.*/include/||'
 c.csv.rules
   b.csv.rules
   b.csv
+
+# ** 38. files -O json shows each file's path, depth and parent, for use by other tools.
+# A regex selects just the matching files.
+$ hledger -f c.csv.rules files -O json 'b\.csv' | sed -E 's|/.*/include/||'
+[
+  {
+    "depth": 1,
+    "parent": "c.csv.rules",
+    "path": "b.csv.rules"
+  },
+  {
+    "depth": 1,
+    "parent": "c.csv.rules",
+    "path": "b.csv"
+  }
+]

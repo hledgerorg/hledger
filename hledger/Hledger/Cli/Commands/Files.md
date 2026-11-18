@@ -21,7 +21,18 @@ Flags:
                             (default)
   -t --tree                 list/tree mode: show files as a tree, indenting
                             included files below the file that includes them
+  -O --output-format=FMT    select the output format. Supported formats:
+                            txt, json.
+  -o --output-file=FILE     write output to FILE. A file extension matching
+                            one of the above formats selects that format.
 ```
+
+With `-O json`, the files are listed as JSON, for use by other tools.
+Each file is an object with these fields:
+`path` (the file's path, or `-` for standard input),
+`depth` (0 for a main file, 1 for a file it includes or uses, and so on),
+and `parent` (the path of the file that included or used this one, or null for a main file).
+`--tree` does not affect JSON output, and a REGEX argument selects just the matching files.
 
 Examples:
 
@@ -45,4 +56,20 @@ $ hledger -f main.journal files --tree
   checking.rules
     common.rules
     data/checking.csv
+```
+
+```cli
+$ hledger -f main.journal files -O json checking
+[
+  {
+    "depth": 1,
+    "parent": "/home/user/finance/main.journal",
+    "path": "/home/user/finance/checking.rules"
+  },
+  {
+    "depth": 2,
+    "parent": "/home/user/finance/checking.rules",
+    "path": "/home/user/finance/data/checking.csv"
+  }
+]
 ```
