@@ -11,11 +11,7 @@ packages:
 - hledger-ui
 - hledger-web
 
-resolver: nightly-2026-09-01
-
-extra-deps:
-# megaparsec 9.8.3 parses about 10% faster than earlier versions (megaparsec#612)
-- megaparsec-9.8.3
+resolver: nightly-2026-11-18
 
 nix:
   pure: false
