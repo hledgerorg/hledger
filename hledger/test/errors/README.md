@@ -210,7 +210,7 @@ Click error names to see an example. The table headings mean:
 
 
 <!-- GENERATED: -->
-hledger 1.99-g9ec5eaea6-20261114 error messages:
+hledger 1.99-ge98f75d87-20261118 error messages:
 
 ### accounts
 ```
@@ -540,6 +540,7 @@ expecting "mo", 'd', 'h', 'm', 's', 'w', 'y', end of input, or newline
 hledger: Error: /path/to/csvaccountparse.csv:4:
 4 | 2022-01-02,1,
 
+While converting this record with rules file /path/to/csvaccountparse.csv.rules:
 could not use "expenses:" as the account name for posting 1
 record: 2022-01-02,1,
   %1   2022-01-02
@@ -567,6 +568,7 @@ you may need to change your account1 rules, or add an if rule for empty fields
 hledger: Error: /path/to/csvamountonenonzero.csv:5:
 5 | 2022-01-03,1,2
 
+While converting this record with rules file /path/to/csvamountonenonzero.csv.rules:
 Multiple non-zero amounts were assigned for an amount field, for posting 1.
 record: 2022-01-03,1,2
   %1   2022-01-03
@@ -586,6 +588,7 @@ See also: https://hledger.org/hledger.html#setting-amounts
 hledger: Error: /path/to/csvamountparse.csv:5:
 5 | 2022-01-03,badamount
 
+While converting this record with rules file /path/to/csvamountparse.csv.rules:
 could not parse "badamount" as an amount
 record: 2022-01-03,badamount
   %1   2022-01-03
@@ -610,6 +613,7 @@ you may need to change your amount*, balance*, or currency* rules, or add or cha
 hledger: Error: /path/to/csvbalanceparse.csv:3:
 3 | 2022-01-03,badbalance
 
+While converting this record with rules file /path/to/csvbalanceparse.csv.rules:
 could not parse "badbalance" as balance1 amount
 record: 2022-01-03,badbalance
   %1   2022-01-03
@@ -642,6 +646,7 @@ balance-type "badtype" is invalid. Use =, ==, =* or ==*.
 hledger: Error: /path/to/csvdateformat.csv:4:
 4 | a,b
 
+While converting this record with rules file /path/to/csvdateformat.csv.rules:
 could not parse "a" as a date using date format "YYYY/M/D", "YYYY-M-D" or "YYYY.M.D"
 record: a,b
   %1   a
@@ -658,6 +663,7 @@ for m/d/y or d/m/y dates, use date-format %-m/%-d/%Y or date-format %-d/%-m/%Y
 hledger: Error: /path/to/csvdateparse.csv:4:
 4 | baddate,b
 
+While converting this record with rules file /path/to/csvdateparse.csv.rules:
 could not parse "baddate" as a date using date format "%Y-%m-%d"
 record: baddate,b
   %1   baddate
@@ -756,6 +762,7 @@ skip's argument should be a number of lines, or nothing (not "badval")
 hledger: Error: /path/to/csvstatusparse.csv:7:
 7 | 2022-01-04,badstatus
 
+While converting this record with rules file /path/to/csvstatusparse.csv.rules:
 could not parse status value "badstatus" (should be *, ! or empty)
 the parse error is:      1:1:
   |
@@ -771,6 +778,7 @@ expecting end of input
 hledger: Error: /path/to/csvtwofields.csv:4:
 4 | b
 
+While converting this record with rules file /path/to/csvtwofields.csv.rules:
 This CSV record has less than two fields.
 Perhaps the separator is wrong (it can be set with a separator rule).
 ```

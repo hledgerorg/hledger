@@ -2,6 +2,7 @@ $ hledger check -f csvtwofields.csv
 >2 /hledger: Error: .*csvtwofields\.csv:4:
 4 \| b
 
+While converting this record with rules file .*csvtwofields\.csv\.rules:
 This CSV record has less than two fields\.
 /
 >= 1

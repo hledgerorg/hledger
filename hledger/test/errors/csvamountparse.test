@@ -2,6 +2,7 @@ $ hledger check -f csvamountparse.csv
 >2 /hledger: Error: .*csvamountparse\.csv:5:
 5 \| 2022-01-03,badamount
 
+While converting this record with rules file .*csvamountparse\.csv\.rules:
 could not parse "badamount" as an amount
 record: 2022-01-03,badamount
 (.*

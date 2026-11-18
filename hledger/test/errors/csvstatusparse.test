@@ -2,6 +2,7 @@ $ hledger print -f csvstatusparse.csv
 >2 /hledger: Error: .*csvstatusparse\.csv:7:
 7 \| 2022-01-04,badstatus
 
+While converting this record with rules file .*csvstatusparse\.csv\.rules:
 could not parse status value "badstatus" \(should be \*, ! or empty\)
 the parse error is:      1:1:
 /

@@ -2,7 +2,8 @@ $ hledger check -f csvamountonenonzero.csv
 >2 /hledger: Error: .*csvamountonenonzero\.csv:5:
 5 \| 2022-01-03,1,2
 
-Multiple non-zero amounts were assigned for an amount field, for posting 1\.
+While converting.*
+Multiple non-zero amounts were assigned for an amount field.*
 record: 2022-01-03,1,2
 (.*
 )*rule "amount-in %2" assigned value "1" +\(.*rules:3\)

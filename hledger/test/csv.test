@@ -1551,7 +1551,7 @@ $  ./csvtest.sh
 >2 /This transaction is unbalanced.
 The real postings' sum should be 0 but is 10.00 USD
   100.00 USD  \+  -90 USD  =  10.00 USD
-this entry was converted from:
+this entry was converted with rules file .*, from:
 record: 2026-09-02,buy,100.00,USD
   %1 date  2026-09-02
   %2 desc  buy

@@ -2,6 +2,7 @@ $ hledger check -f csvdateparse.csv
 >2 /hledger: Error: .*csvdateparse\.csv:4:
 4 \| baddate,b
 
+While converting this record with rules file .*csvdateparse\.csv\.rules:
 could not parse "baddate" as a date using date format "%Y-%m-%d"
 record: baddate,b
 (.*

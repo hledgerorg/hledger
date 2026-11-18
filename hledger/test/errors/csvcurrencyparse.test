@@ -2,6 +2,7 @@ $ hledger check -f csvcurrencyparse.csv
 >2 /hledger: Error: .*csvcurrencyparse\.csv:2:
 2 \| 2022-01-01,1
 
+While converting.*
 could not parse "123" as a currency
 record: 2022-01-01,1
 (.*

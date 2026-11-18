@@ -2,6 +2,7 @@ $ hledger check -f csvbalanceparse.csv
 >2 /hledger: Error: .*csvbalanceparse\.csv:3:
 3 \| 2022-01-03,badbalance
 
+While converting this record with rules file .*csvbalanceparse\.csv\.rules:
 could not parse "badbalance" as balance1 amount
 record: 2022-01-03,badbalance
 (.*

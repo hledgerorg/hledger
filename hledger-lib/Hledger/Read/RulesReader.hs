@@ -1783,7 +1783,7 @@ readJournalFromCsv rulesfile rules csvfile csvtext sep = do
     csvrecords2 <- liftEither $ first ((rulesfile <> ": ") <>) $
       applyConditionalSkips rules csvrecords1 >>= applyMergeRules rules
     -- and check the remaining records for any obvious problems
-    csvrecords <- liftEither $ dbg7 "validateCsv" <$> validateCsv parsecfilename csvrecords2
+    csvrecords <- liftEither $ dbg7 "validateCsv" <$> validateCsv rulesfile parsecfilename csvrecords2
     dbg6IO "first 3 csv records" $ take 3 csvrecords
 
     -- transactionFromCsvRecord below will replace characters which journal format can't
@@ -1823,7 +1823,7 @@ readJournalFromCsv rulesfile rules csvfile csvtext sep = do
     let
       -- convert CSV records to transactions, saving the CSV line numbers for error positions
       txns = dbg7 "csv txns" $
-             [ transactionFromCsvRecord timesarezoned mtzin tzout (mkpos l1, mkpos $ l2+1) rules r
+             [ transactionFromCsvRecord timesarezoned mtzin tzout rulesfile (mkpos l1, mkpos $ l2+1) rules r
              | ((l1,l2), r) <- csvrecords ]
         where
           -- like journal entries, a record's position ends at the start of the line after its last line
@@ -1859,11 +1859,11 @@ readJournalFromCsv rulesfile rules csvfile csvtext sep = do
 
       -- The error context adder returned along with the journal:
       -- if the given error message (eg from journal finalisation) mentions
-      -- a position in this CSV data file, append the corresponding record's
-      -- field values to it, to help troubleshoot the conversion rules.
+      -- a position in this CSV data file, append the rules file and the
+      -- corresponding record's field values to it, to help troubleshoot the conversion rules.
       adderrorcontext errmsg = maybe errmsg addrecord mgroup
         where
-          addrecord g = errmsg <> "\nthis entry was converted from:\n" <> T.unpack (showRecordFields rules g)
+          addrecord g = errmsg <> "\nthis entry was converted with rules file " <> rulesfile <> ", from:\n" <> T.unpack (showRecordFields rules g)
           -- the record group whose line range contains the error's line.
           -- (Error positions can't point outside the group's range:
           -- they are clamped to the entry's source lines, see Errors.hs.)
@@ -1989,13 +1989,13 @@ ruleRecordCount rules r name =
         Just n | n >= 1 -> Right $ Just n
         _ -> Left $ printf "could not parse %s value as a positive number: %s" (T.unpack name) (T.unpack x)
 
--- | Do some validation on the parsed CSV records (from the named file):
+-- | Do some validation on the parsed CSV records (from the named file, read with the named rules file):
 -- check that they all have at least two fields.
-validateCsv :: FilePath -> [LocatedCsvRecordGroup] -> Either String [LocatedCsvRecordGroup]
-validateCsv f rs =
+validateCsv :: FilePath -> FilePath -> [LocatedCsvRecordGroup] -> Either String [LocatedCsvRecordGroup]
+validateCsv rulesfile f rs =
   case [g | g@(_, recs) <- rs, any ((<2).length) recs] of
     ((l1,l2), recs):_ -> Left $ T.unpack $
-      csvRecordErrPrefix (mkpos l1, mkpos (l2+1)) recs
+      csvRecordErrPrefix rulesfile (mkpos l1, mkpos (l2+1)) recs
       <> "This CSV record has less than two fields.\n"
       <> "Perhaps the separator is wrong (it can be set with a separator rule)."
     [] -> Right rs
@@ -2020,8 +2020,8 @@ validateCsv f rs =
 
 --- ** converting csv records to transactions
 
-transactionFromCsvRecord :: Bool -> Maybe TimeZone -> TimeZone -> (SourcePos, SourcePos) -> CsvRules -> CsvRecordGroup -> Transaction
-transactionFromCsvRecord timesarezoned mtzin tzout sourcepospair rules record =
+transactionFromCsvRecord :: Bool -> Maybe TimeZone -> TimeZone -> FilePath -> (SourcePos, SourcePos) -> CsvRules -> CsvRecordGroup -> Transaction
+transactionFromCsvRecord timesarezoned mtzin tzout rulesfile sourcepospair rules record =
   -- log the record and all the transaction fields from this record
   -- XXX avoid possibly-pessimising deepseq if not needed for debug output ?
   dbg2Msg (T.unpack $ showRecord record) $ deepseq t
@@ -2031,8 +2031,8 @@ transactionFromCsvRecord timesarezoned mtzin tzout sourcepospair rules record =
     ----------------------------------------------------------------------
     -- 1. Define some helpers:
 
-    -- the start of any error message about this record: its position and an excerpt
-    errpfx   = csvRecordErrPrefix sourcepospair record
+    -- the start of any error message about this record: its position, an excerpt, and the rules file
+    errpfx   = csvRecordErrPrefix rulesfile sourcepospair record
     rule     = csvRule           rules        :: DirectiveName    -> Maybe FieldTemplate
     -- ruleval  = csvRuleValue      rules record :: DirectiveName    -> Maybe String
     fieldval = hledgerFieldValue rules record :: HledgerFieldName -> Maybe Text
@@ -2372,11 +2372,13 @@ parseCurrency errpfx rules record currency
       ]
 
 -- | The start of an error message about a CSV record, in hledger's standard error format:
--- the record's file position (lines), and an excerpt showing (an approximation of) the record.
-csvRecordErrPrefix :: (SourcePos, SourcePos) -> CsvRecordGroup -> Text
-csvRecordErrPrefix (SourcePos f l1 _, SourcePos _ lend _) record =
+-- the record's file position (lines), an excerpt showing (an approximation of) the record,
+-- and a line naming the rules file being used to convert it.
+csvRecordErrPrefix :: FilePath -> (SourcePos, SourcePos) -> CsvRecordGroup -> Text
+csvRecordErrPrefix rulesfile (SourcePos f l1 _, SourcePos _ lend _) record =
   T.pack (f ++ ":" ++ show firstline ++ lastline ++ ":\n")
   <> T.pack (show firstline) <> " | " <> recordAsApproximateText record <> "\n\n"
+  <> "While converting this record with rules file " <> T.pack rulesfile <> ":\n"
   where
     firstline = unPos l1
     -- the end position is the start of the line after the record

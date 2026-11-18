@@ -2,6 +2,7 @@ $ hledger check -f csvaccountparse.csv
 >2 /hledger: Error: .*csvaccountparse\.csv:4:
 4 \| 2022-01-02,1,
 
+While converting.*
 could not use "expenses:" as the account name for posting 1
 record: 2022-01-02,1,
 (.*
