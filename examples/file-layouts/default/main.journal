@@ -13,7 +13,7 @@ include payees.journal
 ; Pick a start date for this journal, some assets and liabilities to be tracked,
 ; and record their balances at the start of this day.
 
-2021-01-01 opening balances
+2026-01-01 opening balances
     assets:bank:checking                       $1000
     assets:cash                                 $100
     liabilities:bank:credit card                $-50.12
@@ -23,11 +23,11 @@ include payees.journal
 ; Keeping them all here is simplest; or you can keep them in subfiles and include those.
 ; Keeping them in date order allows extra error checking (hledger check ordereddates).
 
-2021-01-02 received wages
+2026-01-02 received wages
     revenues:salary
     assets:bank:checking                       $1000
 
-2021-01-03 Whole Foods | bought groceries
+2026-01-03 Whole Foods | bought groceries
     assets:cash
     expenses:food                                $50
 
