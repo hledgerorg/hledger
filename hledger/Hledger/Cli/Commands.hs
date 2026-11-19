@@ -46,6 +46,7 @@ module Hledger.Cli.Commands (
   ,module Hledger.Cli.Commands.Holdings
   ,module Hledger.Cli.Commands.Import
   ,module Hledger.Cli.Commands.Incomestatement
+  ,module Hledger.Cli.Commands.Init
   ,module Hledger.Cli.Commands.Notes
   ,module Hledger.Cli.Commands.Payees
   ,module Hledger.Cli.Commands.Prices
@@ -99,6 +100,7 @@ import Hledger.Cli.Commands.Help
 import Hledger.Cli.Commands.Holdings
 import Hledger.Cli.Commands.Import
 import Hledger.Cli.Commands.Incomestatement
+import Hledger.Cli.Commands.Init
 import Hledger.Cli.Commands.Notes
 import Hledger.Cli.Commands.Payees
 import Hledger.Cli.Commands.Prices
@@ -141,6 +143,7 @@ builtinCommands = [
   ,(holdingsmode           , holdings)
   ,(importmode             , importcmd)
   ,(incomestatementmode    , incomestatement)
+  ,(initmode               , initcmd)
   ,(notesmode              , notes)
   ,(payeesmode             , payees)
   ,(pricesmode             , prices)
@@ -335,6 +338,7 @@ commandsListSections = [
     -----------------------------------------80-------------------------------------
  ,("MAINTENANCE",
   [" setup                    check your hledger installation"
+  ," init                     create starter journal files"
   ," check                    check that your journal is valid"
   ,"+check-tagfiles           check that files referenced in tag values exist"       -- hledger-check-tagfiles
   ," diff                     compare an account's transactions in two journals"
@@ -557,6 +561,7 @@ tests_Commands = testGroup "Commands" [
    tests_Balance
   ,tests_Register
   ,tests_Aregister
+  ,tests_Init
 
   -- some more tests easiest to define here:
 

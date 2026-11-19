@@ -62,6 +62,7 @@ _command_({{Transactions}})
 # Maintenance commands
 
 _command_({{Setup}})
+_command_({{Init}})
 _command_({{Check}})
 _command_({{Diff}})
 

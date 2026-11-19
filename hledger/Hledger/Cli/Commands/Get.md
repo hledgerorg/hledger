@@ -60,7 +60,7 @@ and install it in the `data` directory next to your main journal file.
 It should download zero or more transaction data files into its current directory.
 Anything it prints (on stdout or stderr) is shown on stderr, as progress output.
 These are typically bank/brokerage CSV/TSV/SSV files, but could be anything that your hledger rules files can read.
-The hledger repo's [bin/getdata](https://github.com/hledgerorg/hledger/blob/main/bin/getdata)
+The hledger repo's [getdata](https://github.com/hledgerorg/hledger/blob/main/hledger/embeddedfiles/file-layouts/default/data/getdata)
 is a stub you can start from, with commented examples.
 
 #### getprices
@@ -68,7 +68,7 @@ is a stub you can start from, with commented examples.
 If you want `get` to download historical market prices (useful for currency conversions, and value or gains reports),
 install a `getprices` script in the `prices` directory next to your main journal file.
 
-You can start with the hledger repo's [bin/getprices](https://github.com/hledgerorg/hledger/blob/main/bin/getprices), customising it if needed.
+You can start with the hledger repo's [getprices](https://github.com/hledgerorg/hledger/blob/main/hledger/embeddedfiles/file-layouts/default/prices/getprices), customising it if needed.
 This script uses [pricehist](https://github.com/chrisberkhout/pricehist), so you will need to install that python tool also (eg with `uv tool install pricehist`).
 Some price providers limit the commodity pairs, history, or number of requests available for free; you can get better data by paying them and setting up their API keys as environment variables.
 

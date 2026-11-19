@@ -753,7 +753,7 @@ journalCreatingCommandNames = ["add","import"]
 -- never read or check the journal (help is handled by the CLI's help hub,
 -- which also does not read the journal).
 journalIgnoringCommandNames :: [String]
-journalIgnoringCommandNames = ["help","setup"]
+journalIgnoringCommandNames = ["help","init","setup"]
 
 -- | The name of a hidden marker flag used internally by the run command to
 -- recognise inline commands. run reads inline commands (rather than command

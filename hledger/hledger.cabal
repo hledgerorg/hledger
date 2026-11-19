@@ -54,6 +54,16 @@ extra-source-files:
     embeddedfiles/hledger-web.1
     embeddedfiles/hledger-web.txt
     embeddedfiles/hledger-web.info
+    embeddedfiles/file-layouts/simple/main.journal
+    embeddedfiles/file-layouts/default/main.journal
+    embeddedfiles/file-layouts/default/accounts.journal
+    embeddedfiles/file-layouts/default/commodities.journal
+    embeddedfiles/file-layouts/default/payees.journal
+    embeddedfiles/file-layouts/default/data/getdata
+    embeddedfiles/file-layouts/default/data/bankofireland-checking.csv
+    embeddedfiles/file-layouts/default/data/archive/README.md
+    embeddedfiles/file-layouts/default/prices/getprices
+    embeddedfiles/file-layouts/default/rules/bankofireland-checking.csv.rules
     Hledger/Cli/Commands/Accounts.txt
     Hledger/Cli/Commands/Activity.txt
     Hledger/Cli/Commands/Add.txt
@@ -74,6 +84,7 @@ extra-source-files:
     Hledger/Cli/Commands/Holdings.txt
     Hledger/Cli/Commands/Import.txt
     Hledger/Cli/Commands/Incomestatement.txt
+    Hledger/Cli/Commands/Init.txt
     Hledger/Cli/Commands/Notes.txt
     Hledger/Cli/Commands/Payees.txt
     Hledger/Cli/Commands/Prices.txt
@@ -125,6 +136,7 @@ library
       Hledger.Cli.Commands.Holdings
       Hledger.Cli.Commands.Import
       Hledger.Cli.Commands.Incomestatement
+      Hledger.Cli.Commands.Init
       Hledger.Cli.Commands.Notes
       Hledger.Cli.Commands.Payees
       Hledger.Cli.Commands.Prices

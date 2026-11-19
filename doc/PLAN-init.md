@@ -1,6 +1,6 @@
 # PLAN: init command
 
-Status: designed 2026-11-19, not implemented.
+Status: designed and implemented 2026-11-19 (see "Implementation notes" at the end for deviations).
 
 A new builtin command which writes starter files for a new hledger setup,
 or adds missing ones to an existing setup.
@@ -182,3 +182,28 @@ Unit tests for the argument classification and planning function.
   year-dirs needs the year templated in paths and content, relative directory symlinks (a problem on Windows),
   and its empty `2026/rules` directory (which git does not track).
 - `--git` / `--jj`: initialise a repository, write an ignore file, make a first commit.
+
+## Implementation notes (2026-11-19)
+
+Deviations from the plan above:
+
+- One module, hledger/Hledger/Cli/Commands/Init.hs, holds the manifest as well as the command (no separate Layouts.hs).
+- Output: created files are listed on stdout (`created PATH`); skipped files are only reported as warnings on stderr
+  (`Warning: skipped PATH, it already exists`), not also listed on stdout. `--dry-run` lists both on stdout (`would create`, `would skip`).
+  Paths are shown as written (relative to the argument), not made relative to the current directory.
+- Next steps are aligned commands with comments (`hledger -f PATH check`, `bs`, `add`, `hledger setup`), with `-f` omitted
+  when LEDGER_FILE already selects the main journal; then the LEDGER_FILE hint, linking to the manual's "Setting LEDGER_FILE".
+- No i18n: like setup, get and files, init's output is not translated yet, so hledger.pot is unchanged.
+- init accepts the hidden general flags, including `-n`/`--no-conf` (setup does not).
+  Config files are still read for init, as for most commands.
+- The symlinks go the other way from the plan, so that builds never depend on symlinks
+  (Windows checkouts have them as small text files by default) and nothing is duplicated:
+  - The simple and default layouts' real files are in `hledger/embeddedfiles/file-layouts/{simple,default}/`.
+  - `examples/file-layouts/simple` and `default` are directory symlinks to those; examples/file-layouts/README.md says so.
+  - getdata and getprices are real files only in the default layout; `bin/getdata`, `bin/getprices`
+    and year-dirs' `data/getdata`, `prices/getprices` are symlinks to them (year-dirs' were full copies before).
+    Links to them in Get.md and bin/README.md now point to the new location.
+  - year-dirs stays in examples/ (not embedded yet).
+  - `stack sdist` includes the real file contents, with executable bits.
+- The existing per-file symlinks in hledger/embeddedfiles (tldr pages, manuals) are probably embedded as their
+  target path text in Windows builds. Not checked.

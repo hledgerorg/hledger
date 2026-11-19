@@ -13,3 +13,7 @@ Pick one that feels good for now, you can always evolve it later.
 - year-dirs:
   Each year's files kept in their own directory; years can be combined or not.
   Adds some complexity, but good when you have enough data to make a single file slow.
+
+simple and default are built in to hledger, and `hledger init` can write them for you.
+Their files are kept in [hledger/embeddedfiles/file-layouts](../../hledger/embeddedfiles/file-layouts);
+the simple and default directories here are symbolic links to those.

@@ -34,13 +34,13 @@ Here are some scripts which don't use hledger directly, but might be useful to h
 
 ### getdata
 
-[getdata](https://github.com/hledgerorg/hledger/blob/main/bin/getdata)
+[getdata](https://github.com/hledgerorg/hledger/blob/main/hledger/embeddedfiles/file-layouts/default/data/getdata)
 is a helper for hledger's `get` command's data phase. You can also run it yourself.
 Customise it to download bank/brokerage statements (CSV/OFX/etc.) into the working directory.
 
 ### getprices
 
-[getprices](https://github.com/hledgerorg/hledger/blob/main/bin/getprices)
+[getprices](https://github.com/hledgerorg/hledger/blob/main/hledger/embeddedfiles/file-layouts/default/prices/getprices)
 is a helper for hledger's `get` command's prices phase. You can also run it yourself.
 It is a simple, customisable front end for price-fetching tools like pricehist.
 

@@ -515,6 +515,7 @@ You can list all of a command's options by running `hledger CMD -h`.
 **[Maintenance commands](#maintenance-commands)**
 
 - [setup](#setup)                                  - check your hledger installation
+- [init](#init)                                    - create starter journal files
 - [check](#check)                                  - check that your journal is valid
 - [diff](#diff)                                    - compare an account's transactions in two journals
 
@@ -8274,6 +8275,7 @@ Here are those commands and the formats currently supported:
 | files                 |     |     |      |      |     |
 | iadd                  |     |     |      |      |     |
 | import                |     |     |      |      |     |
+| init                  |     |     |      |      |     |
 | interest              |     |     |      |      |     |
 | notes                 |     |     |      |      |     |
 | payees                |     |     |      |      |     |

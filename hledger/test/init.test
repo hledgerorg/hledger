@@ -1,0 +1,72 @@
+# * init command
+# Each test works in a new temporary directory.
+
+# ** 1. init DIR writes the default layout, identical to examples/file-layouts/default,
+# with executable helper scripts, and a journal that passes strict checks.
+$ sh -c 'E=$(pwd)/../../examples/file-layouts; D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-init.XXXXXX"); cd "$D"; hledger -n init fin >/dev/null; diff -r fin "$E/default" && test -x fin/data/getdata && test -x fin/prices/getprices && hledger -n -f fin/main.journal check -s && echo ok; rm -rf "$D"'
+ok
+
+# ** 2. With no argument, it writes in the current directory, listing the files and next steps.
+$ sh -c 'D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-init.XXXXXX"); cd "$D"; LEDGER_FILE="$D/main.journal" hledger -n init; rm -rf "$D"'
+created main.journal
+created accounts.journal
+created commodities.journal
+created payees.journal
+created data/getdata
+created data/bankofireland-checking.csv
+created data/archive/README.md
+created prices/getprices
+created rules/bankofireland-checking.csv.rules
+
+Next steps:
+  hledger check  # check the journal
+  hledger bs     # show a balance sheet
+  hledger add    # add transactions
+  hledger setup  # check your hledger installation
+
+# ** 3. Existing files are skipped with a warning and left unchanged; missing files are created.
+$ sh -c 'D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-init.XXXXXX"); cd "$D"; mkdir rules; echo mine > main.journal; echo mine > rules/bankofireland-checking.csv.rules; hledger -n init --dry-run; hledger -n init 2>&1 >/dev/null; echo "exit $?"; cat main.journal rules/bankofireland-checking.csv.rules; test -f payees.journal && echo ok; rm -rf "$D"'
+would skip main.journal (exists)
+would create accounts.journal
+would create commodities.journal
+would create payees.journal
+would create data/getdata
+would create data/bankofireland-checking.csv
+would create data/archive/README.md
+would create prices/getprices
+would skip rules/bankofireland-checking.csv.rules (exists)
+Warning: skipped main.journal, it already exists
+Warning: skipped rules/bankofireland-checking.csv.rules, it already exists
+exit 0
+mine
+mine
+ok
+
+# ** 4. --dry-run writes nothing.
+$ sh -c 'D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-init.XXXXXX"); cd "$D"; hledger -n init --dry-run fin >/dev/null; echo "[$(ls)]"; rm -rf "$D"'
+[]
+
+# ** 5. A journal file argument gets the simple layout's main journal, creating parent directories.
+$ sh -c 'E=$(pwd)/../../examples/file-layouts; D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-init.XXXXXX"); cd "$D"; hledger -n init a/b/my.journal | head -1; diff a/b/my.journal "$E/simple/main.journal" && hledger -n -f a/b/my.journal check && echo ok; rm -rf "$D"'
+created a/b/my.journal
+ok
+
+# ** 6. A trailing slash makes a file-like name a directory.
+$ hledger -n init --dry-run x.journal/
+> /would create x.journal\/main.journal/
+
+# ** 7. Any other file extension is an error.
+$ hledger -n init x.csv
+>2 /has a .csv extension/
+>= 1
+
+# ** 8. More than one argument is an error.
+$ hledger -n init a b
+>2 /at most one argument/
+>= 1
+
+# ** 9. A file where a directory is needed is an error, and nothing is written.
+$ sh -c 'D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-init.XXXXXX"); cd "$D"; touch data; hledger -n init; echo "exit $?"; ls; rm -rf "$D"'
+exit 1
+data
+>2 /"data" needs to be a directory/
