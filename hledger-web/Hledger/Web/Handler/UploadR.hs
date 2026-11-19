@@ -17,8 +17,11 @@ import Data.Text.Encoding qualified as TE
 
 import Data.Text qualified as T
 import Hledger.Utils.I18n (trf)
+import Hledger.Cli.CliOptions (CliOpts(..))
 import Hledger.Web.Import
-import Hledger.Web.Widget.Common (fromFormSuccess, journalFile404, writeJournalTextIfValidAndChanged)
+import Hledger.Web.WebOptions (WebOpts(..))
+import System.FilePath (takeFileName)
+import Hledger.Web.Widget.Common (commitChanges, fromFormSuccess, journalFile404, writeJournalTextIfValidAndChanged)
 
 uploadForm :: FilePath -> Markup -> MForm Handler (FormResult FileInfo, Widget)
 uploadForm f =
@@ -37,7 +40,7 @@ getUploadR f = do
 postUploadR :: FilePath -> Handler ()
 postUploadR f = do
   checkServerSideUiEnabled
-  VD {j, trs} <- getViewData
+  VD {j, trs, opts} <- getViewData
   require EditPermission
 
   (f', _) <- journalFile404 f j
@@ -57,7 +60,8 @@ postUploadR f = do
       setMessage $ toHtml $ trf trs "Failed to load journal: {error}" [("error", T.pack e)]
       showForm view enctype
     Right () -> do
-      setMessage $ toHtml $ trf trs "File {file} uploaded successfully" [("file", T.pack f)]
+      merr <- liftIO $ commitChanges (rawopts_ $ cliopts_ opts) ("hledger-web upload: " <> takeFileName f) [f]
+      setMessage $ toHtml $ maybe (trf trs "File {file} uploaded successfully" [("file", T.pack f)]) id merr
       redirect JournalR
   where
     showForm view enctype =

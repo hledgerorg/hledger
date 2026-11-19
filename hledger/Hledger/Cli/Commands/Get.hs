@@ -22,8 +22,8 @@ module Hledger.Cli.Commands.Get (
 ) where
 
 import Control.Exception (IOException, try)
-import Control.Monad (unless, when, (>=>))
-import Data.List (nub, sortOn)
+import Control.Monad (forM, unless, when)
+import Data.List (intercalate, nub, sortOn)
 #if !MIN_VERSION_base(4,20,0)
 import Data.List (foldl')
 #endif
@@ -42,6 +42,7 @@ import System.Process (cwd, proc, readCreateProcessWithExitCode)
 
 import Hledger
 import Hledger.Cli.CliOptions
+import Hledger.Cli.Vcs (commitflag, finishCommit, prepareCommit, showWouldCommit)
 
 
 -- ====================================================================
@@ -54,6 +55,7 @@ getmode = hledgerCommandMode
   [flagNone ["transactions"] (setboolopt "transactions") "fetch transactions only"
   ,flagNone ["prices"]       (setboolopt "prices")       "fetch prices only"
   ,flagNone ["dry-run"] (setboolopt "dry-run") "just print the commands that would be run"
+  ,commitflag
   -- The -o/--output flag is disabled for now: it only meaningfully applies
   -- to the prices phase, which is awkward in the combined command.
   -- The supporting code paths below are preserved so this can be re-enabled
@@ -67,14 +69,24 @@ getmode = hledgerCommandMode
 
 -- | The get command. By default runs both phases (data then prices);
 -- with -t/--transactions or -p/--prices, runs only the selected phase(s).
+-- With --commit, each phase's changes are committed separately.
 getcmd :: CliOpts -> Journal -> IO ()
 getcmd opts@CliOpts{rawopts_=rawopts} j = do
   let
     txns    = boolopt "transactions" rawopts
     prices  = boolopt "prices" rawopts
     noflags = not txns && not prices
-  when (txns   || noflags) $ fetchData opts j
-  when (prices || noflags) $ fetchPrices opts j
+    dryRun  = boolopt "dry-run" rawopts
+    jdir    = takeDirectory (journalFilePath j)
+  mcommit <- prepareCommit rawopts jdir [jdir </> dataDirName, jdir </> pricesDirName]
+  let commit msg dir = if dryRun then showWouldCommit mcommit msg else finishCommit mcommit msg [jdir </> dir]
+  when (txns || noflags) $ do
+    fetchData opts j
+    commit "hledger get: new data" dataDirName
+  when (prices || noflags) $ do
+    codes <- fetchPrices opts j
+    when (dryRun || not (null codes)) $
+      commit ("hledger get: new prices" <> (if null codes then "" else " for " <> intercalate ", " (map T.unpack codes))) pricesDirName
 
 -- | Like 'warn' but throws away the trailing-action argument; for the common
 -- "log a warning, then continue" pattern.
@@ -160,8 +172,8 @@ redirSuffix (ToFile f)  = " >" <> f
 -- exists, then if prices/getprices is present, iterates over journal commodities
 -- and invokes the helper once per commodity, merging results into
 -- prices/<COMM>.prices files. If the helper is missing, logs a skip notice
--- and returns.
-fetchPrices :: CliOpts -> Journal -> IO ()
+-- and returns. Returns the commodities whose prices file was written.
+fetchPrices :: CliOpts -> Journal -> IO [CurrencyCode]
 fetchPrices CliOpts{rawopts_=rawopts} j = do
   let
     dryRun  = boolopt "dry-run" rawopts
@@ -174,7 +186,7 @@ fetchPrices CliOpts{rawopts_=rawopts} j = do
   createDirectoryIfMissing True pricesDir
   exists <- doesFileExist script
   if not exists
-    then hPutStrLn stderr $ "no " <> script <> " script, skipping prices fetch"
+    then hPutStrLn stderr ("no " <> script <> " script, skipping prices fetch") >> return []
     else do
       today <- getCurrentDay
       let
@@ -183,19 +195,28 @@ fetchPrices CliOpts{rawopts_=rawopts} j = do
         codes     = nub . filter (/= base) . map toCurrencyCode $ journalCommoditiesUsed j
         runFor    = runFetch script base commspans today dryRun
       case moutput of
-        Just "-" ->
+        -- (the -o/--output flag is currently disabled; these cases report no prices files written)
+        Just "-" -> do
           mapM_ (\code -> runFor ToStdout code >>= maybe (return ()) T.putStr) codes
+          return []
         Just outfile -> do
           outs <- mapM (runFor (ToFile outfile)) codes
           let combined = T.concat (catMaybes outs)
           unless (T.null combined) $
             mergeAndWritePrices outfile combined >>= reportOutcome outfile
+          return []
         Nothing ->
-          mapM_ (\code -> do
-                  let outfile = pricesFileFor jdir code
-                  mout <- runFor (ToFile outfile) code
-                  maybe (return ()) (mergeAndWritePrices outfile >=> reportOutcome outfile) mout)
-                codes
+          fmap catMaybes $ forM codes $ \code -> do
+            let outfile = pricesFileFor jdir code
+            mout <- runFor (ToFile outfile) code
+            case mout of
+              Nothing -> return Nothing
+              Just out -> do
+                outcome <- mergeAndWritePrices outfile out
+                reportOutcome outfile outcome
+                return $ case outcome of
+                  MergedWritten _ _ -> Just code
+                  _                 -> Nothing
 
 -- | Fetch prices for one commodity. Logs the command line (see 'logCommand'),
 -- runs the script (unless dry-run), and forwards its stderr.

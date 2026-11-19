@@ -181,7 +181,7 @@ Unit tests for the argument classification and planning function.
 - `--layout simple|default|year-dirs`, and a way to list layouts.
   year-dirs needs the year templated in paths and content, relative directory symlinks (a problem on Windows),
   and its empty `2026/rules` directory (which git does not track).
-- `--git` / `--jj`: initialise a repository, write an ignore file, make a first commit.
+- `--git` / `--jj`: superseded by `--commit` (see doc/PLAN-vcs.md).
 
 ## Implementation notes (2026-11-19)
 

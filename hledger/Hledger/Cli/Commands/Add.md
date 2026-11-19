@@ -9,6 +9,8 @@ Flags:
                             hledger1 - right-align amounts, as in hledger 1
                             COL      - align decimal marks at column COL
                             (default: 53)
+     --commit               record the changed files in the journal's jj or
+                            git repository
 ```
 
 Many hledger users edit their journals directly with a text editor, or generate them from CSV.
@@ -64,6 +66,12 @@ Examples:
   `hledger add today 'best buy' expenses:supplies '$20'`
 
 There is a detailed tutorial at <https://hledger.org/add.html>.
+
+### add and version control
+
+With `--commit`, when you finish, the transactions you added are committed to the journal's jj or git repository,
+with a message like `hledger add: 2026-02-01 groceries` (or `hledger add: 3 transactions`).
+See [Version control](#version-control).
 
 ### add and balance assertions
 

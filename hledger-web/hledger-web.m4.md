@@ -81,6 +81,8 @@ Flags:
                             language if available, otherwise the server's.
                             (Default: the browser's language if available,
                             otherwise en.)
+     --commit               record the changed files in the journal's jj or
+                            git repository
 ```
 
 By default hledger-web listens only on IP address `127.0.0.1`,
@@ -250,8 +252,12 @@ can alter or wipe the data files.
 Before saving an edited or uploaded file, hledger-web saves a numbered backup of it
 (eg `main.journal.1`, then `main.journal.2`); if the backup can't be written, the file is not changed.
 (Adding a transaction appends it to the main journal file without making a backup.)
-hledger-web is not aware of version control systems, currently; if you use one,
-you'll have to arrange to commit the changes yourself.
+
+If your files are in a jj or git repository, you can start hledger-web with `--commit`,
+and it will commit each change (each added transaction, and each edited or uploaded file),
+with a descriptive message. It checks at startup that there is a repository.
+If a commit fails, the change is still saved, and the error is shown.
+See [Version control](hledger.html#version-control) in the hledger manual.
 
 Changes which would leave the journal file(s) unparseable or invalid
 (eg with failing balance assertions) are prevented.

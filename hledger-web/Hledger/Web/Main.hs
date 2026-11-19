@@ -54,6 +54,8 @@ import Yesod.Default.Main (defaultDevelApp)
 import Hledger
 import Hledger.Cli hiding (progname,prognameandversion)
 import Hledger.Cli.Commands.Quickref (showQuickref)
+import Hledger.Cli.Vcs (prepareCommit)
+import System.FilePath (takeDirectory)
 import Hledger.Web.Application (makeApplication)
 import Hledger.Web.Settings (Extra(..), parseExtra, defbaseurl)
 import Hledger.Web.Test (hledgerWebTest)
@@ -112,6 +114,8 @@ hledgerWebMain = handleExit $ withGhcDebug' $ do
 -- | The hledger web command.
 web :: WebOpts -> Journal -> IO ()
 web opts j = do
+  -- with --commit, check now that there's a repository to commit changes to
+  void $ prepareCommit (rawopts_ $ cliopts_ opts) (takeDirectory $ journalFilePath j) []
   let h = host_ opts
       p0 = port_ opts
       staticRoot = T.pack <$> file_url_ opts  -- XXX not used #2139

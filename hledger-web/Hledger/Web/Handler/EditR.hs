@@ -13,9 +13,12 @@ module Hledger.Web.Handler.EditR
 import Control.Monad.Except (runExceptT)
 import Data.Text qualified as T
 import Hledger.Utils.I18n (Translations, tr, trf)
+import Hledger.Cli.CliOptions (CliOpts(..))
 import Hledger.Web.Import
+import Hledger.Web.WebOptions (WebOpts(..))
+import System.FilePath (takeFileName)
 import Hledger.Web.Widget.Common
-       (fromFormSuccess, helplink, journalFile404, writeJournalTextIfValidAndChanged)
+       (commitChanges, fromFormSuccess, helplink, journalFile404, writeJournalTextIfValidAndChanged)
 
 editForm :: Translations -> FilePath -> Text -> Form Text
 editForm trs f txt =
@@ -33,7 +36,7 @@ getEditR f = do
 postEditR :: FilePath -> Handler ()
 postEditR f = do
   checkServerSideUiEnabled
-  VD {j, trs} <- getViewData
+  VD {j, trs, opts} <- getViewData
   require EditPermission
 
   (f', txt) <- journalFile404 f j
@@ -44,7 +47,8 @@ postEditR f = do
       setMessage $ toHtml $ trf trs "Failed to load journal: {error}" [("error", T.pack e)]
       showForm view enctype
     Right () -> do
-      setMessage $ toHtml $ trf trs "Saved journal {file}" [("file", T.pack f)] <> "\n"
+      merr <- liftIO $ commitChanges (rawopts_ $ cliopts_ opts) ("hledger-web edit: " <> takeFileName f) [f]
+      setMessage $ toHtml $ maybe (trf trs "Saved journal {file}" [("file", T.pack f)] <> "\n") id merr
       redirect JournalR
   where
     showForm view enctype =

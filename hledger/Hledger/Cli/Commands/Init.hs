@@ -40,6 +40,7 @@ import System.Info (os)
 import Hledger
 import Hledger.Read.JournalReader qualified as JournalReader
 import Hledger.Cli.CliOptions
+import Hledger.Cli.Vcs
 
 
 initmode = hledgerCommandMode
@@ -47,6 +48,7 @@ initmode = hledgerCommandMode
   [flagReq  ["layout"] (\s opts -> Right $ setopt "layout" s opts) "LAYOUT"
      ("which file layout to write: " <> intercalate ", " (map lName layouts) <> " (default: " <> lName defaultLayout <> ")")
   ,flagNone ["dry-run"] (setboolopt "dry-run") "just show the files that would be created"
+  ,commitflag
   ]
   [generalflagsgroup3]
   hiddenflags
@@ -171,6 +173,7 @@ initcmd CliOpts{rawopts_=rawopts} _ = do
     paths = nubOrd $ map fst dests ++ concatMap (ancestors . fst) dests
   states <- M.fromList <$> mapM (\p -> (p,) <$> pathState p) paths
   actions <- either error' return $ planInit (\p -> M.findWithDefault Absent p states) dests
+  mcommit <- prepareCommit rawopts (case target of InitDir d -> d; InitFile f -> takeDirectory f) []
   forM_ actions $ \case
     Create p f
       | dryRun    -> putStrLn $ "would create " <> p
@@ -178,6 +181,12 @@ initcmd CliOpts{rawopts_=rawopts} _ = do
     Skip p
       | dryRun    -> putStrLn $ "would skip " <> p <> " (exists)"
       | otherwise -> warnIO $ "skipped " <> p <> ", it already exists"
+  let
+    created = [p | Create p _ <- actions]
+    commitmsg = "hledger init: " <> lName flayout <> " layout"
+  if dryRun
+  then unless (null created) $ showWouldCommit mcommit commitmsg
+  else finishCommit mcommit commitmsg created
   unless dryRun $ case target of
     InitFile f -> showNextSteps f Nothing
     InitDir d  -> showNextSteps (normalise $ d </> lMainJournal flayout) ((normalise . (d </>)) <$> lCombinedJournal flayout)

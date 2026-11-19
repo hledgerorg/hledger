@@ -19,9 +19,11 @@ import Yesod
 
 import Hledger
 import Hledger.Cli.Commands.Add (appendToJournalFileOrStdout, journalAddTransaction)
+import Hledger.Cli.CliOptions (CliOpts(..))
 import Hledger.Web.Import
 import Hledger.Web.WebOptions (WebOpts(..))
 import Hledger.Web.Widget.AddForm (addForm)
+import Hledger.Web.Widget.Common (commitChanges)
 
 -- | Replace newlines with spaces in the transaction fields which are written
 -- to the journal file verbatim: the description, the code, and the posting
@@ -52,17 +54,18 @@ getAddR = do
 postAddR :: Handler ()
 postAddR = do
   checkServerSideUiEnabled
-  VD{j, today} <- getViewData
+  VD{j, today, opts} <- getViewData
   require AddPermission
 
   ((res, view), enctype) <- runFormPost $ addForm j today
   case res of
     FormSuccess (t,f) -> do
       let t' = txnTieKnot $ transactionCollapseNewlines t
-      liftIO $ do
+      merr <- liftIO $ do
         ensureJournalFileExists f
         appendToJournalFileOrStdout f (showTransaction t')
-      setMessageI (HMsg "Transaction added.")
+        commitChanges (rawopts_ $ cliopts_ opts) (addCommitMessage t') [f]
+      maybe (setMessageI (HMsg "Transaction added.")) (setMessage . toHtml) merr
       redirect JournalR
     FormMissing -> showForm view enctype
     FormFailure errs -> do
@@ -92,5 +95,12 @@ putAddR = do
   case r of
     Error err -> sendStatusJSON status400 ("could not parse json: " ++ err ::String)
     Success t -> do
-      void $ liftIO $ journalAddTransaction j (cliopts_ opts) $ transactionCollapseNewlines t
+      let t' = transactionCollapseNewlines t
+      void $ liftIO $ journalAddTransaction j (cliopts_ opts) t'
+      -- with --commit, a problem committing is logged on stderr; the transaction was added
+      void $ liftIO $ commitChanges (rawopts_ $ cliopts_ opts) (addCommitMessage t') [journalFilePath j]
       sendResponseCreated TransactionsR
+
+-- | The commit message for a transaction added with the web UI or API.
+addCommitMessage :: Transaction -> String
+addCommitMessage t = "hledger-web add: " <> show (tdate t) <> " " <> T.unpack (tdescription t)

@@ -79,6 +79,7 @@ import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Conf
 import Hledger.Cli.Version
+import Hledger.Cli.Vcs
 import System.Console.ANSI (hSupportsANSIColor)
 import System.IO (localeEncoding, stdout, hFlush, hIsTerminalDevice)
 
@@ -541,6 +542,46 @@ setupJournal meconf = do
       if strict
       then i Y "commodities and accounts must be declared"
       else i N "you can add -s to check them"
+
+      setupJournalVcs f (filter (`notElem` ["", "-"]) $ map jfpath jfiles)
+
+-- | Report on the version control repository (if any) holding the journal's files.
+setupJournalVcs :: FilePath -> [FilePath] -> IO ()
+setupJournalVcs mainfile files = do
+  pdesc "the journal is version controlled ?"
+  mrepo <- detectRepo $ takeDirectory mainfile
+  case mrepo of
+    Nothing -> i N "you can use jj or git to keep its history"
+    Just r -> do
+      let tool = vcsTool $ repoVcs r
+      found <- repoToolFound r
+      if not found
+      then p N $ tool <> " repo at " <> repoRoot r <> ", but " <> tool <> " is not installed"
+      else do
+        i Y $ tool <> " repo at " <> repoRoot r
+        (rels, outside) <- repoRelativePaths r files
+        let
+          firstline = takeWhile (/= '\n')
+          some fs = unwords (take 3 fs) <> (if length fs > 3 then " .." else "")
+
+        pdesc "all journal files are tracked ?"
+        etracked <- repoTrackedFiles r rels
+        case etracked of
+          Left e -> i U $ firstline e
+          Right tracked -> do
+            let untracked = filter (`notElem` tracked) rels
+            if null untracked && null outside
+            then p Y $ show (length rels) <> " files"
+            else p N $ intercalate ", " $
+                   [show (length untracked) <> " not tracked: " <> some untracked | not $ null untracked] ++
+                   [show (length outside) <> " outside the repo: " <> some outside | not $ null outside]
+
+        pdesc "journal files have unrecorded changes ?"
+        echanged <- repoChangedFiles r rels
+        case echanged of
+          Left e   -> i U $ firstline e
+          Right [] -> i N ""
+          Right cs -> i Y $ show (length cs) <> " files: " <> some cs
 
 ------------------------------------------------------------------------------
 

@@ -12,6 +12,8 @@ Flags:
                             hledger1 - right-align amounts, as in hledger 1
                             COL      - align decimal marks at column COL
                             (default: 53)
+     --commit               record the changed files in the journal's jj or
+                            git repository
 ```
 
 This command detects new transactions in one or more data files specified as arguments,
@@ -219,6 +221,14 @@ the original data file's modification date, or today's date if the data was comm
 
 The `archive` rule also causes `import` to handle `source` glob patterns differently:
 when there are multiple matched files, it will pick the oldest, not the newest.
+
+### Import and version control
+
+With `--commit`, after importing, the changes are committed to the journal's jj or git repository,
+with a message like `hledger import: 12 new transactions from bank.csv.rules`.
+This includes the main journal file, the `.latest.*` files, and the `data` directory (for archived or removed data files).
+With `--catchup`, the `.latest.*` files are committed.
+See [Version control](#version-control).
 
 ### Import special cases
 

@@ -158,6 +158,7 @@ library
       Hledger.Cli.GitInfo
       Hledger.Cli.Script
       Hledger.Cli.Utils
+      Hledger.Cli.Vcs
       Hledger.Cli.Version
       Hledger.Cli.Xirr
   other-modules:

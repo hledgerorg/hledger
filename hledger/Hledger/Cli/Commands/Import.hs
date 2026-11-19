@@ -20,6 +20,7 @@ import Hledger.Cli.CliOptions
 import Hledger.Cli.Commands.Add (journalAddTransaction)
 import Hledger.Cli.Commands.Get (getcmd)
 import Hledger.Cli.Commands.Print (layoutFlag, layoutFromRawOpts)
+import Hledger.Cli.Vcs (commitflag, finishCommit, prepareCommit, showWouldCommit)
 import System.Directory (doesDirectoryExist, listDirectory)
 import System.IO (stderr)
 import System.FilePath (takeDirectory, takeFileName, (</>))
@@ -30,12 +31,16 @@ importmode = hledgerCommandMode
   ,flagNone ["catchup"] (setboolopt "catchup") "just mark all transactions as already imported"
   ,flagNone ["dry-run"] (setboolopt "dry-run") "just show the transactions to be imported"
   ,layoutFlag
+  ,commitflag
   ]
   cligeneralflagsgroups1
   hiddenflags
   ([], Just $ argsFlag "[-f JOURNALFILE] [DATAFILES]")
 
 importcmd opts@CliOpts{rawopts_=rawopts,inputopts_=iopts} j = do
+  -- With --commit, check for a repository before changing anything.
+  let jfile = journalFilePath j
+  mcommit <- prepareCommit rawopts (takeDirectory jfile) [jfile]
   -- With -g/--get, run the get command first to fetch new data before importing.
   when (boolopt "get" rawopts) $ getcmd opts j
   -- XXX could be helpful to show the last-seen date, and number of old transactions, too
@@ -80,16 +85,22 @@ importcmd opts@CliOpts{rawopts_=rawopts,inputopts_=iopts} j = do
       enewjandlatestdatesforfiles <- runExceptT $ readJournalFilesAndLatestDates iopts' fs
       case enewjandlatestdatesforfiles of
         Left err -> error' err
-        Right (newj, latestdatesforfiles) ->
-          case sortOn tdate $ jtxns newj of
+        Right (newj, latestdatesforfiles) -> do
+         let
+           latestfiles = [latestDatesFileFor f | LatestDatesForFile f _ <- latestdatesforfiles]
+           catchupmsg = "hledger import: caught up " <> inputstr
+         case sortOn tdate $ jtxns newj of
             [] -> hPrintf stderr "no new transactions found in %s\n" inputstr
 
             newts | catchup ->
               if dryRun
-                then hPrintf stderr "would skip %d new transactions (dry run)\n\n" (length newts)
+                then do
+                  hPrintf stderr "would skip %d new transactions (dry run)\n\n" (length newts)
+                  showWouldCommit mcommit catchupmsg
                 else do
                   hPrintf stderr "marked %s as caught up, skipping %d transactions\n\n" inputstr (length newts)
                   saveLatestDatesForFiles latestdatesforfiles
+                  finishCommit mcommit catchupmsg latestfiles
 
             newts -> do
               if dryRun
@@ -100,6 +111,7 @@ importcmd opts@CliOpts{rawopts_=rawopts,inputopts_=iopts} j = do
 
                 -- then check the whole journal with them added, if in strict mode
                 when (strict_ iopts) $ strictChecks
+                showWouldCommit mcommit importmsg
 
               else do
                 -- first check the whole journal with them added, if in strict mode
@@ -116,7 +128,12 @@ importcmd opts@CliOpts{rawopts_=rawopts,inputopts_=iopts} j = do
                 -- and if we got this far, update each file's .latest file
                 saveLatestDatesForFiles latestdatesforfiles
 
+                -- and with --commit, commit the changes: the journal, the .latest files,
+                -- and the data directory (for archived data files, and source data files removed by archiving)
+                finishCommit mcommit importmsg $ [jfile] <> latestfiles <> [takeDirectory jfile </> dataDirName]
+
               where
+                importmsg = "hledger import: " <> show (length newts) <> " new transactions from " <> inputstr
                 -- add the new transactions to the journal in memory and check the whole thing
                 strictChecks = either fail pure $ journalStrictChecks j'
                   where j' = foldl' (flip addTransaction) j newts

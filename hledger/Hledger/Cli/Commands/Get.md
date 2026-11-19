@@ -10,6 +10,8 @@ Flags:
      --transactions         fetch transactions only
      --prices               fetch prices only
      --dry-run              just print the commands that would be run
+     --commit               record the changed files in the journal's jj or
+                            git repository
 ```
 
 By default, this command fetches both transactions and prices.
@@ -46,6 +48,13 @@ If prices files already exist, the newly fetched prices will be merged as follow
 - If no new prices remain to be added, the prices file is left as-is.
 - Otherwise, the old prices plus the new prices are saved to the file, ordered by: date, from commodity, to commodity.
   Each price keeps the number format it was written with.
+
+### get and version control
+
+With `--commit`, after each phase, its changes are committed to the journal's jj or git repository:
+the `data` directory, with the message `hledger get: new data`,
+and the `prices` directory, with a message like `hledger get: new prices for EUR, BTC`.
+See [Version control](#version-control).
 
 ### get's helper scripts
 

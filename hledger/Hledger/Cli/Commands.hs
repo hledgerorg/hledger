@@ -114,6 +114,7 @@ import Hledger.Cli.Commands.Stats
 import Hledger.Cli.Commands.Tags
 import Hledger.Cli.Commands.Transactions
 import Hledger.Cli.Utils (tests_Cli_Utils, openBrowserOn)
+import Hledger.Cli.Vcs (tests_Vcs)
 import Hledger.Cli.Commands.Quickref (showQuickref)
 import Hledger.Cli.DocFiles (runTldrForPage)
 import Data.Functor ((<&>), void)
@@ -554,6 +555,7 @@ runUnitTests pat =
 -- Hledger.Cli so runUnitTests can use them.
 tests_Hledger_Cli = testGroup "Hledger.Cli" [
    tests_Cli_Utils
+  ,tests_Vcs
   ,tests_Commands
   ]
 

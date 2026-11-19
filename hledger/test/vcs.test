@@ -1,0 +1,53 @@
+# * version control: the --commit flag
+# Each test works in a new temporary directory, with git and jj isolated from user configuration (see vcs.sh).
+# The jj tests run only when jj is installed; otherwise they print the expected output themselves.
+
+# ** 1. With no repository, --commit is an error, and nothing is written.
+$ sh -c '. ./vcs.sh; newrepo none; hledger -n init --commit; echo "exit $?"; ls | wc -l | tr -d " "'
+exit 1
+0
+>2 /--commit: no jj or git repository found at or above/
+
+# ** 2. git: init --commit commits the files it created, and nothing else (a file already staged stays staged).
+$ sh -c '. ./vcs.sh; newrepo git; echo x > other; git add other; hledger -n init --commit >/dev/null; gitlog; git status --porcelain'
+hledger init: default layout
+A  other
+>2
+committed to git: hledger init: default layout
+
+# ** 3. git: add --commit commits the transactions added, once at the end.
+$ sh -c '. ./vcs.sh; newrepo git; hledger -n init --commit --layout simple >/dev/null 2>&1; printf "2026-02-01\nshop\nexpenses:food\n\$5\nassets:cash\n\n.\ny\n.\n" | hledger -n -f main.journal add --commit 2>&1 | grep committed; gitlog; git status --porcelain'
+committed to git: hledger add: 2026-02-01 shop
+hledger add: 2026-02-01 shop
+hledger init: simple layout
+
+# ** 4. git: import --commit commits the journal, .latest files and data directory,
+# noting earlier unrecorded changes in those files.
+$ sh -c '. ./vcs.sh; newrepo git; hledger -n init --commit >/dev/null 2>&1; echo "; edited" >> main.journal; hledger -n -I -f main.journal import --commit --rules rules/bankofireland-checking.csv.rules data/bankofireland-checking.csv 2>&1 | grep -v "^imported"; gitlog; git status --porcelain'
+committed to git: hledger import: 2 new transactions from bankofireland-checking.csv
+(this includes earlier unrecorded changes in main.journal)
+hledger import: 2 new transactions from bankofireland-checking.csv
+hledger init: default layout
+
+# ** 5. git: get --commit commits new prices files.
+$ sh -c '. ./vcs.sh; newrepo git; hledger -n init --commit >/dev/null 2>&1; printf "#!/bin/sh\necho \"P 2026-01-04 \$2 1.5 \$1\"\n" > prices/getprices; printf "2026-01-05 x\n    assets:cash   1 EUR\n    equity:start\n" >> main.journal; git commit -qam stub; hledger -n -f main.journal get --commit --prices 2>&1 | grep committed; gitlog; git status --porcelain'
+committed to git: hledger get: new prices for EUR
+hledger get: new prices for EUR
+stub
+hledger init: default layout
+
+# ** 6. --dry-run says what would be committed, and commits nothing.
+$ sh -c '. ./vcs.sh; newrepo git; hledger -n init --commit --dry-run >/dev/null; gitlog 2>/dev/null; echo "[$(ls)]"'
+[]
+>2
+would commit to git: hledger init: default layout
+
+# ** 7. Nothing is committed when nothing changed.
+$ sh -c '. ./vcs.sh; newrepo git; hledger -n init --commit >/dev/null 2>&1; hledger -n init --commit >/dev/null 2>&1; gitlog'
+hledger init: default layout
+
+# ** 8. jj: init and import --commit, leaving other changes in the working copy.
+$ sh -c '. ./vcs.sh; if ! hasjj; then printf "hledger import: 2 new transactions from bankofireland-checking.csv\nhledger init: default layout\nA other\n"; exit; fi; newrepo jj; echo x > other; hledger -n init --commit >/dev/null 2>&1; hledger -n -I -f main.journal import --commit --rules rules/bankofireland-checking.csv.rules data/bankofireland-checking.csv >/dev/null 2>&1; jjlog; jj diff --summary'
+hledger import: 2 new transactions from bankofireland-checking.csv
+hledger init: default layout
+A other

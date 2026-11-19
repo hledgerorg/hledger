@@ -210,6 +210,54 @@ With the `-s`/`--strict` flag, additional checks are performed:
 
 You can use the [check](#check) command to run individual checks - the ones listed above and some more.
 
+## Version control
+
+It's a good idea to keep your hledger files in a version control system,
+so that you can see their history, and undo mistakes.
+hledger knows about two of them: [jj](https://jj-vcs.github.io) and [git](https://git-scm.com).
+
+hledger looks for a repository holding the main journal file:
+in the file's directory, or the nearest directory above it, containing a `.jj` or `.git` entry.
+If a directory has both (a colocated jj/git repository), jj is used.
+
+The [setup](#setup) command shows whether your journal is in a repository,
+whether all of its files are tracked, and whether they have unrecorded changes.
+
+The commands which change files ([add](#add), [import](#import), [get](#get), [init](#init), and hledger-web)
+have a `--commit` flag. With this, after changing files, they commit (record) the changes in the repository,
+with a descriptive message, like `hledger import: 12 new transactions from bank.csv.rules`. Eg:
+
+```cli
+$ hledger import --commit
+imported 12 new transactions from bank.csv.rules to /home/me/finance/main.journal
+committed to git: hledger import: 12 new transactions from bank.csv.rules
+```
+
+Some details:
+
+- Only the files changed by the command are committed. Other changes in the repository, staged or not, are left as they are.
+  But if a changed file already had unrecorded changes (eg you edited the journal by hand, then imported),
+  those are committed too, and hledger mentions this.
+- `import` commits the main journal file, the `.latest.*` files it updates, and the `data` directory
+  (where data files may be archived or removed).
+  `get` commits the `data` directory after fetching data, and the `prices` directory after fetching prices, separately.
+  Files ignored by the version control system (eg with `.gitignore`) are never committed,
+  so you can keep downloaded data files out of version control if you prefer.
+- `add` makes one commit when you finish, for all the transactions you added.
+  hledger-web makes a commit each time a transaction is added or a file is edited or uploaded.
+- With `--dry-run` (`import`, `get`, `init`), the commit message is shown, and nothing is committed.
+- If nothing changed, nothing is committed.
+- `--commit` requires an existing repository, and its tool (`jj` or `git`) installed in PATH.
+  If these are missing, the command gives an error and changes nothing.
+  (So for a new setup, create the repository first, eg with `jj git init` or `git init`, then run `hledger init --commit`.)
+- If the commit fails (eg because of a failing git hook), the files are still changed, and the error is shown.
+
+To make committing the default, add `--commit` to your [config file](#config-files),
+in the `[general]` section (commands which don't support it will ignore it) or in specific commands' sections.
+
+See also the [hledger-git and hledger-jj](https://github.com/hledgerorg/hledger/tree/main/bin) add-on scripts,
+which can show the status and history of your journal's files.
+
 # Commands
 
 hledger provides various subcommands for getting things done.

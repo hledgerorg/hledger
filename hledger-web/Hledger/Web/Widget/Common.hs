@@ -41,6 +41,7 @@ module Hledger.Web.Widget.Common
   , moreCommodities
   , fromFormSuccess
   , writeJournalTextIfValidAndChanged
+  , commitChanges
   , journalFile404
   , transactionFragment
   , removeDates
@@ -58,8 +59,9 @@ import Data.Maybe (isJust, isNothing, listToMaybe, mapMaybe, maybeToList)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Time.Calendar (Day)
-import Safe (lastMay, readMay)
-import System.FilePath (takeFileName)
+import Safe (headDef, lastMay, readMay)
+import System.FilePath (takeDirectory, takeFileName)
+import System.IO (hPutStrLn, stderr)
 import Text.Blaze ((!), (!?), textValue)
 import Text.Blaze.Html5 qualified as H
 import Text.Blaze.Html5.Attributes qualified as A
@@ -73,6 +75,7 @@ import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor qualified as Anchor
 import Hledger.Cli.Utils (writeFileWithBackupIfChanged)
+import Hledger.Cli.Vcs (finishCommitEither, prepareCommitEither)
 import Hledger.Web.Param (linksRow, linksRowClass)
 import Hledger.Web.Settings (manualurl)
 import Hledger.Query qualified as Query
@@ -109,6 +112,18 @@ writeJournalTextIfValidAndChanged f t = mapExceptT liftIO $ do
   j <- readJournal definputopts (Just f) =<< liftIO (textToHandle t')
   _ <- liftIO $ j `seq` writeFileWithBackupIfChanged f t'  -- Only write backup if the journal didn't error
   return ()
+
+-- | With --commit (in these options), commit these changed files with this message,
+-- in the repository containing the first file.
+-- Returns a problem, if any, as a message to show the user (it is also logged on stderr).
+commitChanges :: RawOpts -> String -> [FilePath] -> IO (Maybe Text)
+commitChanges rawopts msg fs = do
+  res <- prepareCommitEither rawopts (takeDirectory $ headDef "." fs) [] >>= \case
+    Left e     -> return $ Left e
+    Right mctx -> finishCommitEither mctx msg fs
+  case res of
+    Right () -> return Nothing
+    Left e   -> hPutStrLn stderr e >> return (Just $ T.pack e)
 
 -- | Link to a topic in the manual.
 helplink :: Text -> Text -> HtmlUrl r

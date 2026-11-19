@@ -18,6 +18,10 @@ It does not use a pager or a config file.
 It expects that the hledger version you are running is installed in your PATH.
 If not, it will stop until you have done that (to keep things simple).
 
+In the journal section, it also shows whether the journal is in a jj or git repository,
+and if so, whether all of the journal's files are tracked, and whether they have unrecorded changes.
+See [Version control](#version-control).
+
 Example:
 ```cli
 $ hledger setup

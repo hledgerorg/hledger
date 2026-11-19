@@ -18,6 +18,7 @@ import Safe (lastMay)
 
 import Hledger.Cli hiding (packageversion, progname, prognameandversion)
 import Hledger.Cli.GitInfo (gitInfo)
+import Hledger.Cli.Vcs (commitflag)
 import Hledger.Web.ReportPage (startupUrlState)
 import Hledger.Web.Settings (defhost, defport, defbaseurl)
 import Data.Text qualified as T
@@ -107,6 +108,7 @@ webflags =
       ("show the web UI in this language (" ++ intercalate ", " (map T.unpack builtinLanguageCodes) ++ ");"
       ++ " or with auto, use each viewer's browser language if available, otherwise the server's."
       ++ " (Default: the browser's language if available, otherwise en.)")
+  , commitflag
   -- XXX #2139
   -- , flagReq
   --     ["file-url"]

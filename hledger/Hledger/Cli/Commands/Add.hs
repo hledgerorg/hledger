@@ -28,8 +28,9 @@ import Control.Monad.Trans (liftIO)
 import Data.Char (toUpper, toLower)
 import Data.Either (isRight)
 import Data.Functor.Identity (Identity(..))
+import Data.IORef (modifyIORef', newIORef, readIORef)
 import Data.List (isPrefixOf, nub)
-import Data.Maybe (fromJust, fromMaybe, isJust)
+import Data.Maybe (fromJust, fromMaybe, isJust, isNothing)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
@@ -55,12 +56,14 @@ import Hledger.Cli.CliOptions
 import Hledger.Cli.Commands.Print (layoutFlag, layoutFromRawOpts)
 import Hledger.Cli.Commands.Register (postingsReportAsText)
 import Hledger.Cli.Utils (journalSimilarTransaction)
+import Hledger.Cli.Vcs (commitflag, finishCommit, prepareCommit)
 
 
 addmode = hledgerCommandMode
   $(embedFileRelative "Hledger/Cli/Commands/Add.txt")
   [flagNone ["no-new-accounts"]  (setboolopt "no-new-accounts") "don't allow creating new accounts"
   ,layoutFlag
+  ,commitflag
   ]
   [generalflagsgroup2]
   confflags
@@ -127,7 +130,9 @@ add :: CliOpts -> Journal -> IO ()
 add opts j
     | journalFilePath j == "-" = return ()
     | otherwise = do
-        hPutStrLn stderr $ "Adding transactions to journal file " <> journalFilePath j
+        let f = journalFilePath j
+        mcommit <- prepareCommit (rawopts_ opts) (takeDirectory f) [f]
+        hPutStrLn stderr $ "Adding transactions to journal file " <> f
         showHelp
         let today = opts^.rsDay
             state = defAddState{asOpts=opts
@@ -136,7 +141,21 @@ add opts j
                               ,asDefDate=today
                               ,asJournal=j
                               }
-        addTransactionsLoop state `E.catch` (\(_::UnexpectedEOF) -> putStr "")
+        -- remember the transactions added, and when the session ends, commit them if --commit was used
+        added <- newIORef []
+        let
+          onAdded t = modifyIORef' added (t:)
+          commitAdded = readIORef added >>= \ts ->
+            unless (null ts || isNothing mcommit) $ do
+              hPutStrLn stderr ""  -- end the last prompt's line
+              finishCommit mcommit (addCommitMessage ts) [f]
+        (addTransactionsLoop onAdded state `E.catch` (\(_::UnexpectedEOF) -> putStr ""))
+          `E.finally` commitAdded
+
+-- | A commit message for these added transactions (most recent first).
+addCommitMessage :: [Transaction] -> String
+addCommitMessage [t] = "hledger add: " <> show (tdate t) <> " " <> T.unpack (tdescription t)
+addCommitMessage ts  = "hledger add: " <> show (length ts) <> " transactions"
 
 showHelp = hPutStr stderr $ unlines [
      "Any command line arguments will be used as defaults."
@@ -153,8 +172,9 @@ showHelp = hPutStr stderr $ unlines [
 -- ctrl-c (then raise an EOF exception).  If provided, command-line
 -- arguments are used as defaults; otherwise defaults come from the
 -- most similar recent transaction in the journal.
-addTransactionsLoop :: AddState -> IO ()
-addTransactionsLoop state@AddState{..} = (do
+-- The given action is run after each transaction is saved.
+addTransactionsLoop :: (Transaction -> IO ()) -> AddState -> IO ()
+addTransactionsLoop onAdded state@AddState{..} = (do
   let defaultPrevInput = PrevInput{prevDateAndCode=Nothing, prevDescAndCmnt=Nothing, prevAccount=[], prevAmountAndCmnt=[]}
   mt <- runInputT (setComplete noCompletion defaultSettings) (System.Console.Wizard.run $ haskeline $ transactionWizard defaultPrevInput state [])
   case mt of
@@ -165,12 +185,13 @@ addTransactionsLoop state@AddState{..} = (do
                    return asJournal
            else do j' <- journalAddTransaction asJournal asOpts t
                    hPutStrLn stderr "Saved."
+                   onAdded t
                    return j'
       hPutStrLn stderr "Starting the next transaction (. or ctrl-D/ctrl-C to quit)"
-      addTransactionsLoop state{asJournal=j, asDefDate=tdate t}
+      addTransactionsLoop onAdded state{asJournal=j, asDefDate=tdate t}
   )
   `E.catch` (\(_::RestartTransactionException) ->
-                 hPutStrLn stderr "Restarting this transaction." >> addTransactionsLoop state)
+                 hPutStrLn stderr "Restarting this transaction." >> addTransactionsLoop onAdded state)
 
 -- | Interact with the user to get a Transaction.
 transactionWizard :: PrevInput -> AddState -> [AddStep] -> Wizard Haskeline Transaction

@@ -7,6 +7,8 @@ Flags:
      --layout=LAYOUT       which file layout to write: simple, default, years
                            (default: default)
      --dry-run             just show the files that would be created
+     --commit              record the changed files in the journal's jj or
+                           git repository
 ```
 
 With no argument, or a directory argument, `init` writes a set of files in that directory
@@ -50,6 +52,10 @@ you'll get the simple layout, written to that file.
 Files that already exist are never changed; they are skipped, with a warning.
 So you can run `init` again to add missing files.
 After writing the files, it suggests some next steps.
+
+With `--commit`, the new files are committed to the jj or git repository containing them,
+which must exist already (eg run `jj git init` or `git init` first).
+See [Version control](#version-control).
 
 These and other file layouts can also be seen in the hledger repo's
 [examples/file-layouts](https://github.com/hledgerorg/hledger/tree/main/examples/file-layouts) directory.
