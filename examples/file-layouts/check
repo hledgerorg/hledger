@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+hledger -f simple/main.journal check
+hledger -f default/main.journal check -s
+hledger -f year-dirs/all.journal check -s
