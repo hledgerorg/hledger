@@ -1,0 +1,25 @@
+# bankofireland-checking.csv.rules
+
+# skip the header line
+skip
+
+# name the csv fields, and assign some of them as journal entry fields
+fields  date, description, amount-out, amount-in, balance
+
+# We generate balance assertions by assigning to "balance"
+# above, but you may sometimes need to remove these because:
+#
+# - the CSV balance differs from the true balance, 
+#   by up to 0.0000000000005 in my experience
+#
+# - it is sometimes calculated based on non-chronological ordering,
+#   eg when multiple transactions clear on the same day
+
+# date is in UK/Ireland format
+date-format  %d/%m/%Y
+
+# set the currency
+currency  EUR
+
+# set the base account for all txns
+account1  assets:bank:boi:checking

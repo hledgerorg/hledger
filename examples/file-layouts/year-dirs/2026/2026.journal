@@ -1,0 +1,21 @@
+; 2026 main journal.
+; Syntax: https://hledger.org/hledger.html#journal
+
+include accts26.journal
+include comms26.journal
+
+2026-01-01 opening balances
+    ; clopen:2026
+    assets:bank:checking                       $1000
+    assets:cash                                 $100
+    liabilities:bank:credit card                $-50.12
+    equity:start
+
+2026-01-02 received wages
+    revenues:salary
+    assets:bank:checking                       $1000
+
+2026-01-03 Whole Foods | bought groceries
+    assets:cash
+    expenses:food                                $50
+

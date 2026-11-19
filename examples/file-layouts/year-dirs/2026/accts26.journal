@@ -1,0 +1,43 @@
+; Account declarations
+; https://hledger.org/hledger.html#account-directive
+; https://hledger.org/hledger.html#strict-checks
+
+; Top-level accounts and their https://hledger.org/hledger.html#account-types.
+; The order of declarations also sets https://hledger.org/hledger.html#account-display-order.
+; Lower case, unspaced account names are easiest to type, but use capitals/spaces if you prefer.
+; https://hledger.org/hledger.html#account-names
+
+account assets       ; type:A
+account liabilities  ; type:L
+account equity       ; type:E
+account revenues     ; type:R
+account expenses     ; type:X
+
+; Subaccounts/subcategories.
+
+account assets:bank:checking
+account assets:cash
+account assets:receivable
+
+account liabilities:bank:credit card
+account liabilities:payable
+
+account equity:start
+account equity:conversion
+
+account revenues:gifts
+account revenues:salary
+account revenues:consulting
+account revenues:gains
+
+account expenses:food
+account expenses:gifts
+account expenses:home
+account expenses:misc
+account expenses:online services
+account expenses:personal care
+account expenses:phone
+account expenses:recreation
+account expenses:transport
+account expenses:travel
+account expenses:utilities
