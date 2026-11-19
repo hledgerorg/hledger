@@ -1,0 +1,79 @@
+; Everything in one file.
+; Syntax: https://hledger.org/hledger.html#journal
+
+; Optional declarations - uncomment these to make reports and https://hledger.org/hledger.html#check work better.
+;
+; ; COMMODITIES
+; ; https://hledger.org/hledger.html#commodity-directive
+;
+; commodity $1000.00
+; commodity 1000.00 EUR
+; ;commodity 1 000 000,00 EUR   ; https://hledger.org/hledger.html#commodity-display-style can be customised
+; ; A lots: tag enables lots and capital gains tracking.
+; commodity 1. AAPL         ; lots:
+; commodity 1.000000 ADA    ; lots:
+; commodity 1.00000000 BTC  ; lots:
+;
+; ; ACCOUNTS
+; ; https://hledger.org/hledger.html#account-directive
+; ; The order of declarations also sets https://hledger.org/hledger.html#account-display-order.
+; ; Lower case, unspaced account names are easiest to type, but use capitals/spaces if you prefer.
+; ; https://hledger.org/hledger.html#account-names
+;
+; ; Top-level accounts and their https://hledger.org/hledger.html#account-types.
+; account assets       ; type:A
+; account liabilities  ; type:L
+; account equity       ; type:E
+; account revenues     ; type:R
+; account expenses     ; type:X
+;
+; ; Subaccounts/subcategories.
+; account assets:bank:checking
+; account assets:cash
+; account assets:receivable
+;
+; account liabilities:bank:credit card
+; account liabilities:payable
+;
+; account equity:start
+; account equity:conversion
+;
+; account revenues:gifts
+; account revenues:salary
+; account revenues:consulting
+; account revenues:gains
+;
+; account expenses:food
+; account expenses:gifts
+; account expenses:home
+; account expenses:misc
+; account expenses:online services
+; account expenses:personal care
+; account expenses:phone
+; account expenses:recreation
+; account expenses:transport
+; account expenses:travel
+; account expenses:utilities
+
+
+; Opening balances. 
+; Pick a start date for this journal, name some asset and liability accounts
+; that you'll keep track of, and record their balances at the start of this day.
+
+2021-01-01 opening balances
+    assets:bank:checking                       $1000
+    assets:cash                                 $100
+    liabilities:bank:credit card                $-50.12
+    equity:start
+
+; Transactions. 
+; Keeping them in date order allows extra error checking (hledger check ordereddates).
+
+2021-01-02 received wages
+    revenues:salary
+    assets:bank:checking                       $1000
+
+2021-01-03 Whole Foods | bought groceries
+    assets:cash
+    expenses:food                                $50
+
