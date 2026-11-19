@@ -1,0 +1,28 @@
+; Commodity declarations - these set amount display styles and provide extra error checking.
+; https://hledger.org/hledger.html#commodity-directive
+; https://hledger.org/hledger.html#strict-checks
+
+; Fiat currencies
+
+commodity $1000.00
+commodity 1000.00 EUR
+;commodity 1 000 000,00 EUR   ; https://hledger.org/hledger.html#commodity-display-style can be customised
+
+; Investment commodities
+; Note commodity declarations must have a decimal mark (a period or comma), 
+; even if no decimal digits follow it.
+
+commodity 1. AAPL  ; lots:
+
+; Cryptocurrencies
+
+commodity 1.000000 ADA    ; lots:
+commodity 1.00000000 BTC  ; lots:
+commodity 1.00000000 ETH  ; lots:
+
+; Other
+
+; D declares a default commodity (and display style) to apply to bare numbers.
+; This one can be useful if you include timedot files: it adds the h (hour)
+; symbol, which is also the one used by timeclock files. 
+;D 1.0h

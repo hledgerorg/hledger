@@ -1,0 +1,33 @@
+; The main data file. Specify this with hledger's -f option or $LEDGER_FILE.
+; Syntax: https://hledger.org/hledger.html#journal
+
+; Declarations, helpful for reports and error checking,
+; kept in their own files for easier maintenance.
+
+include accounts.journal
+include commodities.journal
+include payees.journal
+
+
+; Opening balances. 
+; Pick a start date for this journal, some assets and liabilities to be tracked,
+; and record their balances at the start of this day.
+
+2021-01-01 opening balances
+    assets:bank:checking                       $1000
+    assets:cash                                 $100
+    liabilities:bank:credit card                $-50.12
+    equity:start
+
+; Transactions. 
+; Keeping them all here is simplest; or you can keep them in subfiles and include those.
+; Keeping them in date order allows extra error checking (hledger check ordereddates).
+
+2021-01-02 received wages
+    revenues:salary
+    assets:bank:checking                       $1000
+
+2021-01-03 Whole Foods | bought groceries
+    assets:cash
+    expenses:food                                $50
+
