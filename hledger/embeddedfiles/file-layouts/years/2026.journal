@@ -1,0 +1,37 @@
+; This year's journal. Use this file day to day: specify it with hledger's -f option or $LEDGER_FILE.
+; For reports across several years, use all.journal.
+; To start a new year, make a new YEAR.journal like this one, with that year's opening balances
+; (https://hledger.org/hledger.html#close can generate them).
+; Syntax: https://hledger.org/hledger.html#journal
+
+; Declarations, helpful for reports and error checking,
+; shared by all years and kept in their own files for easier maintenance.
+
+include accounts.journal
+include commodities.journal
+include payees.journal
+
+
+; Opening balances.
+; Record the balances of the assets and liabilities to be tracked, at the start of the year
+; (or at a later start date, in your first year).
+; The clopen tag helps hledger close generate next year's opening balances.
+
+2026-01-01 opening balances
+    ; clopen:2026
+    assets:bank:checking                       $1000
+    assets:cash                                 $100
+    liabilities:bank:credit card                $-50.12
+    equity:start
+
+; Transactions.
+; Keeping them in date order allows extra error checking (hledger check ordereddates).
+
+2026-01-02 received wages
+    revenues:salary
+    assets:bank:checking                       $1000
+
+2026-01-03 Whole Foods | bought groceries
+    assets:cash
+    expenses:food                                $50
+

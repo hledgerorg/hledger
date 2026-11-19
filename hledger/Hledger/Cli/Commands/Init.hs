@@ -21,13 +21,16 @@ module Hledger.Cli.Commands.Init (
 ) where
 
 import Control.Exception (IOException, try)
-import Control.Monad (forM_, unless, when)
+import Control.Monad (forM, forM_, unless, when)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as B
+import Data.ByteString.Char8 qualified as B8
 import Data.Char (toLower)
 import Data.Containers.ListUtils (nubOrd)
-import Data.List (intercalate)
+import Data.List (find, intercalate, isInfixOf, stripPrefix)
 import Data.Map.Strict qualified as M
+import Data.Maybe (maybeToList)
+import Data.Time.Calendar (toGregorian)
 import Safe (maximumDef)
 import System.Console.CmdArgs.Explicit
 import System.Directory
@@ -41,7 +44,10 @@ import Hledger.Cli.CliOptions
 
 initmode = hledgerCommandMode
   $(embedFileRelative "Hledger/Cli/Commands/Init.txt")
-  [flagNone ["dry-run"] (setboolopt "dry-run") "just show the files that would be created"]
+  [flagReq  ["layout"] (\s opts -> Right $ setopt "layout" s opts) "LAYOUT"
+     ("which file layout to write: " <> intercalate ", " (map lName layouts) <> " (default: " <> lName defaultLayout <> ")")
+  ,flagNone ["dry-run"] (setboolopt "dry-run") "just show the files that would be created"
+  ]
   [generalflagsgroup3]
   hiddenflags
   ([], Just $ argsFlag "[DIR|FILE.journal]")
@@ -53,15 +59,76 @@ data LayoutFile = LayoutFile
   , lfContent    :: ByteString
   }
 
--- | The simple layout's only file, which is written to a journal file path argument.
+-- | A set of files which can be written by init.
+data FileLayout = FileLayout
+  { lName            :: String
+  , lDescription     :: String
+  , lFiles           :: [LayoutFile]  -- ^ in the order they are reported
+  , lMainJournal     :: FilePath      -- ^ the journal to use day to day, relative to the layout's root
+  , lCombinedJournal :: Maybe FilePath  -- ^ a journal combining several main journals, if any
+  }
+
+-- | The built-in layouts.
+-- Their files are in embeddedfiles/file-layouts/LAYOUT/; keep these definitions synced with those
+-- (and with package.yaml's extra-source-files). The init functional tests compare the results with those directories.
+layouts :: [FileLayout]
+layouts = [simpleLayout, defaultLayout, yearsLayout]
+
+simpleLayout, defaultLayout, yearsLayout :: FileLayout
+simpleLayout = FileLayout "simple" "one journal file, with optional declarations commented out"
+  [simpleMainJournal] "main.journal" Nothing
+defaultLayout = FileLayout "default" "a main journal, declaration files, and directories for data, prices and rules"
+  defaultFiles "main.journal" Nothing
+yearsLayout = FileLayout "years" "like default, but with a journal for each year, and all.journal to combine them"
+  ([ LayoutFile "2026.journal" False $(embedFileRelativeBytes "embeddedfiles/file-layouts/years/2026.journal")
+   , LayoutFile "all.journal"  False $(embedFileRelativeBytes "embeddedfiles/file-layouts/years/all.journal")
+   ] ++ filter ((/= "main.journal") . lfPath) defaultFiles)
+  "2026.journal" (Just "all.journal")
+
+-- | Find a built-in layout by name.
+lookupLayout :: String -> Maybe FileLayout
+lookupLayout name = find ((== name) . lName) layouts
+
+-- | The year used in layout file names and content, which init replaces with the current year.
+layoutYear :: String
+layoutYear = "2026"
+
+-- | Adapt a layout to the given year: in files whose name contains 'layoutYear',
+-- replace it with this year, in their name and their content.
+layoutForYear :: Integer -> FileLayout -> FileLayout
+layoutForYear y l = l{lFiles = map forYear $ lFiles l, lMainJournal = forYearPath $ lMainJournal l}
+  where
+    year = show y
+    hasYear = (layoutYear `isInfixOf`) . takeFileName
+    forYearPath p = if hasYear p then replaceString layoutYear year p else p
+    forYear f
+      | hasYear (lfPath f) = f{lfPath = forYearPath $ lfPath f, lfContent = replaceBytes (B8.pack layoutYear) (B8.pack year) $ lfContent f}
+      | otherwise          = f
+
+-- | Replace all occurrences of a non-empty string (an empty one changes nothing).
+replaceString :: String -> String -> String -> String
+replaceString old new = go
+  where
+    go s | null old                       = s
+         | Just rest <- stripPrefix old s = new ++ go rest
+         | c:cs <- s                      = c : go cs
+         | otherwise                      = []
+
+-- | Replace all occurrences of a non-empty byte string (an empty one changes nothing).
+replaceBytes :: ByteString -> ByteString -> ByteString -> ByteString
+replaceBytes old new s
+  | B.null old = s
+  | otherwise  = case B.breakSubstring old s of
+      (before, rest) | B.null rest -> before
+                     | otherwise   -> before <> new <> replaceBytes old new (B.drop (B.length old) rest)
+
+-- | The simple layout's only file, which is also written to a journal file path argument.
 simpleMainJournal :: LayoutFile
 simpleMainJournal = LayoutFile "main.journal" False $(embedFileRelativeBytes "embeddedfiles/file-layouts/simple/main.journal")
 
--- | The default layout's files, in the order they are reported.
--- Keep synced with the files in embeddedfiles/file-layouts/default/ (and with package.yaml's extra-source-files);
--- the init functional tests compare the result with that directory.
-defaultLayout :: [LayoutFile]
-defaultLayout =
+-- | The default layout's files.
+defaultFiles :: [LayoutFile]
+defaultFiles =
   [ LayoutFile "main.journal"                                   False $(embedFileRelativeBytes "embeddedfiles/file-layouts/default/main.journal")
   , LayoutFile "accounts.journal"                               False $(embedFileRelativeBytes "embeddedfiles/file-layouts/default/accounts.journal")
   , LayoutFile "commodities.journal"                            False $(embedFileRelativeBytes "embeddedfiles/file-layouts/default/commodities.journal")
@@ -73,7 +140,7 @@ defaultLayout =
   , LayoutFile ("rules" </> "bankofireland-checking.csv.rules") False $(embedFileRelativeBytes "embeddedfiles/file-layouts/default/rules/bankofireland-checking.csv.rules")
   ]
 
--- | Where to write: a directory (gets the default layout) or a journal file path (gets the simple layout's main journal).
+-- | Where to write: a directory (gets a whole layout) or a journal file path (gets the simple layout's main journal).
 data InitTarget = InitDir FilePath | InitFile FilePath
   deriving (Eq, Show)
 
@@ -95,8 +162,12 @@ initcmd CliOpts{rawopts_=rawopts} _ = do
       isdir <- doesDirectoryExist arg
       either usageError return $ classifyInitArg isdir arg
     _     -> usageError "init takes at most one argument, a directory or a journal file path."
+  mlayout <- forM (maybestringopt "layout" rawopts) $ \name ->
+    maybe (usageError $ unknownLayoutMsg name) return $ lookupLayout name
+  (y, _, _) <- toGregorian <$> getCurrentDay
+  flayout <- either usageError (return . layoutForYear y) $ chooseLayout mlayout target
   let
-    dests = destinations target
+    dests = destinations flayout target
     paths = nubOrd $ map fst dests ++ concatMap (ancestors . fst) dests
   states <- M.fromList <$> mapM (\p -> (p,) <$> pathState p) paths
   actions <- either error' return $ planInit (\p -> M.findWithDefault Absent p states) dests
@@ -107,9 +178,27 @@ initcmd CliOpts{rawopts_=rawopts} _ = do
     Skip p
       | dryRun    -> putStrLn $ "would skip " <> p <> " (exists)"
       | otherwise -> warnIO $ "skipped " <> p <> ", it already exists"
-  unless dryRun $ showNextSteps $ case target of
-    InitFile f -> f
-    InitDir d  -> normalise $ d </> "main.journal"
+  unless dryRun $ case target of
+    InitFile f -> showNextSteps f Nothing
+    InitDir d  -> showNextSteps (normalise $ d </> lMainJournal flayout) ((normalise . (d </>)) <$> lCombinedJournal flayout)
+
+-- | A usage error message for an unknown layout name, listing the layouts.
+unknownLayoutMsg :: String -> String
+unknownLayoutMsg name = unlines $
+  ("There is no " <> show name <> " layout. The layouts are:")
+  : ["  " <> lName l <> replicate (width - length (lName l)) ' ' <> "  " <> lDescription l | l <- layouts]
+  where width = maximumDef 0 $ map (length . lName) layouts
+
+-- | Choose the layout to write, given the --layout option's layout if any, and the target.
+-- A journal file target can only have the simple layout.
+chooseLayout :: Maybe FileLayout -> InitTarget -> Either String FileLayout
+chooseLayout mlayout target = case (target, mlayout) of
+  (InitDir _,  Nothing) -> Right defaultLayout
+  (InitDir _,  Just l)  -> Right l
+  (InitFile _, Nothing) -> Right simpleLayout
+  (InitFile f, Just l)
+    | lName l == lName simpleLayout -> Right l
+    | otherwise -> Left $ "The " <> lName l <> " layout needs a directory, not a journal file (" <> show f <> ")."
 
 -- | Decide what kind of path the command argument is, given whether it is an existing directory.
 -- A path ending with a path separator is a directory; a path with a journal file extension is a journal file;
@@ -130,9 +219,10 @@ classifyInitArg isdir arg
     extensions = intercalate ", " $ map ('.':) journalExtensions
 
 -- | The files to write, at their destination paths.
-destinations :: InitTarget -> [(FilePath, LayoutFile)]
-destinations (InitFile f) = [(normalise f, simpleMainJournal)]
-destinations (InitDir d)  = [(normalise $ d </> lfPath f, f) | f <- defaultLayout]
+-- A journal file target gets the layout's main journal content.
+destinations :: FileLayout -> InitTarget -> [(FilePath, LayoutFile)]
+destinations l (InitFile f) = [(normalise f, mf) | mf <- take 1 $ filter ((== lMainJournal l) . lfPath) $ lFiles l]
+destinations l (InitDir d)  = [(normalise $ d </> lfPath f, f) | f <- lFiles l]
 
 -- | All the directories above a path, nearest first, as far as the path reaches
 -- (eg "a/b/c" -> ["a/b", "a", "."], "/a/b" -> ["/a", "/"]).
@@ -168,10 +258,10 @@ writeLayoutFile p f = do
   B.writeFile p $ lfContent f
   when (lfExecutable f) $ getPermissions p >>= setPermissions p . setOwnerExecutable True
 
--- | Suggest some next steps for using this main journal file.
--- The commands use -f unless LEDGER_FILE already selects it.
-showNextSteps :: FilePath -> IO ()
-showNextSteps mainj = do
+-- | Suggest some next steps for using this main journal file, and the combining journal if any.
+-- The commands use -f unless LEDGER_FILE already selects the main journal.
+showNextSteps :: FilePath -> Maybe FilePath -> IO ()
+showNextSteps mainj mcombinedj = do
   absj <- makeAbsolute mainj
   isdefault <- defaultJournalPathSafely >>= \case
     Left _  -> return False
@@ -184,7 +274,9 @@ showNextSteps mainj = do
       , ("hledger" <> fopt <> " bs",    "show a balance sheet")
       , ("hledger" <> fopt <> " is",    "show an income statement")
       , ("hledger" <> fopt <> " add",   "add transactions")
-      , ("hledger setup",               "check/show more details about your hledger installation")
+      ] ++
+      [ ("hledger -f " <> shellQuoteIfNeeded cj <> " bs", "show a balance sheet using all years' journals") | cj <- maybeToList mcombinedj ] ++
+      [ ("hledger setup",               "check/show more details about your hledger installation")
       ]
     width = maximumDef 0 $ map (length . fst) commands
   putStr $ unlines $
@@ -209,8 +301,29 @@ tests_Init = testGroup "Init" [
   ,testCase "ancestors" $ do
     ancestors ("a" </> "b" </> "c") @?= ["a" </> "b", "a", "."]
     ancestors "c"                   @?= ["."]
+  ,testCase "chooseLayout" $ do
+    fmap lName (chooseLayout Nothing (InitDir "d"))                  @?= Right "default"
+    fmap lName (chooseLayout (Just yearsLayout) (InitDir "d"))       @?= Right "years"
+    fmap lName (chooseLayout Nothing (InitFile "f.journal"))         @?= Right "simple"
+    fmap lName (chooseLayout (Just simpleLayout) (InitFile "f.journal")) @?= Right "simple"
+    either (const True) (const False) (chooseLayout (Just yearsLayout) (InitFile "f.journal")) @?= True
+    fmap lName (lookupLayout "years") @?= Just "years"
+    fmap lName (lookupLayout "nosuch") @?= Nothing
+  ,testCase "layoutForYear" $ do
+    let l = layoutForYear 2031 yearsLayout
+        yearfile = find ((== "2031.journal") . lfPath) (lFiles l)
+    lMainJournal l @?= "2031.journal"
+    map lfPath (take 2 $ lFiles l) @?= ["2031.journal", "all.journal"]
+    fmap (B.isInfixOf "2026" . lfContent) yearfile @?= Just False
+    fmap (B.isInfixOf "2031-01-01" . lfContent) yearfile @?= Just True
+    map lfContent (drop 1 $ lFiles l) @?= map lfContent (drop 1 $ lFiles yearsLayout)
+  ,testCase "replaceString, replaceBytes" $ do
+    replaceString "26" "31" "a26b26" @?= "a31b31"
+    replaceString "" "x" "ab"        @?= "ab"
+    replaceBytes "26" "31" "a26b26"  @?= "a31b31"
+    replaceBytes "" "x" "ab"         @?= "ab"
   ,testCase "planInit" $ do
-    let dests = destinations (InitDir "d")
+    let dests = destinations defaultLayout (InitDir "d")
         names = map (\case Create p _ -> "create " <> p; Skip p -> "skip " <> p)
     fmap (take 2 . names) (planInit (\p -> if p == "d" </> "main.journal" then IsOther else Absent) dests)
       @?= Right ["skip " <> ("d" </> "main.journal"), "create " <> ("d" </> "accounts.journal")]

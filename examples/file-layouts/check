@@ -2,4 +2,6 @@
 set -e
 hledger -f simple/main.journal check
 hledger -f default/main.journal check -s
+hledger -f years/2026.journal check -s
+hledger -f years/all.journal check -s
 hledger -f year-dirs/all.journal check -s

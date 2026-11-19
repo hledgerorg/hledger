@@ -207,3 +207,111 @@ Deviations from the plan above:
   - `stack sdist` includes the real file contents, with executable bits.
 - The existing per-file symlinks in hledger/embeddedfiles (tldr pages, manuals) are probably embedded as their
   target path text in Windows builds. Not checked.
+
+## --layout and the years layout (planned and implemented 2026-11-19)
+
+Implemented as planned, except: the layout type is `FileLayout` (Hledger exports a `Layout`);
+the years layout's next steps add a `hledger -f all.journal bs` line to the command list;
+the year journal is listed first. Init.txt was not regenerated (the maintainer does that).
+
+```
+hledger init [DIR | FILE.journal] [--layout simple|default|years] [--dry-run]
+```
+
+`--layout LAYOUT` selects one of the built-in layouts by name. A third layout, `years`, is added.
+year-dirs stays in examples/file-layouts only, not built in (it needs symlinks in the written files;
+embed it later under its current name if wanted). `--git`/`--jj` are a separate later step.
+
+### Behaviour
+
+| Argument        | --layout        | Result                                                     |
+|-----------------|-----------------|------------------------------------------------------------|
+| none or DIR     | none            | default layout in the directory (as now)                    |
+| none or DIR     | simple          | DIR/main.journal                                           |
+| none or DIR     | default, years  | that layout in the directory                               |
+| FILE.journal    | none or simple  | simple's main.journal content at that path (as now)        |
+| FILE.journal    | default, years  | usage error: a journal file argument can only be used with the simple layout |
+
+- An unknown layout name is a usage error which lists the layout names, each with a one-line description.
+- Everything else (skipping existing files, pre-checks, `--dry-run`, output) is unchanged.
+
+### The years layout
+
+One journal file per year in a single directory, sharing declarations and the data/prices/rules directories:
+
+```
+all.journal            include 2*.journal
+2026.journal           this year's journal (named for the current year when written)
+accounts.journal       \
+commodities.journal     } same as the default layout's
+payees.journal         /
+data/ prices/ rules/   same as the default layout's
+```
+
+- `YEAR.journal` is like default's main.journal: it includes the three declaration files, then has
+  opening balances (with a `clopen:YEAR` tag, as in year-dirs) and the sample transactions.
+  So each year file passes `check -s` on its own.
+- `all.journal` includes every year file. The declaration files are then included once per year file;
+  this is fine (confirmed by the maintainer).
+- Comments in the files explain: use the year file day to day, all.journal for multi-year reports,
+  and start a new year by adding a new year file (eg with `close`).
+- The year: the repo file is literally `2026.journal` with 2026 dates, so it stays checkable.
+  When writing a layout file whose name contains `2026`, init replaces `2026` with the current year
+  in its name and its content. No other file is changed (the sample CSV keeps its 2026 dates), and there is no other templating.
+- Next steps point at `YEAR.journal` as the journal to use and to set LEDGER_FILE to, and add one line
+  mentioning `all.journal` for reports across years.
+- Running `init --layout years` again in a later year adds that year's file and skips the rest.
+
+### Files in the repo
+
+- `hledger/embeddedfiles/file-layouts/years/` holds only two real files, `2026.journal` and `all.journal`.
+  Everything else there is a symlink to the default layout's file or directory
+  (`accounts.journal -> ../default/accounts.journal`, `data -> ../default/data`, etc.), so nothing is duplicated
+  and the directory is a complete, checkable layout on unix.
+- `examples/file-layouts/years` is a symlink to it, like simple and default (add with `git add -f`; /examples is gitignored).
+- Only the two real files are embedded and listed in package.yaml's extra-source-files; builds don't depend on the symlinks.
+- examples/file-layouts/README.md: describe `years`, say which layouts are built in, and that year-dirs is not.
+- examples/file-layouts/check: add `hledger -f years/all.journal check -s` and `hledger -f years/2026.journal check -s`.
+
+### Implementation
+
+In hledger/Hledger/Cli/Commands/Init.hs:
+
+- A table of layouts: name, one-line description, files, and main journal path, eg
+
+  ```haskell
+  data Layout = Layout
+    { lName        :: String
+    , lDescription :: String
+    , lFiles       :: [LayoutFile]
+    , lMainJournal :: FilePath   -- relative to the layout's root; the one suggested in next steps
+    }
+  layouts :: [Layout]   -- simple, default, years
+  ```
+
+  `yearsLayout`'s files are all.journal and 2026.journal (embedded), followed by `defaultLayout`'s files
+  except main.journal, reusing the same embedded content. Look layouts up by name with a total function.
+- Year substitution: a pure function `forYear :: Year -> LayoutFile -> LayoutFile`, replacing "2026" in the path and
+  content of files whose file name contains "2026", applied to the chosen layout's files and main journal path
+  before planning. Get the year from `getCurrentDay`. Content is a ByteString; replace without assuming more than ASCII digits.
+- `--layout`: `flagReq ["layout"] ... "LAYOUT" "which built-in layout to write: simple, default (the default) or years"`.
+- Extend the target/argument logic per the table above; keep `classifyInitArg` pure and add the layout to its tests.
+- Next steps: take the main journal from the layout; for years, add the all.journal line.
+- No partial functions; build warning-free.
+
+Docs: Init.md (the flag, the three layouts with their descriptions, a years example). Do not run `./Shake cmddocs`;
+the maintainer regenerates Init.txt.
+
+### Tests
+
+Add to hledger/test/init.test (sequential numbers):
+
+- `--layout years DIR`: Y=$(date +%Y); `$Y.journal` equals the repo's `2026.journal` with 2026 replaced by $Y (via sed);
+  the other files are identical to the repo's years directory (`diff -r`, excluding the year file);
+  `check -s` passes on both `$Y.journal` and `all.journal`.
+- `--layout simple DIR` writes only DIR/main.journal, identical to simple's.
+- `--layout default` is the same as no flag.
+- `FILE.journal --layout years`: usage error. `--layout nosuch`: usage error listing the layouts.
+- Re-running `--layout years`: all skipped.
+
+Unit tests: `forYear` (name and content replaced; files without 2026 in the name untouched), layout lookup.

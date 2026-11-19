@@ -1,0 +1,5 @@
+; All years' journals, for reports across several years.
+; For day to day use, use this year's journal.
+; Syntax: https://hledger.org/hledger.html#journal
+
+include 2*.journal

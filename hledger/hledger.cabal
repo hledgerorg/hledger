@@ -64,6 +64,8 @@ extra-source-files:
     embeddedfiles/file-layouts/default/data/archive/README.md
     embeddedfiles/file-layouts/default/prices/getprices
     embeddedfiles/file-layouts/default/rules/bankofireland-checking.csv.rules
+    embeddedfiles/file-layouts/years/2026.journal
+    embeddedfiles/file-layouts/years/all.journal
     Hledger/Cli/Commands/Accounts.txt
     Hledger/Cli/Commands/Activity.txt
     Hledger/Cli/Commands/Add.txt

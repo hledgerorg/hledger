@@ -21,8 +21,9 @@ created rules/bankofireland-checking.csv.rules
 Next steps:
   hledger check  # check the journal
   hledger bs     # show a balance sheet
+  hledger is     # show an income statement
   hledger add    # add transactions
-  hledger setup  # check your hledger installation
+  hledger setup  # check/show more details about your hledger installation
 
 # ** 3. Existing files are skipped with a warning and left unchanged; missing files are created.
 $ sh -c 'D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-init.XXXXXX"); cd "$D"; mkdir rules; echo mine > main.journal; echo mine > rules/bankofireland-checking.csv.rules; hledger -n init --dry-run; hledger -n init 2>&1 >/dev/null; echo "exit $?"; cat main.journal rules/bankofireland-checking.csv.rules; test -f payees.journal && echo ok; rm -rf "$D"'
@@ -70,3 +71,34 @@ $ sh -c 'D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-init.XXXXXX"); cd "$D"; touch da
 exit 1
 data
 >2 /"data" needs to be a directory/
+
+# ** 10. --layout years writes the years layout, with the year journal named for the current year,
+# and journals that pass strict checks.
+$ sh -c 'E=$(pwd)/../../examples/file-layouts; Y=$(date +%Y); D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-init.XXXXXX"); cd "$D"; hledger -n init --layout years fin >/dev/null; sed "s/2026/$Y/g" "$E/years/2026.journal" | diff - "fin/$Y.journal" && diff -r -x 2026.journal -x "$Y.journal" fin "$E/years" && hledger -n -f "fin/$Y.journal" check -s && hledger -n -f fin/all.journal check -s && echo ok; rm -rf "$D"'
+ok
+
+# ** 11. Running it again skips all the files.
+$ sh -c 'D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-init.XXXXXX"); cd "$D"; hledger -n init --layout years >/dev/null; hledger -n init --layout years 2>&1 >/dev/null | grep -c skipped; rm -rf "$D"'
+10
+
+# ** 12. --layout simple DIR writes just DIR/main.journal.
+$ sh -c 'E=$(pwd)/../../examples/file-layouts; D=$(mktemp -d "${TMPDIR:-/tmp}/hledger-init.XXXXXX"); cd "$D"; hledger -n init --layout simple fin >/dev/null; ls fin; diff fin/main.journal "$E/simple/main.journal" && echo ok; rm -rf "$D"'
+main.journal
+ok
+
+# ** 13. --layout default is the same as no --layout.
+$ sh -c '[ "$(hledger -n init --dry-run --layout default fin)" = "$(hledger -n init --dry-run fin)" ] && echo ok'
+ok
+
+# ** 14. A journal file argument can only be used with the simple layout.
+$ hledger -n init --layout years x.journal
+>2 /The years layout needs a directory/
+>= 1
+
+# ** 15. An unknown layout name is an error, which lists the layouts.
+$ hledger -n init --layout nosuch
+>2 /There is no "nosuch" layout. The layouts are:
+  simple .*
+  default .*
+  years .*/
+>= 1
