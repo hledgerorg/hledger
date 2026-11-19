@@ -13,6 +13,10 @@ With no argument, or a directory argument, `init` writes a set of files in that 
 (the current directory by default), creating it if needed.
 Which files depends on the layout chosen with `--layout`:
 
+**simple**:
+
+- `main.journal` - just one file, with optional declarations commented out.
+
 **default** (the default):
 
 - `main.journal` - the main journal file, with a few example transactions
@@ -22,17 +26,15 @@ Which files depends on the layout chosen with `--layout`:
 - `rules/` - CSV rules files go here
 - an example CSV file and rules file
 
-**simple**:
-
-- `main.journal` - just one file, with optional declarations commented out.
-
 **years**:
 
-Like default, but with a journal file for each year, which is good when you have a lot of data.
+Like default, but each year has its own journal file.
+This complicates things a little, but gives you a choice of loading all years or one year at a time (see [close](#close)).
+It is worthwhile when you have enough data that a single file becomes slow on your machine.
 
 - `YEAR.journal` (eg `2026.journal`) - this year's journal, for day to day use, with a few example transactions.
   It includes the declaration files.
-- `all.journal` - includes all the year journals, for reports across several years
+- `all.journal` - includes all the year journals, for multi-year reports
 - the same declaration files, directories and examples as default
 
 The year journal is named for the current year.
@@ -40,7 +42,7 @@ In a later year, you can run `hledger init --layout years` again to add that yea
 (then replace its example transactions with that year's opening balances, eg from [close](#close)).
 
 With a journal file argument (a path ending with `.journal`, `.j`, `.hledger` or `.ledger`),
-you'll get a more minimal setup - just that one file, with the simple layout's content.
+you'll get the simple layout, written to that file.
 
 Files that already exist are never changed; they are skipped, with a warning.
 So you can run `init` again to add missing files.
