@@ -2678,7 +2678,7 @@ in another commodity. See [Value reporting](#value-reporting).
 
 `payee PAYEE NAME`
 
-This directive can be used to declare a limited set of payees which may appear in [transaction descriptions](#descriptions).
+This directive can be used to declare a limited set of payees which may appear in [transaction descriptions](#description-1).
 The ["payees" check](#check) will report an error if any transaction refers to a payee that has not been declared.
 (This is quite a strict check, and not often used.)
 
