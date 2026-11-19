@@ -11,16 +11,22 @@ Flags:
 
 With no argument, or a directory argument, `init` writes a set of files in that directory
 (the current directory by default), creating it if needed.
-Which files depends on the layout chosen with `--layout`:
+Which files depends on the layout chosen with `--layout`.
+Note, these are just to help you get started; you can always change the file layout to suit your needs.
 
 **simple**:
 
-- `main.journal` - just one file, with optional declarations commented out.
+Just one file. Good if you want simplicity and manual data entry.
+
+- `main.journal` - the journal file, with optional declarations
 
 **default** (the default):
 
+Declarations are kept separate; subdirectories and starter scripts for data-fetching are provided.
+This is a good maintainable layout that hledger commands understand well.
+
 - `main.journal` - the main journal file, with a few example transactions
-- `accounts.journal`, `commodities.journal`, `payees.journal` - declarations, included by main.journal
+- `accounts.journal`, `commodities.journal`, `payees.journal` - declarations
 - `data/` - downloaded CSV files go here, with `data/getdata`, a starter script for [get](#get)
 - `prices/` - market prices go here, with `prices/getprices`, a starter script for [get](#get)
 - `rules/` - CSV rules files go here
@@ -31,11 +37,10 @@ Which files depends on the layout chosen with `--layout`:
 Like default, but each year has its own journal file.
 This gives you a choice of loading all years or one year at a time (see [close](#close)).
 It makes life a little more complicated, but
-it is worthwhile when you have enough data that a single file becomes slow on your machine,
+it is worthwhile if you have enough data that a single file becomes slow on your machine;
 or if you want to compartmentalise the data for other reasons.
 
-- `YEAR.journal` (eg `2026.journal`) - this year's journal, for day to day use, with a few example transactions.
-  It includes the declaration files.
+- `YEAR.journal` (eg `2026.journal`) - this year's journal, with a few example transactions.
 - `all.journal` - includes all the year journals, for multi-year reports
 - the same declaration files, directories and examples as default
 
