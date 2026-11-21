@@ -48,6 +48,7 @@ import Data.Ord (Down(..), comparing)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
 import Data.Time.Calendar (Day, addDays, diffDays)
+import System.Console.ANSI (Color(..), ColorIntensity(..))
 import System.Console.CmdArgs.Explicit (flagNone, flagReq)
 import Safe (headMay)
 import Text.Printf (printf)
@@ -1416,10 +1417,10 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     allpcolheadings = [tr "Units", tr "Avg cost", tr "Unit price", tr "Total cost", tr "Total value", tr "UGain", tr "UGain%", tr "RGain", tr "XIRR"]
     pcolshown = replicate 3 showunits ++ replicate 6 True
     -- a period's cells: those of the totals row's cells which make sense over time, and its unit price
-    periodcells (styles, tot) = [ps | (ps, shown) <- zip (take 2 cells ++ [price] ++ drop 2 cells) pcolshown, shown]
+    periodcells c (styles, tot) = [ps | (ps, shown) <- zip (take 2 cells ++ [price] ++ drop 2 cells) pcolshown, shown]
       where
-        cells = [ps | (i, ps) <- zip [0 :: Int ..] (totalsCellParts styles tot), i `elem` [2, 3, 5, 6, 8, 9, 10, 11]]
-        price = maybe [] ((:[]) . T.pack . showAmountWith noCostFmt) (htPrice tot)
+        cells = [ps | (i, ps) <- zip [0 :: Int ..] (totalsCellParts c styles tot), i `elem` [2, 3, 5, 6, 8, 9, 10, 11]]
+        price = maybe [] ((:[]) . showAmountB noCostFmt) (htPrice tot)
     -- for the html and fods tables: whether each shown column is an amount, and its class
     pcolinfo = [ci | (ci, shown) <- zip [(True,"units"),(True,"unitcost"),(True,"unitprice"),(True,"totalcost"),(True,"totalvalue"),(True,"ugain"),(False,"ugainpct"),(True,"rgain"),(False,"xirr")] pcolshown, shown]
     ptxtoutput =
@@ -1429,10 +1430,10 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
       <>
       if null ptotals
       then TL.fromStrict (tr "(no holdings)") <> "\n"
-      else renderTable def{tableBorders=False} (textCell TopLeft) (textCell TopRight) (textCell TopRight) $ Table
+      else renderTable def{tableBorders=False} (textCell TopLeft) (textCell TopRight) (Cell TopRight . pure) $ Table
         (Group NoLine [Header $ showDate d | (d, _) <- ptotals])
         (Group NoLine $ map Header pcolheadings)
-        [map (T.intercalate ", ") $ periodcells st | (_, st) <- ptotals]
+        [map joinParts $ periodcells (color_ ropts) st | (_, st) <- ptotals]
     pcsvoutput :: CSV
     pcsvoutput = ["date","units","avgcost","unitprice","totalcost","totalvalue","ugain","ugainpct","rgain","xirr"] : map (uncurry periodTotalsCsv) ptotals
     -- spreadsheet-shaped tables for the html and fods output, like the text table
@@ -1441,7 +1442,7 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
       addHeaderBorders [plain <$> (headerCell t){Ods.cellClass = Ods.Class cls} | (t, cls) <- zip (tr "Date" : pcolheadings) ("date" : map snd pcolinfo)]
       : [ (Ods.defaultCell (plain $ showDate d)){Ods.cellType = Ods.TypeString, Ods.cellClass = Ods.Class "date"}
           : [ (Ods.defaultCell (parts isamount ps)){Ods.cellType = Ods.TypeMixedAmount, Ods.cellClass = Ods.Class cls}
-            | ((isamount, cls), ps) <- zip pcolinfo (periodcells st) ]
+            | ((isamount, cls), ps) <- zip pcolinfo (textParts $ periodcells False st) ]
         | (d, st) <- ptotals ]
     phtmltable = pspreadsheetWith toHtml htmlParts
     pfodstable = pspreadsheetWith id (\_ -> T.intercalate ", " . filter (not . T.null))
@@ -1462,13 +1463,13 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
         def{tableBorders=False}
         (textCell TopLeft)
         (textCell TopRight)
-        (textCell TopRight)
+        (Cell TopRight . pure)
         tbl
 
-    tbl = maybe id addtotalrow (map (T.intercalate ", ") <$> mtotalrowparts) $ Table
+    tbl = maybe id addtotalrow (map joinParts <$> mtotalrowparts (color_ ropts)) $ Table
       (Group NoLine $ map (Header . lineacct) displaylines)
       (Group NoLine $ map Header colheadings)
-      (map (map (T.intercalate ", ") . linecells) displaylines)
+      (map (map joinParts . linecells (color_ ropts)) displaylines)
       where
         addtotalrow totalrow tbl' = concatTables SingleLine tbl' $
           Table (Group NoLine [Header ""]) (Header []) [totalrow]
@@ -1484,10 +1485,26 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
           T.replicate (hlIndent l * 2) " " <> hlDisplay l
       | otherwise = accountNameDrop (drop_ ropts) (hlAccount l)
 
-    -- A display line's data cells, each as a list of parts.
-    linecells :: HoldingsLine -> [[T.Text]]
-    linecells HoldingsHeading{hlTotals}   = totalsCellParts (hrStyles rpt) hlTotals
-    linecells HoldingsPosition{hlHolding} = holdingCellParts hlHolding
+    -- A display line's data cells, each as a list of parts,
+    -- with gains and losses coloured if the flag is true (see gainColour).
+    linecells :: Bool -> HoldingsLine -> [[WideBuilder]]
+    linecells c HoldingsHeading{hlTotals}   = totalsCellParts c (hrStyles rpt) hlTotals
+    linecells c HoldingsPosition{hlHolding} = holdingCellParts c hlHolding
+
+    -- A text table cell from its parts, comma-separated.
+    joinParts :: [WideBuilder] -> WideBuilder
+    joinParts = mconcat . intersperse (wbFromText ", ")
+    -- Cells' parts as plain text, for the html and fods tables.
+    textParts :: [[WideBuilder]] -> [[T.Text]]
+    textParts = map (map wbToText)
+
+    -- Colour a gain (or the like, eg an XIRR) green if positive and a loss red, if the flag is true.
+    -- Colouring a WideBuilder keeps its width, so text tables stay aligned.
+    gainColour :: Bool -> Quantity -> WideBuilder -> WideBuilder
+    gainColour c q
+      | c && q > 0 = colorB Dull Green
+      | c && q < 0 = colorB Dull Red
+      | otherwise  = id
 
     showpct = showPercentWith (hrStyles rpt)
     -- Show an XIRR percentage, like showpct: eg 12.3%.
@@ -1497,29 +1514,30 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     -- A holding's cells, each as a list of parts: possibly several in Cost
     -- and RGain (when cost commodities are mixed), at most one elsewhere.
     -- Units show a commodity symbol even when zero (for rgain-only rows).
-    holdingCellParts :: Holding -> [[T.Text]]
-    holdingCellParts h =
-      [ [maybe "" showDate (hDate h)]
-      , [maybe "" showage (hAge h)]
-      , [T.pack $ showAmountWith noCostFmt{displayZeroCommodity=True} (hUnits h)]
-      , [maybe "" showamt (hUnitCost h)]
+    holdingCellParts :: Bool -> Holding -> [[WideBuilder]]
+    holdingCellParts c h =
+      [ [wbFromText $ maybe "" showDate (hDate h)]
+      , [wbFromText $ maybe "" showage (hAge h)]
+      , [showamtz (hUnits h)]
+      , [maybe mempty showamt (hUnitCost h)]
       , map showamt $ hPrice h
       , map showamtz $ hCost h
       , map showamtz $ hValue h
-      , [maybe "" showpct (hWeight h)]
-      , map showamtz $ hUgain h
-      , [maybe "" showpct (hUgainPct h)]
-      , map showamt $ hRgain h
-      , [maybe "" showxirr (hXirr h)]
+      , [wbFromText $ maybe "" showpct (hWeight h)]
+      , map (gainamt showamtz) $ hUgain h
+      , [maybe mempty (\p -> gainColour c p $ wbFromText $ showpct p) (hUgainPct h)]
+      , map (gainamt showamt) $ hRgain h
+      , [maybe mempty (\x -> gainColour c (realToFrac x) $ wbFromText $ showxirr x) (hXirr h)]
       ]
       where
-        showamt  = T.pack . showAmountWith noCostFmt
-        showamtz = T.pack . showAmountWith noCostFmt{displayZeroCommodity=True}
+        showamt  = showAmountB noCostFmt
+        showamtz = showAmountB noCostFmt{displayZeroCommodity=True}
+        gainamt sh a = gainColour c (aquantity a) (sh a)
 
     -- A totals row's cells (the grand total, or an account heading row
     -- in tree mode), each as a list of parts like holdingCellParts.
-    totalsCellParts :: M.Map CommoditySymbol AmountStyle -> HoldingsTotals -> [[T.Text]]
-    totalsCellParts styles tot =
+    totalsCellParts :: Bool -> M.Map CommoditySymbol AmountStyle -> HoldingsTotals -> [[WideBuilder]]
+    totalsCellParts c styles tot =
       [ []
       , []
       , maybe [] ((:[]) . showamt) (htUnits tot)
@@ -1527,22 +1545,23 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
       , []
       , map showamt (htCost tot)
       , maybe [] (map showamt) (htValue tot)
-      , [maybe "" pct (htWeight tot)]
-      , maybe [] (map showamtz) (htUgain tot)
-      , [maybe "" pct (htUgainPct tot)]
-      , map showamt (htRgain tot)
-      , [maybe "" (pct . realToFrac) (htXirr tot)]
+      , [wbFromText $ maybe "" pct (htWeight tot)]
+      , maybe [] (map (gainamt showamtz)) (htUgain tot)
+      , [maybe mempty (\p -> gainColour c p $ wbFromText $ pct p) (htUgainPct tot)]
+      , map (gainamt showamt) (htRgain tot)
+      , [maybe mempty (\x -> gainColour c (realToFrac x) $ wbFromText $ pct $ realToFrac x) (htXirr tot)]
       ]
       where
         pct = showPercentWith styles
-        showamt  = T.pack . showAmountWith noCostFmt
-        showamtz = T.pack . showAmountWith noCostFmt{displayZeroCommodity=True}
+        showamt  = showAmountB noCostFmt
+        showamtz = showAmountB noCostFmt{displayZeroCommodity=True}
+        gainamt sh a = gainColour c (aquantity a) (sh a)
 
-    -- The grand totals row as cell parts, unless --no-total is in effect.
-    mtotalrowparts :: Maybe [[T.Text]]
-    mtotalrowparts
+    -- The grand totals row as cell parts (coloured if the flag is true), unless --no-total is in effect.
+    mtotalrowparts :: Bool -> Maybe [[WideBuilder]]
+    mtotalrowparts c
       | no_total_ ropts = Nothing
-      | otherwise = Just $ totalsCellParts (hrStyles rpt) $ hrTotals rpt
+      | otherwise = Just $ totalsCellParts c (hrStyles rpt) $ hrTotals rpt
 
     -- Spreadsheet-shaped tables for the html and fods output: like the
     -- text table, but with single-line cells, an Account column heading,
@@ -1553,12 +1572,12 @@ holdings opts@CliOpts{rawopts_=rawopts, reportspec_=rspec@ReportSpec{_rsReportOp
     spreadsheetWith plain parts =
       addHeaderBorders (zipWith hcell colclasses (tr "Account" : colheadings))
       : [ zipWith3 bodycell [0..] (lineclasses l)
-            (plain (acctcell l) : zipWith parts amountcols (linecells l))
+            (plain (acctcell l) : zipWith parts amountcols (textParts $ linecells False l))
         | l <- displaylines ]
       ++ maybe [] (\tot -> addTotalBorders
            [zipWith3 totalcell [0..] colclasses
-              (plain (tr "Total:") : zipWith parts amountcols tot) :: [Ods.Cell () content]])
-           mtotalrowparts
+              (plain (tr "Total:") : zipWith parts amountcols (textParts tot)) :: [Ods.Cell () content]])
+           (mtotalrowparts False)
       where
         -- per-column css classes, so the html cells can be styled
         colclasses = ["account","date","age","units","unitcost","unitprice","totalcost","totalvalue","weight","ugain","ugainpct","rgain","xirr"]

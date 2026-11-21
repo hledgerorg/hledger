@@ -114,6 +114,7 @@ column is left blank for holdings whose cashflows are in a different commodity.
 Amounts are displayed with their commodity's display precision.
 `--round` can select another rounding strategy.
 The percent columns (Weight, UGain%, XIRR) are shown with the display style configured for the `%` commodity (eg by `-c '0.00 %'`).
+With [colour](#colour) enabled, the gain columns (UGain, UGain%, RGain, XIRR) show gains in green and losses in red.
 
 Query arguments and report flags like `--depth`, `-S/--sort-amount`, `--title` etc. work as usual.
 [`balance:` and `change:`](#balance-and-change-queries) query terms test each line (one commodity in one account).

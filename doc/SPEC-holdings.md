@@ -145,6 +145,12 @@ Notes:
   (eg by a commodity directive or `-c '0.00 %'`), so their precision and
   symbol placement can be customised. The csv/tsv/json outputs keep
   bare percent numbers.
+- With colour, the text tables (single and multi-period) show the gain
+  columns (UGain, UGain%, RGain, XIRR) green when positive and red when
+  negative, in the body and totals rows. Cells are built as WideBuilders
+  coloured with colorB, which keeps their width, so columns stay aligned;
+  the html and fods tables are built uncoloured. Other columns are not
+  coloured (not even negative amounts, eg a short position's).
 - The totals row (shown unless -N) shows the commodity-independent
   columns: Total cost, Total value, Weight (100%), UGain, UGain%, RGain, XIRR;
   and, when the holdings are all in one commodity, the total Units
