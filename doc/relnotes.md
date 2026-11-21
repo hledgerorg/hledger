@@ -89,7 +89,7 @@ and be patient while we navigate this period. In summary:
   [fixes](https://hledger.org/relnotes.html#hledger-web-1523) backported from 2.x
   (Level 2-4)
 
-- hledger 2 uses careful AI-assisted development (Level 5).
+- hledger 2 uses careful AI-assisted development (Level 5-6).
   As a result, it has become more secure, more correct, better tested, better documented,
   and much faster.
 
