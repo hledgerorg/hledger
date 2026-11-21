@@ -49,7 +49,7 @@ USD
 █ Cost  ▒ Unrealised gain  ╱ Unrealised loss  ▓ No market price
 ┃ Value
 
-assets:broker AAPL  2,500.00 USD  +66.7%  █████████████████▒▒▒▒▒▒▒▒▒▒┃
+assets:broker AAPL  2,500.00 USD  +66.7%  █████████████████▒▒▒▒▒▒▒▒▒▒▒
 assets:broker NEW                         ▓
 assets:broker XYZ     450.00 USD  -40.0%  ████┃╱╱╱
 
@@ -65,7 +65,7 @@ Holdings on 2024-12-31
 USD
 █ Cost  ▒ Unrealised gain  ╱ Unrealised loss  ▓ No market price  ┃ Value
 
-assets:broker AAPL {2024-01-10, 15..  2,500.00 USD  +66.7%  ██████████████████████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒┃
+assets:broker AAPL {2024-01-10, 15..  2,500.00 USD  +66.7%  ██████████████████████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 assets:broker XYZ {2024-02-10, 50...    450.00 USD  -40.0%  ████████┃╱╱╱╱╱╱
 assets:broker NEW {2024-03-10, 20...                        ▓▓
 
@@ -129,6 +129,6 @@ Holdings at period ends, 2026-01-31..2026-03-31
 
 █ Cost  ▒ Unrealised gain  ╱ Unrealised loss  ┃ Value
 
-2026-01-31  $120  +20.0%  ████████████████████████████▒▒▒▒▒┃
-2026-02-28   $90  +50.0%  █████████████████▒▒▒▒▒▒▒▒┃
+2026-01-31  $120  +20.0%  ████████████████████████████▒▒▒▒▒▒
+2026-02-28   $90  +50.0%  █████████████████▒▒▒▒▒▒▒▒▒
 2026-03-31   $54  -10.0%  ██████████████┃╱╱

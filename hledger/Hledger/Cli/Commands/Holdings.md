@@ -220,7 +220,8 @@ Holdings at period ends, 2026-01-31..2026-03-31
 With `--chart`, holdings are shown as a chart: a bar for each holding (or lot, with `--lots`), labelled by account and commodity.
 A holding's bar shows its cost basis, and its unrealised gain stacked on top, reaching its market value (which is shown);
 or if it has lost value, the part of its cost basis it is still worth, and the part lost (hatched), reaching its cost basis.
-When some holding has lost value, the market values are also marked across the bars (`┃` in text).
+Where a bar doesn't end at the market value, as when a holding has lost value, the value is also marked across it (`┃`);
+graphical charts then mark the values across all the bars.
 In graphical charts these are coloured like assets (blue), revenues (green) and expenses (red).
 Each bar's unrealised gain percent is shown after its value (in graphical charts, above the bar, since the axis shows the values).
 A holding without a market price is shown as its cost basis, in grey.
@@ -238,7 +239,7 @@ USD
 █ Cost  ▒ Unrealised gain  ╱ Unrealised loss  ▓ No market price
 ┃ Value
 
-assets:broker AAPL  2,500.00 USD  +66.7%  █████████████████▒▒▒▒▒▒▒▒▒▒┃
+assets:broker AAPL  2,500.00 USD  +66.7%  █████████████████▒▒▒▒▒▒▒▒▒▒▒
 assets:broker NEW                         ▓
 assets:broker XYZ     450.00 USD  -40.0%  ████┃╱╱╱
 ```

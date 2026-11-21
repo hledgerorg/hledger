@@ -170,11 +170,14 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis colouring showheading Panel{p
     -- and the total as a mark over the bar.
     -- In any chart, contra amounts (of the opposite sign to their series' usual sign) are drawn nearest the axis, with a hatched fill character.
     diverging = not grouped && isJust mtotal && any ((/= 0) . seSign) drawn
-    -- The total is marked in those, and when it isn't just the end of the bars (eg with values of both signs);
-    -- otherwise it is shown only as the value.
-    marktotal = case mtotal of
-      Just t | not diverging, not grouped, totalIsBarEnd drawn t -> Nothing
-      _ -> mtotal
+    -- The total is marked in those; otherwise, at each x position where it isn't just the end of the bars
+    -- (eg with values of both signs, or a holding's value within its bar), and elsewhere it is shown only as the value.
+    -- It is in the legend if marked anywhere.
+    marks = case mtotal of
+      Just t | not diverging, not grouped -> map not (totalsAreBarEnds drawn t) ++ repeat False
+      Just _ -> repeat True
+      Nothing -> repeat False
+    marktotal = if or (zipWith const marks xlabels) then mtotal else Nothing
     seriesStyle i colour s = (colourStyle colour, fillChar i, seriesValues s)
     colourStyle colour = case colour of
       TypeColour at k -> StyleType at k
@@ -209,8 +212,8 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis colouring showheading Panel{p
             ++ [ Row "" (lbShort $ seLabel t) (valueAt tvals j) [] (valueAt tvals j) (Nothing, Nothing) Nothing | Just t <- [marktotal], let tvals = seriesValues t ]
           | (j, lbl) <- zip [0 ..] xlabels ]
       | otherwise =
-      [ Row lbl "" rowval (segmentsAt j styledseries) (if isJust marktotal then rowval else Nothing) (sideTotal j 1, sideTotal j (-1)) (join $ pnValueLabels `atMay` j)
-      | (j, lbl) <- zip [0 ..] xlabels
+      [ Row lbl "" rowval (segmentsAt j styledseries) (if marked then rowval else Nothing) (sideTotal j 1, sideTotal j (-1)) (join $ pnValueLabels `atMay` j)
+      | (j, lbl, marked) <- zip3 [0 ..] xlabels marks
       , let rowval = case (mtotalvals, styled) of
               (Just tvals, _)     -> valueAt tvals j
               (_, [(_, _, vals)]) -> valueAt vals j

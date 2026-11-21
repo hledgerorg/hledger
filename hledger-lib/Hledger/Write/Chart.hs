@@ -42,6 +42,7 @@ module Hledger.Write.Chart (
   isContra,
   isHatched,
   totalIsBarEnd,
+  totalsAreBarEnds,
   seriesValues,
   valueAt,
   setChartScales,
@@ -192,9 +193,13 @@ isHatched s q = seRole s == SeriesShortfall || isContra s q
 -- | Is this total, at every x position, just the end of these series' stacked bars (the sum of their positive values, or of their negative ones) ?
 -- Then marking it would add nothing; otherwise (eg with values of both signs, or a total that isn't their sum) it is worth marking.
 totalIsBarEnd :: [Series] -> Series -> Bool
-totalIsBarEnd bars total = and
-  [ t == sum (filter (> 0) qs) || t == sum (filter (< 0) qs)
-  | (Just t, qs) <- zip (seValues total) (map catMaybes (transpose (map seValues bars)) ++ repeat []) ]
+totalIsBarEnd bars total = and $ totalsAreBarEnds bars total
+
+-- | The same, at each x position (true where there is no total).
+totalsAreBarEnds :: [Series] -> Series -> [Bool]
+totalsAreBarEnds bars total =
+  [ maybe True (\t -> t == sum (filter (> 0) qs) || t == sum (filter (< 0) qs)) mt
+  | (mt, qs) <- zip (seValues total) (map catMaybes (transpose (map seValues bars)) ++ repeat []) ]
 
 -- | The main account type (asset, liability, equity, revenue or expense) of an account type, which is one of those or a subtype of one.
 mainAccountType :: AccountType -> AccountType
@@ -404,6 +409,8 @@ tests_Hledger_Write_Chart = testGroup "Write.Chart" [
      totalIsBarEnd [ser [Just (-1)], ser [Just (-3)]] (ser [Just (-4)]) @?= True                     -- the negative sum
      totalIsBarEnd [ser [Just 5], ser [Just (-3)]] (ser [Just 2]) @?= False                          -- values of both signs
      totalIsBarEnd [ser [Just 450], ser [Just 300]] (ser [Just 450]) @?= False                       -- a value within the bar
+     totalsAreBarEnds [ser [Just 450, Just 450], ser [Just 300, Just 50]] (ser [Just 750, Just 450]) @?= [True, False]
+     totalsAreBarEnds [ser [Just 1, Just 1]] (ser [Nothing, Just 2]) @?= [True, False]               -- no total, a total beyond the bar
   ,testCase "seriesColours" $ do
      let ser n t = Series (ChartLabel n n 0 t True) SeriesItem MarkBar [Just 1] 0 0
          tints cs = [k | TypeColour _ k <- cs]
