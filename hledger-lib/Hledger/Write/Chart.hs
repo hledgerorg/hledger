@@ -129,7 +129,8 @@ data Panel = Panel
                               --   so that small counts are not magnified (unless a fixed scale is set).
   , pnSummary   :: [Summary]  -- ^ values summarising the whole chart, shown below it (eg with -T and -A, the total and the average per period)
   , pnValueLabels :: [Maybe Text]  -- ^ text to show at each x position (or none there), eg a holding's gain percent:
-                                   --   in graphical charts instead of its value (which the axis shows), in text charts after it.
+                                   --   in graphical charts instead of its value (which the axis shows), in text charts after it
+                                   --   (in the negative style if it begins with -, in the revenue colour if with +).
                                    --   If empty, the values are shown as usual
   } deriving (Show, Eq, Generic, ToJSON)
 

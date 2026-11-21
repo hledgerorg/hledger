@@ -223,7 +223,7 @@ or if it has lost value, the part of its cost basis it is still worth, and the p
 Where a bar doesn't end at the market value, as when a holding has lost value, the value is also marked across it (`┃`);
 graphical charts then mark the values across all the bars.
 In graphical charts these are coloured like assets (blue), revenues (green) and expenses (red).
-Each bar's unrealised gain percent is shown after its value (in graphical charts, above the bar, since the axis shows the values).
+Each bar's unrealised gain percent is shown after its value, in green if positive or red if negative (in graphical charts, above the bar, since the axis shows the values).
 A holding without a market price is shown as its cost basis, in grey.
 There is a chart panel for each commodity the holdings are valued in; use `-X COMM` to see them all in one.
 With a report interval, there is a bar for each period end instead, showing all the holdings then:

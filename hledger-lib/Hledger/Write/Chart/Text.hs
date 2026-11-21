@@ -253,7 +253,13 @@ panelLines TextChartOpts{tcWidth, tcUnicode} xaxis colouring showheading Panel{p
     hasvalues = any (isJust . rowValue) rows
     -- the notes column, after the values, if any rows have notes
     notew = maximumDef 0 [realLength t | Row{rowNote = Just t} <- rows]
-    notecolumn t = if notew > 0 then [(StylePlain, "  "), (StylePlain, fitText (Just notew) Nothing False False t)] else []
+    -- (a negative one, eg a loss's gain percent, in the negative style, like the values;
+    -- a positive one, eg a gain's, in the revenue colour, like gains)
+    notecolumn t = if notew > 0 then [(StylePlain, "  "), (noteStyle t, fitText (Just notew) Nothing False False t)] else []
+    noteStyle t
+      | "-" `T.isPrefixOf` t = StyleNegative
+      | "+" `T.isPrefixOf` t = StyleType Revenue 0
+      | otherwise            = StylePlain
     -- In a diverging chart, the totals of each side's series (eg a compound report's sections), shown at that end of the bar.
     -- They are shown with their usual sign as positive, like the report's tables (eg expenses as positive),
     -- and include contra amounts (eg a refund counts in expenses, though it is drawn on the other side).
