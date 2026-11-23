@@ -1181,7 +1181,12 @@ transactionClassifyLotPostings verbosetags lookupAccountType commodityIsLotful a
 -- dispose postings (matching to existing lots using FIFO, splitting if needed),
 -- and transfer postings (moving lots between accounts, preserving cost basis).
 -- The verbosetags parameter controls whether generated-posting tags are made visible in comments.
--- All lot selection/classification failures are hard errors.
+-- All lot selection/classification failures are hard errors, except that a
+-- transaction whose transfer source holds no lots is retried once after a
+-- uniquely determined same-day funder (see recoverSameDay below, and
+-- "Same-day transfer order" in doc/SPEC-lots.md).
+-- Transactions must have tindex values that increase in input order,
+-- as assigned by journalNumberTransactions.
 journalCalculateLots :: Bool -> Journal -> Either String Journal
 journalCalculateLots verbosetags j
   | not $ any (any isLotPosting . tpostings) txns = do
@@ -1194,8 +1199,33 @@ journalCalculateLots verbosetags j
           process acc@(ls, done) t
             | not $ transactionHasLotfulAmounts lotfulcomms t = Right (ls, t : done)
             | otherwise = first (appendPostingsReadAs t) $ processTransaction styles verbosetags j needsLabels acc t
-      (_, txns') <- foldM process (M.empty, []) (sortOn tdate txns)
-      Right (journalTieTransactions $ j{jtxns = reverse txns'})
+          -- Walk the transactions, recording whether any same-day recovery happened.
+          go rec acc [] = Right (rec, acc)
+          go rec acc (t:rest) = case process acc t of
+            Right acc' -> go rec acc' rest
+            Left e     -> maybe (Left e) (uncurry (go True)) (recoverSameDay acc t rest)
+          -- A transaction r failed. If its transfer source holds no lots, and exactly one
+          -- still-unprocessed same-day transaction f touches that account and commodity,
+          -- and nothing between them uses any of f's lot commodities, process f then r.
+          -- One deferral per failure; chains and ambiguous days keep the original error.
+          recoverSameDay acc@(ls, _) r rest = do
+            [(a, c)] <- Just $ S.toList $ S.fromList
+              [ (a, acommodity x) | p <- tpostings r, isTransferFromPosting p
+                                  , let a = lotBaseAccount (paccount p), x <- amountsRaw (pamount p)
+                                  , not $ any (M.member a) (M.findWithDefault M.empty (acommodity x) ls) ]
+            let (sameday, later) = span ((== tdate r) . tdate) rest
+                comms p = map acommodity (amountsRaw (pamount p))
+                hasAC t = any (\p -> lotBaseAccount (paccount p) == a && c `elem` comms p) (tpostings t)
+            [i] <- Just [ i | (i, t) <- zip [0 :: Int ..] sameday, hasAC t ]
+            let (between, f, after) = (take i sameday, sameday !! i, drop (i+1) sameday)
+                fcomms = [ x | p <- tpostings f, isLotPosting p, x <- comms p ]
+            guard $ not $ any (any (any (`elem` fcomms) . comms) . tpostings) between
+            acc' <- either (const Nothing) Just (process acc f >>= \x -> process x r)
+            Just (acc', between ++ after ++ later)
+      (recovered, (_, txns')) <- go False (M.empty, []) (sortOn tdate txns)
+      let out = reverse txns'
+      -- After a recovery, restore the input order (which balance assertions and print follow).
+      Right (journalTieTransactions $ j{jtxns = if recovered then sortOn (\t -> (tdate t, tindex t)) out else out})
   where
     txns = jtxns j
     lotfulcomms = journalLotfulCommodities j

@@ -7562,6 +7562,31 @@ give it a real or dummy cost basis (or price) annotation, which keeps it out of 
     assets:broker2   0.001 ETH {$0}
 ```
 
+#### Same-day transfer order
+
+Lots are calculated in date order, and same-day entries in the order they were read.
+When a transfer between two accounts is recorded in two entries through a clearing account
+(eg from two wallets' statements), the receiving entry may be read before the sending entry:
+
+```journal
+2026-01-03 Transfer from WalletB
+    assets:WalletA       0.10 TESTCUR
+    assets:transfers    -0.10 TESTCUR
+
+2026-01-03 Transfer to WalletA
+    assets:WalletB      -0.11 TESTCUR
+    assets:transfers     0.10 TESTCUR
+    expenses:fees        0.01 TESTCUR
+```
+
+When a transfer's source holds no lots, and exactly one later entry on the same date
+involves that source account in that commodity (here, the sending entry),
+and nothing in between uses any commodity in that entry's lot postings,
+hledger processes that entry first, and then the transfer.
+The entries keep their original order in reports and in `print` output.
+In any other case, such as two possible same-day sources, which could have different cost bases,
+the usual "no lots available" error is reported.
+
 ### Dispose
 
 A negative lot posting sells from one or more existing lots.

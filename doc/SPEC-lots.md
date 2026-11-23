@@ -1253,6 +1253,29 @@ The original user posting is preserved via `poriginal` on the transfer portion
   not received by non-asset postings (eg a sale missing its price) are still
   errors.
 
+### Same-day transfer order
+
+`journalCalculateLots` processes transactions in date order (stable, so same-day
+entries in parse order). When a transaction R fails, it is retried once with a
+same-day funder F processed first, if all of these hold:
+
+1. Exactly one (account A, commodity C) among R's transfer-from postings has no
+   lots in the current lot state (fully consumed lots count as empty).
+2. Among the still-unprocessed transactions with R's date, exactly one, F,
+   touches A in C (a transfer into A, or an acquisition into A).
+3. No transaction between R and F touches any commodity in F's lot postings,
+   so processing F earlier changes no other lot selection.
+4. F and then R process without error from the lot state just before R.
+
+Otherwise R's original error is reported. Lot selections and ending holdings
+then match funder-first processing, but the output keeps the original same-day
+order (restored by `(tdate, tindex)`), which is the order balance assertions
+were checked in and the order `print` shows. (Recovery does not change what
+`print` can round-trip otherwise, eg a fee split across several lots.) This needs the
+transactions numbered in input order (`journalNumberTransactions`, done during
+balancing). Not handled: chains needing more than one deferral, receipts with
+more than one empty source, funding on another date, and ambiguous days.
+
 ### Per-lot disposal/transfer splits
 
 A separate internal split happens when a single dispose or transfer posting

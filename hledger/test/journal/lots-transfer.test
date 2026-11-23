@@ -1200,3 +1200,265 @@ $ hledger -f- print -x --verbose-tags date:2026-02-17
     expenses:fees                                 $2
 
 >=
+
+# * Same-day transfer order
+
+# ** 52. A transfer read before its same-day funder (eg from separate wallet
+# statements) is processed after it: the funder is the only same-day entry
+# adding TESTCUR to assets:transfers.
+<
+commodity 1.00 TESTCUR  ; lots:
+
+2026-01-01 WalletB opening balance
+    assets:WalletB       1 TESTCUR {1.00 USD}
+    equity:opening-closing
+
+2026-01-03 Transfer from WalletB
+    assets:WalletA       0.10 TESTCUR
+    assets:transfers    -0.10 TESTCUR
+
+2026-01-03 Transfer to WalletA
+    assets:WalletB      -0.11 TESTCUR
+    assets:transfers     0.10 TESTCUR
+    expenses:fees        0.01 TESTCUR
+
+$ hledger -f- bal --lots -N not:equity
+        0.10 TESTCUR  assets:WalletA:{2026-01-01, 1.00 USD}
+        0.89 TESTCUR  assets:WalletB:{2026-01-01, 1.00 USD}
+        0.01 TESTCUR  expenses:fees
+
+# ** 53. Its print output, which keeps the original order, reads back the same.
+$ hledger -f- print | hledger -f- bal --lots -N not:equity
+        0.10 TESTCUR  assets:WalletA:{2026-01-01, 1.00 USD}
+        0.89 TESTCUR  assets:WalletB:{2026-01-01, 1.00 USD}
+        0.01 TESTCUR  expenses:fees
+
+# ** 54. The funder can be an acquisition, eg an exchange purchase recorded
+# after the same-day withdrawal.
+<
+commodity 1.00 TESTCUR  ; lots:
+
+2026-01-03 withdraw
+    assets:WalletA       0.10 TESTCUR
+    assets:exchange     -0.10 TESTCUR
+
+2026-01-03 buy
+    assets:exchange      0.10 TESTCUR {1.00 USD} @ 1.00 USD
+    assets:cash         -0.10 USD
+
+$ hledger -f- bal --lots -N assets:WalletA
+        0.10 TESTCUR  assets:WalletA:{2026-01-03, 1.00 USD}
+
+# ** 55. Two independent same-day pairs, interleaved, both recover.
+<
+commodity 1.00 TESTCUR  ; lots:
+commodity 1.00 OTHER  ; lots:
+
+2026-01-01 WalletB TESTCUR opening
+    assets:WalletB       1 TESTCUR {1.00 USD}
+    equity:opening-closing
+
+2026-01-01 WalletB OTHER opening
+    assets:WalletB       1 OTHER {3.00 USD}
+    equity:opening-closing
+
+2026-01-03 Receive TESTCUR
+    assets:WalletA       0.10 TESTCUR
+    assets:transfers    -0.10 TESTCUR
+
+2026-01-03 Receive OTHER
+    assets:WalletA       0.20 OTHER
+    assets:transfers2   -0.20 OTHER
+
+2026-01-03 Fund TESTCUR
+    assets:WalletB      -0.11 TESTCUR
+    assets:transfers     0.10 TESTCUR
+    expenses:fees        0.01 TESTCUR
+
+2026-01-03 Fund OTHER
+    assets:WalletB      -0.20 OTHER
+    assets:transfers2    0.20 OTHER
+
+$ hledger -f- bal --lots -N assets:WalletA
+        0.10 TESTCUR  assets:WalletA:{2026-01-01, 1.00 USD}
+          0.20 OTHER  assets:WalletA:{2026-01-01, 3.00 USD}
+
+# ** 56. Two possible same-day funders: the lot is ambiguous, the error remains.
+<
+commodity 1.00 TESTCUR  ; lots:
+
+2026-01-01 WalletB opening balance
+    assets:WalletB       1 TESTCUR {1.00 USD}
+    equity:opening-closing
+
+2026-01-01 WalletC opening balance
+    assets:WalletC       1 TESTCUR {2.00 USD}
+    equity:opening-closing
+
+2026-01-03 Transfer from WalletB
+    assets:WalletA       0.10 TESTCUR
+    assets:transfers    -0.10 TESTCUR
+
+2026-01-03 Transfer to WalletA
+    assets:WalletB      -0.11 TESTCUR
+    assets:transfers     0.10 TESTCUR
+    expenses:fees        0.01 TESTCUR
+
+2026-01-03 Another deposit
+    assets:WalletC      -0.10 TESTCUR
+    assets:transfers     0.10 TESTCUR
+
+$ hledger -f- bal --lots
+>2 /no TESTCUR lots available for transfer from account assets:transfers on 2026-01-03/
+>=1
+
+# ** 57. An entry using the funder's commodity between the transfer and its
+# funder blocks the recovery.
+<
+commodity 1.00 TESTCUR  ; lots:
+
+2026-01-01 WalletB opening balance
+    assets:WalletB       1 TESTCUR {1.00 USD}
+    equity:opening-closing
+
+2026-01-03 Transfer from WalletB
+    assets:WalletA       0.10 TESTCUR
+    assets:transfers    -0.10 TESTCUR
+
+2026-01-03 misc
+    assets:WalletB      -0.01 TESTCUR
+    expenses:misc
+
+2026-01-03 Transfer to WalletA
+    assets:WalletB      -0.11 TESTCUR
+    assets:transfers     0.10 TESTCUR
+    expenses:fees        0.01 TESTCUR
+
+$ hledger -f- bal --lots
+>2 /no TESTCUR lots available for transfer from account assets:transfers on 2026-01-03/
+>=1
+
+# ** 58. A funder that fails itself leaves the original transfer's error.
+<
+commodity 1.00 TESTCUR  ; lots:
+
+2026-01-01 WalletB opening balance
+    assets:WalletB       0.05 TESTCUR {1.00 USD}
+    equity:opening-closing
+
+2026-01-03 Transfer from WalletB
+    assets:WalletA       0.10 TESTCUR
+    assets:transfers    -0.10 TESTCUR
+
+2026-01-03 Transfer to WalletA
+    assets:WalletB      -0.11 TESTCUR
+    assets:transfers     0.10 TESTCUR
+    expenses:fees        0.01 TESTCUR
+
+$ hledger -f- bal --lots
+>2 /no TESTCUR lots available for transfer from account assets:transfers on 2026-01-03/
+>=1
+
+# ** 59. A balance assertion written for the original order still holds
+# when the print output is read back.
+<
+commodity 1.00 TESTCUR  ; lots:
+
+2026-01-01 WalletB opening balance
+    assets:WalletB       1 TESTCUR {1.00 USD}
+    equity:opening-closing
+
+2026-01-03 Transfer from WalletB
+    assets:WalletA       0.10 TESTCUR
+    assets:transfers    -0.10 TESTCUR
+
+2026-01-03 Transfer to WalletA
+    assets:WalletB      -0.11 TESTCUR
+    assets:transfers     0.10 TESTCUR = 0.00 TESTCUR
+    expenses:fees        0.01 TESTCUR
+
+$ hledger -f- print | hledger -f- bal --lots -N not:equity
+        0.10 TESTCUR  assets:WalletA:{2026-01-01, 1.00 USD}
+        0.89 TESTCUR  assets:WalletB:{2026-01-01, 1.00 USD}
+        0.01 TESTCUR  expenses:fees
+
+# ** 60. An entry between the transfer and its funder that uses another of
+# the funder's lot commodities blocks the recovery (moving the funder earlier
+# would change which OTHER lot assets:Y receives).
+<
+commodity 1.00 TESTCUR  ; lots:
+commodity 1. OTHER  ; lots:
+
+2026-01-01 WalletB opening balance
+    assets:WalletB       1 TESTCUR {1.00 USD}
+    equity:opening-closing
+
+2026-01-01 W opening balance
+    assets:W             1 OTHER {1.00 USD}
+    equity:opening-closing
+
+2026-01-02 X opening balance
+    assets:X             1 OTHER {2.00 USD}
+    equity:opening-closing
+
+2026-01-03 Transfer from WalletB
+    assets:WalletA       0.10 TESTCUR
+    assets:transfers    -0.10 TESTCUR
+
+2026-01-03 X to Y
+    assets:X            -1 OTHER
+    assets:Y             1 OTHER
+
+2026-01-03 Transfer to WalletA
+    assets:WalletB      -0.11 TESTCUR
+    assets:transfers     0.10 TESTCUR
+    expenses:fees        0.01 TESTCUR
+    assets:W            -1 OTHER
+    assets:X             1 OTHER
+
+$ hledger -f- bal --lots
+>2 /no TESTCUR lots available for transfer from account assets:transfers on 2026-01-03/
+>=1
+
+# ** 61. A second funder for the OTHER transfer, beyond the TESTCUR funder,
+# is still seen after the TESTCUR transfer recovers, so OTHER is ambiguous.
+<
+commodity 1.00 TESTCUR  ; lots:
+commodity 1.00 OTHER  ; lots:
+
+2026-01-01 WalletB TESTCUR opening
+    assets:WalletB       1 TESTCUR {1.00 USD}
+    equity:opening-closing
+
+2026-01-01 WalletB OTHER opening
+    assets:WalletB       1 OTHER {3.00 USD}
+    equity:opening-closing
+
+2026-01-01 WalletC OTHER opening
+    assets:WalletC       1 OTHER {2.00 USD}
+    equity:opening-closing
+
+2026-01-03 Receive TESTCUR
+    assets:WalletA       0.10 TESTCUR
+    assets:transfers    -0.10 TESTCUR
+
+2026-01-03 Receive OTHER
+    assets:WalletA       0.20 OTHER
+    assets:transfers2   -0.20 OTHER
+
+2026-01-03 Fund OTHER from WalletB
+    assets:WalletB      -0.20 OTHER
+    assets:transfers2    0.20 OTHER
+
+2026-01-03 Fund TESTCUR
+    assets:WalletB      -0.11 TESTCUR
+    assets:transfers     0.10 TESTCUR
+    expenses:fees        0.01 TESTCUR
+
+2026-01-03 Fund OTHER from WalletC
+    assets:WalletC      -0.20 OTHER
+    assets:transfers2    0.20 OTHER
+
+$ hledger -f- bal --lots
+>2 /no OTHER lots available for transfer from account assets:transfers2 on 2026-01-03/
+>=1
