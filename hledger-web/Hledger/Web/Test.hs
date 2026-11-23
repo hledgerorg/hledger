@@ -2442,6 +2442,27 @@ hledgerWebTest = do
       assertEq "the description should be written on one line"
         (T.isInfixOf "JsonNewline include /etc/passwd" txt) True
 
+    -- PUT /add must reject an unbalanced transaction instead of appending
+    -- it to the journal file (#2864): previously it returned 201 and wrote
+    -- the entry, which then failed `hledger check` on the next load.
+    yit "does not let the JSON API add an unbalanced transaction" $ do
+      let t = nulltransaction
+            { tdate = fromGregorian 2025 4 4
+            , tdescription = "JsonUnbalanced"
+            , tpostings =
+              [ nullposting{paccount = "assets:bank:checking", pamount = mixedAmount (num 20)}
+              , nullposting{paccount = "income:gifts",         pamount = mixedAmount (num (-10))}
+              ]
+            }
+      request $ do
+        setMethod "PUT"
+        setUrl AddR
+        addRequestHeader ("Content-Type", "application/json")
+        setRequestBody $ encode t
+      statusIs 422
+      bodyContains "should be 0"
+      journalFileLacks jfile "JsonUnbalanced"
+
     -- Likewise for the edit form: the same save, with and without the token.
     let editJournal fld desc = do
           setMethod "POST"
