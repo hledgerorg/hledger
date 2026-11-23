@@ -13,12 +13,13 @@ module Hledger.Web.Handler.AddR
 import Data.Aeson.Types (Result(..))
 import Data.List (intersperse)
 import Data.Text qualified as T
-import Network.HTTP.Types.Status (status400)
+import Network.HTTP.Types.Status (status400, status422)
 import Text.Blaze.Html (preEscapedToHtml)
 import Yesod
 
 import Hledger
-import Hledger.Cli.Commands.Add (appendToJournalFileOrStdout, journalAddTransaction)
+import Hledger.Cli.Commands.Add (appendToJournalFileOrStdout, balanceTransactionInJournal, journalAddTransaction)
+import Hledger.Cli.CliOptions (inputopts_)
 import Hledger.Web.Import
 import Hledger.Web.WebOptions (WebOpts(..))
 import Hledger.Web.Widget.AddForm (addForm)
@@ -92,5 +93,14 @@ putAddR = do
   case r of
     Error err -> sendStatusJSON status400 ("could not parse json: " ++ err ::String)
     Success t -> do
-      void $ liftIO $ journalAddTransaction j (cliopts_ opts) $ transactionCollapseNewlines t
-      sendResponseCreated TransactionsR
+      -- Balance and check the transaction in the context of the journal,
+      -- as the add command does, before appending it: an unbalanced
+      -- transaction (or one breaking a balance assertion) must not be
+      -- written to the journal file (#2864). On success, append the
+      -- balanced transaction, with any missing amount inferred.
+      let bopts = balancingopts_ (inputopts_ (cliopts_ opts))
+      case balanceTransactionInJournal (transactionCollapseNewlines t) j bopts of
+        Left err -> sendStatusJSON status422 err
+        Right t' -> do
+          void $ liftIO $ journalAddTransaction j (cliopts_ opts) t'
+          sendResponseCreated TransactionsR
