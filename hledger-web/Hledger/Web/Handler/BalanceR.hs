@@ -25,7 +25,7 @@ import Hledger.Web.Widget.Chart (reportChart)
 import Hledger.Web.Widget.Common
   (amountLinks, columnsLinks, commodityLinks, controlsHint, controlsToggle,
    depthLinks, lotsLinks,
-   percentLinks, pricesLinks, realLinks,
+   pricesLinks, realLinks,
    statusLinks, typeLinks, zeroBalanceLinks)
 
 
@@ -87,9 +87,6 @@ getBalanceR = do
             listParams  = paramSettings listParam (accountlistmode_ roptsOrig) (accountlistmode_ ropts)
             totalParams = [("total", "1") | row_total_ ropts]
             avgParams   = [("avg", "1") | average_ ropts]
-            sortParams  = paramSettings sortParam False (sort_amount_ ropts)
-            pctParams   = [("pct", "1") | percent_ ropts]
-            calcParams  = paramSettings calcParam CalcChange (balancecalc_ ropts)
             inferParams = [("infer", "1") | infer_prices_ ropts, not (infer_prices_ roptsOrig)]
             date2Params = [("date2", "1") | date2_ ropts, not (date2_ roptsOrig)]
             emptyParams = [("empty", if hideEmpty then "0" else "1") | hideEmpty /= empty_ roptsOrig]
@@ -97,7 +94,7 @@ getBalanceR = do
             pageParams =
               dbg1 "balance pageParams" $
               intervalParams ++ accumParams ++ valParams ++ listParams ++
-              totalParams ++ avgParams ++ sortParams ++ pctParams ++ calcParams ++
+              totalParams ++ avgParams ++ urlArgGroupLast ropts ++
               inferParams ++ date2Params ++ emptyParams ++ lotsParams ++ depthParams q
             qParams = [("q", qparam) | not (T.null qparam)]
             -- The figures' registers convert amounts as the report does. One
@@ -161,9 +158,7 @@ getBalanceR = do
               [ lotsLinks trs BalanceR (qParams ++ removeAttributes ["lots"] pageParams) lotsShown | jHasLots ] ++
               [ columnsLinks trs BalanceR (qParams ++ removeAttributes ["total", "avg"] pageParams) (row_total_ ropts) (average_ ropts)
               | rpInterval /= NoInterval ] ++
-              [ paramLinks sortParam trs BalanceR (qParams ++ pageParams) False (sort_amount_ ropts)
-              , percentLinks trs BalanceR (qParams ++ removeAttributes ["pct"] pageParams) (percent_ ropts)
-              , paramLinks calcParam trs BalanceR (qParams ++ pageParams) CalcChange (balancecalc_ ropts) ]
+              linkGroupLast trs BalanceR qParams pageParams ropts
         Yesod.toWidget controlRows
         Yesod.toWidget $ H.h2 $ H.toHtml $ withFilter title
         for_ pctErr $ Yesod.toWidget . pctError trs
