@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -14,12 +15,14 @@ import Data.Aeson.Types (Result(..))
 import Data.List (intersperse)
 import Data.Text qualified as T
 import Network.HTTP.Types.Status (status400)
+import System.Directory (doesFileExist)
 import Text.Blaze.Html (preEscapedToHtml)
 import Yesod
 
 import Hledger
 import Hledger.Cli (CliOpts(..))
-import Hledger.Cli.Commands.Add (appendToJournalFileOrStdout, balanceTransactionInJournal, journalAddTransaction)
+import Hledger.Cli.Commands.Add (appendToJournalFileOrStdout, journalTextAppend)
+import Hledger.Cli.Commands.Print (layoutFromRawOpts)
 import Hledger.Web.Import
 import Hledger.Web.WebOptions (WebOpts(..))
 import Hledger.Web.Widget.AddForm (addForm)
@@ -60,20 +63,19 @@ postAddR = do
   case res of
     FormSuccess (t,f) -> do
       let t' = txnTieKnot $ transactionCollapseNewlines t
-      liftIO $ do
-        ensureJournalFileExists f
-        appendToJournalFileOrStdout f (showTransaction t')
-      setMessageI (HMsg "Transaction added.")
-      redirect JournalR
+      appendTransactionChecked f (showTransaction t') >>= \case
+        Left e -> showErrors [T.pack e] >> showForm view enctype
+        Right () -> do
+          setMessageI (HMsg "Transaction added.")
+          redirect JournalR
     FormMissing -> showForm view enctype
-    FormFailure errs -> do
-      -- Escape each error, then join the lines with <br>. An unbalanced
-      -- transaction's error embeds an excerpt of the submitted entry (account
-      -- names, amounts), so it must be escaped; only the <br> we insert is
-      -- raw. (Cf EditR, which uses toHtml.)
-      mapM_ (setMessage . mconcat . intersperse (preEscapedToHtml ("<br>" :: T.Text)) . map toHtml . T.lines) errs
-      showForm view enctype
+    FormFailure errs -> showErrors errs >> showForm view enctype
   where
+    -- Escape each error, then join the lines with <br>. An unbalanced
+    -- transaction's error embeds an excerpt of the submitted entry (account
+    -- names, amounts), so it must be escaped; only the <br> we insert is
+    -- raw. (Cf EditR, which uses toHtml.)
+    showErrors = mapM_ (setMessage . mconcat . intersperse (preEscapedToHtml ("<br>" :: T.Text)) . map toHtml . T.lines)
     showForm view enctype =
       sendResponse =<< defaultLayout [whamlet|
         <h2>Add transaction
@@ -84,9 +86,8 @@ postAddR = do
 
 -- Add a single new transaction, send as JSON via PUT, to the journal.
 -- The web form handler above should probably use PUT as well.
--- Like the add command, it first balances the transaction in the context of
--- the whole journal, checking balance assertions; if that fails, the error
--- is returned with status 400 and the journal is not changed (#2864).
+-- If the journal would not be readable with it added (see 'appendTransactionChecked'),
+-- the error is returned with status 400 and the journal is not changed (#2864, #2869).
 putAddR :: Handler RepJson
 putAddR = do
   VD{jfull, opts} <- getViewData
@@ -95,11 +96,17 @@ putAddR = do
   (r :: Result Transaction) <- parseCheckJsonBody
   case r of
     Error err -> sendStatusJSON status400 ("could not parse json: " ++ err ::String)
-    Success t0 -> do
-      let t = transactionCollapseNewlines t0
-          copts = cliopts_ opts
-      case balanceTransactionInJournal t jfull (balancingopts_ $ inputopts_ copts) of
+    Success t -> do
+      let showtxn = showTransactionWithLayout (layoutFromRawOpts $ rawopts_ $ cliopts_ opts)
+      appendTransactionChecked (journalFilePath jfull) (showtxn $ transactionCollapseNewlines t) >>= \case
         Left err -> sendStatusJSON status400 err
-        Right _ -> do
-          void $ liftIO $ journalAddTransaction jfull copts t
-          sendResponseCreated TransactionsR
+        Right () -> sendResponseCreated TransactionsR
+
+-- | Append a transaction, rendered as journal text, to one of the journal's files,
+-- if the journal would still be readable with it added: checked as the next read
+-- would check it, with the server's options (see 'checkedJournalWrite').
+-- Otherwise write nothing and return the error message.
+appendTransactionChecked :: FilePath -> Text -> Handler (Either String ())
+appendTransactionChecked f txt = do
+  old <- liftIO $ doesFileExist f >>= \e -> if e then readFilePortably f else pure ""
+  checkedJournalWrite f (journalTextAppend old txt) (appendToJournalFileOrStdout f txt)

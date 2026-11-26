@@ -20,7 +20,7 @@ and then Application.hs completes the job.
 module Hledger.Web.App where
 
 import Control.Applicative ((<|>))
-import Control.Monad (join, mfilter, when, unless)
+import Control.Monad (join, mfilter, unless, void, when)
 -- import Control.Monad.Except (runExceptT)  -- now re-exported by Hledger
 import "base64-bytestring" Data.ByteString.Base64 qualified as B64  -- not base64's module of the same name
 import Data.ByteString.Char8 qualified as BC
@@ -33,6 +33,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Data.Time.Calendar (Day)
+import Data.Time.Clock.POSIX (getPOSIXTime)
 import Network.HTTP.Conduit (Manager)
 import Network.HTTP.Types (status403)
 import Network.Wai (rawPathInfo, rawQueryString, requestHeaders, requestMethod)
@@ -55,7 +56,7 @@ import Yesod.Form.I18n.Spanish (spanishFormMessage)
 
 import Hledger.Utils.I18n (Translations(..), i18n, langTagCandidates, resolveLang, tr, trc)
 import Hledger
-import Hledger.Cli (CliOpts(..), journalPrepareLotDetail, journalReloadIfChanged)
+import Hledger.Cli (CliOpts(..), journalCheckChange, journalPrepareLotDetail, journalReloadIfChanged, writeFileWithBackupIfChanged)
 import Hledger.Cli.Commands.Balancesheet (balancesheetSpec)
 import Hledger.Cli.Commands.Cashflow (cashflowSpec)
 import Hledger.Cli.Commands.Incomestatement (incomestatementSpec)
@@ -442,10 +443,7 @@ getViewData = do
 
   -- try to read the latest journal content, keeping the old content
   -- if there's an error
-  (js, mjerr) <- getCurrentJournal
-                appJournal
-                copts{reportspec_=rspec{_rsReportOpts=_rsReportOpts{no_elide_=True}}}
-                today
+  (js, mjerr) <- getCurrentJournal appJournal (journalReadOpts copts) today
 
   -- With lots=1, show lot detail (lot subaccounts and per-lot postings),
   -- which is collapsed by default. Collapsed, a page at cost or showing
@@ -689,6 +687,36 @@ getCurrentJournal jref opts d = do
       liftIO $ writeIORef jref js'
       return (js', Nothing)
     Right (_, False) -> return (js, Nothing)
+
+-- | The options the journal is read and reloaded with: the startup options, with amounts not elided.
+journalReadOpts :: CliOpts -> CliOpts
+journalReadOpts copts@CliOpts{reportspec_=rspec@ReportSpec{_rsReportOpts=ropts}} =
+  copts{reportspec_=rspec{_rsReportOpts=ropts{no_elide_=True}}}
+
+-- | Write a change to one of the journal's files, only if the journal would still be readable after it.
+-- First the change is checked by re-reading the journal with the file's new text supplied from memory,
+-- with the options the journal is reloaded with (see 'journalCheckChange'), so it gets exactly the checks
+-- the next read would make (balancing, assertions, lots, strict checks..), in the context of all the files.
+-- If that read fails, nothing is written and its error is returned.
+-- Otherwise the write action is run (it should write that text, eg by appending), and the journal just read
+-- becomes the current one, marked as read after the write, so the next request need not read it again.
+checkedJournalWrite :: FilePath -> Text -> IO () -> Handler (Either String ())
+checkedJournalWrite f newtxt write = do
+  App{appOpts=WebOpts{cliopts_=copts}, appJournal} <- getYesod
+  ej <- liftIO . runExceptT $ journalCheckChange (journalReadOpts copts) f newtxt
+  for ej $ \j -> liftIO $ do
+    write
+    t <- getPOSIXTime
+    writeIORef appJournal $ mkJournalState $ journalSetLastReadTime t j
+
+-- | Replace the text of one of the journal's files (eg from the edit or upload form),
+-- if the journal would still be readable afterward (see 'checkedJournalWrite').
+-- Line endings are normalised to \n first, as form data has \r\n and the reader and
+-- writeFileWithBackupIfChanged need \n (cf formatdirectivep, #1194).
+-- The file is written (with a backup) only if its text has changed.
+writeJournalFileChecked :: FilePath -> Text -> Handler (Either String ())
+writeJournalFileChecked f t = checkedJournalWrite f t' (void $ writeFileWithBackupIfChanged f t')
+  where t' = T.replace "\r" "" t
 
 -- | In a request handler, check for the given permission
 -- and fail with a message if it's not present.

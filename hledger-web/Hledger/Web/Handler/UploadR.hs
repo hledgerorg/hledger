@@ -9,7 +9,6 @@ module Hledger.Web.Handler.UploadR
   , postUploadR
   ) where
 
-import Control.Monad.Except (runExceptT)
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit (connect)
 import Data.Conduit.Binary (sinkLbs)
@@ -18,7 +17,7 @@ import Data.Text.Encoding qualified as TE
 import Data.Text qualified as T
 import Hledger.Utils.I18n (trf)
 import Hledger.Web.Import
-import Hledger.Web.Widget.Common (fromFormSuccess, journalFile404, writeJournalTextIfValidAndChanged)
+import Hledger.Web.Widget.Common (fromFormSuccess, journalFile404)
 
 uploadForm :: FilePath -> Markup -> MForm Handler (FormResult FileInfo, Widget)
 uploadForm f =
@@ -52,7 +51,7 @@ postUploadR f = do
       setMessage $ toHtml $ trf trs "Encoding error: '{error}'. If your file is not UTF-8 encoded, try the 'edit form', where the transcoding should be handled by the browser." [("error", T.pack (show e))]
       showForm view enctype
     Right newtxt -> return newtxt
-  runExceptT (writeJournalTextIfValidAndChanged f newtxt) >>= \case
+  writeJournalFileChecked f newtxt >>= \case
     Left e -> do
       setMessage $ toHtml $ trf trs "Failed to load journal: {error}" [("error", T.pack e)]
       showForm view enctype

@@ -2501,6 +2501,157 @@ hledgerWebTest = do
         get (DownloadR otherfile)
         statusIs 404
 
+  -- Checked writes (#2869): adds, edits and uploads are refused exactly when
+  -- the next read of the journal, with the server's options, would fail.
+  -- Each suite uses a journal in its own temp file, which its writes change.
+  let
+    -- Run some tests with a journal read from a new temp file, with the
+    -- file and these raw options (and the add and edit permissions).
+    -- The tests are given the file's path.
+    runTestsWithJournalFile desc name jtxt extraopts tests = do
+      let jf = tmpdir </> name
+          ropts = ("file", jf) : ("allow", "edit") : extraopts
+      TIO.writeFile jf jtxt
+      checksj <- fmap (either error' id) . runExceptT $  -- PARTIAL: the test journal should read
+              readJournalFiles (rawOptsToInputOpts d usecolor $ mkRawOpts ropts) [jf]
+      runTests desc ropts checksj (tests jf)
+    -- Send the transaction in this journal text to the JSON API's add route.
+    putTransactionText txt = do
+      ts <- liftIO $ jtxns <$> readJournal'' txt
+      case ts of
+        [t] -> request $ do
+          setMethod "PUT"
+          setUrl AddR
+          addRequestHeader ("Content-Type", "application/json")
+          setRequestBody $ encode t
+        _ -> failing "putTransactionText: expected one transaction"
+    -- Post this text from the edit form, with the CSRF token from the form page.
+    editJournalText cf txt = do
+      get (EditR cf)
+      statusIs 200
+      fld <- editFieldName
+      request $ do
+        setMethod "POST"
+        setUrl (EditR cf)
+        addPostParam "_formid" "identify-edit"
+        addPostParam fld txt
+        addToken
+    journalFileHas cf t = do
+      txt <- liftIO $ TIO.readFile cf
+      assertEq (cf ++ " should contain " ++ T.unpack t) (T.isInfixOf t txt) True
+
+  let lotsjtext = T.unlines
+        ["commodity AAPL  ; lots:"
+        ,"commodity $"
+        ,""
+        ,"2026-01-01 buy"
+        ,"    assets:broker:aapl     10 AAPL @ $100"
+        ,"    assets:cash"
+        ,""
+        ,"2026-06-01 check"
+        ,"    assets:cash             $0 = $-1000"
+        ]
+  runTestsWithJournalFile "hledger-web checked writes" "hledger-web-test-checks.journal" lotsjtext [] $ \cf -> do
+
+    yit "PUT /add refuses a sale of more lots than are held, leaving the journal unchanged" $ do
+      putTransactionText $ T.unlines
+        ["2026-07-01 OverSale"  -- after the assertion, so that only the lots are wrong
+        ,"    assets:broker:aapl    -20 AAPL @ $130"
+        ,"    assets:cash          $2600"
+        ,"    revenue:gains"
+        ]
+      statusIs 400
+      bodyContains "Insufficient lots"
+      journalFileLacks cf "OverSale"
+
+    yit "the add form refuses a transaction which breaks a later balance assertion" $ do
+      get JournalR
+      statusIs 200
+      request $ do
+        setMethod "POST"
+        setUrl AddR
+        addPostParam "_formid" "identify-add"
+        addPostParam "date" "2026-02-01"
+        addPostParam "description" "BreaksAssertion"
+        addPostParam "account" "expenses:food"
+        addPostParam "amount" "$5"
+        addPostParam "account" "assets:cash"
+        addPostParam "amount" "$-5"
+        addToken
+      bodyNotContains "Transaction added"
+      bodyContains "Balance assertion failed"
+      journalFileLacks cf "BreaksAssertion"
+
+    yit "PUT /add accepts a valid transaction, which the next request shows" $ do
+      putTransactionText $ T.unlines
+        ["2026-07-02 ValidAdd"
+        ,"    expenses:food           $1"
+        ,"    assets:cash"
+        ]
+      statusIs 201
+      journalFileHas cf "ValidAdd"
+      get TransactionsR
+      statusIs 200
+      bodyContains "ValidAdd"
+
+  let strictjtext = T.unlines
+        ["account assets:cash"
+        ,"account income:gifts"
+        ,"commodity $"
+        ,""
+        ,"2026-01-01 gift"
+        ,"    assets:cash             $10"
+        ,"    income:gifts"
+        ]
+  runTestsWithJournalFile "hledger-web checked writes with --strict" "hledger-web-test-strict.journal" strictjtext [("strict", "")] $ \cf -> do
+
+    yit "PUT /add refuses an undeclared account" $ do
+      putTransactionText $ T.unlines
+        ["2026-01-02 UndeclaredAdd"
+        ,"    assets:cash             $1"
+        ,"    income:typo"
+        ]
+      statusIs 400
+      bodyContains "has not been declared"
+      journalFileLacks cf "UndeclaredAdd"
+
+    yit "edit refuses text using an undeclared account" $ do
+      editJournalText cf $ strictjtext <> T.unlines
+        [""
+        ,"2026-01-03 UndeclaredEdit"
+        ,"    assets:cash             $1"
+        ,"    income:typo"
+        ]
+      bodyNotContains "Saved journal"
+      bodyContains "has not been declared"
+      journalFileLacks cf "UndeclaredEdit"
+
+  let failingassertionjtext = T.unlines
+        ["2026-01-01 gift"
+        ,"    assets:cash             10 = 999"
+        ,"    income:gifts"
+        ]
+  runTestsWithJournalFile "hledger-web checked writes with -I" "hledger-web-test-ignore-assertions.journal" failingassertionjtext [("ignore-assertions", "")] $ \cf -> do
+
+    yit "PUT /add accepts a transaction although a balance assertion fails" $ do
+      putTransactionText $ T.unlines
+        ["2026-01-02 IgnoredAssertionAdd"
+        ,"    assets:cash             1"
+        ,"    income:gifts"
+        ]
+      statusIs 201
+      journalFileHas cf "IgnoredAssertionAdd"
+
+    yit "edit saves text although a balance assertion fails" $ do
+      editJournalText cf $ failingassertionjtext <> T.unlines
+        [""
+        ,"2026-01-03 IgnoredAssertionEdit"
+        ,"    assets:cash             1"
+        ,"    income:gifts"
+        ]
+      statusIs 303
+      journalFileHas cf "IgnoredAssertionEdit"
+
   -- Paging (#586): the journal and register pages show the newest pageSize
   -- transactions and link to the older pages, so that a page stays small
   -- however large the journal is; and a row of years links to each year the

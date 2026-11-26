@@ -10,12 +10,11 @@ module Hledger.Web.Handler.EditR
   , postEditR
   ) where
 
-import Control.Monad.Except (runExceptT)
 import Data.Text qualified as T
 import Hledger.Utils.I18n (Translations, tr, trf)
 import Hledger.Web.Import
 import Hledger.Web.Widget.Common
-       (fromFormSuccess, helplink, journalFile404, writeJournalTextIfValidAndChanged)
+       (fromFormSuccess, helplink, journalFile404)
 
 editForm :: Translations -> FilePath -> Text -> Form Text
 editForm trs f txt =
@@ -39,7 +38,7 @@ postEditR f = do
   (f', txt) <- journalFile404 f j
   ((res, view), enctype) <- runFormPost (editForm trs f' txt)
   newtxt <- fromFormSuccess (showForm view enctype) res
-  runExceptT (writeJournalTextIfValidAndChanged f newtxt) >>= \case
+  writeJournalFileChecked f newtxt >>= \case
     Left e -> do
       setMessage $ toHtml $ trf trs "Failed to load journal: {error}" [("error", T.pack e)]
       showForm view enctype

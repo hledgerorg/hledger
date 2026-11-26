@@ -16,7 +16,6 @@ module Hledger.Cli.Commands.Add (
    addmode
   ,add
   ,appendToJournalFileOrStdout
-  ,balanceTransactionInJournal
   ,journalAddTransaction
   ,journalTextAppend
 )

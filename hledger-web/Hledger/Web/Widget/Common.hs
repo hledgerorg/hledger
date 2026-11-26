@@ -40,7 +40,6 @@ module Hledger.Web.Widget.Common
   , runningBalanceAsHtml
   , moreCommodities
   , fromFormSuccess
-  , writeJournalTextIfValidAndChanged
   , journalFile404
   , transactionFragment
   , removeDates
@@ -49,7 +48,6 @@ module Hledger.Web.Widget.Common
 
 import Control.Applicative ((<|>))
 import Control.Monad (when)
-import Control.Monad.Except (ExceptT, mapExceptT)
 import Data.Char (isDigit)
 import Data.Foldable (find, for_)
 import Data.List (elemIndex)
@@ -72,7 +70,6 @@ import Yesod
 import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor qualified as Anchor
-import Hledger.Cli.Utils (writeFileWithBackupIfChanged)
 import Hledger.Web.Param (linksRow, linksRowClass)
 import Hledger.Web.Settings (manualurl)
 import Hledger.Query qualified as Query
@@ -88,27 +85,6 @@ fromFormSuccess :: Applicative m => m a -> FormResult a -> m a
 fromFormSuccess h FormMissing = h
 fromFormSuccess h (FormFailure _) = h
 fromFormSuccess _ (FormSuccess a) = pure a
-
--- | A helper for postEditR/postUploadR: check that the given text
--- parses as a Journal, and if so, write it to the given file, if the
--- text has changed. Or, return any error message encountered.
---
--- As a convenience for data received from web forms, which does not
--- have normalised line endings, line endings will be normalised (to \n)
--- before parsing.
---
--- The file will be written (if changed) with the current system's native
--- line endings (see writeFileWithBackupIfChanged).
---
-writeJournalTextIfValidAndChanged :: MonadHandler m => FilePath -> Text -> ExceptT String m ()
-writeJournalTextIfValidAndChanged f t = mapExceptT liftIO $ do
-  -- Ensure unix line endings, since both readJournal (cf
-  -- formatdirectivep, #1194) writeFileWithBackupIfChanged require them.
-  -- XXX klunky. Any equivalent of "hSetNewlineMode h universalNewlineMode" for form posts ?
-  let t' = T.replace "\r" "" t
-  j <- readJournal definputopts (Just f) =<< liftIO (textToHandle t')
-  _ <- liftIO $ j `seq` writeFileWithBackupIfChanged f t'  -- Only write backup if the journal didn't error
-  return ()
 
 -- | Link to a topic in the manual.
 helplink :: Text -> Text -> HtmlUrl r

@@ -179,7 +179,8 @@ eg `expenses date:thismonth`; the help dialog summarises the query types.
 The search and the options are part of the page's url (see [URL parameters](#url-parameters)).
 
 The **add form** (press `a`, or click "Add a transaction" in the journal view)
-adds a transaction to the main journal file, if the [access level](#permissions) allows it.
+adds a transaction to the main journal file, if the [access level](#permissions) allows it,
+and if the journal would still be readable with it added (see [Editing, uploading, downloading](#editing-uploading-downloading)).
 It autocompletes account names and descriptions from your existing entries.
 
 The **help dialog** (press `?`, or click the question mark button) lists these keyboard shortcuts,
@@ -253,8 +254,12 @@ Before saving an edited or uploaded file, hledger-web saves a numbered backup of
 hledger-web is not aware of version control systems, currently; if you use one,
 you'll have to arrange to commit the changes yourself.
 
-Changes which would leave the journal file(s) unparseable or invalid
-(eg with failing balance assertions) are prevented.
+Changes which would leave the journal unreadable are refused, and the file is not changed.
+This applies to edits, uploads and added transactions.
+Each change is checked as the next read of the journal will check it,
+in the context of all the journal's files and with the options hledger-web was started with:
+so transactions must balance, balance assertions must pass (unless started with `-I`),
+lots must be valid, and with `--strict`, the strict checks must pass too.
 
 # REPORTS
 
@@ -487,7 +492,8 @@ You can add a new transaction to the journal with a PUT request to `/add`,
 if hledger-web was started with `--allow=add` (the default when listening on a local-only address).
 The payload must be the full, exact JSON representation of a hledger transaction
 (partial data won't do).
-As with the add command, the transaction must balance, and the journal's balance assertions must still hold with it added;
+The journal must still be readable with the transaction added, with hledger-web's startup options
+(see [Editing, uploading, downloading](#editing-uploading-downloading));
 if not, the response has status 400 and the error message, and the journal is not changed.
 You can get sample JSON from hledger-web's `/transactions` or `/accounttransactions`,
 or from hledger's print command. Eg, this saves the first transaction of the sample journal to `txn.json`:
