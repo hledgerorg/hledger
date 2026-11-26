@@ -11,12 +11,16 @@ module Hledger.Read.InputOptions (
   InputOpts(..)
 , HasInputOpts(..)
 , definputopts
+, fileOverride
 , inputOptsSetJournalDir
 , forecastPeriod
 ) where
 
 import Control.Applicative ((<|>))
+import Data.Map qualified as M
+import Data.Text (Text)
 import Data.Time (Day, addDays)
+import System.Directory (canonicalizePath)
 import System.FilePath (takeDirectory)
 
 import Hledger.Data.Types
@@ -67,6 +71,11 @@ data InputOpts = InputOpts {
                                                 --   journal has been loaded (eg as @import@ does), apply 'inputOptsSetJournalDir'
                                                 --   to its 'InputOpts' so the CSV rules reader can find the right @data/@.
                                                 --   Otherwise, the CSV rules reader falls back to the rules file's own directory.
+    ,_fileoverrides     :: M.Map FilePath Text  -- ^ internal: replacement content for some files, keyed by canonical path
+                                                --   (see 'canonicalizePath'), with \n line endings. When the reader would read
+                                                --   one of these files (as a journal file or an included file), it reads this text
+                                                --   instead, and the file need not exist. Used to check a change to a file before
+                                                --   writing it (see @journalCheckChange@ in hledger's Hledger.Cli.Utils).
  } deriving (Eq, Ord, Show)
 
 definputopts :: InputOpts
@@ -95,7 +104,16 @@ definputopts = InputOpts
     , _ioDay             = nulldate
     , _oldtimeclock      = False
     , _journaldir        = Nothing
+    , _fileoverrides     = M.empty
     }
+
+-- | The replacement content for this file in the input options' '_fileoverrides', if any.
+-- Standard input ("-") is never overridden. Paths are compared canonically,
+-- which is skipped when there are no overrides (the usual case).
+fileOverride :: InputOpts -> FilePath -> IO (Maybe Text)
+fileOverride InputOpts{_fileoverrides=os} f
+  | M.null os || f == "-" = return Nothing
+  | otherwise = (`M.lookup` os) <$> canonicalizePath f
 
 -- | Set 'InputOpts._journaldir' from a parsed 'Journal' (using @takeDirectory . journalFilePath@).
 --

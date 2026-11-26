@@ -322,10 +322,13 @@ readJournalFileAndLatestDates iopts prefixedfile = do
   let
     (mfmt, f) = splitReaderPrefix prefixedfile
     iopts' = iopts{mformat_=asum [mfmt, mformat_ iopts]}
-  liftIO $ requireJournalFileExists f
+  -- The file's content: replacement text from the input options, if any, otherwise the file (which must exist).
+  moverride <- liftIO $ fileOverride iopts f
   h <-
     dbg6Msg ("readJournalFile: "++takeFileName f) $
-    liftIO $ openFileOrStdin f
+    liftIO $ case moverride of
+      Just t  -> textToHandle t
+      Nothing -> requireJournalFileExists f >> openFileOrStdin f
     -- <- T.readFile f  -- or without line ending translation, for testing
   j <- readJournal iopts' (Just f) h
   if new_ iopts

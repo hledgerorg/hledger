@@ -18,6 +18,7 @@ module Hledger.Cli.Commands.Add (
   ,appendToJournalFileOrStdout
   ,balanceTransactionInJournal
   ,journalAddTransaction
+  ,journalTextAppend
 )
 where
 
@@ -557,7 +558,7 @@ journalAddTransaction j@Journal{jtxns=ts} opts t = do
 --
 appendToJournalFileOrStdout :: FilePath -> Text -> IO ()
 appendToJournalFileOrStdout f s
-  | f == "-"  = T.putStr s'
+  | f == "-"  = T.putStr $ appendedText s
   | otherwise = do
       ensureJournalFileExists f
       let dir = takeDirectory f
@@ -568,8 +569,18 @@ appendToJournalFileOrStdout f s
         , "This can happen eg with FAT/exFAT and Android shared-storage / FUSE mounts."
         , "Please move the journal file to a reliable filesystem and try again."
         ]
-      appendFile f $ T.unpack s'
-  where s' = "\n" <> ensureOneNewlineTerminated s
+      appendFile f $ T.unpack $ appendedText s
+
+-- | The whole text a journal file will have after 'appendToJournalFileOrStdout'
+-- appends some text to it: the file's old text, then the appended text.
+-- Useful for checking an append before doing it (see 'journalCheckChange').
+journalTextAppend :: Text -> Text -> Text
+journalTextAppend old s = old <> appendedText s
+
+-- | The text that 'appendToJournalFileOrStdout' actually appends:
+-- the given text, after a blank line, ending with one newline.
+appendedText :: Text -> Text
+appendedText s = "\n" <> ensureOneNewlineTerminated s
 
 -- | Replace a string's 0 or more terminating newlines with exactly one.
 ensureOneNewlineTerminated :: Text -> Text

@@ -506,12 +506,14 @@ includedirectivep iopts = do
           parser = (rParser r) iopts1
       dbg7IO "parseIncludedFile: trying reader" (rFormat r)
 
-      -- Read the file's content, or throw an error.
+      -- Read the file's content (or its replacement text from the input options), or throw an error.
       -- Readers which read their own input (CSV, rules) are given empty text instead.
+      cfilepath <- liftIO $ canonicalizePath filepath
       childInput <-
         if readerReadsOwnInput r then pure ""
-        else lift $ readFilePortably filepath & handleIOError off "failed to read a file"
-      cfilepath <- liftIO $ canonicalizePath filepath
+        else case M.lookup cfilepath (_fileoverrides iopts1) of
+          Just t  -> pure t
+          Nothing -> lift $ readFilePortably filepath & handleIOError off "failed to read a file"
       parentj <- get
       let initChildj = newJournalWithParseStateFrom filepath cfilepath parentj
 

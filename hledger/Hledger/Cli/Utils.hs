@@ -21,6 +21,7 @@ module Hledger.Cli.Utils
      journalTransform,
      journalPrepareLotDetail,
      journalReload,
+     journalCheckChange,
      journalReloadIfChanged,
      journalFileIsNewer,
      maybeFileModificationTime,
@@ -38,6 +39,7 @@ import Control.Monad.Except (ExceptT)
 import Control.Monad.IO.Class (liftIO)
 import Data.List
 import Data.List.NonEmpty qualified as NE (head, toList)
+import Data.Map qualified as M
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -50,7 +52,7 @@ import Data.Time.Clock.POSIX (POSIXTime, utcTimeToPOSIXSeconds)
 import Lens.Micro ((^.))
 import Safe (readMay, headMay)
 import System.Console.CmdArgs
-import System.Directory (getModificationTime, getDirectoryContents, copyFile, createDirectoryIfMissing, doesFileExist, getXdgDirectory, renameFile, XdgDirectory(..))
+import System.Directory (canonicalizePath, getModificationTime, getDirectoryContents, copyFile, createDirectoryIfMissing, doesFileExist, getXdgDirectory, renameFile, XdgDirectory(..))
 import System.Exit
 import System.FilePath ((</>), splitFileName, takeDirectory)
 import System.Info (os)
@@ -361,9 +363,25 @@ journalReloadIfChanged opts _d j = do
 -- subsequently do another 'readJournalFile' / 'readJournalFiles' call should
 -- apply 'inputOptsSetJournalDir' to those iopts (see 'withJournal').
 journalReload :: CliOpts -> ExceptT String IO Journal
-journalReload opts = do
+journalReload opts = journalReloadWithOverrides opts M.empty
+
+-- | Check a change to one of the journal's files before writing it:
+-- re-read the journal as 'journalReload' would after this text was written to this file
+-- (which need not exist yet), without writing anything.
+-- Return the journal that read gives, or its error message.
+-- So the change passes exactly the checks the next read will make, with these options
+-- (balancing, balance assertions, lots, strict checks, etc), in the context of all the journal's files.
+-- The text should have \n line endings.
+journalCheckChange :: CliOpts -> FilePath -> T.Text -> ExceptT String IO Journal
+journalCheckChange opts f t = do
+  cf <- liftIO $ canonicalizePath f
+  journalReloadWithOverrides opts $ M.singleton cf t
+
+-- | Like 'journalReload', but reading the given replacement text for some files (see 'InputOpts._fileoverrides').
+journalReloadWithOverrides :: CliOpts -> M.Map FilePath T.Text -> ExceptT String IO Journal
+journalReloadWithOverrides opts overrides = do
   journalpaths <- liftIO $ dbg6 "reloading files" <$> journalFilePathFromOpts opts
-  let iopts = (inputopts_ opts){_journaldir = Just (takeDirectory (NE.head journalpaths))}
+  let iopts = (inputopts_ opts){_journaldir = Just (takeDirectory (NE.head journalpaths)), _fileoverrides = overrides}
   journalTransform opts <$> readJournalFiles iopts (NE.toList journalpaths)
 
 -- | Has the specified file changed since the journal was last read ?
