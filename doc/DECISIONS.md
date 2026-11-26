@@ -101,6 +101,24 @@ transacted cost is then used, so print output with a rounded basis re-reads
 losslessly (see SPEC-lots "Acquire basis check"). Old files still load with
 `--ignore-lots`.
 
+### Lots are calculated in parse order
+
+2026-11 (#2866). Lot calculation walks entries in date order, and same-date
+entries in parse order, like balance assertions, and never reorders them to
+make lots available. #2866 proposed retrying a failed transfer after a
+uniquely determined same-day funder, for transfers recorded in two entries
+through a clearing account (eg from two wallets' statements, imported into
+files whose include order doesn't follow events). We declined it: whether
+the retry applies depends on unrelated same-day entries (a new import could
+make a passing journal fail with no explanation), it doesn't help when the
+clearing account holds a residue, and reports would show an order different
+from the one lots were calculated in. Lot movements need to be modelled
+precisely, so journals, including generated ones, must be written in a valid
+order. Instead the "no lots available" error names the later same-date entry
+which would have supplied the lots, and the manual recommends recording such
+a transfer as one entry. Timestamps would not solve this in general: both
+sides of an on-chain transfer usually carry the same timestamp.
+
 ### Short positions are lots in liability accounts
 
 2026-09 (#2756). A short position is tracked as lots in a Liability-typed
