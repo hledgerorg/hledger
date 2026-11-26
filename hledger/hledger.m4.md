@@ -7411,6 +7411,13 @@ Other real-world lot events can usually be modelled using combinations of these
 These are described for lots in asset accounts;
 in liability accounts, which hold [short positions](#short-positions), the signs are reversed.
 
+Lots are calculated in date order, and entries on the same date in the order they are read
+(an included file is read at the point where it is included).
+So an entry which takes lots out of an account must come after the entries that put them there,
+even on the same date; hledger doesn't reorder entries to make lots available.
+When this goes wrong, the "no lots available" error names a later entry on the same date
+which would have supplied the lots, if there is one.
+
 ### Acquire
 
 A positive lot posting in an asset account creates a new lot.
@@ -7561,6 +7568,33 @@ give it a real or dummy cost basis (or price) annotation, which keeps it out of 
     expenses:fees   -0.001 ETH
     assets:broker2   0.001 ETH {$0}
 ```
+
+#### Transfers recorded in two entries
+
+A transfer between your own accounts is sometimes recorded twice, once from each account's statement,
+the two entries meeting in a clearing account:
+
+```journal
+2026-01-03 send to wallet A                 ; from wallet B's statement
+    assets:wallet B       -0.11 ETH
+    assets:transfers       0.10 ETH
+    expenses:fees          0.01 ETH
+
+2026-01-03 receive from wallet B            ; from wallet A's statement
+    assets:transfers      -0.10 ETH
+    assets:wallet A        0.10 ETH
+```
+
+The receiving entry takes the lots out of the clearing account, so the sending entry must be read first
+(see [Lot movements](#lot-movements)).
+When each statement is imported into its own file, this depends on the order the files are included in.
+Some ways to make it reliable:
+
+- Record the transfer as one entry, from one statement, and drop it from the other
+  (eg with a [`skip`](#skip) rule in that account's CSV rules).
+  This is the most accurate model of a single event, and doesn't depend on order.
+- Include the sending account's files before the receiving account's.
+  This stops working if, on some date, transfers go both ways.
 
 ### Dispose
 

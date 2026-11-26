@@ -1200,3 +1200,28 @@ $ hledger -f- print -x --verbose-tags date:2026-02-17
     expenses:fees                                 $2
 
 >=
+
+# ** 52. A transfer through a clearing account whose other side is written
+# later on the same date fails, with a hint naming that later entry.
+<
+commodity 1.00 TESTCUR  ; lots:
+
+2026-01-01 opening balance
+    assets:WalletB       1 TESTCUR {1.00 USD}
+    equity:opening-closing
+
+2026-01-03 Transfer from WalletB
+    assets:WalletA       0.10 TESTCUR
+    assets:transfers    -0.10 TESTCUR
+
+2026-01-03 Transfer to WalletA
+    assets:WalletB      -0.11 TESTCUR
+    assets:transfers     0.10 TESTCUR
+    expenses:fees        0.01 TESTCUR
+
+$ hledger -f- check lots
+>2 /no TESTCUR lots available for transfer from account assets:transfers on 2026-01-03(.|
+)*A later entry on the same date adds TESTCUR to assets:transfers:
+  -:11 2026-01-03 Transfer to WalletA
+Same-date entries are processed in the order they are read; perhaps that entry should come first\./
+>=1

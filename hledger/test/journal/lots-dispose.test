@@ -1660,3 +1660,39 @@ $ hledger -f- reg tag:lotsplit
 $ hledger -f- reg --lots tag:lotsplit
 2026-03-01 sell                 ..1-01, "0001", $50}      -20 AAPL      -20 AAPL
                                 ..1-01, "0002", $50}      -11 AAPL      -31 AAPL
+
+# ** 84. A sale written before a same-day purchase fails,
+# with a hint naming the purchase.
+<
+commodity AAPL  ; lots:
+
+2026-01-03 sell
+    assets:broker   -5 AAPL @ $60
+    assets:cash
+
+2026-01-03 buy
+    assets:broker   10 AAPL {$50}
+    assets:cash
+
+$ hledger -f- check lots
+>2 /no AAPL lots available for disposal from account assets:broker(.|
+)*A later entry on the same date adds AAPL to assets:broker:
+  -:7 2026-01-03 buy
+/
+>=1
+
+# ** 85. A purchase on a later date gets no such hint.
+<
+commodity AAPL  ; lots:
+
+2026-01-03 sell
+    assets:broker   -5 AAPL @ $60
+    assets:cash
+
+2026-01-04 buy
+    assets:broker   10 AAPL {$50}
+    assets:cash
+
+$ hledger -f- check lots
+>2 !/later entry/
+>=1

@@ -70,6 +70,8 @@ journalCalculateLots:
   "SPECID requires an explicit lot selector",
   "no X lots available for transfer/disposal from account Y on DATE"
   (with a hint to use a liability account for a short position),
+  and on any lot error, a hint naming a later same-date entry which adds
+  the commodity to an empty source account (see laterSupplyHint),
   "no lots matching {...} for commodity X in account Y on DATE",
   "lot selector is ambiguous, matches N lots in account Y",
   "Insufficient lots for commodity X in account Y"
@@ -1182,6 +1184,7 @@ transactionClassifyLotPostings verbosetags lookupAccountType commodityIsLotful a
 -- and transfer postings (moving lots between accounts, preserving cost basis).
 -- The verbosetags parameter controls whether generated-posting tags are made visible in comments.
 -- All lot selection/classification failures are hard errors.
+-- Same-date transactions are processed in parse order, never reordered.
 journalCalculateLots :: Bool -> Journal -> Either String Journal
 journalCalculateLots verbosetags j
   | not $ any (any isLotPosting . tpostings) txns = do
@@ -1191,10 +1194,14 @@ journalCalculateLots verbosetags j
       validateUserLabels txns
       let needsLabels = findDatesNeedingLabels txns
           -- Transactions with no lotful amounts can't affect lots; pass them through untouched.
-          process acc@(ls, done) t
+          -- An error gets a hint if a later transaction might have been meant to come first.
+          process acc@(ls, done) t later
             | not $ transactionHasLotfulAmounts lotfulcomms t = Right (ls, t : done)
-            | otherwise = first (appendPostingsReadAs t) $ processTransaction styles verbosetags j needsLabels acc t
-      (_, txns') <- foldM process (M.empty, []) (sortOn tdate txns)
+            | otherwise = first (appendPostingsReadAs t . (++ laterSupplyHint ls t later) . dropWhileEnd (== '\n'))
+                        $ processTransaction styles verbosetags j needsLabels acc t
+          walk acc []         = Right acc
+          walk acc (t:later) = process acc t later >>= \acc' -> walk acc' later
+      (_, txns') <- walk (M.empty, []) (sortOn tdate txns)
       Right (journalTieTransactions $ j{jtxns = reverse txns'})
   where
     txns = jtxns j
@@ -1207,6 +1214,31 @@ journalCalculateLots verbosetags j
     checkUnclassified (t, i, p)
       | isUnclassifiedLotfulPosting j p = Left (appendPostingsReadAs t $ unclassifiedLotWarning j t i p)
       | otherwise                       = Right ()
+
+-- | A hint for a lot error in this transaction, explaining that a later entry
+-- on the same date adds the commodity to an account which the transaction takes
+-- it from, but which holds none of it yet. Same-date entries are processed in
+-- parse order, so the later entry may have been meant to come first (eg the
+-- other side of a transfer recorded through a clearing account, or a same-day
+-- purchase). Starts with a newline; empty when there is no such entry.
+laterSupplyHint :: LotState -> Transaction -> [Transaction] -> String
+laterSupplyHint ls t later = case supplies of
+  []           -> ""
+  (a, c, f) : _ -> printf
+    ("\n\nA later entry on the same date adds %s to %s:\n  %s\n"
+     ++ "Same-date entries are processed in the order they are read; perhaps that entry should come first.")
+    (T.unpack c) (T.unpack a) (txnDbgPrefix f)
+  where
+    sameDate = takeWhile ((== tdate t) . tdate) later
+    unheld = [ (a, acommodity x)
+             | p <- tpostings t, isTransferFromPosting p || isDisposePosting p
+             , let a = lotBaseAccount (paccount p)
+             , x <- amountsRaw (pamount p), aquantity x < 0
+             , not $ any (M.member a) (M.findWithDefault M.empty (acommodity x) ls) ]
+    supplies = [ (a, c, f) | (a, c) <- unheld, f <- sameDate, any (addsTo a c) (tpostings f) ]
+    addsTo a c q = (isAcquirePosting q || isTransferToPosting q)
+                && lotBaseAccount (paccount q) == a
+                && any ((== c) . acommodity) (amountsRaw (pamount q))
 
 -- Disposal gain postings
 

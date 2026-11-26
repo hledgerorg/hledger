@@ -1134,6 +1134,11 @@ Post-balancing:
 7. **journalCalculateLots** — walk transactions in date order, evaluate lot selectors,
    apply reduction methods, add explicit lot subaccounts, infer cost basis for bare
    disposals, normalise transacted cost.
+   Same-date transactions are walked in parse order and never reordered (see
+   DECISIONS.md, "Lots are calculated in parse order"). When a transaction fails, and
+   a later same-date transaction adds a commodity to an account which the failed one
+   takes it from but which holds none of it, the error names that later transaction
+   (`laterSupplyHint`).
 8. **journalAddOrCheckGainPostings** — for disposals with no gain posting yet, add
    the gain posting sized at the disposal gain. Also validates that any
    user-written (tagged) gain amount matches the disposal gain — including in a
