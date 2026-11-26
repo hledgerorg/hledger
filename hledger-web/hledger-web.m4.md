@@ -487,6 +487,8 @@ You can add a new transaction to the journal with a PUT request to `/add`,
 if hledger-web was started with `--allow=add` (the default when listening on a local-only address).
 The payload must be the full, exact JSON representation of a hledger transaction
 (partial data won't do).
+As with the add command, the transaction must balance, and the journal's balance assertions must still hold with it added;
+if not, the response has status 400 and the error message, and the journal is not changed.
 You can get sample JSON from hledger-web's `/transactions` or `/accounttransactions`,
 or from hledger's print command. Eg, this saves the first transaction of the sample journal to `txn.json`:
 

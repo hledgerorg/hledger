@@ -18,7 +18,8 @@ import Text.Blaze.Html (preEscapedToHtml)
 import Yesod
 
 import Hledger
-import Hledger.Cli.Commands.Add (appendToJournalFileOrStdout, journalAddTransaction)
+import Hledger.Cli (CliOpts(..))
+import Hledger.Cli.Commands.Add (appendToJournalFileOrStdout, balanceTransactionInJournal, journalAddTransaction)
 import Hledger.Web.Import
 import Hledger.Web.WebOptions (WebOpts(..))
 import Hledger.Web.Widget.AddForm (addForm)
@@ -83,14 +84,22 @@ postAddR = do
 
 -- Add a single new transaction, send as JSON via PUT, to the journal.
 -- The web form handler above should probably use PUT as well.
+-- Like the add command, it first balances the transaction in the context of
+-- the whole journal, checking balance assertions; if that fails, the error
+-- is returned with status 400 and the journal is not changed (#2864).
 putAddR :: Handler RepJson
 putAddR = do
-  VD{j, opts} <- getViewData
+  VD{jfull, opts} <- getViewData
   require AddPermission
 
   (r :: Result Transaction) <- parseCheckJsonBody
   case r of
     Error err -> sendStatusJSON status400 ("could not parse json: " ++ err ::String)
-    Success t -> do
-      void $ liftIO $ journalAddTransaction j (cliopts_ opts) $ transactionCollapseNewlines t
-      sendResponseCreated TransactionsR
+    Success t0 -> do
+      let t = transactionCollapseNewlines t0
+          copts = cliopts_ opts
+      case balanceTransactionInJournal t jfull (balancingopts_ $ inputopts_ copts) of
+        Left err -> sendStatusJSON status400 err
+        Right _ -> do
+          void $ liftIO $ journalAddTransaction jfull copts t
+          sendResponseCreated TransactionsR

@@ -2442,6 +2442,26 @@ hledgerWebTest = do
       assertEq "the description should be written on one line"
         (T.isInfixOf "JsonNewline include /etc/passwd" txt) True
 
+    -- An entry the journal could not be read back with must be refused,
+    -- not written (#2864). (The test above is its accepted control.)
+    yit "rejects an unbalanced transaction sent to the JSON API, leaving the journal unchanged" $ do
+      let t = nulltransaction
+            { tdate = fromGregorian 2025 4 5
+            , tdescription = "JsonUnbalanced"
+            , tpostings =
+              [ nullposting{paccount = "assets:bank:checking", pamount = mixedAmount (num 2)}
+              , nullposting{paccount = "income:gifts",         pamount = mixedAmount (num (-1))}
+              ]
+            }
+      request $ do
+        setMethod "PUT"
+        setUrl AddR
+        addRequestHeader ("Content-Type", "application/json")
+        setRequestBody $ encode t
+      statusIs 400
+      bodyContains "unbalanced"
+      journalFileLacks jfile "JsonUnbalanced"
+
     -- Likewise for the edit form: the same save, with and without the token.
     let editJournal fld desc = do
           setMethod "POST"
