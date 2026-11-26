@@ -35,6 +35,11 @@ Features:
 - A parenthesised transaction [code](#code) may be entered following a date.
 - [Comments](#transaction-comments) and tags may be entered following a description or amount.
 - If you make a mistake, enter `<` at any prompt to go one step backward.
+- Before saving a transaction, add checks that the journal will still be readable with it added,
+  as the next read with the same options will check it
+  (eg balance assertions must pass, lots must be valid, and with `--strict`, the strict checks must pass).
+  If not, it shows the error and goes one step backward, so you can correct the entry.
+  (With a large journal this check may take a moment; it runs while you are deciding whether to save.)
 - Input prompts are displayed in a different colour when the terminal supports it.
 
 Notes:

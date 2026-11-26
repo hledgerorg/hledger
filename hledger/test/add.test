@@ -311,6 +311,35 @@ $  printf '2026-07-02 Gehalt\n    assets:Sparkasse:Giro  -1.000,\n    expenses:H
 > /Amount  1 \[-1\.000,\]/
 >2 //
 
+# ** 23. A transaction which would leave the journal unreadable, eg by selling more lots than are held,
+# is not saved: the error is shown, and nothing is written [#2869].
+<
+2026-03-01
+OverSale
+assets:broker:aapl
+-20 AAPL @ 130 USD
+assets:cash
+2600 USD
+.
+y
+$  printf 'commodity AAPL  ; lots:\n\n2026-01-01 buy\n    assets:broker:aapl  10 AAPL @ 100 USD\n    assets:cash\n' >t$$.j; hledger -f t$$.j add 2>&1 | grep -c 'Insufficient lots'; grep -c OverSale t$$.j; rm -f t$$.j
+1
+0
+
+# ** 24. With --strict, a transaction using an undeclared account is not saved.
+<
+2026-01-02
+Undeclared
+assets:cash
+1 USD
+income:typo
+
+.
+y
+$  printf 'account assets:cash\ncommodity USD\n' >t$$.j; hledger -f t$$.j add --strict 2>&1 | grep -c 'has not been declared'; grep -c Undeclared t$$.j; rm -f t$$.j
+1
+0
+
 # ** . shouldn't add decimals if there aren't any
 # printf '\n\na\n1\nb\n' | hledger -f /dev/null add
 # <

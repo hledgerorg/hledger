@@ -21,6 +21,8 @@ module Hledger.Cli.Commands.Add (
 )
 where
 
+import Control.Concurrent (forkIO, killThread)
+import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
 import Control.Exception as E
 import Control.Monad (unless, when)
 import Control.Monad.Trans.Class
@@ -56,7 +58,7 @@ import Hledger
 import Hledger.Cli.CliOptions
 import Hledger.Cli.Commands.Print (layoutFlag, layoutFromRawOpts)
 import Hledger.Cli.Commands.Register (postingsReportAsText)
-import Hledger.Cli.Utils (journalSimilarTransaction)
+import Hledger.Cli.Utils (journalCheckChange, journalSimilarTransaction)
 
 
 addmode = hledgerCommandMode
@@ -161,21 +163,23 @@ addTransactionsLoop state@AddState{..} = (do
   mt <- runInputT (setComplete noCompletion defaultSettings) (System.Console.Wizard.run $ haskeline $ transactionWizard defaultPrevInput state [])
   case mt of
     Nothing -> error' "Could not interpret the input, restarting"  -- caught below causing a restart, I believe  -- PARTIAL:
-    Just t -> do
+    -- The transaction, and the journal as it will be read with it added (checked by the wizard).
+    Just (t, checkedj) -> do
       j <- if debug_ asOpts > 0
            then do hPutStrLn stderr "Skipping journal add due to debug mode."
                    return asJournal
-           else do j' <- journalAddTransaction asJournal asOpts t
+           else do _ <- journalAddTransaction asJournal asOpts t
                    hPutStrLn stderr "Saved."
-                   return j'
+                   return checkedj
       hPutStrLn stderr "Starting the next transaction (. or ctrl-D/ctrl-C to quit)"
       addTransactionsLoop state{asJournal=j, asDefDate=tdate t}
   )
   `E.catch` (\(_::RestartTransactionException) ->
                  hPutStrLn stderr "Restarting this transaction." >> addTransactionsLoop state)
 
--- | Interact with the user to get a Transaction.
-transactionWizard :: PrevInput -> AddState -> [AddStep] -> Wizard Haskeline Transaction
+-- | Interact with the user to get a Transaction,
+-- and the journal as it will be read with the transaction added to its file.
+transactionWizard :: PrevInput -> AddState -> [AddStep] -> Wizard Haskeline (Transaction, Journal)
 transactionWizard previnput state [] = transactionWizard previnput state [GetDate]
 transactionWizard previnput state@AddState{..} stack@(currentStage : _) = case currentStage of
   GetDate -> dateWizard previnput state >>= \case
@@ -290,16 +294,26 @@ transactionWizard previnput state@AddState{..} stack@(currentStage : _) = case c
     Nothing -> transactionWizard previnput state (drop 1 stack)
 
   Confirm t -> do
-    output . T.unpack $ showTransactionWithLayout (layoutFromRawOpts $ rawopts_ asOpts) t
+    let txt = showTransactionWithLayout (layoutFromRawOpts $ rawopts_ asOpts) t
+    output $ T.unpack txt
+    -- Check that the journal will be readable with this added, as the next read will check it
+    -- (lots, strict checks, etc). This can take a while with a large journal, so it runs
+    -- in the background while the user reads the entry and answers.
+    (waitForCheck, cancelCheck) <- liftIO $ startJournalCheck asOpts (journalFilePath asJournal) txt
     y <- let def = "y" in
          retryMsg "Please enter y or n." $
           parser ((fmap (\c -> if c == '<' then Nothing else Just c)) . headMay . map toLower . strip) $
           defaultTo' def $ nonEmpty $
           line $ green' $ printf "Save this transaction to the journal ?%s: " (showDefault def)
     case y of
-      Just 'y' -> return t
-      Just _   -> throw RestartTransactionException
-      Nothing  -> transactionWizard previnput state (drop 2 stack)
+      Just 'y' -> liftIO waitForCheck >>= \case
+        Right j -> return (t, j)
+        Left err -> do
+          -- Not saved; back up one step, as with <, to let the user correct it.
+          liftIO $ hPutStrLn stderr $ "\n" ++ err ++ "\nThis transaction can't be saved, please correct it."
+          transactionWizard previnput state (drop 2 stack)
+      Just _   -> liftIO cancelCheck >> throw RestartTransactionException
+      Nothing  -> liftIO cancelCheck >> transactionWizard previnput state (drop 2 stack)
   where
     replaceNthOrAppend n newElem xs = take n xs ++ [newElem] ++ drop (n + 1) xs
 
@@ -533,6 +547,21 @@ balanceTransactionInJournal t j bopts = do
 postingsAreBalanced :: Journal -> [Posting] -> Bool
 postingsAreBalanced j ps = isRight $ balanceSingleTransaction bopts nulltransaction{tpostings = ps}
   where bopts = defbalancingopts{account_types_ = jaccounttypes j}
+
+-- | In a background thread, check that the journal will be readable with this text
+-- appended to this file, as the next read with these options will check it (see 'journalCheckChange').
+-- Returns an action that waits for the result (the journal as that read gives it, or its error message),
+-- and an action that cancels the check.
+startJournalCheck :: CliOpts -> FilePath -> Text -> IO (IO (Either String Journal), IO ())
+startJournalCheck opts f txt = do
+  result <- newEmptyMVar
+  tid <- forkIO $ do
+    -- Any exception becomes an error message, so the wait always ends.
+    r <- E.try $ do
+      newtxt <- journalFileTextAfterAppends f [txt]
+      evaluate =<< runExceptT (journalCheckChange opts f newtxt)
+    putMVar result $ either (\(e::SomeException) -> Left $ show e) id r
+  return (readMVar result, killThread tid)
 
 -- | Append this transaction to the journal's file and transaction list.
 journalAddTransaction :: Journal -> CliOpts -> Transaction -> IO Journal
