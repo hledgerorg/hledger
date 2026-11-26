@@ -15,13 +15,12 @@ import Data.Aeson.Types (Result(..))
 import Data.List (intersperse)
 import Data.Text qualified as T
 import Network.HTTP.Types.Status (status400)
-import System.Directory (doesFileExist)
 import Text.Blaze.Html (preEscapedToHtml)
 import Yesod
 
 import Hledger
 import Hledger.Cli (CliOpts(..))
-import Hledger.Cli.Commands.Add (appendToJournalFileOrStdout, journalTextAppend)
+import Hledger.Cli.Commands.Add (appendToJournalFileOrStdout, journalFileTextAfterAppends)
 import Hledger.Cli.Commands.Print (layoutFromRawOpts)
 import Hledger.Web.Import
 import Hledger.Web.WebOptions (WebOpts(..))
@@ -108,5 +107,5 @@ putAddR = do
 -- Otherwise write nothing and return the error message.
 appendTransactionChecked :: FilePath -> Text -> Handler (Either String ())
 appendTransactionChecked f txt = do
-  old <- liftIO $ doesFileExist f >>= \e -> if e then readFilePortably f else pure ""
-  checkedJournalWrite f (journalTextAppend old txt) (appendToJournalFileOrStdout f txt)
+  newtxt <- liftIO $ journalFileTextAfterAppends f [txt]
+  checkedJournalWrite f newtxt (appendToJournalFileOrStdout f txt)

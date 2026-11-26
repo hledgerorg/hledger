@@ -17,7 +17,7 @@ module Hledger.Cli.Commands.Add (
   ,add
   ,appendToJournalFileOrStdout
   ,journalAddTransaction
-  ,journalTextAppend
+  ,journalFileTextAfterAppends
 )
 where
 
@@ -45,6 +45,7 @@ import System.Console.Haskeline (runInputT, defaultSettings, setComplete)
 import System.Console.Haskeline.Completion (CompletionFunc, completeWord, isFinished, noCompletion, simpleCompletion)
 import System.Console.Wizard (Wizard, defaultTo, line, output, outputLn, retryMsg, linePrewritten, nonEmpty, parser, run)
 import System.Console.Wizard.Haskeline
+import System.Directory (doesFileExist)
 import System.FilePath (takeDirectory)
 import System.IO (hPutStr, hPutStrLn, stderr)
 import Text.Megaparsec
@@ -571,10 +572,12 @@ appendToJournalFileOrStdout f s
       appendFile f $ T.unpack $ appendedText s
 
 -- | The whole text a journal file will have after 'appendToJournalFileOrStdout'
--- appends some text to it: the file's old text, then the appended text.
--- Useful for checking an append before doing it (see 'journalCheckChange').
-journalTextAppend :: Text -> Text -> Text
-journalTextAppend old s = old <> appendedText s
+-- appends each of these texts to it: its current text (none if it doesn't exist yet),
+-- then the appended texts. Useful for checking appends before doing them (see 'journalCheckChange').
+journalFileTextAfterAppends :: FilePath -> [Text] -> IO Text
+journalFileTextAfterAppends f ss = do
+  old <- doesFileExist f >>= \e -> if e then readFilePortably f else pure ""
+  return $ old <> foldMap appendedText ss
 
 -- | The text that 'appendToJournalFileOrStdout' actually appends:
 -- the given text, after a blank line, ending with one newline.

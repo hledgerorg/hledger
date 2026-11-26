@@ -55,3 +55,19 @@ would import 1 new transactions from clean.rules:
 # ** 8. A data generating command gets an empty stdin, not hledger's.
 $ d=$(mktemp -d); printf 'source | cat\nfields date,amount\naccount1 a\n' >$d/gen.rules; echo 2020-01-02,1 | hledger -f $d/gen.rules print 2>&1; rm -rf $d
 gen.rules: running source command: cat
+
+# ** 9. An import which would leave the journal unreadable, eg by breaking a balance assertion,
+# is refused: nothing is written, and the .latest file is not saved (#2869).
+$ d=$(mktemp -d); printf '2020-01-01 x\n    a   0\n    b\n\n2020-12-31 check\n    a   0 = 0\n' >$d/main.journal; printf 'date,amount\n2020-01-02,1\n' >$d/new.csv; printf 'skip 1\nfields date,amount\naccount1 a\n' >$d/new.csv.rules; hledger -f $d/main.journal import $d/new.csv 2>&1 >/dev/null | grep -c 'Balance assertion failed'; grep -c 2020-01-02 $d/main.journal; ls -A $d | grep -c latest; rm -rf $d
+1
+0
+0
+
+# ** 10. A dry run reports that problem too.
+$ d=$(mktemp -d); printf '2020-01-01 x\n    a   0\n    b\n\n2020-12-31 check\n    a   0 = 0\n' >$d/main.journal; printf 'date,amount\n2020-01-02,1\n' >$d/new.csv; printf 'skip 1\nfields date,amount\naccount1 a\n' >$d/new.csv.rules; hledger -f $d/main.journal import --dry-run $d/new.csv 2>&1 >/dev/null | grep -c 'Balance assertion failed'; rm -rf $d
+1
+
+# ** 11. With --strict, an import using an undeclared account is refused, writing nothing.
+$ d=$(mktemp -d); printf 'account a\n\n2020-01-01 x\n    (a)   1\n' >$d/main.journal; printf 'date,amount\n2020-01-02,1\n' >$d/new.csv; printf 'skip 1\nfields date,amount\naccount1 a\n' >$d/new.csv.rules; hledger -f $d/main.journal import --strict $d/new.csv 2>&1 >/dev/null | grep -c 'has not been declared'; grep -c 2020-01-02 $d/main.journal; rm -rf $d
+1
+0

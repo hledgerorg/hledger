@@ -23,6 +23,12 @@ but CSV/SSV/TSV files, downloaded from financial institutions, are the most comm
 The import destination is the default journal file, or another specified
 in the usual way with `$LEDGER_FILE` or `-f/--file`. It should be in journal format.
 
+Before writing anything, `import` checks that the journal will still be readable
+with the new transactions added, as the next read with the same options will check it
+(eg balance assertions must pass, lots must be valid, and with `--strict`, the strict checks must pass).
+If not, it shows the error and imports nothing (and updates no `.latest` files).
+A dry run does this check too.
+
 Examples:
 
 ```cli

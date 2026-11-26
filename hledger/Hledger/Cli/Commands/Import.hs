@@ -17,7 +17,8 @@ import Text.Printf
 
 import Hledger
 import Hledger.Cli.CliOptions
-import Hledger.Cli.Commands.Add (journalAddTransaction)
+import Hledger.Cli.Commands.Add (journalAddTransaction, journalFileTextAfterAppends)
+import Hledger.Cli.Utils (journalCheckChange)
 import Hledger.Cli.Commands.Get (getcmd)
 import Hledger.Cli.Commands.Print (layoutFlag, layoutFromRawOpts)
 import System.Directory (doesDirectoryExist, listDirectory)
@@ -98,12 +99,12 @@ importcmd opts@CliOpts{rawopts_=rawopts,inputopts_=iopts} j = do
                 hPrintf stderr "would import %d new transactions from %s:\n\n" (length newts) inputstr
                 mapM_ (T.putStr . showTransactionWithLayout postinglayout) newts
 
-                -- then check the whole journal with them added, if in strict mode
-                when (strict_ iopts) $ strictChecks
+                -- then check that the journal would be readable with them added
+                checkImport
 
               else do
-                -- first check the whole journal with them added, if in strict mode
-                when (strict_ iopts) $ strictChecks
+                -- first check that the journal would be readable with them added
+                checkImport
 
                 -- then append the transactions to the main journal file.
                 -- XXX This writes unix line endings (\n), some at least,
@@ -117,9 +118,14 @@ importcmd opts@CliOpts{rawopts_=rawopts,inputopts_=iopts} j = do
                 saveLatestDatesForFiles latestdatesforfiles
 
               where
-                -- add the new transactions to the journal in memory and check the whole thing
-                strictChecks = either fail pure $ journalStrictChecks j'
-                  where j' = foldl' (flip addTransaction) j newts
+                -- Check that the journal would still be readable with the new transactions
+                -- appended to the main file, as the next read would check it, with these options
+                -- (balancing, balance assertions, lots, strict checks if enabled..). Or stop with its error.
+                -- (journalAddTransaction appends them with appendToJournalFileOrStdout.)
+                checkImport = do
+                  let f = journalFilePath j
+                  newtxt <- journalFileTextAfterAppends f $ map (showTransactionWithLayout postinglayout) newts
+                  runExceptT (journalCheckChange opts f newtxt) >>= either error' (const $ return ())
 
 -- | List the .rules files in the given directory, in alphabetical order,
 -- skipping files whose name begins with '.' (hidden) or '_'
