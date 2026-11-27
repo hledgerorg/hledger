@@ -16,12 +16,12 @@ import Hledger.Web.Paging
 import Hledger.Web.WebOptions
 import Hledger.Web.Widget.AddForm (addModal)
 import Hledger.Web.Param (lookupParam, paramLinks, paramSettings)
-import Hledger.Web.ReportPage (amountModeOf, calcParam, deepestDepth, depthParams, intervalLinks, listParam, optionsSummary, parseInterval, parseValue, removeAttributes, setAmountMode, sortParam, valueParams)
+import Hledger.Web.ReportPage (amountModeOf, calcParam, deepestDepth, depthParams, intervalLinks, listParam, optionsSummary, parseInterval, parseValue, removeAttributes, setAmountMode, sortParam, valueParams, linkGroupLast)
 import Hledger.Web.Widget.Common
             (accountParams, amountLinks, columnsLinks, commodityLinks,
              controlsHint, controlsToggle, searchHeading,
              depthLinks, inertControls, lotsLinks,
-             mixedAmountAsHtml, percentLinks, pricesLinks, realLinks,
+             mixedAmountAsHtml, pricesLinks, realLinks,
              statusLinks, typeLinks,
              transactionFragment, journalDayQuery, zeroBalanceLinks)
 
@@ -122,12 +122,18 @@ getJournalR = do
       yearsNav = yearsRow trs JournalR qparam today carried years
       intervalRow = inertControls trs $
         intervalLinks trs JournalR (removeAttributes ["interval"] carried) qparam rpInterval
-      inertRows = inertControls trs $ mconcat
+      ropts =
+        roptsStartup {
+          sort_amount_ = sortAmt,
+          percent_ = pctOn,
+          balancecalc_ = calcCur
+        }
+      inertRows = inertControls trs $ mconcat $
         [ columnsLinks trs JournalR (qps ++ removeAttributes ["total", "avg"] carried) totalOn avgOn
-        , paramLinks sortParam trs JournalR (qps ++ carried) False sortAmt
-        , percentLinks trs JournalR (qps ++ removeAttributes ["pct"] carried) pctOn
-        , paramLinks calcParam trs JournalR (qps ++ carried) CalcChange calcCur
         ]
+        ++
+        linkGroupLast trs JournalR qps carried ropts
+
       -- All of them behind the controls disclosure, closed by default,
       -- in the same order as on the report pages.
       controlsRows = controlsToggle trs controlsOpen (optionsSummary trs deepest carried) $ mconcat $

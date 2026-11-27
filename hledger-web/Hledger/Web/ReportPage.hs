@@ -42,6 +42,8 @@ module Hledger.Web.ReportPage (
   relinkDateHeaders,
   reportLinks,
   intervalLinks,
+  urlArgGroupLast,
+  linkGroupLast,
   reportTable,
   chartReportSpec,
   splitAccountNames,
@@ -69,8 +71,8 @@ import Yesod (HtmlUrl)
 import Hledger.Utils.I18n (Translations, tr, trc, trf)
 import Hledger
 import Hledger.Cli.Anchor (dateTerm, renderPeriodHeading)
-import Hledger.Web.Param (Param(..), linksRowClass, paramPhrase, paramSettings, parseParam)
-import Hledger.Web.Widget.Common (AmountMode(..), removeDates, valueWord)
+import Hledger.Web.Param (Param(..), linksRowClass, paramPhrase, paramSettings, parseParam, paramLinks)
+import Hledger.Web.Widget.Common (AmountMode(..), removeDates, valueWord, percentLinks)
 import Hledger.Query qualified as Query
 import Hledger.Write.Html (Html, formatCell, nl)
 import Hledger.Write.Spreadsheet (Cell(..), Class(..), NumLines, textFromClass)
@@ -455,6 +457,25 @@ optionsSummary trs deepest = mapMaybe phrase . sortOn (rowOrder . fst)
       ("date2", "1")      -> Just $ tr trs "Secondary dates"
       ("equity", "1")     -> Just $ tr trs "Equity shown"
       _                   -> Nothing
+
+urlArgGroupLast :: ReportOpts -> [(Text, Text)]
+urlArgGroupLast ropts =
+    let sortParams  = paramSettings sortParam False (sort_amount_ ropts)
+        pctParams   = [("pct", "1") | percent_ ropts]
+        calcParams  = paramSettings calcParam CalcChange (balancecalc_ ropts)
+    in  sortParams ++ pctParams ++ calcParams
+
+linkGroupLast ::
+    Translations ->
+    r ->
+    [(Text, Text)] ->
+    [(Text, Text)] ->
+    ReportOpts ->
+    [HtmlUrl r]
+linkGroupLast trs here qParams pageParams ropts =
+    [ paramLinks sortParam trs here (qParams ++ pageParams) False (sort_amount_ ropts)
+    , percentLinks trs here (qParams ++ removeAttributes ["pct"] pageParams) (percent_ ropts)
+    , paramLinks calcParam trs here (qParams ++ pageParams) CalcChange (balancecalc_ ropts) ]
 
 -- | The value parameter, mirroring --value's WHEN[,COMM] syntax:
 -- "none", "cost", or a valuation "end", "then", "now", or a date, each
